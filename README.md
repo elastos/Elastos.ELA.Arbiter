@@ -1,1 +1,1 @@
-this repo is used to store the source code of Elastos side chain arbiter.
+This repo is used to store the source of Elastos arbiter.
