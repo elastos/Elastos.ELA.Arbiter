@@ -55,15 +55,15 @@ func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank *crypto.PublicK
 	return nil
 }
 
-func (ar *ArbitratorImpl) parseSideChainKey(uint256 *common.Uint256) *crypto.PublicKey {
+func (ar *ArbitratorImpl) ParseSideChainKey(uint256 common.Uint256) *crypto.PublicKey {
 	return nil
 }
 
-func (ar *ArbitratorImpl) parseUserSidePublicKey(uint256 *common.Uint256) *crypto.PublicKey {
+func (ar *ArbitratorImpl) ParseUserSidePublicKey(uint256 common.Uint256) *crypto.PublicKey {
 	return nil
 }
 
-func (ar *ArbitratorImpl) OnUTXOChanged(transactionHash *common.Uint256) error {
+func (ar *ArbitratorImpl) OnUTXOChanged(transactionHash common.Uint256) error {
 	return nil
 }
 
@@ -71,7 +71,7 @@ func (ar *ArbitratorImpl) IsValid(information *base.SpvInformation) (bool, error
 	return false, nil
 }
 
-func (ar *ArbitratorImpl) GenerateSpvInformation(transaction *common.Uint256) *base.SpvInformation {
+func (ar *ArbitratorImpl) GenerateSpvInformation(transaction common.Uint256) *base.SpvInformation {
 	return nil
 }
 
@@ -91,7 +91,7 @@ func (ar *ArbitratorImpl) GetAllChains() ([]side.SideChain, error) {
 	return nil, nil
 }
 
-func (ar *ArbitratorImpl) OnReceived(buf []byte, arbitrator Arbitrator) {
+func (ar *ArbitratorImpl) OnReceived(buf []byte, arbitratorIndex int) {
 
 }
 

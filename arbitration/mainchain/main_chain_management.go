@@ -12,6 +12,6 @@ type MainChain interface {
 
 	CreateWithdrawTransaction(withdrawBank *crypto.PublicKey, target *crypto.PublicKey) *TransactionInfo
 
-	parseSideChainKey(uint256 *common.Uint256) *crypto.PublicKey
-	parseUserSidePublicKey(uint256 *common.Uint256) *crypto.PublicKey
+	ParseSideChainKey(uint256 common.Uint256) *crypto.PublicKey
+	ParseUserSidePublicKey(uint256 common.Uint256) *crypto.PublicKey
 }

@@ -7,7 +7,7 @@ import (
 
 type AccountListener interface {
 
-	OnUTXOChanged(transactionHash *Uint256) error
+	OnUTXOChanged(transactionHash Uint256) error
 }
 
 type AccountMonitor interface {

@@ -32,10 +32,10 @@ func main() {
 
 	//2. arbitrator main chain
 	//logic in MainChain.OnUTXOChanged（found a deposit transaction）
-	var transactionHash *common.Uint256
+	var transactionHash common.Uint256
 	var pka *crypto.PublicKey
-	//pka = currentArbitrator.parseUserSidePublicKey(transactionHash)
-	//pkS = currentArbitrator.parseSideChainKey(transactionHash)
+	//pka = currentArbitrator.ParseUserSidePublicKey(transactionHash)
+	//pkS = currentArbitrator.ParseSideChainKey(transactionHash)
 	spvInformation := currentArbitrator.GenerateSpvInformation(transactionHash)
 	if valid, err := currentArbitrator.IsValid(spvInformation); !valid || err != nil {
 		return

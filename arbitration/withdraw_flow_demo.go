@@ -33,11 +33,11 @@ func main() {
 
 	//2. arbitrator side chain
 	//logic in SideChain.OnUTXOChanged (found a withdraw transaction)
-	var transactionHash *common.Uint256
+	var transactionHash common.Uint256
 	sideChain, err := currentArbitrator.GetChain(pkDestroy)
 	pkS := sideChain.GetKey()
 	var pkA *crypto.PublicKey
-	//pkA = sideChain.parseUserMainPublicKey(transactionHash)
+	//pkA = sideChain.ParseUserMainPublicKey(transactionHash)
 	if valid, err := sideChain.IsTransactionValid(transactionHash); !valid || err != nil {
 		return
 	}

@@ -41,6 +41,8 @@ func (group *ArbitratorGroupImpl) GetCurrentArbitrator() (Arbitrator, error) {
 func init() {
 	ArbitratorGroupSingleton = ArbitratorGroupImpl{}
 	fmt.Println("member count: ", base.Parameters.MemberCount)
-	//append(ArbitratorGroupSingleton.arbitrators, ArbitratorImpl{})
+
+	fundation := new(ArbitratorImpl)
+	ArbitratorGroupSingleton.arbitrators = append(ArbitratorGroupSingleton.arbitrators, fundation)
 	ArbitratorGroupSingleton.currentArbitrator = 0
 }
