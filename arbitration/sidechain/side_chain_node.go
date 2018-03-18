@@ -1,4 +1,8 @@
-package arbitration
+package sidechain
+
+import (
+	. "Elastos.ELA.Arbiter/arbitration/base"
+)
 
 type SideChainNode interface {
 	GetCurrentHeight() (uint32, error)

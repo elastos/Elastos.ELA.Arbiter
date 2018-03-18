@@ -4,15 +4,17 @@ import (
 	"Elastos.ELA.Arbiter/rpc"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/crypto"
+	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/base"
 )
 
 func main() {
 
 	// initialize
 	var pkS *crypto.PublicKey
-	var arbitratorGroup ArbitratorGroup
+	var arbitratorGroup arbitratorgroup.ArbitratorGroup
 	currentArbitrator := arbitratorGroup.GetCurrentArbitrator()
-	var mainAccountMonitor AccountMonitor
+	var mainAccountMonitor base.AccountMonitor
 	mainAccountMonitor.SetAccount(pkS)
 	mainAccountMonitor.AddListener(currentArbitrator)
 
@@ -31,8 +33,9 @@ func main() {
 	//2. arbitrator main chain
 	//logic in MainChain.OnUTXOChanged（found a deposit transaction）
 	var transactionHash *common.Uint256
-	pka := currentArbitrator.parseUserSidePublicKey(transactionHash)
-	pkS = currentArbitrator.parseSideChainKey(transactionHash)
+	var pka *crypto.PublicKey
+	//pka = currentArbitrator.parseUserSidePublicKey(transactionHash)
+	//pkS = currentArbitrator.parseSideChainKey(transactionHash)
 	spvInformation := currentArbitrator.GenerateSpvInformation(transactionHash)
 	if valid, err := currentArbitrator.IsValid(spvInformation); !valid || err != nil {
 		return

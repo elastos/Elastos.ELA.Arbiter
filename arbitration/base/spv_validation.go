@@ -1,4 +1,4 @@
-package arbitration
+package base
 
 import "Elastos.ELA.Arbiter/common"
 

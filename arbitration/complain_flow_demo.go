@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/complain"
 )
 
 func main() {
 
 	// initialize
-	var arbitratorGroup ArbitratorGroup
+	var arbitratorGroup arbitratorgroup.ArbitratorGroup
 	currentArbitrator := arbitratorGroup.GetCurrentArbitrator()
 	currentArbitrator.GetComplainSolving().AddListener(currentArbitrator)
 
@@ -26,9 +28,9 @@ func main() {
 
 	//logic in Arbitrator.OnComplainFeedback（received other arbitrator's feedback, and complete the collecting stage）
 	status := currentArbitrator.GetComplainSolving().GetComplainStatus(userKey, transactionHash)
-	if status == Done {
+	if status == complain.Done {
 		fmt.Println("Complain has been solved.")
-	} else if status == Rejected {
+	} else if status == complain.Rejected {
 		fmt.Println("Complain has been rejected.")
 	}
 }
