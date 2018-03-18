@@ -1,4 +1,4 @@
-package arbitration
+package arbitratorgroup
 
 type ArbitratorsElection interface {
 

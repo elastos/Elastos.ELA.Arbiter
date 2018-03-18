@@ -1,4 +1,4 @@
-package arbitration
+package net
 
 type ArbitrationNetListener interface {
 

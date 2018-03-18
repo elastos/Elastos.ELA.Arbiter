@@ -4,15 +4,17 @@ import (
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/rpc"
+	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/base"
 )
 
 func main() {
 
 	// initialize
 	var pkDestroy *crypto.PublicKey
-	var arbitratorGroup ArbitratorGroup
+	var arbitratorGroup arbitratorgroup.ArbitratorGroup
 	currentArbitrator := arbitratorGroup.GetCurrentArbitrator()
-	var sideAccountMonitor AccountMonitor
+	var sideAccountMonitor base.AccountMonitor
 	sideAccountMonitor.SetAccount(pkDestroy)
 	sideAccountMonitor.AddListener(currentArbitrator)
 	currentArbitrator.GetArbitrationNet().AddListener(currentArbitrator)
@@ -34,7 +36,8 @@ func main() {
 	var transactionHash *common.Uint256
 	sideChain, err := currentArbitrator.GetChain(pkDestroy)
 	pkS := sideChain.GetKey()
-	pkA := sideChain.parseUserMainPublicKey(transactionHash)
+	var pkA *crypto.PublicKey
+	//pkA = sideChain.parseUserMainPublicKey(transactionHash)
 	if valid, err := sideChain.IsTransactionValid(transactionHash); !valid || err != nil {
 		return
 	}

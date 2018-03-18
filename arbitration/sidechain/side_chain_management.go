@@ -1,8 +1,9 @@
-package arbitration
+package sidechain
 
 import (
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/common"
+	. "Elastos.ELA.Arbiter/arbitration/base"
 )
 
 type SideChain interface {
