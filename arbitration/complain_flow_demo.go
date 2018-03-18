@@ -12,7 +12,7 @@ func main() {
 
 	// initialize
 	var arbitratorGroup arbitratorgroup.ArbitratorGroup
-	currentArbitrator := arbitratorGroup.GetCurrentArbitrator()
+	currentArbitrator, err := arbitratorGroup.GetCurrentArbitrator()
 	currentArbitrator.GetComplainSolving().AddListener(currentArbitrator)
 
 	// 1. post a complain request on web front

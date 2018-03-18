@@ -11,5 +11,5 @@ type SpvInformation struct {
 type SpvValidation interface {
 
 	IsValid(information *SpvInformation) (bool, error)
-	GenerateSpvInformation(transaction *common.Uint256) *SpvInformation
+	GenerateSpvInformation(transaction common.Uint256) *SpvInformation
 }

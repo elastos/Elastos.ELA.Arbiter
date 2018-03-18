@@ -22,6 +22,13 @@ type Configuration struct {
 
 	//arbitrator group
 	MemberCount			int				`json:"MemberCount"`
+
+	MainRpc 			*RpcConfig `json:"MainNode"`
+}
+
+type RpcConfig struct {
+	IpAddress    string `json:IpAddress`
+	HttpJsonPort int    `json:"HttpJsonPort"`
 }
 
 type ConfigFile struct {

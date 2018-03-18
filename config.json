@@ -1,6 +1,12 @@
 ﻿{
   "Configuration": {
     "Version": 0,
-    "MemberCount": 1
+    "MemberCount": 1,
+    "MainNode": {
+      "MainRpc": {
+        "IpAddress": "localhost",
+        "HttpJsonPort": 10038
+      }
+    }
   }
 }

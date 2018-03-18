@@ -13,9 +13,9 @@ type SideChain interface {
 	GetNode() SideChainNode
 	CreateDepositTransaction(target *crypto.PublicKey, information *SpvInformation) *TransactionInfo
 
-	IsTransactionValid(transactionHash *common.Uint256) (bool, error)
+	IsTransactionValid(transactionHash common.Uint256) (bool, error)
 
-	parseUserMainPublicKey(transactionHash *common.Uint256) *crypto.PublicKey
+	ParseUserMainPublicKey(transactionHash common.Uint256) *crypto.PublicKey
 }
 
 type SideChainManager interface {
