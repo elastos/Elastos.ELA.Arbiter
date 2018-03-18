@@ -2,7 +2,7 @@ package net
 
 type ArbitrationNetListener interface {
 
-	OnReceived(buf []byte, arbitrator Arbitrator)
+	OnReceived(buf []byte, arbitratorIndex int)
 }
 
 type ArbitrationNet interface {
