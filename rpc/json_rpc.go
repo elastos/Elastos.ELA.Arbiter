@@ -8,8 +8,8 @@ import (
 	"io/ioutil"
 	"encoding/json"
 
-	"Elastos.ELA.Arbiter/common/config"
 	"errors"
+	"Elastos.ELA.Arbiter/arbitration/base"
 )
 
 type Response struct {
@@ -19,16 +19,16 @@ type Response struct {
 
 var url string
 
-func GetCurrentHeight() (uint32, error) {
-	result, err := CallAndUnmarshal("getcurrentheight", nil)
+func GetCurrentHeight(config base.RpcConfig) (uint32, error) {
+	result, err := CallAndUnmarshal("getcurrentheight", nil, config)
 	if err != nil {
 		return 0, err
 	}
 	return uint32(result.(float64)), nil
 }
 
-func GetBlockByHeight(height uint32) (*BlockInfo, error) {
-	resp, err := CallAndUnmarshal("getblockbyheight", Param("height", height))
+func GetBlockByHeight(height uint32, config base.RpcConfig) (*BlockInfo, error) {
+	resp, err := CallAndUnmarshal("getblockbyheight", Param("height", height), config)
 	if err != nil {
 		return nil, err
 	}
@@ -38,9 +38,9 @@ func GetBlockByHeight(height uint32) (*BlockInfo, error) {
 	return block, nil
 }
 
-func Call(method string, params map[string]string) ([]byte, error) {
+func Call(method string, params map[string]string, config base.RpcConfig) ([]byte, error) {
 	if url == "" {
-		url = "http://" + config.Config().IpAddress + ":" + strconv.Itoa(config.Config().HttpJsonPort)
+		url = "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	}
 	data, err := json.Marshal(map[string]interface{}{
 		"method": method,
@@ -67,8 +67,8 @@ func Call(method string, params map[string]string) ([]byte, error) {
 	return body, nil
 }
 
-func CallAndUnmarshal(method string, params map[string]string) (interface{}, error) {
-	body, err := Call(method, params)
+func CallAndUnmarshal(method string, params map[string]string, config base.RpcConfig) (interface{}, error) {
+	body, err := Call(method, params, config)
 	if err != nil {
 		return nil, err
 	}

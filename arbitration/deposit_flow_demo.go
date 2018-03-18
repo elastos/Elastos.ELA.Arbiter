@@ -13,7 +13,7 @@ func main() {
 	// initialize
 	var pkS *crypto.PublicKey
 	var arbitratorGroup arbitratorgroup.ArbitratorGroup
-	currentArbitrator := arbitratorGroup.GetCurrentArbitrator()
+	currentArbitrator, err := arbitratorGroup.GetCurrentArbitrator()
 	var mainAccountMonitor base.AccountMonitor
 	mainAccountMonitor.SetAccount(pkS)
 	mainAccountMonitor.AddListener(currentArbitrator)
