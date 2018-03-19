@@ -1,9 +1,8 @@
-package base
+package config
 
 import (
 	"io/ioutil"
 	"os"
-	"Elastos.ELA.Arbiter/common/log"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -22,10 +21,12 @@ type Configuration struct {
 
 	//arbitrator group
 	MemberCount			int					`json:"MemberCount"`
-
 	MainNode 			*MainNodeConfig 	`json:"MainNode"`
-
 	SideNodeList		[]*SideNodeConfig	`json:"SideNodeList"`
+
+	HttpJsonPort		int 				`json:"HttpJsonPort"`
+	PrintLevel          int              	`json:"PrintLevel"`
+	MaxLogSize          int64            	`json:"MaxLogSize"`
 }
 
 type RpcConfig struct {
@@ -54,7 +55,7 @@ type configParams struct {
 func init() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
-		log.Error(fmt.Sprintf("File error: %v\n", e))
+		fmt.Printf("File error: %v\n", e)
 		os.Exit(1)
 	}
 	// Remove the UTF-8 Byte Order Mark
@@ -63,7 +64,7 @@ func init() {
 	config := ConfigFile{}
 	e = json.Unmarshal(file, &config)
 	if e != nil {
-		log.Error(fmt.Sprintf("Unmarshal json file erro %v", e))
+		fmt.Printf("Unmarshal json file erro %v", e)
 		os.Exit(1)
 	}
 

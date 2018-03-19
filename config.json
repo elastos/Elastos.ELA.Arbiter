@@ -2,6 +2,8 @@
   "Configuration": {
     "Version": 0,
     "MemberCount": 1,
+    "PrintLevel": 1,
+    "HttpJsonPort": 10010,
     "MainNode": {
       "Rpc": {
         "IpAddress": "localhost",

@@ -1,9 +1,9 @@
 package arbitratorgroup
 
 import (
-	"Elastos.ELA.Arbiter/arbitration/base"
 	"fmt"
 	"errors"
+	"Elastos.ELA.Arbiter/common/config"
 )
 
 var (
@@ -40,7 +40,7 @@ func (group *ArbitratorGroupImpl) GetCurrentArbitrator() (Arbitrator, error) {
 
 func init() {
 	ArbitratorGroupSingleton = ArbitratorGroupImpl{}
-	fmt.Println("member count: ", base.Parameters.MemberCount)
+	fmt.Println("member count: ", config.Parameters.MemberCount)
 
 	foundation := new(ArbitratorImpl)
 	ArbitratorGroupSingleton.arbitrators = append(ArbitratorGroupSingleton.arbitrators, foundation)
