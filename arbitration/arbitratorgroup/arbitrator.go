@@ -33,6 +33,7 @@ type Arbitrator interface {
 
 type ArbitratorImpl struct {
 
+	sideChains map[string]side.SideChain
 }
 
 func (ar *ArbitratorImpl) GetArbitrationNet() net.ArbitrationNet {
@@ -75,20 +76,17 @@ func (ar *ArbitratorImpl) GenerateSpvInformation(transaction common.Uint256) *ba
 	return nil
 }
 
-func (ar *ArbitratorImpl) Add(chain side.SideChain) error {
-	return nil
+func (ar *ArbitratorImpl) GetChain(key string) (side.SideChain, bool) {
+	elem, ok := ar.sideChains[key]
+	return elem, ok
 }
 
-func (ar *ArbitratorImpl) Remove(key *crypto.PublicKey) error {
-	return nil
-}
-
-func (ar *ArbitratorImpl) GetChain(key *crypto.PublicKey) (side.SideChain, error) {
-	return nil, nil
-}
-
-func (ar *ArbitratorImpl) GetAllChains() ([]side.SideChain, error) {
-	return nil, nil
+func (ar *ArbitratorImpl) GetAllChains() []side.SideChain {
+	var chains []side.SideChain
+	for _, v := range ar.sideChains {
+		chains = append(chains, v)
+	}
+	return chains
 }
 
 func (ar *ArbitratorImpl) OnReceived(buf []byte, arbitratorIndex int) {

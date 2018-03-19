@@ -1,15 +1,15 @@
 package rpc
 
 import (
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"strconv"
 	"strings"
-	"net/http"
-	"io/ioutil"
-	"encoding/json"
 
-	"errors"
 	"Elastos.ELA.Arbiter/common/config"
+	"errors"
 )
 
 type Response struct {
@@ -19,7 +19,7 @@ type Response struct {
 
 var url string
 
-func GetCurrentHeight(config config.RpcConfig) (uint32, error) {
+func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	result, err := CallAndUnmarshal("getcurrentheight", nil, config)
 	if err != nil {
 		return 0, err
@@ -27,7 +27,7 @@ func GetCurrentHeight(config config.RpcConfig) (uint32, error) {
 	return uint32(result.(float64)), nil
 }
 
-func GetBlockByHeight(height uint32, config config.RpcConfig) (*BlockInfo, error) {
+func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, error) {
 	resp, err := CallAndUnmarshal("getblockbyheight", Param("height", height), config)
 	if err != nil {
 		return nil, err
@@ -38,7 +38,7 @@ func GetBlockByHeight(height uint32, config config.RpcConfig) (*BlockInfo, error
 	return block, nil
 }
 
-func Call(method string, params map[string]string, config config.RpcConfig) ([]byte, error) {
+func Call(method string, params map[string]string, config *config.RpcConfig) ([]byte, error) {
 	if url == "" {
 		url = "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	}
@@ -67,7 +67,7 @@ func Call(method string, params map[string]string, config config.RpcConfig) ([]b
 	return body, nil
 }
 
-func CallAndUnmarshal(method string, params map[string]string, config config.RpcConfig) (interface{}, error) {
+func CallAndUnmarshal(method string, params map[string]string, config *config.RpcConfig) (interface{}, error) {
 	body, err := Call(method, params, config)
 	if err != nil {
 		return nil, err

@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
-	"Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
 )
 
 func main() {
@@ -25,5 +25,7 @@ func main() {
 	}
 
 	// Start Server
-	httpjsonrpc.StartRPCServer()
+	go httpjsonrpc.StartRPCServer()
+
+	select {}
 }

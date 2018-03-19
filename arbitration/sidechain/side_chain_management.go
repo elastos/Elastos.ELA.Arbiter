@@ -9,7 +9,7 @@ import (
 type SideChain interface {
 	AccountListener
 
-	GetKey() *crypto.PublicKey
+	GetKey() string
 	GetNode() SideChainNode
 	CreateDepositTransaction(target *crypto.PublicKey, information *SpvInformation) *TransactionInfo
 
@@ -20,9 +20,6 @@ type SideChain interface {
 
 type SideChainManager interface {
 
-	Add(chain SideChain) error
-	Remove(key *crypto.PublicKey) error
-
-	GetChain(key *crypto.PublicKey) (SideChain, error)
-	GetAllChains() ([]SideChain, error)
+	GetChain(key string) (SideChain, bool)
+	GetAllChains() []SideChain
 }

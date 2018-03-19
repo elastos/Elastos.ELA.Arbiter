@@ -16,14 +16,16 @@
           "IpAddress": "localhost",
           "HttpJsonPort": 20038
         },
-        "GenesisBlockAddress": "test1"
+        "GenesisBlockAddress": "test1",
+        "DestroyAddress": "destroy1"
       },
       {
         "Rpc": {
           "IpAddress": "localhost",
           "HttpJsonPort": 30038
         },
-        "GenesisBlockAddress": "test2"
+        "GenesisBlockAddress": "test2",
+        "DestroyAddress": "destroy2"
       }
     ]
   }

@@ -28,13 +28,16 @@ func main() {
 	//	return
 	//}
 	//sign tx3
-	var transactionContent string
-	rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", transactionContent))
+	//var transactionContent string
+	//rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", transactionContent))
 
 	//2. arbitrator side chain
 	//logic in SideChain.OnUTXOChanged (found a withdraw transaction)
 	var transactionHash common.Uint256
-	sideChain, err := currentArbitrator.GetChain(pkDestroy)
+	var pkDestroryAddress string
+	sideChain, ok := currentArbitrator.GetChain(pkDestroryAddress)
+	if !ok {return}
+
 	pkS := sideChain.GetKey()
 	var pkA *crypto.PublicKey
 	//pkA = sideChain.ParseUserMainPublicKey(transactionHash)
@@ -51,6 +54,6 @@ func main() {
 
 	//logic in Arbitrator.OnReceived (received other arbitrator's feedback, and complete the collecting stage)
 	tx4.Deserialize(tx4Bytes)
-	var tx4SignedContent string
-	rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", tx4SignedContent))
+	//var tx4SignedContent string
+	//rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", tx4SignedContent))
 }
