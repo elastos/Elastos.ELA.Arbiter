@@ -27,8 +27,8 @@ func main() {
 	//	return
 	//}
 	//sign tx1
-	var transactionContent string
-	rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", transactionContent))
+	//var transactionContent string
+	//rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", transactionContent))
 
 	//2. arbitrator main chain
 	//logic in MainChain.OnUTXOChanged（found a deposit transaction）
@@ -42,8 +42,9 @@ func main() {
 	}
 
 	//3. arbitrator side chain
-	sideChain, err := currentArbitrator.GetChain(pkS)
-	if err != nil {
+	var pkSAddress string
+	sideChain, ok := currentArbitrator.GetChain(pkSAddress)
+	if ok {
 		tx2 := sideChain.CreateDepositTransaction(pka, spvInformation)
 		sideChain.GetNode().SendTransaction(tx2)
 	}

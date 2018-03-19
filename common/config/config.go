@@ -42,6 +42,7 @@ type SideNodeConfig struct {
 	Rpc					*RpcConfig			`json:"Rpc"`
 
 	GenesisBlockAddress	string				`json:"GenesisBlockAddress"`
+	DestroyAddress 		string				`json:"DestroyAddress"`
 }
 
 type ConfigFile struct {
