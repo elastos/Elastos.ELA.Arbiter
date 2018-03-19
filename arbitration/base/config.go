@@ -18,17 +18,29 @@ var (
 )
 
 type Configuration struct {
-	Version				int 			`json:"Version"`
+	Version				int 				`json:"Version"`
 
 	//arbitrator group
-	MemberCount			int				`json:"MemberCount"`
+	MemberCount			int					`json:"MemberCount"`
 
-	MainRpc 			*RpcConfig `json:"MainNode"`
+	MainNode 			*MainNodeConfig 	`json:"MainNode"`
+
+	SideNodeList		[]*SideNodeConfig	`json:"SideNodeList"`
 }
 
 type RpcConfig struct {
-	IpAddress    string `json:IpAddress`
-	HttpJsonPort int    `json:"HttpJsonPort"`
+	IpAddress    		string 				`json:"IpAddress"`
+	HttpJsonPort 		int    				`json:"HttpJsonPort"`
+}
+
+type MainNodeConfig struct {
+	Rpc					*RpcConfig			`json:"Rpc"`
+}
+
+type SideNodeConfig struct {
+	Rpc					*RpcConfig			`json:"Rpc"`
+
+	GenesisBlockAddress	string				`json:"GenesisBlockAddress"`
 }
 
 type ConfigFile struct {
