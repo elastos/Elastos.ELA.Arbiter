@@ -1,13 +1,13 @@
 package arbitratorgroup
 
 import (
-	"Elastos.ELA.Arbiter/arbitration/net"
-	main "Elastos.ELA.Arbiter/arbitration/mainchain"
-	side "Elastos.ELA.Arbiter/arbitration/sidechain"
-	comp "Elastos.ELA.Arbiter/arbitration/complain"
-	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/arbitration/base"
+	comp "Elastos.ELA.Arbiter/arbitration/complain"
+	main "Elastos.ELA.Arbiter/arbitration/mainchain"
+	"Elastos.ELA.Arbiter/arbitration/net"
+	side "Elastos.ELA.Arbiter/arbitration/sidechain"
 	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/crypto"
 )
 
 type ArbitratorMain interface {
@@ -32,7 +32,6 @@ type Arbitrator interface {
 }
 
 type ArbitratorImpl struct {
-
 	sideChains map[string]side.SideChain
 }
 
@@ -61,10 +60,6 @@ func (ar *ArbitratorImpl) ParseSideChainKey(uint256 common.Uint256) *crypto.Publ
 }
 
 func (ar *ArbitratorImpl) ParseUserSidePublicKey(uint256 common.Uint256) *crypto.PublicKey {
-	return nil
-}
-
-func (ar *ArbitratorImpl) OnUTXOChanged(transactionHash common.Uint256) error {
 	return nil
 }
 

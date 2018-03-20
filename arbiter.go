@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/sidechain"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
 )
@@ -24,6 +25,7 @@ func main() {
 		os.Exit(1)
 	}
 
+	go sidechain.SetSidechainAccountMoniter()
 	// Start Server
 	go httpjsonrpc.StartRPCServer()
 
