@@ -19,3 +19,4 @@ cscope*
 deps/
 arbiter
 .*.swp
+*.db

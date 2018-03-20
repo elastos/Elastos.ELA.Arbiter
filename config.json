@@ -16,16 +16,16 @@
           "IpAddress": "localhost",
           "HttpJsonPort": 20038
         },
-        "GenesisBlockAddress": "test1",
-        "DestroyAddress": "destroy1"
+        "GenesisBlockAddress": "XTahcU98Z5aTkibcdy9rEm28RnFqdmv6Zd",
+        "DestroyAddress": "XV3qTRxKoffDFWsVZXWo421MRyEmEGCuNu"
       },
       {
         "Rpc": {
           "IpAddress": "localhost",
           "HttpJsonPort": 30038
         },
-        "GenesisBlockAddress": "test2",
-        "DestroyAddress": "destroy2"
+        "GenesisBlockAddress": "XQJh7nL7bR3QtsD6F3PPHCD34wVRhJ5jvh",
+        "DestroyAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB2"
       }
     ],
     "SidechainMoniterScanInterval": 1000
