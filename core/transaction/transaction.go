@@ -24,11 +24,13 @@ const (
 	TransferAsset TransactionType = 0x02
 	Record        TransactionType = 0x03
 	Deploy        TransactionType = 0x04
+	IssueToken    TransactionType = 0x05
 
 	PUSH1 = 0x51
 
-	STANDARD = 0xAC
-	MULTISIG = 0xAE
+	STANDARD   = 0xAC
+	MULTISIG   = 0xAE
+	CROSSCHAIN = 0xAF
 )
 
 func (self TransactionType) Name() string {
