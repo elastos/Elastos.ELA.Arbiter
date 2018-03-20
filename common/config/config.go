@@ -1,11 +1,12 @@
 package config
 
 import (
-	"io/ioutil"
-	"os"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"time"
 )
 
 const (
@@ -17,32 +18,34 @@ var (
 )
 
 type Configuration struct {
-	Version				int 				`json:"Version"`
+	Version int `json:"Version"`
 
 	//arbitrator group
-	MemberCount			int					`json:"MemberCount"`
-	MainNode 			*MainNodeConfig 	`json:"MainNode"`
-	SideNodeList		[]*SideNodeConfig	`json:"SideNodeList"`
+	MemberCount  int               `json:"MemberCount"`
+	MainNode     *MainNodeConfig   `json:"MainNode"`
+	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
 
-	HttpJsonPort		int 				`json:"HttpJsonPort"`
-	PrintLevel          int              	`json:"PrintLevel"`
-	MaxLogSize          int64            	`json:"MaxLogSize"`
+	HttpJsonPort int   `json:"HttpJsonPort"`
+	PrintLevel   int   `json:"PrintLevel"`
+	MaxLogSize   int64 `json:"MaxLogSize"`
+
+	SidechainMoniterScanInterval time.Duration `json:"SidechainMoniterScanInterval"`
 }
 
 type RpcConfig struct {
-	IpAddress    		string 				`json:"IpAddress"`
-	HttpJsonPort 		int    				`json:"HttpJsonPort"`
+	IpAddress    string `json:"IpAddress"`
+	HttpJsonPort int    `json:"HttpJsonPort"`
 }
 
 type MainNodeConfig struct {
-	Rpc					*RpcConfig			`json:"Rpc"`
+	Rpc *RpcConfig `json:"Rpc"`
 }
 
 type SideNodeConfig struct {
-	Rpc					*RpcConfig			`json:"Rpc"`
+	Rpc *RpcConfig `json:"Rpc"`
 
-	GenesisBlockAddress	string				`json:"GenesisBlockAddress"`
-	DestroyAddress 		string				`json:"DestroyAddress"`
+	GenesisBlockAddress string `json:"GenesisBlockAddress"`
+	DestroyAddress      string `json:"DestroyAddress"`
 }
 
 type ConfigFile struct {

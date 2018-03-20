@@ -11,6 +11,7 @@ import (
 	"Elastos.ELA.Arbiter/common/log"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 
+	"Elastos.ELA.Arbiter/common/config"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -22,9 +23,10 @@ const (
 )
 
 const (
-	CreateInfoTable = `CREATE TABLE IF NOT EXISTS Info (
-				Name VARCHAR(20) NOT NULL PRIMARY KEY,
-				Value BLOB
+	//TODO set all addresses with fix width varchar.
+	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS HeightInfo (
+				GenesisBlockAddress VARCHAR NOT NULL PRIMARY KEY,
+				Height INTEGER 
 			);`
 	CreateUTXOsTable = `CREATE TABLE IF NOT EXISTS UTXOs (
 				Id INTEGER NOT NULL PRIMARY KEY,
@@ -44,9 +46,8 @@ type AddressUTXO struct {
 
 type DataStore interface {
 	sync.Locker
-	DataSync
 
-	CurrentHeight(height uint32) uint32
+	CurrentHeight(genesisBlockAddress string, height uint32) uint32
 
 	AddAddressUTXO(utxo *AddressUTXO) error
 	DeleteUTXO(input *tx.UTXOTxInput) error
@@ -58,7 +59,6 @@ type DataStore interface {
 
 type DataStoreImpl struct {
 	sync.Mutex
-	DataSync
 
 	*sql.DB
 }
@@ -69,8 +69,6 @@ func OpenDataStore() (DataStore, error) {
 		return nil, err
 	}
 	dataStore := &DataStoreImpl{DB: db}
-
-	dataStore.DataSync = GetDataSync(dataStore)
 
 	// Handle system interrupt signals
 	dataStore.catchSystemSignals()
@@ -84,8 +82,8 @@ func initDB() (*sql.DB, error) {
 		log.Error("Open data db error:", err)
 		return nil, err
 	}
-	// Create info table
-	_, err = db.Exec(CreateInfoTable)
+	// Create HeightInfo table
+	_, err = db.Exec(CreateHeightInfoTable)
 	if err != nil {
 		return nil, err
 	}
@@ -94,11 +92,14 @@ func initDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	stmt, err := db.Prepare("INSERT INTO Info(Name, Value) values(?,?)")
-	if err != nil {
-		return nil, err
+
+	for _, node := range config.Parameters.SideNodeList {
+		stmt, err := db.Prepare("INSERT INTO HeightInfo(GenesisBlockAddress, Height) values(?,?)")
+		if err != nil {
+			return nil, err
+		}
+		stmt.Exec(node.GenesisBlockAddress, uint32(0))
 	}
-	stmt.Exec("Height", uint32(0))
 
 	return db, nil
 }
@@ -124,11 +125,11 @@ func (store *DataStoreImpl) ResetDataStore() error {
 	return nil
 }
 
-func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
+func (store *DataStoreImpl) CurrentHeight(genesisBlockAddress string, height uint32) uint32 {
 	store.Lock()
 	defer store.Unlock()
 
-	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
+	row := store.QueryRow("SELECT Height FROM HeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
 	var storedHeight uint32
 	row.Scan(&storedHeight)
 
@@ -138,11 +139,11 @@ func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
 			height = 0
 		}
 		// Insert current height
-		stmt, err := store.Prepare("UPDATE Info SET Value=? WHERE Name=?")
+		stmt, err := store.Prepare("UPDATE HeightInfo SET Height=? WHERE GenesisBlockAddress=?")
 		if err != nil {
 			return uint32(0)
 		}
-		_, err = stmt.Exec(height, "Height")
+		_, err = stmt.Exec(height, genesisBlockAddress)
 		if err != nil {
 			return uint32(0)
 		}

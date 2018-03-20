@@ -27,6 +27,7 @@
         "GenesisBlockAddress": "test2",
         "DestroyAddress": "destroy2"
       }
-    ]
+    ],
+    "SidechainMoniterScanInterval": 1000
   }
 }

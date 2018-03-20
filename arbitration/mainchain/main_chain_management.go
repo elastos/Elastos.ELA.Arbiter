@@ -1,13 +1,12 @@
 package mainchain
 
 import (
-	"Elastos.ELA.Arbiter/crypto"
-	"Elastos.ELA.Arbiter/common"
 	. "Elastos.ELA.Arbiter/arbitration/base"
+	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/crypto"
 )
 
 type MainChain interface {
-	AccountListener
 	SpvValidation
 
 	CreateWithdrawTransaction(withdrawBank *crypto.PublicKey, target *crypto.PublicKey) *TransactionInfo

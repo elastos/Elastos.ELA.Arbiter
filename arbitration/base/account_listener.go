@@ -5,17 +5,13 @@ import (
 )
 
 type AccountListener interface {
+	GetAccountAddress() string
 	OnUTXOChanged(transactionHash Uint256) error
 }
 
 type AccountMonitor interface {
-	SetAccount(account string) error
+	AddListener(listener AccountListener)
+	RemoveListener(account string) error
 
-	AddListener(listener AccountListener) error
-	RemoveListener(listener AccountListener) error
-
-	fireUTXOChanged() error
-}
-
-type AccountMonitorImpl struct {
+	SyncChainData()
 }

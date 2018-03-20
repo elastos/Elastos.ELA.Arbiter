@@ -1,35 +1,71 @@
-package store
+package sidechain
 
 import (
 	"fmt"
 
+	"Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/log"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	. "Elastos.ELA.Arbiter/rpc"
+	"Elastos.ELA.Arbiter/store"
+	"errors"
+	"time"
 )
 
-type DataSync interface {
-	SyncChainData()
+type SidechainAccountMoniterImpl struct {
+	store.DataStore
+
+	accountListenerMap map[string]base.AccountListener
 }
 
-type DataSyncImpl struct {
-	DataStore
-}
+func SetSidechainAccountMoniter() {
+	dataStore, err := store.OpenDataStore()
+	if err != nil {
+		log.Error("Sidechain moniter setup error: ", err)
+	}
+	moniter := SidechainAccountMoniterImpl{DataStore: dataStore}
 
-func GetDataSync(dataStore DataStore) DataSync {
-	return &DataSyncImpl{
-		DataStore: dataStore,
+	for {
+		moniter.SyncChainData()
+		time.Sleep(time.Millisecond * config.Parameters.SidechainMoniterScanInterval)
 	}
 }
 
-func (sync *DataSyncImpl) SyncChainData() {
+func (sync *SidechainAccountMoniterImpl) AddListener(listener base.AccountListener) {
+	sync.accountListenerMap[listener.GetAccountAddress()] = listener
+}
+
+func (sync *SidechainAccountMoniterImpl) RemoveListener(account string) error {
+	if _, ok := sync.accountListenerMap[account]; !ok {
+		return errors.New("Do not exist listener.")
+	}
+	delete(sync.accountListenerMap, account)
+	return nil
+}
+
+func (sync *SidechainAccountMoniterImpl) fireUTXOChanged(transactionHash, genesisBlockAddress string) error {
+	item, ok := sync.accountListenerMap[genesisBlockAddress]
+	if !ok {
+		return errors.New("Fired unknown listener.")
+	}
+	txHashBytes, _ := HexStringToBytesReverse(transactionHash)
+	txHash, err := Uint256FromBytes(txHashBytes)
+	if err != nil {
+		return err
+	}
+
+	return item.OnUTXOChanged(*txHash)
+}
+
+func (sync *SidechainAccountMoniterImpl) SyncChainData() {
 	var chainHeight uint32
 	var currentHeight uint32
 	var needSync bool
 
 	for _, node := range config.Parameters.SideNodeList {
-		chainHeight, currentHeight, needSync = sync.needSyncBlocks(node.Rpc)
+		chainHeight, currentHeight, needSync = sync.needSyncBlocks(node.GenesisBlockAddress, node.Rpc)
 		if !needSync {
 			continue
 		}
@@ -42,7 +78,7 @@ func (sync *DataSyncImpl) SyncChainData() {
 			sync.processBlock(block)
 
 			// Update wallet height
-			currentHeight = sync.CurrentHeight(block.BlockData.Height + 1)
+			currentHeight = sync.CurrentHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
 
 			fmt.Print(">")
 		}
@@ -51,14 +87,14 @@ func (sync *DataSyncImpl) SyncChainData() {
 	fmt.Print("\n")
 }
 
-func (sync *DataSyncImpl) needSyncBlocks(config *config.RpcConfig) (uint32, uint32, bool) {
+func (sync *SidechainAccountMoniterImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
 
 	chainHeight, err := GetCurrentHeight(config)
 	if err != nil {
 		return 0, 0, false
 	}
 
-	currentHeight := sync.CurrentHeight(QueryHeightCode)
+	currentHeight := sync.CurrentHeight(genesisBlockAddress, store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
@@ -67,7 +103,7 @@ func (sync *DataSyncImpl) needSyncBlocks(config *config.RpcConfig) (uint32, uint
 	return chainHeight, currentHeight, true
 }
 
-func (sync *DataSyncImpl) containDestroyAddress(address string) (string, bool) {
+func (sync *SidechainAccountMoniterImpl) containDestroyAddress(address string) (string, bool) {
 	for _, node := range config.Parameters.SideNodeList {
 		if node.DestroyAddress == address {
 			return node.GenesisBlockAddress, true
@@ -76,7 +112,7 @@ func (sync *DataSyncImpl) containDestroyAddress(address string) (string, bool) {
 	return "", false
 }
 
-func (sync *DataSyncImpl) processBlock(block *BlockInfo) {
+func (sync *SidechainAccountMoniterImpl) processBlock(block *BlockInfo) {
 	// Add UTXO to wallet address from transaction outputs
 	for _, txn := range block.Transactions {
 
@@ -97,13 +133,15 @@ func (sync *DataSyncImpl) processBlock(block *BlockInfo) {
 				}
 				amount, _ := StringToFixed64(output.Value)
 				// Save UTXO input to data store
-				addressUTXO := &AddressUTXO{
+				addressUTXO := &store.AddressUTXO{
 					Input:               input,
 					Amount:              amount,
 					GenesisBlockAddress: genesisAddress,
 					DestroyAddress:      output.Address,
 				}
 				sync.AddAddressUTXO(addressUTXO)
+
+				sync.fireUTXOChanged(txn.Hash, genesisAddress)
 			}
 		}
 
