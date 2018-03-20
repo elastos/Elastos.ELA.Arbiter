@@ -17,8 +17,6 @@ type Response struct {
 	Result interface{} `json:"result""`
 }
 
-var url string
-
 func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	result, err := CallAndUnmarshal("getcurrentheight", nil, config)
 	if err != nil {
@@ -39,9 +37,7 @@ func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, erro
 }
 
 func Call(method string, params map[string]string, config *config.RpcConfig) ([]byte, error) {
-	if url == "" {
-		url = "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
-	}
+	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	data, err := json.Marshal(map[string]interface{}{
 		"method": method,
 		"params": params,

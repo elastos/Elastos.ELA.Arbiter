@@ -1,15 +1,15 @@
 package httpjsonrpc
 
 import (
-	"strconv"
 	"net/http"
+	"strconv"
 
-	"io/ioutil"
-	"encoding/json"
+	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
 	"Elastos.ELA.Arbiter/errors"
 	. "Elastos.ELA.Arbiter/net/servers"
-	"Elastos.ELA.Arbiter/common/config"
+	"encoding/json"
+	"io/ioutil"
 )
 
 //an instance of the multiplexer
@@ -23,7 +23,6 @@ func StartRPCServer() {
 	mainMux["submitcomplain"] = SubmitComplain
 	mainMux["getcomplainstatus"] = GetComplainStatus
 
-	// TODO: only listen to localhost
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err.Error())
