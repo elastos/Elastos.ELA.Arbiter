@@ -45,7 +45,8 @@ func init() {
 	ArbitratorGroupSingleton = ArbitratorGroupImpl{}
 	fmt.Println("member count: ", config.Parameters.MemberCount)
 
-	foundation := new(ArbitratorImpl)
+	//foundation := new(ArbitratorImpl)
+	var foundation Arbitrator
 	ArbitratorGroupSingleton.arbitrators = append(ArbitratorGroupSingleton.arbitrators, foundation)
 	ArbitratorGroupSingleton.currentArbitrator = 0
 }

@@ -33,14 +33,14 @@ func main() {
 	//2. arbitrator main chain
 	//logic in MainChain.OnUTXOChanged（found a deposit transaction）
 	var transactionHash common.Uint256
-	keyMap, err := currentArbitrator.ParseUserSideChainKey(transactionHash)
+	hashMap, err := currentArbitrator.ParseUserSideChainHash(transactionHash)
 	spvInformation := currentArbitrator.GenerateSpvInformation(transactionHash)
 	if valid, err := currentArbitrator.IsValid(spvInformation); !valid || err != nil {
 		return
 	}
 
 	//3. arbitrator side chain
-	for pka, pkSAddress := range keyMap {
+	for pka, pkSAddress := range hashMap {
 		sideChain, ok := currentArbitrator.GetChain(pkSAddress.String())
 		if ok {
 			tx2, err := sideChain.CreateDepositTransaction(pka, spvInformation)
