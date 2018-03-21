@@ -23,7 +23,7 @@ type MainChain interface {
 	SpvValidation
 
 	CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error)
-	ParseUserSideChainKey(hash common.Uint256) (map[common.Uint168]common.Uint168, error)
+	ParseUserSideChainHash(hash common.Uint256) (map[common.Uint168]common.Uint168, error)
 }
 
 type MainChainImpl struct {
@@ -46,7 +46,7 @@ func createRedeemScript() (string, error) {
 	return redeemScriptStr, nil
 }
 
-func getSystemAssetId() string {
+func getSystemAssetId() common.Uint256 {
 	systemToken := &tx.Transaction{
 		TxType:         tx.RegisterAsset,
 		PayloadVersion: 0,
@@ -64,7 +64,7 @@ func getSystemAssetId() string {
 		Outputs:    []*tx.TxOutput{},
 		Programs:   []*pg.Program{},
 	}
-	return systemToken.Hash().String()
+	return systemToken.Hash()
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error) {
@@ -94,7 +94,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	//	return nil, errors.New(fmt.Sprint("Invalid receiver address: ", toAddress, ", error: ", err))
 	//}
 	txOutput := TxoutputInfo{
-		AssetID:    SystemAssetId,
+		AssetID:    SystemAssetId.String(),
 		Address:    toAddress,
 		Value:      amount,
 		OutputLock: uint32(0),
@@ -134,7 +134,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 			break
 		} else if utxo.Value > totalOutputAmount {
 			change := TxoutputInfo{
-				AssetID:    SystemAssetId,
+				AssetID:    SystemAssetId.String(),
 				Value:      (utxo.Value - totalOutputAmount).String(),
 				OutputLock: uint32(0),
 				Address:    fromAddress,
@@ -158,7 +158,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	// Create payload
 	txPayload := TransferAssetInfo{}
 	// Create program
-	var program = ProgramInfo{redeemScript, nil}
+	var program = ProgramInfo{redeemScript, ""}
 
 	return &TransactionInfo{
 		TxType:        tx.TransferAsset,
@@ -172,7 +172,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	}, nil
 }
 
-func (mc *MainChainImpl) ParseUserSideChainKey(hash common.Uint256) (map[common.Uint168]common.Uint168, error) {
+func (mc *MainChainImpl) ParseUserSideChainHash(hash common.Uint256) (map[common.Uint168]common.Uint168, error) {
 
 	//TODO get Transaction by hash [jzh]
 	var txn tx.Transaction

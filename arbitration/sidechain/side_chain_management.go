@@ -16,7 +16,7 @@ type SideChain interface {
 
 	IsTransactionValid(transactionHash common.Uint256) (bool, error)
 
-	ParseUserMainChainKey(hash common.Uint256) ([]common.Uint168, error)
+	ParseUserMainChainHash(hash common.Uint256) ([]common.Uint168, error)
 }
 
 type SideChainImpl struct {
@@ -54,7 +54,7 @@ func (sideChain *SideChainImpl) CreateDepositTransaction(target common.Uint168, 
 	attributes := make([]TxAttributeInfo, 0)
 	attributes = append(attributes, txAttr)
 	// Create program
-	var program = ProgramInfo{"redeemScript", nil} // TODO heropan add redeemScript later
+	var program = ProgramInfo{"redeemScript", ""} // TODO heropan add redeemScript later
 	return &TransactionInfo{
 		TxType:        tx.IssueToken,
 		Payload:       txPayloadInfo,
@@ -71,7 +71,7 @@ func (sc *SideChainImpl) GetKey() string {
 	return ""
 }
 
-func (sc *SideChainImpl) ParseUserMainChainKey(hash common.Uint256) ([]common.Uint168, error) {
+func (sc *SideChainImpl) ParseUserMainChainHash(hash common.Uint256) ([]common.Uint168, error) {
 
 	//TODO get Transaction by hash [jzh]
 	var txn tx.Transaction

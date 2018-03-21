@@ -40,14 +40,14 @@ func main() {
 	}
 
 	pkS := sideChain.GetKey()
-	pkAs, err := sideChain.ParseUserMainChainKey(transactionHash)
+	hashList, err := sideChain.ParseUserMainChainHash(transactionHash)
 	if valid, err := sideChain.IsTransactionValid(transactionHash); !valid || err != nil {
 		return
 	}
 
 	//3. arbitrator side chain
-	for _, pkA := range pkAs {
-		tx4, err := currentArbitrator.CreateWithdrawTransaction(pkS, pkA)
+	for _, hash := range hashList {
+		tx4, err := currentArbitrator.CreateWithdrawTransaction(pkS, hash)
 		tx4Bytes, err := tx4.Serialize()
 		if err != nil {
 			currentArbitrator.GetArbitrationNet().Broadcast(tx4Bytes)
