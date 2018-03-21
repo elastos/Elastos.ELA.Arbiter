@@ -7,6 +7,7 @@ import (
 
 	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
 	"Elastos.ELA.Arbiter/arbitration/sidechain"
+	//"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
 	"Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
@@ -33,6 +34,25 @@ func SetSideChainAccountMonitor(arbitrator arbitratorgroup.Arbitrator) {
 func main() {
 
 	fmt.Printf("Arbitrators count: %d \n", config.Parameters.MemberCount)
+
+	// SPV module init
+	// Set listen addr
+	/*
+		db, err := wallet.GetDatabase()
+		if err != nil {
+			fmt.Println("[Error] " + err.Error())
+			os.Exit(1)
+		}
+			for _, node := range config.Parameters.SideNodeList {
+				GenesisBlockAddressBytes, err := common.HexStringToBytes(node.GenesisBlockAddress)
+				if err == nil {
+					redeemScript := CreateCrossChainRedeemScript(GenesisBlockAddressBytes)
+					programHash, _ := transaction.ToProgramHash(redeemScript)
+					db.AddAddress(nil, nil)
+				}
+			}
+			// TODO heropan Set OnUTXOChanged and OnBlockHeightChanged callback
+	*/
 
 	currentArbitrator, err := arbitratorgroup.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if err != nil {
