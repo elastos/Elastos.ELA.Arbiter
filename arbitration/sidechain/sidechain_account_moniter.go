@@ -6,38 +6,23 @@ import (
 	"Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	. "Elastos.ELA.Arbiter/rpc"
 	"Elastos.ELA.Arbiter/store"
 	"errors"
-	"time"
 )
 
-type SidechainAccountMoniterImpl struct {
+type SideChainAccountMonitorImpl struct {
 	store.DataStore
 
 	accountListenerMap map[string]base.AccountListener
 }
 
-func SetSidechainAccountMoniter() {
-	dataStore, err := store.OpenDataStore()
-	if err != nil {
-		log.Error("Sidechain moniter setup error: ", err)
-	}
-	moniter := SidechainAccountMoniterImpl{DataStore: dataStore}
-
-	for {
-		moniter.SyncChainData()
-		time.Sleep(time.Millisecond * config.Parameters.SidechainMoniterScanInterval)
-	}
-}
-
-func (sync *SidechainAccountMoniterImpl) AddListener(listener base.AccountListener) {
+func (sync *SideChainAccountMonitorImpl) AddListener(listener base.AccountListener) {
 	sync.accountListenerMap[listener.GetAccountAddress()] = listener
 }
 
-func (sync *SidechainAccountMoniterImpl) RemoveListener(account string) error {
+func (sync *SideChainAccountMonitorImpl) RemoveListener(account string) error {
 	if _, ok := sync.accountListenerMap[account]; !ok {
 		return errors.New("Do not exist listener.")
 	}
@@ -45,7 +30,7 @@ func (sync *SidechainAccountMoniterImpl) RemoveListener(account string) error {
 	return nil
 }
 
-func (sync *SidechainAccountMoniterImpl) fireUTXOChanged(transactionHash, genesisBlockAddress string) error {
+func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(transactionHash, genesisBlockAddress string) error {
 	item, ok := sync.accountListenerMap[genesisBlockAddress]
 	if !ok {
 		return errors.New("Fired unknown listener.")
@@ -59,7 +44,7 @@ func (sync *SidechainAccountMoniterImpl) fireUTXOChanged(transactionHash, genesi
 	return item.OnUTXOChanged(*txHash)
 }
 
-func (sync *SidechainAccountMoniterImpl) SyncChainData() {
+func (sync *SideChainAccountMonitorImpl) SyncChainData() {
 	var chainHeight uint32
 	var currentHeight uint32
 	var needSync bool
@@ -87,7 +72,7 @@ func (sync *SidechainAccountMoniterImpl) SyncChainData() {
 	fmt.Print("\n")
 }
 
-func (sync *SidechainAccountMoniterImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
+func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
 
 	chainHeight, err := GetCurrentHeight(config)
 	if err != nil {
@@ -103,7 +88,7 @@ func (sync *SidechainAccountMoniterImpl) needSyncBlocks(genesisBlockAddress stri
 	return chainHeight, currentHeight, true
 }
 
-func (sync *SidechainAccountMoniterImpl) containDestroyAddress(address string) (string, bool) {
+func (sync *SideChainAccountMonitorImpl) containDestroyAddress(address string) (string, bool) {
 	for _, node := range config.Parameters.SideNodeList {
 		if node.DestroyAddress == address {
 			return node.GenesisBlockAddress, true
@@ -112,7 +97,7 @@ func (sync *SidechainAccountMoniterImpl) containDestroyAddress(address string) (
 	return "", false
 }
 
-func (sync *SidechainAccountMoniterImpl) processBlock(block *BlockInfo) {
+func (sync *SideChainAccountMonitorImpl) processBlock(block *BlockInfo) {
 	// Add UTXO to wallet address from transaction outputs
 	for _, txn := range block.Transactions {
 

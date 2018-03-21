@@ -1,7 +1,7 @@
 package servers
 
 import (
-	. "Elastos.ELA/errors"
+	. "Elastos.ELA.Arbiter/errors"
 )
 
 func ResponsePack(errCode ErrCode, result interface{}) map[string]interface{} {

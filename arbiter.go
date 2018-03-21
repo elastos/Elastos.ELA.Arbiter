@@ -3,20 +3,37 @@ package main
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
 	"Elastos.ELA.Arbiter/arbitration/sidechain"
 	//"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/log"
 	"Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
-	//"SPVWallet/core"
-	//"SPVWallet/core/transaction"
-	//"SPVWallet/wallet"
+	"Elastos.ELA.Arbiter/store"
 )
+
+func SetSideChainAccountMonitor(arbitrator arbitratorgroup.Arbitrator) {
+	dataStore, err := store.OpenDataStore()
+	if err != nil {
+		log.Error("Side chain monitor setup error: ", err)
+	}
+	monitor := sidechain.SideChainAccountMonitorImpl{DataStore: dataStore}
+
+	for _, side := range arbitrator.GetAllChains() {
+		monitor.AddListener(side)
+	}
+
+	for {
+		monitor.SyncChainData()
+		time.Sleep(time.Millisecond * config.Parameters.SidechainMoniterScanInterval)
+	}
+}
 
 func main() {
 
-	fmt.Printf("Arbitrators count: %d", config.Parameters.MemberCount)
+	fmt.Printf("Arbitrators count: %d \n", config.Parameters.MemberCount)
 
 	// SPV module init
 	// Set listen addr
@@ -48,7 +65,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	go sidechain.SetSidechainAccountMoniter()
+	go SetSideChainAccountMonitor(currentArbitrator)
 	// Start Server
 	go httpjsonrpc.StartRPCServer()
 

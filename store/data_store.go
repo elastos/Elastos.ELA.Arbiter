@@ -33,7 +33,7 @@ const (
 				UTXOInput BLOB UNIQUE,
 				Amount VARCHAR,
 				GenesisBlockAddress VARCHAR,
-				DestroyAddress VARCHAR,
+				DestroyAddress VARCHAR
 			);`
 )
 
