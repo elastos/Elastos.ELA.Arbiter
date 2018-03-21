@@ -1,7 +1,7 @@
 package arbitration
 
 import (
-	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/crypto"
@@ -11,7 +11,7 @@ func main() {
 
 	// initialize
 	var pkDestroy *crypto.PublicKey
-	var arbitratorGroup arbitratorgroup.ArbitratorGroup
+	var arbitratorGroup arbitrator.ArbitratorGroup
 	currentArbitrator, err := arbitratorGroup.GetCurrentArbitrator()
 	var sideAccountMonitor base.AccountMonitor
 	sideAccountMonitor.SetAccount(pkDestroy)

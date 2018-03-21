@@ -1,17 +1,17 @@
 package arbitration
 
 import (
-	"fmt"
-	"Elastos.ELA.Arbiter/crypto"
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/arbitration/complain"
+	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/crypto"
+	"fmt"
 )
 
 func main() {
 
 	// initialize
-	var arbitratorGroup arbitratorgroup.ArbitratorGroup
+	var arbitratorGroup arbitrator.ArbitratorGroup
 	currentArbitrator, err := arbitratorGroup.GetCurrentArbitrator()
 	currentArbitrator.GetComplainSolving().AddListener(currentArbitrator)
 

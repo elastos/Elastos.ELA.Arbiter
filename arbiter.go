@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/arbitration/sidechain"
 	//"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
@@ -14,7 +14,7 @@ import (
 	"Elastos.ELA.Arbiter/store"
 )
 
-func SetSideChainAccountMonitor(arbitrator arbitratorgroup.Arbitrator) {
+func SetSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
 		log.Error("Side chain monitor setup error: ", err)
@@ -54,7 +54,7 @@ func main() {
 			// TODO heropan Set OnUTXOChanged and OnBlockHeightChanged callback
 	*/
 
-	currentArbitrator, err := arbitratorgroup.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if err != nil {
 		fmt.Println("[Error] " + err.Error())
 		os.Exit(1)
