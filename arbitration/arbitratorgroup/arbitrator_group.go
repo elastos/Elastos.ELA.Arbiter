@@ -1,9 +1,9 @@
 package arbitratorgroup
 
 import (
-	"fmt"
-	"errors"
 	"Elastos.ELA.Arbiter/common/config"
+	"errors"
+	"fmt"
 )
 
 var (
@@ -11,7 +11,6 @@ var (
 )
 
 type ArbitratorsElection interface {
-
 }
 
 type ArbitratorGroup interface {
@@ -19,11 +18,11 @@ type ArbitratorGroup interface {
 
 	GetCurrentArbitrator() (Arbitrator, error)
 	GetArbitratorsCount() int
+	GetAllArbitrators() []string
 }
 
 type ArbitratorGroupImpl struct {
-
-	arbitrators []Arbitrator
+	arbitrators       []Arbitrator
 	currentArbitrator int
 }
 
@@ -36,6 +35,10 @@ func (group *ArbitratorGroupImpl) GetCurrentArbitrator() (Arbitrator, error) {
 		return nil, errors.New("Can not find current arbitrator!")
 	}
 	return group.arbitrators[group.currentArbitrator], nil
+}
+
+func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
+	return nil
 }
 
 func init() {

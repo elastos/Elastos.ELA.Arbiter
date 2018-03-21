@@ -1,13 +1,15 @@
 package crypto
 
 import (
-	"fmt"
-	"errors"
-	"math/big"
-	"crypto/rand"
+	"Elastos.ELA.Arbiter/common"
 	"crypto/ecdsa"
-	"crypto/sha256"
 	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/sha256"
+	"errors"
+	"fmt"
+	"math/big"
+	"strings"
 )
 
 const (
@@ -24,6 +26,21 @@ var algSet CryptoAlgSet
 
 type PublicKey struct {
 	X, Y *big.Int
+}
+
+func (pk *PublicKey) FromString(str string) error {
+	keyBytes, err := common.HexStringToBytes(strings.TrimSpace(str))
+	if err != nil {
+		return err
+	}
+	publicKey, err := DecodePoint(keyBytes)
+	if err != nil {
+		return err
+	}
+
+	pk.X = publicKey.X
+	pk.Y = publicKey.Y
+	return nil
 }
 
 func init() {
