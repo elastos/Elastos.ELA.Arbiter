@@ -1,11 +1,11 @@
 package arbitration
 
 import (
-	"Elastos.ELA.Arbiter/rpc"
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
 	"Elastos.ELA.Arbiter/arbitration/base"
+	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/crypto"
+	"Elastos.ELA.Arbiter/rpc"
 )
 
 func main() {
@@ -33,19 +33,18 @@ func main() {
 	//2. arbitrator main chain
 	//logic in MainChain.OnUTXOChanged（found a deposit transaction）
 	var transactionHash common.Uint256
-	var pka *crypto.PublicKey
-	//pka = currentArbitrator.ParseUserSidePublicKey(transactionHash)
-	//pkS = currentArbitrator.ParseSideChainKey(transactionHash)
+	keyMap, err := currentArbitrator.ParseUserSideChainKey(transactionHash)
 	spvInformation := currentArbitrator.GenerateSpvInformation(transactionHash)
 	if valid, err := currentArbitrator.IsValid(spvInformation); !valid || err != nil {
 		return
 	}
 
 	//3. arbitrator side chain
-	var pkSAddress string
-	sideChain, ok := currentArbitrator.GetChain(pkSAddress)
-	if ok {
-		tx2 := sideChain.CreateDepositTransaction(pka, spvInformation)
-		sideChain.GetNode().SendTransaction(tx2)
+	for pka, pkSAddress := range keyMap {
+		sideChain, ok := currentArbitrator.GetChain(pkSAddress.String())
+		if ok {
+			tx2, err := sideChain.CreateDepositTransaction(pka, spvInformation)
+			sideChain.GetNode().SendTransaction(tx2)
+		}
 	}
 }

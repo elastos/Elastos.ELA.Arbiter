@@ -1,11 +1,10 @@
 package arbitration
 
 import (
-	"Elastos.ELA.Arbiter/crypto"
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/rpc"
 	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
 	"Elastos.ELA.Arbiter/arbitration/base"
+	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/crypto"
 )
 
 func main() {
@@ -36,20 +35,23 @@ func main() {
 	var transactionHash common.Uint256
 	var pkDestroryAddress string
 	sideChain, ok := currentArbitrator.GetChain(pkDestroryAddress)
-	if !ok {return}
+	if !ok {
+		return
+	}
 
 	pkS := sideChain.GetKey()
-	var pkA *crypto.PublicKey
-	//pkA = sideChain.ParseUserMainPublicKey(transactionHash)
+	pkAs, err := sideChain.ParseUserMainChainKey(transactionHash)
 	if valid, err := sideChain.IsTransactionValid(transactionHash); !valid || err != nil {
 		return
 	}
 
 	//3. arbitrator side chain
-	tx4 := currentArbitrator.CreateWithdrawTransaction(pkS, pkA)
-	tx4Bytes, err := tx4.Serialize()
-	if err != nil {
-		currentArbitrator.GetArbitrationNet().Broadcast(tx4Bytes)
+	for _, pkA := range pkAs {
+		tx4, err := currentArbitrator.CreateWithdrawTransaction(pkS, pkA)
+		tx4Bytes, err := tx4.Serialize()
+		if err != nil {
+			currentArbitrator.GetArbitrationNet().Broadcast(tx4Bytes)
+		}
 	}
 
 	//logic in Arbitrator.OnReceived (received other arbitrator's feedback, and complete the collecting stage)
