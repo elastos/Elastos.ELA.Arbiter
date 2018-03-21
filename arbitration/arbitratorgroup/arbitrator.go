@@ -68,16 +68,12 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return &ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank *crypto.PublicKey, target *crypto.PublicKey) *TransactionInfo {
-	return nil
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error) {
+	return nil, nil
 }
 
-func (ar *ArbitratorImpl) ParseSideChainKey(uint256 common.Uint256) *crypto.PublicKey {
-	return nil
-}
-
-func (ar *ArbitratorImpl) ParseUserSidePublicKey(uint256 common.Uint256) *crypto.PublicKey {
-	return nil
+func (ar *ArbitratorImpl) ParseUserSideChainHash(hash common.Uint256) (map[common.Uint168]common.Uint168, error) {
+	return nil, nil
 }
 
 func (ar *ArbitratorImpl) IsValid(information *SpvInformation) (bool, error) {

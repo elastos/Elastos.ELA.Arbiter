@@ -120,7 +120,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	for _, utxo := range availableUTXOs {
 
 		var input UTXOTxInputInfo
-		input.ReferTxID = common.BytesToHexString(utxo.Op.TxID.ToArrayReverse())
+		input.ReferTxID = "" //common.BytesToHexString(utxo.Op.TxID.ToArrayReverse())
 		input.ReferTxOutputIndex = utxo.Op.Index
 		input.Sequence = utxo.LockTime
 		input.Address = "" //prevOutput.ProgramHash.ToAddress()

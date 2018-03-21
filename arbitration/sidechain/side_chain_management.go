@@ -19,13 +19,21 @@ type SideChain interface {
 	ParseUserMainChainHash(hash common.Uint256) ([]common.Uint168, error)
 }
 
+type SideChainManager interface {
+	GetChain(key string) (SideChain, bool)
+	GetAllChains() []SideChain
+}
+
 type SideChainImpl struct {
 	AccountListener
 }
 
-type SideChainManager interface {
-	GetChain(key string) (SideChain, bool)
-	GetAllChains() []SideChain
+func (sc *SideChainImpl) GetKey() string {
+	return ""
+}
+
+func GetNode() SideChainNode {
+	return nil
 }
 
 func (sideChain *SideChainImpl) CreateDepositTransaction(target common.Uint168, information *SpvInformation) (*TransactionInfo, error) {
@@ -67,8 +75,8 @@ func (sideChain *SideChainImpl) CreateDepositTransaction(target common.Uint168, 
 	}, nil
 }
 
-func (sc *SideChainImpl) GetKey() string {
-	return ""
+func (sc *SideChainImpl) IsTransactionValid(transactionHash common.Uint256) (bool, error) {
+	return false, nil
 }
 
 func (sc *SideChainImpl) ParseUserMainChainHash(hash common.Uint256) ([]common.Uint168, error) {
