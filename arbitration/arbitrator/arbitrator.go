@@ -1,8 +1,7 @@
-package arbitratorgroup
+package arbitrator
 
 import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
-	main "Elastos.ELA.Arbiter/arbitration/mainchain"
 	"Elastos.ELA.Arbiter/arbitration/net"
 	side "Elastos.ELA.Arbiter/arbitration/sidechain"
 	"Elastos.ELA.Arbiter/common"
@@ -11,7 +10,7 @@ import (
 )
 
 type ArbitratorMain interface {
-	main.MainChain
+	MainChain
 }
 
 type ArbitratorSide interface {

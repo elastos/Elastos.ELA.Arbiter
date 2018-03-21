@@ -1,4 +1,4 @@
-package arbitratorgroup
+package arbitrator
 
 import (
 	"Elastos.ELA.Arbiter/common/config"

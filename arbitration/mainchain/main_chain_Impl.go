@@ -17,15 +17,6 @@ import (
 
 var SystemAssetId = getSystemAssetId()
 
-type OpCode byte
-
-type MainChain interface {
-	SpvValidation
-
-	CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error)
-	ParseUserSideChainHash(hash common.Uint256) (map[common.Uint168]common.Uint168, error)
-}
-
 type MainChainImpl struct {
 	AccountListener
 	SpvValidation
@@ -34,7 +25,7 @@ type MainChainImpl struct {
 func createRedeemScript() (string, error) {
 
 	//TODO get arbitrators keys [jzh]
-	//var arbitratorGroupImpl arbitratorgroup.ArbitratorGroupImpl
+	//var arbitratorGroupImpl arbitrator.ArbitratorGroupImpl
 	//arbitrators := arbitratorGroupImpl.GetArbitrators()
 	//arbitratosPK := arbitrators.GetPK()
 	arbitratosPK := []*crypto.PublicKey{}

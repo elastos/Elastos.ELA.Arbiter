@@ -3,7 +3,7 @@ package complain
 import (
 	"math"
 
-	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/common"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
@@ -67,9 +67,9 @@ func (item *ComplainItemImpl) verifySideTransaction() bool {
 }
 
 func (item *ComplainItemImpl) createRedeemScript() error {
-	M := int(math.Ceil(float64(arbitratorgroup.ArbitratorGroupSingleton.GetArbitratorsCount()) * float64(2) / float64(3)))
-	publicKeys := make([]*crypto.PublicKey, arbitratorgroup.ArbitratorGroupSingleton.GetArbitratorsCount())
-	for _, arbitrator := range arbitratorgroup.ArbitratorGroupSingleton.GetAllArbitrators() {
+	M := int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()) * float64(2) / float64(3)))
+	publicKeys := make([]*crypto.PublicKey, arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount())
+	for _, arbitrator := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
 		temp := &crypto.PublicKey{}
 		temp.FromString(arbitrator)
 		publicKeys = append(publicKeys, temp)
@@ -84,7 +84,7 @@ func (item *ComplainItemImpl) createRedeemScript() error {
 	return nil
 }
 
-func (item *ComplainItemImpl) SignItem(password []byte, arbitrator arbitratorgroup.Arbitrator) error {
+func (item *ComplainItemImpl) SignItem(password []byte, arbitrator arbitrator.Arbitrator) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
 	programHashes, err := item.getMultiSignSigners()

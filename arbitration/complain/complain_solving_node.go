@@ -3,7 +3,7 @@ package complain
 import (
 	"errors"
 
-	"Elastos.ELA.Arbiter/arbitration/arbitratorgroup"
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/common"
 )
 
@@ -61,7 +61,7 @@ func (comp *ComplainSolvingNodeImpl) Sign(password []byte, transactionHash Uint2
 	if !ok {
 		return errors.New("Can not find complaint.")
 	}
-	arbitrator, err := arbitratorgroup.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	arbitrator, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if err != nil {
 		return err
 	}
