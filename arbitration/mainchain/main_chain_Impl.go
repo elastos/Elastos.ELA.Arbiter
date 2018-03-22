@@ -9,6 +9,8 @@ import (
 	"Elastos.ELA.Arbiter/core/transaction/payload"
 	"Elastos.ELA.Arbiter/crypto"
 	"SPVWallet/core"
+	spvTx "SPVWallet/core/transaction"
+	"SPVWallet/p2p/msg"
 	"SPVWallet/wallet"
 	"bytes"
 	"errors"
@@ -17,9 +19,15 @@ import (
 
 var SystemAssetId = getSystemAssetId()
 
+type OpCode byte
+
+type MainChain interface {
+	CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error)
+	ParseUserSideChainHash(txn *tx.Transaction) (map[common.Uint168]common.Uint168, error)
+	OnTransactionConfirmed(merkleBlock msg.MerkleBlock, trans []spvTx.Transaction)
+}
+
 type MainChainImpl struct {
-	AccountListener
-	SpvValidation
 }
 
 func createRedeemScript() (string, error) {
@@ -163,10 +171,10 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	}, nil
 }
 
-func (mc *MainChainImpl) ParseUserSideChainHash(hash common.Uint256) (map[common.Uint168]common.Uint168, error) {
+func (mc *MainChainImpl) ParseUserSideChainHash(txn *tx.Transaction) (map[common.Uint168]common.Uint168, error) {
 
 	//TODO get Transaction by hash [jzh]
-	var txn tx.Transaction
+	//var txn tx.Transaction
 	//1.get Transaction by hash
 
 	//2.getPublicKey from Transaction
@@ -200,4 +208,8 @@ func (mc *MainChainImpl) ParseUserSideChainHash(hash common.Uint256) (map[common
 	}
 
 	return keyMap, nil
+}
+
+func (mc *MainChainImpl) OnTransactionConfirmed(merkleBlock msg.MerkleBlock, trans []spvTx.Transaction) {
+
 }

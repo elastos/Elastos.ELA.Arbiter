@@ -2,8 +2,11 @@ package arbitrator
 
 import (
 	"Elastos.ELA.Arbiter/common/config"
+	"SPVWallet/interface"
+	"encoding/binary"
 	"errors"
 	"fmt"
+	"os"
 )
 
 var (
@@ -48,4 +51,19 @@ func init() {
 	foundation := new(ArbitratorImpl)
 	ArbitratorGroupSingleton.arbitrators = append(ArbitratorGroupSingleton.arbitrators, foundation)
 	ArbitratorGroupSingleton.currentArbitrator = 0
+
+	// SPV module init
+	var err error
+	publicKey := foundation.GetPublicKey()
+	publicKeyBytes, _ := publicKey.EncodePoint(true)
+	foundation.spvService, err = _interface.NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
+	if err != nil {
+		fmt.Println("[Error] " + err.Error())
+		os.Exit(1)
+	}
+	for _, sideNode := range config.Parameters.SideNodeList {
+		foundation.spvService.RegisterAccount(sideNode.GenesisBlockAddress)
+	}
+	foundation.spvService.OnTransactionConfirmed(foundation.OnTransactionConfirmed)
+	foundation.spvService.Start()
 }
