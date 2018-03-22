@@ -1,4 +1,4 @@
-package sidechain
+package arbitrator
 
 import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
@@ -6,7 +6,7 @@ import (
 
 type SideChainNode interface {
 	GetCurrentHeight() (uint32, error)
-	GetBlockByHeight(height uint32) (BlockInfo)
+	GetBlockByHeight(height uint32) BlockInfo
 
 	SendTransaction(info *TransactionInfo) error
 }

@@ -7,8 +7,8 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error)
-	ParseUserSideChainHash(txn *tx.Transaction) (map[common.Uint168]common.Uint168, error)
+	CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*TransactionInfo, error)
+	ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error)
 
 	BroadcastWithdrawProposal(content []byte) error
 	ReceiveProposalFeedback(content []byte) error
