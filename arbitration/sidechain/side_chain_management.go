@@ -107,15 +107,11 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) (
 		if txAttr.Usage == tx.TargetPublicKey {
 			// Get public key
 			keyBytes := txAttr.Data[0 : len(txAttr.Data)-1]
-			pka, err := crypto.DecodePoint(keyBytes)
+			key, err := crypto.DecodePoint(keyBytes)
 			if err != nil {
 				return nil, err
 			}
-			targetRedeemScript, err := tx.CreateStandardRedeemScript(pka)
-			if err != nil {
-				return nil, err
-			}
-			targetProgramHash, err := tx.ToProgramHash(targetRedeemScript)
+			targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
 			if err != nil {
 				return nil, err
 			}

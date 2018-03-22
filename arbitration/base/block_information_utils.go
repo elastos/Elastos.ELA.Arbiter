@@ -6,6 +6,7 @@ import (
 	"Elastos.ELA.Arbiter/core/program"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
+	"Elastos.ELA.Arbiter/crypto"
 	spvDb "SPVWallet/db"
 	"bytes"
 	"errors"
@@ -675,4 +676,16 @@ func TxUTXOFromSpvUTXO(utxo *spvDb.UTXO) *UTXOTxInput {
 		ReferTxOutputIndex: utxo.Op.Index,
 		Sequence:           utxo.LockTime,
 	}
+}
+
+func StandardAcccountPublicKeyToProgramHash(key *crypto.PublicKey) (*Uint168, error) {
+	targetRedeemScript, err := CreateStandardRedeemScript(key)
+	if err != nil {
+		return nil, err
+	}
+	targetProgramHash, err := ToProgramHash(targetRedeemScript)
+	if err != nil {
+		return nil, err
+	}
+	return targetProgramHash, err
 }

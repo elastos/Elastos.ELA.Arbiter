@@ -59,8 +59,12 @@ func getTransactionAgreementArbitratorsCount() int {
 	return int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
 }
 
-func (mc *MainChainImpl) genereateProgramHash(key *crypto.PublicKey) *common.Uint168 {
-	return nil
+func (mc *MainChainImpl) genereateProgramHash(key *crypto.PublicKey) (*common.Uint168, error) {
+	targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
+	if err != nil {
+		return nil, err
+	}
+	return targetProgramHash, nil
 }
 
 func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte) error {
@@ -90,10 +94,14 @@ func (mc *MainChainImpl) BroadcastWithdrawProposal(password []byte) error {
 	}
 
 	for pkStr, pk := range publicKeys {
+		programHash, err := mc.genereateProgramHash(pk)
+		if err != nil {
+			return err
+		}
 		transactionItem := &DistributedTransactionItem{
 			RawTransaction:              transaction,
 			TargetArbitratorPublicKey:   pk,
-			TargetArbitratorProgramHash: mc.genereateProgramHash(pk),
+			TargetArbitratorProgramHash: programHash,
 		}
 		transactionItem.InitScript(currentArbitrator)
 		transactionItem.Sign(password, currentArbitrator)
@@ -161,8 +169,13 @@ func (mc *MainChainImpl) ReceiveProposalFeedback(content []byte) error {
 }
 
 func (mc *MainChainImpl) convertToTransactionContent(txn *tx.Transaction) (string, error) {
-	//todo convert transaction to rpc interface required string content
-	return "", nil
+	buf := new(bytes.Buffer)
+	err := txn.Serialize(buf)
+	if err != nil {
+		return "", err
+	}
+	content := common.BytesToHexString(buf.Bytes())
+	return content, nil
 }
 
 func (mc *MainChainImpl) mergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction) (int, error) {
@@ -312,15 +325,11 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([
 		if txAttr.Usage == tx.TargetPublicKey {
 			// Get public key
 			keyBytes := txAttr.Data[0 : len(txAttr.Data)-1]
-			pka, err := crypto.DecodePoint(keyBytes)
+			key, err := crypto.DecodePoint(keyBytes)
 			if err != nil {
 				return nil, err
 			}
-			targetRedeemScript, err := tx.CreateStandardRedeemScript(pka)
-			if err != nil {
-				return nil, err
-			}
-			targetProgramHash, err := tx.ToProgramHash(targetRedeemScript)
+			targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
 			if err != nil {
 				return nil, err
 			}
