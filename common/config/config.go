@@ -18,7 +18,8 @@ var (
 )
 
 type Configuration struct {
-	Version int `json:"Version"`
+	Version int    `json:"Version"`
+	UUID    string `json:"UUID"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`

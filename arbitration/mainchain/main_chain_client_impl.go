@@ -16,11 +16,7 @@ func (client *MainChainClientImpl) SignProposal(password []byte, transactionHash
 		return errors.New("Can not find proposal.")
 	}
 
-	ar, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if err != nil {
-		return err
-	}
-	return transactionItem.Sign(password, ar)
+	return transactionItem.Sign(password, arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
 //todo called by p2p module
@@ -44,11 +40,7 @@ func (client *MainChainClientImpl) Feedback(transactionHash Uint256) error {
 		return errors.New("Can not find proposal.")
 	}
 
-	ar, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if err != nil {
-		return err
-	}
-
+	ar := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
 	item.TargetArbitratorProgramHash = ar.GetProgramHash()
 	message, err := item.Serialize()
