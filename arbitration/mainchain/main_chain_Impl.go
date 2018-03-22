@@ -1,18 +1,22 @@
 package mainchain
 
 import (
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/core/asset"
 	pg "Elastos.ELA.Arbiter/core/program"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
 	"Elastos.ELA.Arbiter/crypto"
+	"Elastos.ELA.Arbiter/rpc"
 	"SPVWallet/core"
 	"SPVWallet/wallet"
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 )
 
 var SystemAssetId = getSystemAssetId()
@@ -20,6 +24,9 @@ var SystemAssetId = getSystemAssetId()
 type MainChainImpl struct {
 	AccountListener
 	SpvValidation
+
+	unsolvedTransactions map[common.Uint256]*tx.Transaction
+	finishedTransactions map[common.Uint256]bool
 }
 
 func createRedeemScript() (string, error) {
@@ -35,6 +42,152 @@ func createRedeemScript() (string, error) {
 	}
 	redeemScriptStr := common.BytesToHexString(redeemScriptByte)
 	return redeemScriptStr, nil
+}
+
+func (mc *MainChainImpl) genereateProgramHash(key *crypto.PublicKey) *common.Uint168 {
+	return nil
+}
+
+func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte) error {
+	//todo call p2p module to broadcast to other arbitrators
+	return nil
+}
+
+func (mc *MainChainImpl) BroadcastWithdrawProposal(password []byte) error {
+	//todo create withdraw transaction
+	var transaction *tx.Transaction
+
+	if _, ok := mc.unsolvedTransactions[transaction.Hash()]; ok {
+		return errors.New("Transaction already in process.")
+	}
+	mc.unsolvedTransactions[transaction.Hash()] = transaction
+
+	currentArbitrator, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	if err != nil {
+		return err
+	}
+	if !currentArbitrator.IsOnDuty() {
+		return errors.New("Can not start a new proposal, you are not on duty.")
+	}
+
+	publicKeys := make(map[string]*crypto.PublicKey, arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount())
+	for _, arStr := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
+		temp := &crypto.PublicKey{}
+		temp.FromString(arStr)
+		publicKeys[arStr] = temp
+	}
+
+	for pkStr, pk := range publicKeys {
+		transactionItem := &DistributedTransactionItem{
+			RawTransaction:              transaction,
+			TargetArbitratorPublicKey:   pk,
+			TargetArbitratorProgramHash: mc.genereateProgramHash(pk),
+		}
+		transactionItem.InitScript(currentArbitrator)
+		transactionItem.Sign(password, currentArbitrator)
+
+		content, err := transactionItem.Serialize()
+		if err != nil {
+			return err
+		}
+		mc.sendToArbitrator(pkStr, content)
+	}
+	return nil
+}
+
+func (mc *MainChainImpl) ReceiveProposalFeedback(content []byte) error {
+	transactionItem := DistributedTransactionItem{}
+	transactionItem.Deserialize(content)
+	newSign, err := transactionItem.ParseFeedbackSignedData()
+	if err != nil {
+		return err
+	}
+
+	txn, ok := mc.unsolvedTransactions[transactionItem.RawTransaction.Hash()]
+	if !ok {
+		errors.New("Can not find transaction.")
+	}
+
+	var signerIndex = -1
+	programHashes, err := txn.GetMultiSignSigners()
+	if err != nil {
+		return err
+	}
+	userProgramHash := transactionItem.TargetArbitratorProgramHash
+	for i, programHash := range programHashes {
+		if *userProgramHash == *programHash {
+			signerIndex = i
+			break
+		}
+	}
+	if signerIndex == -1 {
+		return errors.New("Invalid multi sign signer")
+	}
+
+	signedCount, err := mc.mergeSignToTransaction(newSign, signerIndex, txn)
+	if err != nil {
+		return err
+	}
+
+	if signedCount >= int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount())*0.667)) {
+		delete(mc.unsolvedTransactions, txn.Hash())
+
+		content, err := mc.convertToTransactionContent(txn)
+		if err != nil {
+			mc.finishedTransactions[txn.Hash()] = false
+			return err
+		}
+
+		result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
+		if err != nil {
+			return err
+		}
+		mc.finishedTransactions[txn.Hash()] = true
+		fmt.Println(result)
+	}
+	return nil
+}
+
+func (mc *MainChainImpl) convertToTransactionContent(txn *tx.Transaction) (string, error) {
+	//todo convert transaction to rpc interface required string content
+	return "", nil
+}
+
+func (mc *MainChainImpl) mergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction) (int, error) {
+	param := txn.Programs[0].Parameter
+
+	// Check if is first signature
+	if param == nil {
+		param = []byte{}
+	} else {
+		// Check if singer already signed
+		publicKeys, err := txn.GetMultiSignPublicKeys()
+		if err != nil {
+			return 0, err
+		}
+		buf := new(bytes.Buffer)
+		txn.SerializeUnsigned(buf)
+		for i := 0; i < len(param); i += tx.SignatureScriptLength {
+			// Remove length byte
+			sign := param[i : i+tx.SignatureScriptLength][1:]
+			publicKey := publicKeys[signerIndex][1:]
+			pubKey, err := crypto.DecodePoint(publicKey)
+			if err != nil {
+				return 0, err
+			}
+			err = crypto.Verify(*pubKey, buf.Bytes(), sign)
+			if err == nil {
+				return 0, errors.New("signer already signed")
+			}
+		}
+	}
+
+	buf := new(bytes.Buffer)
+	buf.Write(param)
+	buf.Write(newSign)
+
+	txn.Programs[0].Parameter = buf.Bytes()
+	return len(txn.Programs[0].Parameter) / tx.SignatureScriptLength, nil
 }
 
 func getSystemAssetId() common.Uint256 {
