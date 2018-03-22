@@ -102,7 +102,12 @@ func (item *ComplainItemImpl) SignItem(password []byte, arbitrator arbitrator.Ar
 		return errors.New("[Wallet], Invalid multi sign signer")
 	}
 	// Sign transaction
-	signedData, err := arbitrator.Sign(password, item)
+	itemData, err := item.Serialize()
+	if err != nil {
+		return err
+	}
+
+	signedData, err := arbitrator.Sign(password, itemData)
 	if err != nil {
 		return err
 	}
