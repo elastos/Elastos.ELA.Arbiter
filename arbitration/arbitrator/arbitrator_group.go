@@ -3,6 +3,7 @@ package arbitrator
 import (
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
+	"Elastos.ELA.Arbiter/crypto"
 	"SPVWallet/interface"
 	"encoding/binary"
 	"fmt"
@@ -105,7 +106,8 @@ func init() {
 
 	// SPV module init
 	var err error
-	publicKey := currentArbitrator.GetPublicKey()
+	publicKey := crypto.PublicKey{}
+	publicKey.FromString(config.Parameters.UUID)
 	publicKeyBytes, _ := publicKey.EncodePoint(true)
 	currentArbitrator.spvService, err = _interface.NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
 	if err != nil {
