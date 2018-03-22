@@ -3,6 +3,7 @@ package base
 import (
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/serialization"
+	"Elastos.ELA.Arbiter/core/asset"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"bytes"
 	"errors"
@@ -16,6 +17,9 @@ type PayloadInfo interface {
 }
 
 type RegisterAssetInfo struct {
+	Asset      *asset.Asset
+	Amount     string
+	Controller string
 }
 
 type TransferAssetInfo struct {

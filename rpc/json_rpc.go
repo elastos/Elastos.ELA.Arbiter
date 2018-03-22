@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common/config"
 	"errors"
 )
