@@ -9,8 +9,8 @@ import (
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/store"
 	spvTx "SPVWallet/core/transaction"
-	. "SPVWallet/interface"
-	"SPVWallet/p2p/msg"
+	spvInterface "SPVWallet/interface"
+	spvMsg "SPVWallet/p2p/msg"
 	"bytes"
 )
 
@@ -37,13 +37,13 @@ type Arbitrator interface {
 
 	IsOnDuty() bool
 	GetArbitratorGroup() ArbitratorGroup
-	getSPVService() SPVService
+	getSPVService() spvInterface.SPVService
 }
 
 type ArbitratorImpl struct {
 	store.Keystore
 	sideChains map[string]side.SideChain
-	spvService SPVService
+	spvService spvInterface.SPVService
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
@@ -74,7 +74,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return &ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) getSPVService() SPVService {
+func (ar *ArbitratorImpl) getSPVService() spvInterface.SPVService {
 	return ar.spvService
 }
 
@@ -86,19 +86,19 @@ func (ar *ArbitratorImpl) ParseUserSideChainHash(txn *tx.Transaction) (map[commo
 	return nil, nil
 }
 
-func (ar *ArbitratorImpl) CreateDepositTransaction(target common.Uint168, merkleBlock msg.MerkleBlock, txn *tx.Transaction) (*TransactionInfo, error) {
+func (ar *ArbitratorImpl) CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error) {
 	return nil, nil
 }
 
-func (sc *ArbitratorImpl) IsTransactionValid(transactionHash common.Uint256) (bool, error) {
+func (ar *ArbitratorImpl) IsTransactionValid(transactionHash common.Uint256) (bool, error) {
 	return false, nil
 }
 
-func (sc *ArbitratorImpl) ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error) {
+func (ar *ArbitratorImpl) ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error) {
 	return nil, nil
 }
 
-func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock msg.MerkleBlock, trans []spvTx.Transaction) {
+func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
 	for _, tran := range trans {
 		buf := new(bytes.Buffer)
 		tran.Serialize(buf)
@@ -119,11 +119,12 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock msg.MerkleBlock, tr
 				//TODO heropan how to complain error
 				continue
 			}
-			txInfo, err := sideChain.CreateDepositTransaction(hashTarget, merkleBlock, txn)
-			if err == nil {
+			txInfo, err := sideChain.CreateDepositTransaction(hashTarget, merkleBlock, 0)
+			if err != nil {
 				//TODO heropan how to complain error
-				sideChain.GetNode().SendTransaction(txInfo)
+				continue
 			}
+			sideChain.GetNode().SendTransaction(txInfo)
 		}
 	}
 }
