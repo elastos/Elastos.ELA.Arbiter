@@ -3,7 +3,6 @@ package arbitrator
 import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/arbitration/net"
-	side "Elastos.ELA.Arbiter/arbitration/sidechain"
 	"Elastos.ELA.Arbiter/common"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
@@ -18,7 +17,7 @@ type ArbitratorMain interface {
 }
 
 type ArbitratorSide interface {
-	side.SideChainManager
+	SideChainManager
 }
 
 type Arbitrator interface {
@@ -40,7 +39,7 @@ type Arbitrator interface {
 }
 
 type ArbitratorImpl struct {
-	sideChains map[string]side.SideChain
+	sideChains map[string]SideChain
 	spvService spvInterface.SPVService
 }
 
@@ -82,11 +81,11 @@ func (ar *ArbitratorImpl) getSPVService() spvInterface.SPVService {
 	return ar.spvService
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error) {
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*TransactionInfo, error) {
 	return nil, nil
 }
 
-func (ar *ArbitratorImpl) ParseUserSideChainHash(txn *tx.Transaction) (map[common.Uint168]common.Uint168, error) {
+func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
 	return nil, nil
 }
 
@@ -106,7 +105,7 @@ func (ar *ArbitratorImpl) IsTransactionValid(transactionHash common.Uint256) (bo
 	return false, nil
 }
 
-func (ar *ArbitratorImpl) ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error) {
+func (ar *ArbitratorImpl) ParseUserWithdrawTransactionInfoParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error) {
 	return nil, nil
 }
 
@@ -119,19 +118,19 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock,
 		r := bytes.NewReader(txBytes)
 		txn := new(tx.Transaction)
 		txn.Deserialize(r)
-		hashMap, err := ar.ParseUserSideChainHash(txn)
+		depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
 		if err != nil {
 			//TODO heropan how to complain error
 			continue
 		}
 
-		for hashTarget, hashGenesis := range hashMap {
-			sideChain, ok := ar.GetChain(hashGenesis.String())
+		for _, info := range depositInfo {
+			sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
 			if !ok {
 				//TODO heropan how to complain error
 				continue
 			}
-			txInfo, err := sideChain.CreateDepositTransaction(hashTarget, merkleBlock, 0)
+			txInfo, err := sideChain.CreateDepositTransaction(info.TargetProgramHash, merkleBlock, info.Amount)
 			if err != nil {
 				//TODO heropan how to complain error
 				continue
@@ -141,13 +140,13 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock,
 	}
 }
 
-func (ar *ArbitratorImpl) GetChain(key string) (side.SideChain, bool) {
+func (ar *ArbitratorImpl) GetChain(key string) (SideChain, bool) {
 	elem, ok := ar.sideChains[key]
 	return elem, ok
 }
 
-func (ar *ArbitratorImpl) GetAllChains() []side.SideChain {
-	var chains []side.SideChain
+func (ar *ArbitratorImpl) GetAllChains() []SideChain {
+	var chains []SideChain
 	for _, v := range ar.sideChains {
 		chains = append(chains, v)
 	}

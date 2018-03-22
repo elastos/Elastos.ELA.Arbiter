@@ -1,6 +1,7 @@
 package sidechain
 
 import (
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	tr "Elastos.ELA.Arbiter/common/typeTransformation"
@@ -8,24 +9,8 @@ import (
 	"Elastos.ELA.Arbiter/crypto"
 	spvMsg "SPVWallet/p2p/msg"
 	spvWallet "SPVWallet/wallet"
+	"bytes"
 )
-
-type SideChain interface {
-	AccountListener
-
-	GetKey() string
-	GetNode() SideChainNode
-	CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error)
-
-	IsTransactionValid(transactionHash common.Uint256) (bool, error)
-
-	ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error)
-}
-
-type SideChainManager interface {
-	GetChain(key string) (SideChain, bool)
-	GetAllChains() []SideChain
-}
 
 type SideChainImpl struct {
 	AccountListener
@@ -46,28 +31,24 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	if err != nil {
 		return err
 	}
-	targetHashList, err := sc.ParseUserMainChainHash(txn)
+	withdrawInfo, err := sc.ParseUserWithdrawTransactionInfo(txn)
 	if err != nil {
 		return err
 	}
-	/*	for _, hashA := range targetHashList {
-		currentArbitrator, err := arbitratorgroup.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	for _, info := range withdrawInfo {
+		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 		if err != nil {
 			return err
 		}
-		tx3, err := tr.TransactionFromTransactionInfo(txinfo)
-		tx4, err := currentArbitrator.CreateWithdrawTransaction(sideChain.GetKey(), hashA, tx3)
-		buf := new(bytes.Buffer)
-		err = tx4.Serialize(buf)
+		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(sc.GetKey(), info.TargetProgramHash, info.Amount)
 		if err != nil {
 			return err
 		}
-		currentArbitrator.GetArbitrationNet().Broadcast(buf.Bytes())
-	}*/
-
-	if len(targetHashList) == 0 {
-		return nil
+		if withdrawTransaction != nil {
+			//currentArbitrator.BroadcastWithdrawProposal([]byte{})
+		}
 	}
+
 	return nil
 }
 
@@ -119,9 +100,9 @@ func (sc *SideChainImpl) IsTransactionValid(transactionHash common.Uint256) (boo
 	return false, nil
 }
 
-func (sc *SideChainImpl) ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error) {
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error) {
 
-	hashes := []common.Uint168{}
+	var result []*WithdrawInfo
 	txAttribute := txn.Attributes
 	for _, txAttr := range txAttribute {
 		if txAttr.Usage == tx.TargetPublicKey {
@@ -139,9 +120,19 @@ func (sc *SideChainImpl) ParseUserMainChainHash(txn *tx.Transaction) ([]common.U
 			if err != nil {
 				return nil, err
 			}
-			hashes = append(hashes, *targetProgramHash)
+			attrIndex := txAttr.Data[len(txAttr.Data)-1 : len(txAttr.Data)]
+			for index, output := range txn.Outputs {
+				if bytes.Equal([]byte{byte(index)}, attrIndex) {
+					info := &WithdrawInfo{
+						TargetProgramHash: *targetProgramHash,
+						Amount:            output.Value,
+					}
+					result = append(result, info)
+					break
+				}
+			}
 		}
 	}
 
-	return hashes, nil
+	return result, nil
 }
