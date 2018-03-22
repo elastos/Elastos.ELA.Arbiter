@@ -3,8 +3,10 @@ package sidechain
 import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
+	tr "Elastos.ELA.Arbiter/common/typeTransformation"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
+	"SPVWallet/p2p/msg"
 )
 
 type SideChain interface {
@@ -12,11 +14,11 @@ type SideChain interface {
 
 	GetKey() string
 	GetNode() SideChainNode
-	CreateDepositTransaction(target common.Uint168, information *SpvInformation) (*TransactionInfo, error)
+	CreateDepositTransaction(target common.Uint168, merkleBlock msg.MerkleBlock, txn *tx.Transaction) (*TransactionInfo, error)
 
 	IsTransactionValid(transactionHash common.Uint256) (bool, error)
 
-	ParseUserMainChainHash(hash common.Uint256) ([]common.Uint168, error)
+	ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error)
 }
 
 type SideChainManager interface {
@@ -32,11 +34,43 @@ func (sc *SideChainImpl) GetKey() string {
 	return ""
 }
 
-func GetNode() SideChainNode {
+func (sc *SideChainImpl) GetNode() SideChainNode {
 	return nil
 }
 
-func (sideChain *SideChainImpl) CreateDepositTransaction(target common.Uint168, information *SpvInformation) (*TransactionInfo, error) {
+func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
+	//TODO　verify tx [jzh]
+
+	txn, err := tr.TransactionFromTransactionInfo(txinfo)
+	if err != nil {
+		return err
+	}
+	targetHashList, err := sc.ParseUserMainChainHash(txn)
+	if err != nil {
+		return err
+	}
+	/*	for _, hashA := range targetHashList {
+		currentArbitrator, err := arbitratorgroup.ArbitratorGroupSingleton.GetCurrentArbitrator()
+		if err != nil {
+			return err
+		}
+		tx3, err := tr.TransactionFromTransactionInfo(txinfo)
+		tx4, err := currentArbitrator.CreateWithdrawTransaction(sideChain.GetKey(), hashA, tx3)
+		buf := new(bytes.Buffer)
+		err = tx4.Serialize(buf)
+		if err != nil {
+			return err
+		}
+		currentArbitrator.GetArbitrationNet().Broadcast(buf.Bytes())
+	}*/
+
+	if len(targetHashList) == 0 {
+		return nil
+	}
+	return nil
+}
+
+func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleBlock msg.MerkleBlock, txn *tx.Transaction) (*TransactionInfo, error) {
 	// Create transaction outputs
 	// TODO heropan
 	var totalOutputAmount = common.Fixed64(0) // The total amount will be spend
@@ -79,13 +113,8 @@ func (sc *SideChainImpl) IsTransactionValid(transactionHash common.Uint256) (boo
 	return false, nil
 }
 
-func (sc *SideChainImpl) ParseUserMainChainHash(hash common.Uint256) ([]common.Uint168, error) {
+func (sc *SideChainImpl) ParseUserMainChainHash(txn *tx.Transaction) ([]common.Uint168, error) {
 
-	//TODO get Transaction by hash [jzh]
-	var txn tx.Transaction
-	//1.get Transaction by hash
-
-	//2.getPublicKey from Transaction
 	hashes := []common.Uint168{}
 	txAttribute := txn.Attributes
 	for _, txAttr := range txAttribute {

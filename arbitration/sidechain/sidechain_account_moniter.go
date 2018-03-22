@@ -3,11 +3,11 @@ package sidechain
 import (
 	"fmt"
 
-	"Elastos.ELA.Arbiter/arbitration/base"
+	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
 	tx "Elastos.ELA.Arbiter/core/transaction"
-	. "Elastos.ELA.Arbiter/rpc"
+	"Elastos.ELA.Arbiter/rpc"
 	"Elastos.ELA.Arbiter/store"
 	"errors"
 )
@@ -15,10 +15,10 @@ import (
 type SideChainAccountMonitorImpl struct {
 	store.DataStore
 
-	accountListenerMap map[string]base.AccountListener
+	accountListenerMap map[string]AccountListener
 }
 
-func (sync *SideChainAccountMonitorImpl) AddListener(listener base.AccountListener) {
+func (sync *SideChainAccountMonitorImpl) AddListener(listener AccountListener) {
 	sync.accountListenerMap[listener.GetAccountAddress()] = listener
 }
 
@@ -30,18 +30,13 @@ func (sync *SideChainAccountMonitorImpl) RemoveListener(account string) error {
 	return nil
 }
 
-func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(transactionHash, genesisBlockAddress string) error {
+func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo, genesisBlockAddress string) error {
 	item, ok := sync.accountListenerMap[genesisBlockAddress]
 	if !ok {
 		return errors.New("Fired unknown listener.")
 	}
-	txHashBytes, _ := HexStringToBytesReverse(transactionHash)
-	txHash, err := Uint256FromBytes(txHashBytes)
-	if err != nil {
-		return err
-	}
 
-	return item.OnUTXOChanged(*txHash)
+	return item.OnUTXOChanged(txinfo)
 }
 
 func (sync *SideChainAccountMonitorImpl) SyncChainData() {
@@ -56,7 +51,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData() {
 		}
 
 		for currentHeight < chainHeight {
-			block, err := GetBlockByHeight(currentHeight, node.Rpc)
+			block, err := rpc.GetBlockByHeight(currentHeight, node.Rpc)
 			if err != nil {
 				break
 			}
@@ -74,7 +69,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData() {
 
 func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
 
-	chainHeight, err := GetCurrentHeight(config)
+	chainHeight, err := rpc.GetCurrentHeight(config)
 	if err != nil {
 		return 0, 0, false
 	}
@@ -126,7 +121,7 @@ func (sync *SideChainAccountMonitorImpl) processBlock(block *BlockInfo) {
 				}
 				sync.AddAddressUTXO(addressUTXO)
 
-				sync.fireUTXOChanged(txn.Hash, genesisAddress)
+				sync.fireUTXOChanged(txn, genesisAddress)
 			}
 		}
 
