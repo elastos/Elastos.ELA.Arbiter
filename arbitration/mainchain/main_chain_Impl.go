@@ -5,7 +5,6 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
-	tr "Elastos.ELA.Arbiter/common/typeTransformation"
 	"Elastos.ELA.Arbiter/core/asset"
 	pg "Elastos.ELA.Arbiter/core/program"
 	tx "Elastos.ELA.Arbiter/core/transaction"
@@ -259,7 +258,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	// Create transaction inputs
 	var txInputs []*tx.UTXOTxInput
 	for _, utxo := range availableUTXOs {
-		txInputs = append(txInputs, tr.TxUTXOFromSpvUTXO(utxo))
+		txInputs = append(txInputs, TxUTXOFromSpvUTXO(utxo))
 		if utxo.Value < totalOutputAmount {
 			totalOutputAmount -= utxo.Value
 		} else if utxo.Value == totalOutputAmount {
