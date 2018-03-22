@@ -6,7 +6,8 @@ import (
 	tr "Elastos.ELA.Arbiter/common/typeTransformation"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
-	"SPVWallet/p2p/msg"
+	spvMsg "SPVWallet/p2p/msg"
+	spvWallet "SPVWallet/wallet"
 )
 
 type SideChain interface {
@@ -14,7 +15,7 @@ type SideChain interface {
 
 	GetKey() string
 	GetNode() SideChainNode
-	CreateDepositTransaction(target common.Uint168, merkleBlock msg.MerkleBlock, txn *tx.Transaction) (*TransactionInfo, error)
+	CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error)
 
 	IsTransactionValid(transactionHash common.Uint256) (bool, error)
 
@@ -70,19 +71,18 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	return nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleBlock msg.MerkleBlock, txn *tx.Transaction) (*TransactionInfo, error) {
-	// Create transaction outputs
-	// TODO heropan
-	var totalOutputAmount = common.Fixed64(0) // The total amount will be spend
-	var txOutputs []TxoutputInfo              // The outputs in transaction
+func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error) {
+	var totalOutputAmount = amount // The total amount will be spend
+	var txOutputs []TxoutputInfo   // The outputs in transaction
 
 	toAddress, err := target.ToAddress()
 	if err != nil {
 		return nil, err
 	}
 
+	assetID := spvWallet.SystemAssetId
 	txOutput := TxoutputInfo{
-		AssetID:    "AssetID", // TODO heropan
+		AssetID:    assetID.String(),
 		Value:      totalOutputAmount.String(),
 		Address:    toAddress,
 		OutputLock: uint32(0),
@@ -91,12 +91,18 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleB
 
 	// Create payload
 	txPayloadInfo := TransferAssetInfo{}
+
 	// Create attributes
-	txAttr := TxAttributeInfo{tx.SpvInfo, "spvinformation"} // TODO heropan spvinformation
+	spvInfo, err := merkleBlock.Serialize()
+	if err != nil {
+		return nil, err
+	}
+	txAttr := TxAttributeInfo{tx.SpvInfo, common.BytesToHexString(spvInfo)}
 	attributes := make([]TxAttributeInfo, 0)
 	attributes = append(attributes, txAttr)
+
 	// Create program
-	var program = ProgramInfo{"redeemScript", ""} // TODO heropan add redeemScript later
+	program := ProgramInfo{}
 	return &TransactionInfo{
 		TxType:        tx.IssueToken,
 		Payload:       txPayloadInfo,
@@ -105,7 +111,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleB
 		BalanceInputs: []BalanceTxInputInfo{},
 		Outputs:       txOutputs,
 		Programs:      []ProgramInfo{program},
-		LockTime:      uint32(0), //wallet.CurrentHeight(QueryHeightCode) - 1,
+		LockTime:      uint32(0),
 	}, nil
 }
 
