@@ -61,9 +61,5 @@ func (comp *ComplainSolvingNodeImpl) Sign(password []byte, transactionHash Uint2
 	if !ok {
 		return errors.New("Can not find complaint.")
 	}
-	arbitrator, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if err != nil {
-		return err
-	}
-	return item.SignItem(password, arbitrator)
+	return item.SignItem(password, arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }

@@ -40,12 +40,8 @@ func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo
 }
 
 func (sync *SideChainAccountMonitorImpl) SyncChainData() {
-	var chainHeight uint32
-	var currentHeight uint32
-	var needSync bool
-
 	for _, node := range config.Parameters.SideNodeList {
-		chainHeight, currentHeight, needSync = sync.needSyncBlocks(node.GenesisBlockAddress, node.Rpc)
+		chainHeight, currentHeight, needSync := sync.needSyncBlocks(node.GenesisBlockAddress, node.Rpc)
 		if !needSync {
 			continue
 		}

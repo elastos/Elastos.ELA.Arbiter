@@ -2,15 +2,17 @@ package arbitrator
 
 import (
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/log"
 	"SPVWallet/interface"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"os"
+	"sync"
+	"time"
 )
 
 var (
-	ArbitratorGroupSingleton ArbitratorGroupImpl
+	ArbitratorGroupSingleton *ArbitratorGroupImpl
 )
 
 type ArbitratorsElection interface {
@@ -19,51 +21,100 @@ type ArbitratorsElection interface {
 type ArbitratorGroup interface {
 	ArbitratorsElection
 
-	GetCurrentArbitrator() (Arbitrator, error)
+	GetCurrentArbitrator() Arbitrator
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
+	GetOnDutyArbitrator() string
 }
 
 type ArbitratorGroupImpl struct {
-	arbitrators       []Arbitrator
-	currentArbitrator int
+	mux sync.Mutex
+
+	onDutyArbitratorIndex int
+	arbitrators           []string
+	currentArbitrator     Arbitrator
+
+	lastSyncTime *int64
+	timeoutLimit int64 //millisecond
 }
 
-func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
-	return len(group.arbitrators)
-}
+func (group *ArbitratorGroupImpl) SyncLoop() {
+	for {
+		err := group.syncFromMainNode()
+		if err != nil {
+			log.Error("Arbitrator group sync error: ", err)
+		}
 
-func (group *ArbitratorGroupImpl) GetCurrentArbitrator() (Arbitrator, error) {
-	if group.currentArbitrator >= group.GetArbitratorsCount() {
-		return nil, errors.New("Can not find current arbitrator!")
+		time.Sleep(time.Millisecond * config.Parameters.SyncInterval)
 	}
-	return group.arbitrators[group.currentArbitrator], nil
 }
 
-func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
+func (group *ArbitratorGroupImpl) syncFromMainNode() error {
+	currentTime := time.Now().UnixNano()
+	if group.lastSyncTime != nil && (currentTime-*group.lastSyncTime)*int64(time.Millisecond) < group.timeoutLimit {
+		return nil
+	}
+
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	//todo synchronize from main chain block info
+	group.arbitrators = append(group.arbitrators, "")
+	group.arbitrators = append(group.arbitrators, "")
+	group.onDutyArbitratorIndex = 0
+
+	group.lastSyncTime = &currentTime
 	return nil
 }
 
-func init() {
-	ArbitratorGroupSingleton = ArbitratorGroupImpl{}
-	fmt.Println("member count: ", config.Parameters.MemberCount)
+func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
+	group.syncFromMainNode()
 
-	foundation := new(ArbitratorImpl)
-	ArbitratorGroupSingleton.arbitrators = append(ArbitratorGroupSingleton.arbitrators, foundation)
-	ArbitratorGroupSingleton.currentArbitrator = 0
+	group.mux.Lock()
+	group.mux.Unlock()
+	return len(group.arbitrators)
+}
+
+func (group *ArbitratorGroupImpl) GetOnDutyArbitrator() string {
+	group.syncFromMainNode()
+
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	return group.arbitrators[group.onDutyArbitratorIndex]
+}
+
+func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {
+	group.syncFromMainNode()
+	return group.currentArbitrator
+}
+
+func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
+	group.syncFromMainNode()
+
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	return group.arbitrators
+}
+
+func init() {
+	ArbitratorGroupSingleton = &ArbitratorGroupImpl{
+		timeoutLimit: 1000,
+	}
+
+	currentArbitrator := &ArbitratorImpl{}
+	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 
 	// SPV module init
 	var err error
-	publicKey := foundation.GetPublicKey()
+	publicKey := currentArbitrator.GetPublicKey()
 	publicKeyBytes, _ := publicKey.EncodePoint(true)
-	foundation.spvService, err = _interface.NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
+	currentArbitrator.spvService, err = _interface.NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
 	if err != nil {
 		fmt.Println("[Error] " + err.Error())
 		os.Exit(1)
 	}
 	for _, sideNode := range config.Parameters.SideNodeList {
-		foundation.spvService.RegisterAccount(sideNode.GenesisBlockAddress)
+		currentArbitrator.spvService.RegisterAccount(sideNode.GenesisBlockAddress)
 	}
-	foundation.spvService.OnTransactionConfirmed(foundation.OnTransactionConfirmed)
-	foundation.spvService.Start()
+	currentArbitrator.spvService.OnTransactionConfirmed(currentArbitrator.OnTransactionConfirmed)
+	currentArbitrator.spvService.Start()
 }
