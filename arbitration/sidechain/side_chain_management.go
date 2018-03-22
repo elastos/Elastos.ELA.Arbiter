@@ -4,7 +4,6 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
-	tr "Elastos.ELA.Arbiter/common/typeTransformation"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	spvMsg "SPVWallet/p2p/msg"
@@ -27,7 +26,7 @@ func (sc *SideChainImpl) GetNode() SideChainNode {
 func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	//TODO　verify tx [jzh]
 
-	txn, err := tr.TransactionFromTransactionInfo(txinfo)
+	txn, err := txinfo.ToTransaction()
 	if err != nil {
 		return err
 	}
