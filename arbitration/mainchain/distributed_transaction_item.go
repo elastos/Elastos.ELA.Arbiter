@@ -5,6 +5,7 @@ import (
 
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/common/serialization"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	"bytes"
@@ -97,10 +98,58 @@ func (item *DistributedTransactionItem) ParseFeedbackSignedData() ([]byte, error
 }
 
 func (item *DistributedTransactionItem) Serialize() ([]byte, error) {
-	return nil, nil
+	buf := new(bytes.Buffer)
+
+	publickeyBytes, _ := item.TargetArbitratorPublicKey.EncodePoint(true)
+	if err := serialization.WriteVarBytes(buf, publickeyBytes); err != nil {
+		return nil, errors.New("TargetArbitratorPublicKey serialization failed.")
+	}
+	if _, err := item.TargetArbitratorProgramHash.Serialize(buf); err != nil {
+		return nil, errors.New("TargetArbitratorProgramHash serialization failed.")
+	}
+	if err := item.RawTransaction.Serialize(buf); err != nil {
+		return nil, err
+	}
+	if err := serialization.WriteVarBytes(buf, item.redeemScript); err != nil {
+		return nil, errors.New("redeemScript serialization failed.")
+	}
+	if err := serialization.WriteVarBytes(buf, item.signedData); err != nil {
+		return nil, errors.New("signedData serialization failed.")
+	}
+
+	return buf.Bytes(), nil
 }
 
 func (item *DistributedTransactionItem) Deserialize(content []byte) error {
+	r := bytes.NewReader(content)
+
+	publickeyBytes, err := serialization.ReadVarBytes(r)
+	if err != nil {
+		return errors.New("TargetArbitratorPublicKey deserialization failed.")
+	}
+	publickey, _ := crypto.DecodePoint(publickeyBytes)
+	item.TargetArbitratorPublicKey = publickey
+
+	if err = item.TargetArbitratorProgramHash.Deserialize(r); err != nil {
+		return errors.New("TargetArbitratorProgramHash deserialization failed.")
+	}
+
+	if err = item.RawTransaction.Deserialize(r); err != nil {
+		return errors.New("RawTransaction deserialization failed.")
+	}
+
+	redeemScript, err := serialization.ReadVarBytes(r)
+	if err != nil {
+		return errors.New("redeemScript deserialization failed.")
+	}
+	item.redeemScript = redeemScript
+
+	signedData, err := serialization.ReadVarBytes(r)
+	if err != nil {
+		return errors.New("signedData deserialization failed.")
+	}
+	item.signedData = signedData
+
 	return nil
 }
 
