@@ -22,6 +22,10 @@ import (
 	"math"
 )
 
+const (
+	TransactionAgreementRatio = 0.667 //over 2/3 of arbitrators agree to unlock the redeem script
+)
+
 var SystemAssetId = getSystemAssetId()
 
 type OpCode byte
@@ -38,14 +42,22 @@ type MainChainImpl struct {
 }
 
 func createRedeemScript() ([]byte, error) {
-
-	//TODO get arbitrators keys [jzh]
-	arbitratosPK := []*crypto.PublicKey{}
-	redeemScript, err := tx.CreateMultiSignRedeemScript(51, arbitratosPK)
+	arbitratorCount := arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()
+	publicKeys := make([]*crypto.PublicKey, arbitratorCount)
+	for _, arStr := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
+		temp := &crypto.PublicKey{}
+		temp.FromString(arStr)
+		publicKeys = append(publicKeys, temp)
+	}
+	redeemScript, err := tx.CreateWithdrawRedeemScript(getTransactionAgreementArbitratorsCount(), publicKeys)
 	if err != nil {
 		return nil, err
 	}
 	return redeemScript, nil
+}
+
+func getTransactionAgreementArbitratorsCount() int {
+	return int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
 }
 
 func (mc *MainChainImpl) genereateProgramHash(key *crypto.PublicKey) *common.Uint168 {
@@ -66,10 +78,7 @@ func (mc *MainChainImpl) BroadcastWithdrawProposal(password []byte) error {
 	}
 	mc.unsolvedTransactions[transaction.Hash()] = transaction
 
-	currentArbitrator, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if err != nil {
-		return err
-	}
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if !currentArbitrator.IsOnDuty() {
 		return errors.New("Can not start a new proposal, you are not on duty.")
 	}
@@ -133,7 +142,7 @@ func (mc *MainChainImpl) ReceiveProposalFeedback(content []byte) error {
 		return err
 	}
 
-	if signedCount >= int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount())*0.667)) {
+	if signedCount >= getTransactionAgreementArbitratorsCount() {
 		delete(mc.unsolvedTransactions, txn.Hash())
 
 		content, err := mc.convertToTransactionContent(txn)

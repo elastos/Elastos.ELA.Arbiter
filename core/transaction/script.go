@@ -1,14 +1,14 @@
 package transaction
 
 import (
+	"bytes"
+	"crypto/sha256"
+	"errors"
 	"io"
 	"sort"
-	"bytes"
-	"errors"
-	"crypto/sha256"
 
-	"Elastos.ELA.Arbiter/crypto"
 	. "Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/crypto"
 
 	"golang.org/x/crypto/ripemd160"
 )
@@ -47,6 +47,14 @@ func CreateStandardRedeemScript(publicKey *crypto.PublicKey) ([]byte, error) {
 }
 
 func CreateMultiSignRedeemScript(M int, publicKeys []*crypto.PublicKey) ([]byte, error) {
+	return createMultiSignRedeemScriptInner(M, publicKeys, MULTISIG)
+}
+
+func CreateWithdrawRedeemScript(M int, publicKeys []*crypto.PublicKey) ([]byte, error) {
+	return createMultiSignRedeemScriptInner(M, publicKeys, CROSSCHAIN)
+}
+
+func createMultiSignRedeemScriptInner(M int, publicKeys []*crypto.PublicKey, scriptType byte) ([]byte, error) {
 	// Write M
 	opCode := OpCode(byte(PUSH1) + byte(M) - 1)
 	buf := new(bytes.Buffer)
@@ -69,7 +77,7 @@ func CreateMultiSignRedeemScript(M int, publicKeys []*crypto.PublicKey) ([]byte,
 	N := len(publicKeys)
 	opCode = OpCode(byte(PUSH1) + byte(N) - 1)
 	buf.WriteByte(byte(opCode))
-	buf.WriteByte(MULTISIG)
+	buf.WriteByte(scriptType)
 
 	return buf.Bytes(), nil
 }
