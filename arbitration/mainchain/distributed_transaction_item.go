@@ -104,10 +104,6 @@ func (item *DistributedTransactionItem) Deserialize(content []byte) error {
 	return nil
 }
 
-func (item *DistributedTransactionItem) Verify() error {
-	return nil
-}
-
 func (item *DistributedTransactionItem) createMultiSignRedeemScript(arbitrator Arbitrator) error {
 	signers := make([]*crypto.PublicKey, 2)
 	signers[0] = arbitrator.GetPublicKey()

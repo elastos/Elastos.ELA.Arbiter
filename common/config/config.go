@@ -20,14 +20,13 @@ var (
 type Configuration struct {
 	Version int `json:"Version"`
 
-	//arbitrator group
-	MemberCount  int               `json:"MemberCount"`
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
 
-	HttpJsonPort int   `json:"HttpJsonPort"`
-	PrintLevel   int   `json:"PrintLevel"`
-	MaxLogSize   int64 `json:"MaxLogSize"`
+	SyncInterval time.Duration `json:"SyncInterval"`
+	HttpJsonPort int           `json:"HttpJsonPort"`
+	PrintLevel   int           `json:"PrintLevel"`
+	MaxLogSize   int64         `json:"MaxLogSize"`
 
 	SidechainMoniterScanInterval time.Duration `json:"SidechainMoniterScanInterval"`
 }

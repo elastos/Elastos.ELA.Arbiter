@@ -1,11 +1,9 @@
 package main
 
 import (
-	"fmt"
-	"os"
 	"time"
 
-	"Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/arbitration/sidechain"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
@@ -13,7 +11,7 @@ import (
 	"Elastos.ELA.Arbiter/store"
 )
 
-func SetSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
+func SetSideChainAccountMonitor(arbitrator Arbitrator) {
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
 		log.Error("Side chain monitor setup error: ", err)
@@ -31,20 +29,9 @@ func SetSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 }
 
 func main() {
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 
-	fmt.Printf("Arbitrators count: %d \n", config.Parameters.MemberCount)
-
-	currentArbitrator, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if err != nil {
-		fmt.Println("[Error] " + err.Error())
-		os.Exit(1)
-	}
-
-	if !currentArbitrator.IsOnDuty() {
-		fmt.Println("[Error] Current arbitrator is not on duty!")
-		os.Exit(1)
-	}
-
+	go ArbitratorGroupSingleton.SyncLoop()
 	go SetSideChainAccountMonitor(currentArbitrator)
 	// Start Server
 	go httpjsonrpc.StartRPCServer()

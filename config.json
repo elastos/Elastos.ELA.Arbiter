@@ -1,7 +1,6 @@
 ﻿{
   "Configuration": {
     "Version": 0,
-    "MemberCount": 1,
     "PrintLevel": 1,
     "HttpJsonPort": 10010,
     "MainNode": {
@@ -28,6 +27,7 @@
         "DestroyAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB2"
       }
     ],
+    "SyncInterval": 10000,
     "SidechainMoniterScanInterval": 1000
   }
 }
