@@ -86,6 +86,14 @@ func (ar *ArbitratorImpl) ParseUserSideChainHash(txn *tx.Transaction) (map[commo
 	return nil, nil
 }
 
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(content []byte) error {
+	return nil
+}
+
+func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
+	return nil
+}
+
 func (ar *ArbitratorImpl) CreateDepositTransaction(target common.Uint168, merkleBlock msg.MerkleBlock, txn *tx.Transaction) (*TransactionInfo, error) {
 	return nil, nil
 }
