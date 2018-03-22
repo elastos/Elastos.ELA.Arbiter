@@ -1,12 +1,8 @@
 package base
 
-import (
-	. "Elastos.ELA.Arbiter/common"
-)
-
 type AccountListener interface {
 	GetAccountAddress() string
-	OnUTXOChanged(transactionHash Uint256) error
+	OnUTXOChanged(txinfo *TransactionInfo) error
 }
 
 type AccountMonitor interface {

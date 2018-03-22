@@ -3,15 +3,16 @@ package mainchain
 import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
+	tr "Elastos.ELA.Arbiter/common/typeTransformation"
 	"Elastos.ELA.Arbiter/core/asset"
 	pg "Elastos.ELA.Arbiter/core/program"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
 	"Elastos.ELA.Arbiter/crypto"
-	"SPVWallet/core"
+	spvCore "SPVWallet/core"
 	spvTx "SPVWallet/core/transaction"
-	"SPVWallet/p2p/msg"
-	"SPVWallet/wallet"
+	spvMsg "SPVWallet/p2p/msg"
+	spvWallet "SPVWallet/wallet"
 	"bytes"
 	"errors"
 	"fmt"
@@ -22,27 +23,26 @@ var SystemAssetId = getSystemAssetId()
 type OpCode byte
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error)
-	ParseUserSideChainHash(txn *tx.Transaction) (map[common.Uint168]common.Uint168, error)
-	OnTransactionConfirmed(merkleBlock msg.MerkleBlock, trans []spvTx.Transaction)
+	CreateWithdrawTransaction(withdrawBank string, target common.Uint168, txn *tx.Transaction) (*tx.Transaction, error)
+	ParseUserSideChainHash(txn *TransactionInfo) (map[common.Uint168]common.Uint168, error)
+	OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction)
 }
 
 type MainChainImpl struct {
 }
 
-func createRedeemScript() (string, error) {
+func createRedeemScript() ([]byte, error) {
 
 	//TODO get arbitrators keys [jzh]
 	//var arbitratorGroupImpl arbitrator.ArbitratorGroupImpl
 	//arbitrators := arbitratorGroupImpl.GetArbitrators()
 	//arbitratosPK := arbitrators.GetPK()
 	arbitratosPK := []*crypto.PublicKey{}
-	redeemScriptByte, err := tx.CreateMultiSignRedeemScript(51, arbitratosPK)
+	redeemScript, err := tx.CreateMultiSignRedeemScript(51, arbitratosPK)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	redeemScriptStr := common.BytesToHexString(redeemScriptByte)
-	return redeemScriptStr, nil
+	return redeemScript, nil
 }
 
 func getSystemAssetId() common.Uint256 {
@@ -66,43 +66,33 @@ func getSystemAssetId() common.Uint256 {
 	return systemToken.Hash()
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168) (*TransactionInfo, error) {
+func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, txn *tx.Transaction) (*tx.Transaction, error) {
 
-	tx3 := TransactionInfo{} //TODO get tx3 [jzh]
-	amount := tx3.Outputs[0].Value
+	amount := txn.Outputs[0].Value //TODO get amount [jzh]
 
 	fromAddress := withdrawBank
-	toAddress, err := target.ToAddress()
-	if err != nil {
-		return nil, errors.New("program hash  to address failed")
-	}
 
 	// Check if from address is valid
-	spender, err := core.Uint168FromAddress(fromAddress)
+	spender, err := spvCore.Uint168FromAddress(fromAddress)
 	if err != nil {
 		return nil, errors.New(fmt.Sprint("Invalid spender address: ", fromAddress, ", error: ", err))
 	}
 
 	// Create transaction outputs
-	var totalOutputAmount = core.Fixed64(0) // The total amount will be spend
-	var txOutputs []TxoutputInfo            // The outputs in transaction
+	var totalOutputAmount = spvCore.Fixed64(0) // The total amount will be spend
+	var txOutputs []*tx.TxOutput               // The outputs in transaction
 	//totalOutputAmount += *fee             // Add transaction fee
-
-	//receiver, err := common.Uint168FromAddress(toAddress)
-	//if err != nil {
-	//	return nil, errors.New(fmt.Sprint("Invalid receiver address: ", toAddress, ", error: ", err))
-	//}
-	txOutput := TxoutputInfo{
-		AssetID:    SystemAssetId.String(),
-		Address:    toAddress,
-		Value:      amount,
-		OutputLock: uint32(0),
+	txOutput := &tx.TxOutput{
+		AssetID:     SystemAssetId,
+		ProgramHash: target,
+		Value:       amount,
+		OutputLock:  uint32(0),
 	}
 
 	txOutputs = append(txOutputs, txOutput)
 
 	// Get spender's UTXOs
-	database, err := wallet.GetDatabase()
+	database, err := spvWallet.GetDatabase()
 	if err != nil {
 		return nil, errors.New("[Wallet], Get db failed")
 	}
@@ -115,28 +105,24 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	//availableUTXOs = SortUTXOs(availableUTXOs)    // Sort available UTXOs by value ASC
 
 	// Create transaction inputs
-	var txInputs []UTXOTxInputInfo // The inputs in transaction
+	var txInputs []*tx.UTXOTxInput // The inputs in transaction
 	for _, utxo := range availableUTXOs {
-
-		var input UTXOTxInputInfo
-		input.ReferTxID = "" //common.BytesToHexString(utxo.Op.TxID.ToArrayReverse())
-		input.ReferTxOutputIndex = utxo.Op.Index
-		input.Sequence = utxo.LockTime
-		input.Address = "" //prevOutput.ProgramHash.ToAddress()
-		input.Value = ""   //prevOutput.Value.String()
-
-		txInputs = append(txInputs, input)
+		txInputs = append(txInputs, tr.TxUTXOFromSpvUTXO(utxo))
 		if utxo.Value < totalOutputAmount {
 			totalOutputAmount -= utxo.Value
 		} else if utxo.Value == totalOutputAmount {
 			totalOutputAmount = 0
 			break
 		} else if utxo.Value > totalOutputAmount {
-			change := TxoutputInfo{
-				AssetID:    SystemAssetId.String(),
-				Value:      (utxo.Value - totalOutputAmount).String(),
-				OutputLock: uint32(0),
-				Address:    fromAddress,
+			programHash, err := common.Uint168FromAddress(fromAddress)
+			if err != nil {
+				return nil, err
+			}
+			change := &tx.TxOutput{
+				AssetID:     SystemAssetId,
+				Value:       common.Fixed64(utxo.Value - totalOutputAmount),
+				OutputLock:  uint32(0),
+				ProgramHash: *programHash,
 			}
 			txOutputs = append(txOutputs, change)
 			totalOutputAmount = 0
@@ -155,29 +141,23 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 	}
 
 	// Create payload
-	txPayload := TransferAssetInfo{}
+	txPayload := &payload.TransferAsset{}
 	// Create program
-	var program = ProgramInfo{redeemScript, ""}
+	program := &pg.Program{redeemScript, nil}
 
-	return &TransactionInfo{
+	return &tx.Transaction{
 		TxType:        tx.TransferAsset,
 		Payload:       txPayload,
-		Attributes:    []TxAttributeInfo{},
+		Attributes:    []*tx.TxAttribute{},
 		UTXOInputs:    txInputs,
-		BalanceInputs: []BalanceTxInputInfo{},
+		BalanceInputs: []*tx.BalanceTxInput{},
 		Outputs:       txOutputs,
-		Programs:      []ProgramInfo{program},
+		Programs:      []*pg.Program{program},
 		LockTime:      uint32(0), //wallet.CurrentHeight(QueryHeightCode) - 1,
 	}, nil
 }
 
 func (mc *MainChainImpl) ParseUserSideChainHash(txn *tx.Transaction) (map[common.Uint168]common.Uint168, error) {
-
-	//TODO get Transaction by hash [jzh]
-	//var txn tx.Transaction
-	//1.get Transaction by hash
-
-	//2.getPublicKey from Transaction
 	keyMap := make(map[common.Uint168]common.Uint168)
 	txAttribute := txn.Attributes
 	for _, txAttr := range txAttribute {
@@ -210,6 +190,6 @@ func (mc *MainChainImpl) ParseUserSideChainHash(txn *tx.Transaction) (map[common
 	return keyMap, nil
 }
 
-func (mc *MainChainImpl) OnTransactionConfirmed(merkleBlock msg.MerkleBlock, trans []spvTx.Transaction) {
+func (mc *MainChainImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
 
 }
