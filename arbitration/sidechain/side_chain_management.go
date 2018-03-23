@@ -45,11 +45,12 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 }
 
 func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
-	infoData, err := info.Serialize()
+	infoDataReader := new(bytes.Buffer)
+	err := info.Serialize(infoDataReader)
 	if err != nil {
 		return err
 	}
-	content := common.BytesToHexString(infoData)
+	content := common.BytesToHexString(infoDataReader.Bytes())
 
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), sc.currentConfig.Rpc)
 	if err != nil {
@@ -108,7 +109,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleB
 	txOutputs = append(txOutputs, txOutput)
 
 	// Create payload
-	txPayloadInfo := TransferAssetInfo{}
+	txPayloadInfo := new(IssueTokenInfo)
 
 	// Create attributes
 	spvInfo, err := merkleBlock.Serialize()

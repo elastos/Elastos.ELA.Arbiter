@@ -102,18 +102,19 @@ func (mc *MainChainImpl) generateWithdrawProposals(transaction *tx.Transaction) 
 		transactionItem.InitScript(currentArbitrator)
 		transactionItem.Sign(currentArbitrator)
 
-		content, err := transactionItem.Serialize()
+		buf := new(bytes.Buffer)
+		err = transactionItem.Serialize(buf)
 		if err != nil {
 			return nil, err
 		}
-		results[pkStr] = content
+		results[pkStr] = buf.Bytes()
 	}
 	return results, nil
 }
 
 func (mc *MainChainImpl) ReceiveProposalFeedback(content []byte) error {
 	transactionItem := DistributedTransactionItem{}
-	transactionItem.Deserialize(content)
+	transactionItem.Deserialize(bytes.NewReader(content))
 	newSign, err := transactionItem.ParseFeedbackSignedData()
 	if err != nil {
 		return err

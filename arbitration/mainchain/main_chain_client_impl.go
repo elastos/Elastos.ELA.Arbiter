@@ -4,6 +4,7 @@ import (
 	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
+	"bytes"
 	"errors"
 )
 
@@ -23,7 +24,7 @@ func (client *MainChainClientImpl) SignProposal(transactionHash Uint256) error {
 //todo called by p2p module
 func (client *MainChainClientImpl) OnReceivedProposal(content []byte) error {
 	transactionItem := &DistributedTransactionItem{}
-	if err := transactionItem.Deserialize(content); err != nil {
+	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
 		return err
 	}
 
@@ -58,12 +59,13 @@ func (client *MainChainClientImpl) Feedback(transactionHash Uint256) error {
 	}
 	item.TargetArbitratorProgramHash = programHash
 
-	message, err := item.Serialize()
+	messageReader := new(bytes.Buffer)
+	err = item.Serialize(messageReader)
 	if err != nil {
 		return errors.New("Send complaint failed.")
 	}
 
-	return client.sendBack(message)
+	return client.sendBack(messageReader.Bytes())
 }
 
 func (comp *MainChainClientImpl) sendBack(message []byte) error {
