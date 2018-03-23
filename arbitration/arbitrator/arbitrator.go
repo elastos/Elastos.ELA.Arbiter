@@ -128,7 +128,7 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock,
 				//TODO heropan how to complain error
 				continue
 			}
-			sideChain.GetNode().SendTransaction(txInfo)
+			sideChain.SendTransaction(txInfo)
 		}
 	}
 }

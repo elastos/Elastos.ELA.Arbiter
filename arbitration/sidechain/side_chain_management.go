@@ -4,23 +4,59 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/common/config"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
+	"Elastos.ELA.Arbiter/rpc"
 	spvMsg "SPVWallet/p2p/msg"
 	spvWallet "SPVWallet/wallet"
 	"bytes"
 	"errors"
+	"fmt"
 )
 
 type SideChainImpl struct {
 	AccountListener
+	currentConfig *config.SideNodeConfig
 }
 
 func (sc *SideChainImpl) GetKey() string {
 	return ""
 }
 
-func (sc *SideChainImpl) GetNode() SideChainNode {
+func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
+	if sc.currentConfig == nil {
+		for _, sideConfig := range config.Parameters.SideNodeList {
+			if sc.GetKey() == sideConfig.GenesisBlockAddress {
+				sc.currentConfig = sideConfig
+				break
+			}
+		}
+	}
+	return sc.currentConfig
+}
+
+func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
+	return rpc.GetCurrentHeight(sc.getCurrentConfig().Rpc)
+}
+
+func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
+	return rpc.GetBlockByHeight(height, sc.getCurrentConfig().Rpc)
+}
+
+func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
+	infoData, err := info.Serialize()
+	if err != nil {
+		return err
+	}
+	content := common.BytesToHexString(infoData)
+
+	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), sc.currentConfig.Rpc)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(result)
 	return nil
 }
 
