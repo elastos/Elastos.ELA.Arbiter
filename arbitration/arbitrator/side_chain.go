@@ -13,7 +13,6 @@ type SideChain interface {
 
 	GetKey() string
 	CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error)
-	IsTransactionValid(transactionHash common.Uint256) (bool, error)
 	ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error)
 }
 

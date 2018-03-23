@@ -136,10 +136,6 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleB
 	}, nil
 }
 
-func (sc *SideChainImpl) IsTransactionValid(transactionHash common.Uint256) (bool, error) {
-	return false, nil
-}
-
 func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error) {
 
 	var result []*WithdrawInfo
