@@ -9,6 +9,7 @@ import (
 	spvMsg "SPVWallet/p2p/msg"
 	spvWallet "SPVWallet/wallet"
 	"bytes"
+	"errors"
 )
 
 type SideChainImpl struct {
@@ -43,9 +44,10 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		if err != nil {
 			return err
 		}
-		if withdrawTransaction != nil {
-			//currentArbitrator.BroadcastWithdrawProposal([]byte{})
+		if withdrawTransaction == nil {
+			return errors.New("Created an empty withdraw transaction.")
 		}
+		currentArbitrator.BroadcastWithdrawProposal(withdrawTransaction)
 	}
 
 	return nil
