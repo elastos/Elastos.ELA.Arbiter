@@ -84,7 +84,7 @@ func (item *ComplainItemImpl) createRedeemScript() error {
 	return nil
 }
 
-func (item *ComplainItemImpl) SignItem(password []byte, arbitrator arbitrator.Arbitrator) error {
+func (item *ComplainItemImpl) SignItem(arbitrator arbitrator.Arbitrator) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
 	programHashes, err := item.getMultiSignSigners()
@@ -107,7 +107,7 @@ func (item *ComplainItemImpl) SignItem(password []byte, arbitrator arbitrator.Ar
 		return err
 	}
 
-	signedData, err := arbitrator.Sign(password, itemData)
+	signedData, err := arbitrator.Sign(itemData)
 	if err != nil {
 		return err
 	}

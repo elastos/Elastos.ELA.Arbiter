@@ -9,7 +9,7 @@ import (
 
 type ComplainSolvingNode interface {
 	OnReceived(message []byte) error
-	Sign(password []byte, transactionHash Uint256) error
+	Sign(transactionHash Uint256) error
 	Feedback(transactionHash Uint256) error
 }
 
@@ -56,10 +56,10 @@ func (comp *ComplainSolvingNodeImpl) sendBack(message []byte) error {
 	return nil
 }
 
-func (comp *ComplainSolvingNodeImpl) Sign(password []byte, transactionHash Uint256) error {
+func (comp *ComplainSolvingNodeImpl) Sign(transactionHash Uint256) error {
 	item, ok := comp.unsolvedComplains[transactionHash]
 	if !ok {
 		return errors.New("Can not find complaint.")
 	}
-	return item.SignItem(password, arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+	return item.SignItem(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }

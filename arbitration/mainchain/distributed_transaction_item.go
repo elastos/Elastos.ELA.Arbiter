@@ -29,7 +29,7 @@ func (item *DistributedTransactionItem) InitScript(arbitrator Arbitrator) error 
 	return nil
 }
 
-func (item *DistributedTransactionItem) Sign(password []byte, arbitrator Arbitrator) error {
+func (item *DistributedTransactionItem) Sign(arbitrator Arbitrator) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
 	var targetIndex = -1
@@ -59,7 +59,7 @@ func (item *DistributedTransactionItem) Sign(password []byte, arbitrator Arbitra
 		return err
 	}
 
-	newSign, err := arbitrator.Sign(password, buf.Bytes())
+	newSign, err := arbitrator.Sign(buf.Bytes())
 	if err != nil {
 		return err
 	}

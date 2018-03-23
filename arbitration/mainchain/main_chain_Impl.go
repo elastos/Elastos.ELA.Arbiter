@@ -72,7 +72,7 @@ func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte
 	return nil
 }
 
-func (mc *MainChainImpl) BroadcastWithdrawProposal(password []byte) error {
+func (mc *MainChainImpl) BroadcastWithdrawProposal() error {
 	//todo create withdraw transaction
 	var transaction *tx.Transaction
 
@@ -104,7 +104,7 @@ func (mc *MainChainImpl) BroadcastWithdrawProposal(password []byte) error {
 			TargetArbitratorProgramHash: programHash,
 		}
 		transactionItem.InitScript(currentArbitrator)
-		transactionItem.Sign(password, currentArbitrator)
+		transactionItem.Sign(currentArbitrator)
 
 		content, err := transactionItem.Serialize()
 		if err != nil {

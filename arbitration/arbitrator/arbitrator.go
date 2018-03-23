@@ -31,7 +31,7 @@ type Arbitrator interface {
 	GetArbitrationNet() net.ArbitrationNet
 	GetComplainSolving() ComplainSolving
 
-	Sign(password []byte, content []byte) ([]byte, error)
+	Sign(content []byte) ([]byte, error)
 
 	IsOnDuty() bool
 	GetArbitratorGroup() ArbitratorGroup
@@ -63,7 +63,7 @@ func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
 	return nil
 }
 
-func (ar *ArbitratorImpl) Sign(password []byte, content []byte) ([]byte, error) {
+func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 	return nil, nil
 }
 
