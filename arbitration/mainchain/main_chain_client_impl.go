@@ -10,13 +10,13 @@ type MainChainClientImpl struct {
 	unsolvedProposals map[Uint256]*DistributedTransactionItem
 }
 
-func (client *MainChainClientImpl) SignProposal(password []byte, transactionHash Uint256) error {
+func (client *MainChainClientImpl) SignProposal(transactionHash Uint256) error {
 	transactionItem, ok := client.unsolvedProposals[transactionHash]
 	if !ok {
 		return errors.New("Can not find proposal.")
 	}
 
-	return transactionItem.Sign(password, arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+	return transactionItem.Sign(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
 //todo called by p2p module
@@ -31,6 +31,14 @@ func (client *MainChainClientImpl) OnReceivedProposal(content []byte) error {
 	}
 
 	client.unsolvedProposals[transactionItem.RawTransaction.Hash()] = transactionItem
+
+	if err := client.SignProposal(transactionItem.RawTransaction.Hash()); err != nil {
+		return err
+	}
+
+	if err := client.Feedback(transactionItem.RawTransaction.Hash()); err != nil {
+		return err
+	}
 	return nil
 }
 

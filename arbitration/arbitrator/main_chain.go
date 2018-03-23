@@ -15,7 +15,7 @@ type MainChain interface {
 }
 
 type MainChainClient interface {
-	SignProposal(password []byte, uint256 common.Uint256) error
+	SignProposal(uint256 common.Uint256) error
 	OnReceivedProposal(content []byte) error
 	Feedback(transactionHash common.Uint256) error
 }
