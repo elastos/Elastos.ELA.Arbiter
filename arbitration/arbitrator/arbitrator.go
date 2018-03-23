@@ -27,7 +27,6 @@ type Arbitrator interface {
 	ComplainListener
 
 	GetPublicKey() *crypto.PublicKey
-	GetProgramHash() *common.Uint168
 	GetArbitrationNet() net.ArbitrationNet
 	GetComplainSolving() ComplainSolving
 
@@ -46,12 +45,6 @@ type ArbitratorImpl struct {
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
 	//todo get from spv service
 	//return ar.spvService.GetPublicKey()
-	return nil
-}
-
-func (ar *ArbitratorImpl) GetProgramHash() *common.Uint168 {
-	//todo get from spv service
-	//return ar.spvService.GetProgramHash()
 	return nil
 }
 

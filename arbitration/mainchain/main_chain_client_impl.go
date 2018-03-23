@@ -2,6 +2,7 @@ package mainchain
 
 import (
 	"Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 	"errors"
 )
@@ -50,7 +51,13 @@ func (client *MainChainClientImpl) Feedback(transactionHash Uint256) error {
 
 	ar := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
-	item.TargetArbitratorProgramHash = ar.GetProgramHash()
+
+	programHash, err := StandardAcccountPublicKeyToProgramHash(item.TargetArbitratorPublicKey)
+	if err != nil {
+		return err
+	}
+	item.TargetArbitratorProgramHash = programHash
+
 	message, err := item.Serialize()
 	if err != nil {
 		return errors.New("Send complaint failed.")
