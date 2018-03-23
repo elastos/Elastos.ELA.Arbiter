@@ -12,17 +12,9 @@ import (
 	"bytes"
 )
 
-type ArbitratorMain interface {
-	MainChain
-}
-
-type ArbitratorSide interface {
-	SideChainManager
-}
-
 type Arbitrator interface {
-	ArbitratorMain
-	ArbitratorSide
+	MainChain
+	SideChainManager
 	net.ArbitrationNetListener
 	ComplainListener
 
@@ -131,6 +123,10 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock,
 			sideChain.SendTransaction(txInfo)
 		}
 	}
+}
+
+func (ar *ArbitratorImpl) AddChain(key string, chain SideChain) {
+	ar.sideChains[key] = chain
 }
 
 func (ar *ArbitratorImpl) GetChain(key string) (SideChain, bool) {

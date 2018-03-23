@@ -17,11 +17,13 @@ import (
 
 type SideChainImpl struct {
 	AccountListener
+	key string
+
 	currentConfig *config.SideNodeConfig
 }
 
 func (sc *SideChainImpl) GetKey() string {
-	return ""
+	return sc.key
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
@@ -169,4 +171,17 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) (
 	}
 
 	return result, nil
+}
+
+func init() {
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
+
+	for _, sideConfig := range config.Parameters.SideNodeList {
+		side := &SideChainImpl{
+			key:           sideConfig.GenesisBlockAddress,
+			currentConfig: sideConfig,
+		}
+
+		currentArbitrator.AddChain(sideConfig.GenesisBlockAddress, side)
+	}
 }
