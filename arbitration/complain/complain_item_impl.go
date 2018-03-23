@@ -4,6 +4,7 @@ import (
 	"math"
 
 	"Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
@@ -91,7 +92,11 @@ func (item *ComplainItemImpl) SignItem(arbitrator arbitrator.Arbitrator) error {
 	if err != nil {
 		return err
 	}
-	userProgramHash := arbitrator.GetProgramHash()
+	userProgramHash, err := StandardAcccountPublicKeyToProgramHash(arbitrator.GetPublicKey())
+	if err != nil {
+		return err
+	}
+
 	for i, programHash := range programHashes {
 		if *userProgramHash == *programHash {
 			signerIndex = i

@@ -53,14 +53,6 @@ func getTransactionAgreementArbitratorsCount() int {
 	return int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
 }
 
-func (mc *MainChainImpl) genereateProgramHash(key *crypto.PublicKey) (*common.Uint168, error) {
-	targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
-	if err != nil {
-		return nil, err
-	}
-	return targetProgramHash, nil
-}
-
 func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte) error {
 	//todo call p2p module to broadcast to other arbitrators
 	return nil
@@ -85,7 +77,7 @@ func (mc *MainChainImpl) BroadcastWithdrawProposal(transaction *tx.Transaction) 
 	}
 
 	for pkStr, pk := range publicKeys {
-		programHash, err := mc.genereateProgramHash(pk)
+		programHash, err := StandardAcccountPublicKeyToProgramHash(pk)
 		if err != nil {
 			return err
 		}
