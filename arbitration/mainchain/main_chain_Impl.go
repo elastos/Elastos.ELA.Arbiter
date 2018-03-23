@@ -29,12 +29,6 @@ var SystemAssetId = getSystemAssetId()
 
 type OpCode byte
 
-type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*tx.Transaction, error)
-	ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error)
-	OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction)
-}
-
 type MainChainImpl struct {
 	unsolvedTransactions map[common.Uint256]*tx.Transaction
 	finishedTransactions map[common.Uint256]bool
@@ -72,10 +66,7 @@ func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte
 	return nil
 }
 
-func (mc *MainChainImpl) BroadcastWithdrawProposal() error {
-	//todo create withdraw transaction
-	var transaction *tx.Transaction
-
+func (mc *MainChainImpl) BroadcastWithdrawProposal(transaction *tx.Transaction) error {
 	if _, ok := mc.unsolvedTransactions[transaction.Hash()]; ok {
 		return errors.New("Transaction already in process.")
 	}

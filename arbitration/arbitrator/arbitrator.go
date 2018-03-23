@@ -81,7 +81,7 @@ func (ar *ArbitratorImpl) getSPVService() spvInterface.SPVService {
 	return ar.spvService
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*TransactionInfo, error) {
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*tx.Transaction, error) {
 	return nil, nil
 }
 
@@ -89,7 +89,7 @@ func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) (
 	return nil, nil
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(content []byte) error {
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *tx.Transaction) error {
 	return nil
 }
 
