@@ -2,7 +2,6 @@ package arbitrator
 
 import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
-	"Elastos.ELA.Arbiter/arbitration/net"
 	"Elastos.ELA.Arbiter/common"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
@@ -15,11 +14,8 @@ import (
 type Arbitrator interface {
 	MainChain
 	SideChainManager
-	net.ArbitrationNetListener
-	ComplainListener
 
 	GetPublicKey() *crypto.PublicKey
-	GetArbitrationNet() net.ArbitrationNet
 	GetComplainSolving() ComplainSolving
 
 	Sign(content []byte) ([]byte, error)
@@ -37,10 +33,6 @@ type ArbitratorImpl struct {
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
 	//todo get from spv service
 	//return ar.spvService.GetPublicKey()
-	return nil
-}
-
-func (ar *ArbitratorImpl) GetArbitrationNet() net.ArbitrationNet {
 	return nil
 }
 
@@ -80,18 +72,6 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *tx.Transaction) error {
 
 func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return nil
-}
-
-func (ar *ArbitratorImpl) CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error) {
-	return nil, nil
-}
-
-func (ar *ArbitratorImpl) IsTransactionValid(transactionHash common.Uint256) (bool, error) {
-	return false, nil
-}
-
-func (ar *ArbitratorImpl) ParseUserWithdrawTransactionInfoParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error) {
-	return nil, nil
 }
 
 func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
@@ -140,12 +120,4 @@ func (ar *ArbitratorImpl) GetAllChains() []SideChain {
 		chains = append(chains, v)
 	}
 	return chains
-}
-
-func (ar *ArbitratorImpl) OnReceived(buf []byte, arbitratorIndex int) {
-
-}
-
-func (ar *ArbitratorImpl) OnComplainFeedback([]byte) {
-
 }

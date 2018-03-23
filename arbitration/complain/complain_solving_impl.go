@@ -21,7 +21,6 @@ var (
 
 type ComplainSolvingImpl struct {
 	mux               sync.Mutex
-	listeners         []ComplainListener
 	complains         map[common.Uint256]*ComplainItemImpl
 	finishedComplains map[common.Uint256]bool
 }
@@ -77,10 +76,6 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 	} else {
 		return Solving
 	}
-}
-
-func (comp *ComplainSolvingImpl) AddListener(listener ComplainListener) {
-	comp.listeners = append(comp.listeners, listener)
 }
 
 //todo called by p2p module feedback callback
