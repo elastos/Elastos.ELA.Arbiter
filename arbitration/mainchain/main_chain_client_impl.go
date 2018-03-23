@@ -58,6 +58,7 @@ func (client *MainChainClientImpl) Feedback(transactionHash Uint256) error {
 		return err
 	}
 	item.TargetArbitratorProgramHash = programHash
+
 	messageReader := new(bytes.Buffer)
 	err = item.Serialize(messageReader)
 	if err != nil {

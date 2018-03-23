@@ -59,14 +59,26 @@ func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte
 }
 
 func (mc *MainChainImpl) BroadcastWithdrawProposal(transaction *tx.Transaction) error {
+	proposals, err := mc.generateWithdrawProposals(transaction)
+	if err != nil {
+		return err
+	}
+
+	for pkStr, content := range proposals {
+		mc.sendToArbitrator(pkStr, content)
+	}
+	return nil
+}
+
+func (mc *MainChainImpl) generateWithdrawProposals(transaction *tx.Transaction) (map[string][]byte, error) {
 	if _, ok := mc.unsolvedTransactions[transaction.Hash()]; ok {
-		return errors.New("Transaction already in process.")
+		return nil, errors.New("Transaction already in process.")
 	}
 	mc.unsolvedTransactions[transaction.Hash()] = transaction
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if !currentArbitrator.IsOnDuty() {
-		return errors.New("Can not start a new proposal, you are not on duty.")
+		return nil, errors.New("Can not start a new proposal, you are not on duty.")
 	}
 
 	publicKeys := make(map[string]*crypto.PublicKey, arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount())
@@ -76,10 +88,11 @@ func (mc *MainChainImpl) BroadcastWithdrawProposal(transaction *tx.Transaction) 
 		publicKeys[arStr] = temp
 	}
 
+	results := make(map[string][]byte, len(publicKeys))
 	for pkStr, pk := range publicKeys {
 		programHash, err := StandardAcccountPublicKeyToProgramHash(pk)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		transactionItem := &DistributedTransactionItem{
 			RawTransaction:              transaction,
@@ -92,12 +105,11 @@ func (mc *MainChainImpl) BroadcastWithdrawProposal(transaction *tx.Transaction) 
 		buf := new(bytes.Buffer)
 		err = transactionItem.Serialize(buf)
 		if err != nil {
-			return err
+			return nil, err
 		}
-		mc.sendToArbitrator(pkStr, buf.Bytes())
+		results[pkStr] = buf.Bytes()
 	}
-
-	return nil
+	return results, nil
 }
 
 func (mc *MainChainImpl) ReceiveProposalFeedback(content []byte) error {

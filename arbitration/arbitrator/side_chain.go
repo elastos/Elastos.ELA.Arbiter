@@ -9,9 +9,9 @@ import (
 
 type SideChain interface {
 	AccountListener
+	SideChainNode
 
 	GetKey() string
-	GetNode() SideChainNode
 	CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error)
 	IsTransactionValid(transactionHash common.Uint256) (bool, error)
 	ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error)
