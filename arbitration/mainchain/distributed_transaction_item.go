@@ -9,6 +9,7 @@ import (
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	"bytes"
+	"io"
 )
 
 type DistributedTransactionItem struct {
@@ -97,32 +98,28 @@ func (item *DistributedTransactionItem) ParseFeedbackSignedData() ([]byte, error
 	return sign, nil
 }
 
-func (item *DistributedTransactionItem) Serialize() ([]byte, error) {
-	buf := new(bytes.Buffer)
-
+func (item *DistributedTransactionItem) Serialize(w io.Writer) error {
 	publickeyBytes, _ := item.TargetArbitratorPublicKey.EncodePoint(true)
-	if err := serialization.WriteVarBytes(buf, publickeyBytes); err != nil {
-		return nil, errors.New("TargetArbitratorPublicKey serialization failed.")
+	if err := serialization.WriteVarBytes(w, publickeyBytes); err != nil {
+		return errors.New("TargetArbitratorPublicKey serialization failed.")
 	}
-	if _, err := item.TargetArbitratorProgramHash.Serialize(buf); err != nil {
-		return nil, errors.New("TargetArbitratorProgramHash serialization failed.")
+	if _, err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
+		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
-	if err := item.RawTransaction.Serialize(buf); err != nil {
-		return nil, err
+	if err := item.RawTransaction.Serialize(w); err != nil {
+		return err
 	}
-	if err := serialization.WriteVarBytes(buf, item.redeemScript); err != nil {
-		return nil, errors.New("redeemScript serialization failed.")
+	if err := serialization.WriteVarBytes(w, item.redeemScript); err != nil {
+		return errors.New("redeemScript serialization failed.")
 	}
-	if err := serialization.WriteVarBytes(buf, item.signedData); err != nil {
-		return nil, errors.New("signedData serialization failed.")
+	if err := serialization.WriteVarBytes(w, item.signedData); err != nil {
+		return errors.New("signedData serialization failed.")
 	}
 
-	return buf.Bytes(), nil
+	return nil
 }
 
-func (item *DistributedTransactionItem) Deserialize(content []byte) error {
-	r := bytes.NewReader(content)
-
+func (item *DistributedTransactionItem) Deserialize(r io.Reader) error {
 	publickeyBytes, err := serialization.ReadVarBytes(r)
 	if err != nil {
 		return errors.New("TargetArbitratorPublicKey deserialization failed.")

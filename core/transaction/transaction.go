@@ -1,17 +1,17 @@
 package transaction
 
 import (
-	"io"
-	"fmt"
 	"bytes"
-	"errors"
 	"crypto/sha256"
+	"errors"
+	"fmt"
+	"io"
 
-	"Elastos.ELA.Arbiter/crypto"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/serialization"
 	"Elastos.ELA.Arbiter/core/program"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
+	"Elastos.ELA.Arbiter/crypto"
 )
 
 //for different transaction types with different payload format
@@ -45,6 +45,8 @@ func (self TransactionType) Name() string {
 		return "Record"
 	case Deploy:
 		return "Deploy"
+	case IssueToken:
+		return "IssueToken"
 	default:
 		return "Unknown"
 	}
@@ -402,7 +404,7 @@ func (tx *Transaction) GetTransactionType() (byte, error) {
 	return code[len(code)-1], nil
 }
 
-func (tx *Transaction) getM() (int) {
+func (tx *Transaction) getM() int {
 	return int(tx.Programs[0].Code[0] - PUSH1 + 1)
 }
 
@@ -453,7 +455,7 @@ func (tx *Transaction) AppendSignature(signerIndex int, signature []byte) error 
 		tx.SerializeUnsigned(buf)
 		for i := 0; i < len(param); i += SignatureScriptLength {
 			// Remove length byte
-			sign := param[i:i+SignatureScriptLength][1:]
+			sign := param[i : i+SignatureScriptLength][1:]
 			publicKey := publicKeys[signerIndex][1:]
 			pubKey, err := crypto.DecodePoint(publicKey)
 			if err != nil {

@@ -72,7 +72,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleB
 	txOutputs = append(txOutputs, txOutput)
 
 	// Create payload
-	txPayloadInfo := TransferAssetInfo{}
+	txPayloadInfo := new(IssueTokenInfo)
 
 	// Create attributes
 	spvInfo, err := merkleBlock.Serialize()
