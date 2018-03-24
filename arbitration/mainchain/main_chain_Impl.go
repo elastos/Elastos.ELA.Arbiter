@@ -351,3 +351,9 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([
 func (mc *MainChainImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
 
 }
+
+func init() {
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().(*arbitrator.ArbitratorImpl)
+	currentArbitrator.SetMainChain(&MainChainImpl{})
+	currentArbitrator.SetMainChainClient(&MainChainClientImpl{})
+}

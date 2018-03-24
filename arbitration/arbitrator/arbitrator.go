@@ -13,6 +13,7 @@ import (
 
 type Arbitrator interface {
 	MainChain
+	MainChainClient
 	SideChainManager
 
 	GetPublicKey() *crypto.PublicKey
@@ -26,8 +27,10 @@ type Arbitrator interface {
 }
 
 type ArbitratorImpl struct {
-	sideChains map[string]SideChain
-	spvService spvInterface.SPVService
+	mainChainImpl        MainChain
+	mainChainClientImpl  MainChainClient
+	sideChainManagerImpl SideChainManager
+	spvService           spvInterface.SPVService
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
@@ -59,19 +62,19 @@ func (ar *ArbitratorImpl) getSPVService() spvInterface.SPVService {
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*tx.Transaction, error) {
-	return nil, nil
+	return ar.mainChainImpl.CreateWithdrawTransaction(withdrawBank, target, amount)
 }
 
 func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
-	return nil, nil
+	return ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
 }
 
 func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *tx.Transaction) error {
-	return nil
+	return ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 }
 
 func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
-	return nil
+	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
 func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
@@ -105,19 +108,34 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock,
 	}
 }
 
-func (ar *ArbitratorImpl) AddChain(key string, chain SideChain) {
-	ar.sideChains[key] = chain
+func (ar *ArbitratorImpl) SignProposal(uint256 common.Uint256) error {
+	return ar.mainChainClientImpl.SignProposal(uint256)
+}
+
+func (ar *ArbitratorImpl) OnReceivedProposal(content []byte) error {
+	return ar.mainChainClientImpl.OnReceivedProposal(content)
+}
+
+func (ar *ArbitratorImpl) Feedback(transactionHash common.Uint256) error {
+	return ar.mainChainClientImpl.Feedback(transactionHash)
 }
 
 func (ar *ArbitratorImpl) GetChain(key string) (SideChain, bool) {
-	elem, ok := ar.sideChains[key]
-	return elem, ok
+	return ar.sideChainManagerImpl.GetChain(key)
 }
 
 func (ar *ArbitratorImpl) GetAllChains() []SideChain {
-	var chains []SideChain
-	for _, v := range ar.sideChains {
-		chains = append(chains, v)
-	}
-	return chains
+	return ar.sideChainManagerImpl.GetAllChains()
+}
+
+func (ar *ArbitratorImpl) SetMainChain(chain MainChain) {
+	ar.mainChainImpl = chain
+}
+
+func (ar *ArbitratorImpl) SetMainChainClient(client MainChainClient) {
+	ar.mainChainClientImpl = client
+}
+
+func (ar *ArbitratorImpl) SetSideChainManager(manager SideChainManager) {
+	ar.sideChainManagerImpl = manager
 }
