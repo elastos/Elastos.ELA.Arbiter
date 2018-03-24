@@ -30,6 +30,8 @@ func (self TransactionAttributeUsage) Name() string {
 		return "DescriptionUrl"
 	case Description:
 		return "Description"
+	case TargetPublicKey:
+		return "TargetPublicKey"
 	case SpvInfo:
 		return "SpvInfomation"
 	default:
@@ -40,7 +42,7 @@ func (self TransactionAttributeUsage) Name() string {
 func IsValidAttributeType(usage TransactionAttributeUsage) bool {
 	return usage == Nonce || usage == Script ||
 		usage == DescriptionUrl || usage == Description ||
-		usage == SpvInfo
+		usage == TargetPublicKey || usage == SpvInfo
 }
 
 type TxAttribute struct {
