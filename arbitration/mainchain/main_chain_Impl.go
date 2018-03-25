@@ -1,7 +1,7 @@
 package mainchain
 
 import (
-	"Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
@@ -35,9 +35,9 @@ type MainChainImpl struct {
 }
 
 func createRedeemScript() ([]byte, error) {
-	arbitratorCount := arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()
+	arbitratorCount := ArbitratorGroupSingleton.GetArbitratorsCount()
 	publicKeys := make([]*crypto.PublicKey, arbitratorCount)
-	for _, arStr := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
+	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
 		temp := &crypto.PublicKey{}
 		temp.FromString(arStr)
 		publicKeys = append(publicKeys, temp)
@@ -50,7 +50,7 @@ func createRedeemScript() ([]byte, error) {
 }
 
 func getTransactionAgreementArbitratorsCount() int {
-	return int(math.Ceil(float64(arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
+	return int(math.Ceil(float64(ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
 }
 
 func (mc *MainChainImpl) sendToArbitrator(otherArbitrator string, content []byte) error {
@@ -76,13 +76,13 @@ func (mc *MainChainImpl) generateWithdrawProposals(transaction *tx.Transaction) 
 	}
 	mc.unsolvedTransactions[transaction.Hash()] = transaction
 
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if !currentArbitrator.IsOnDuty() {
 		return nil, errors.New("Can not start a new proposal, you are not on duty.")
 	}
 
-	publicKeys := make(map[string]*crypto.PublicKey, arbitrator.ArbitratorGroupSingleton.GetArbitratorsCount())
-	for _, arStr := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
+	publicKeys := make(map[string]*crypto.PublicKey, ArbitratorGroupSingleton.GetArbitratorsCount())
+	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
 		temp := &crypto.PublicKey{}
 		temp.FromString(arStr)
 		publicKeys[arStr] = temp
@@ -94,8 +94,8 @@ func (mc *MainChainImpl) generateWithdrawProposals(transaction *tx.Transaction) 
 		if err != nil {
 			return nil, err
 		}
-		transactionItem := &DistributedTransactionItem{
-			RawTransaction:              transaction,
+		transactionItem := &DistributedItem{
+			ItemContent:                 transaction,
 			TargetArbitratorPublicKey:   pk,
 			TargetArbitratorProgramHash: programHash,
 		}
@@ -113,14 +113,18 @@ func (mc *MainChainImpl) generateWithdrawProposals(transaction *tx.Transaction) 
 }
 
 func (mc *MainChainImpl) ReceiveProposalFeedback(content []byte) error {
-	transactionItem := DistributedTransactionItem{}
+	transactionItem := DistributedItem{}
 	transactionItem.Deserialize(bytes.NewReader(content))
 	newSign, err := transactionItem.ParseFeedbackSignedData()
 	if err != nil {
 		return err
 	}
 
-	txn, ok := mc.unsolvedTransactions[transactionItem.RawTransaction.Hash()]
+	trans, ok := transactionItem.ItemContent.(*tx.Transaction)
+	if !ok {
+		return errors.New("Unknown transaction content.")
+	}
+	txn, ok := mc.unsolvedTransactions[trans.Hash()]
 	if !ok {
 		errors.New("Can not find transaction.")
 	}
@@ -353,7 +357,7 @@ func (mc *MainChainImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.
 }
 
 func init() {
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().(*arbitrator.ArbitratorImpl)
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
 	currentArbitrator.SetMainChain(&MainChainImpl{})
 	currentArbitrator.SetMainChainClient(&MainChainClientImpl{})
 }

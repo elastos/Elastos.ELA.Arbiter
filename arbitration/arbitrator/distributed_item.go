@@ -1,9 +1,8 @@
-package mainchain
+package arbitrator
 
 import (
 	"errors"
 
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/serialization"
 	. "Elastos.ELA.Arbiter/core/transaction"
@@ -12,16 +11,21 @@ import (
 	"io"
 )
 
-type DistributedTransactionItem struct {
+type DistributedItemContent interface {
+	Serialize(w io.Writer) error
+	Deserialize(r io.Reader) error
+}
+
+type DistributedItem struct {
 	TargetArbitratorPublicKey   *crypto.PublicKey
 	TargetArbitratorProgramHash *Uint168
-	RawTransaction              *Transaction
+	ItemContent                 DistributedItemContent
 
 	redeemScript []byte
 	signedData   []byte
 }
 
-func (item *DistributedTransactionItem) InitScript(arbitrator Arbitrator) error {
+func (item *DistributedItem) InitScript(arbitrator Arbitrator) error {
 	err := item.createMultiSignRedeemScript(arbitrator)
 	if err != nil {
 		return err
@@ -30,7 +34,7 @@ func (item *DistributedTransactionItem) InitScript(arbitrator Arbitrator) error 
 	return nil
 }
 
-func (item *DistributedTransactionItem) Sign(arbitrator Arbitrator) error {
+func (item *DistributedItem) Sign(arbitrator Arbitrator) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
 	var targetIndex = -1
@@ -42,7 +46,14 @@ func (item *DistributedTransactionItem) Sign(arbitrator Arbitrator) error {
 		return errors.New("Invalid multi sign signer count.")
 	}
 
-	userProgramHash := arbitrator.GetProgramHash()
+	userProgramBytes, err := CreateStandardRedeemScript(arbitrator.GetPublicKey())
+	if err != nil {
+		return err
+	}
+	userProgramHash, err := Uint168FromBytes(userProgramBytes)
+	if err != nil {
+		return err
+	}
 	for i, programHash := range programHashes {
 		if *userProgramHash == *programHash {
 			signerIndex = i
@@ -55,7 +66,7 @@ func (item *DistributedTransactionItem) Sign(arbitrator Arbitrator) error {
 	}
 	// Sign transaction
 	buf := new(bytes.Buffer)
-	err = item.RawTransaction.SerializeUnsigned(buf)
+	err = item.ItemContent.Serialize(buf)
 	if err != nil {
 		return err
 	}
@@ -73,11 +84,11 @@ func (item *DistributedTransactionItem) Sign(arbitrator Arbitrator) error {
 	return nil
 }
 
-func (item *DistributedTransactionItem) GetSignedData() []byte {
+func (item *DistributedItem) GetSignedData() []byte {
 	return item.signedData
 }
 
-func (item *DistributedTransactionItem) ParseFeedbackSignedData() ([]byte, error) {
+func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 	if len(item.signedData) != SignatureScriptLength*2 {
 		return nil, errors.New("Invalid sign data.")
 	}
@@ -85,7 +96,7 @@ func (item *DistributedTransactionItem) ParseFeedbackSignedData() ([]byte, error
 	sign := item.signedData[SignatureScriptLength:][1:]
 
 	buf := new(bytes.Buffer)
-	err := item.RawTransaction.SerializeUnsigned(buf)
+	err := item.ItemContent.Serialize(buf)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +109,7 @@ func (item *DistributedTransactionItem) ParseFeedbackSignedData() ([]byte, error
 	return sign, nil
 }
 
-func (item *DistributedTransactionItem) Serialize(w io.Writer) error {
+func (item *DistributedItem) Serialize(w io.Writer) error {
 	publickeyBytes, _ := item.TargetArbitratorPublicKey.EncodePoint(true)
 	if err := serialization.WriteVarBytes(w, publickeyBytes); err != nil {
 		return errors.New("TargetArbitratorPublicKey serialization failed.")
@@ -106,7 +117,7 @@ func (item *DistributedTransactionItem) Serialize(w io.Writer) error {
 	if _, err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
 		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
-	if err := item.RawTransaction.Serialize(w); err != nil {
+	if err := item.ItemContent.Serialize(w); err != nil {
 		return err
 	}
 	if err := serialization.WriteVarBytes(w, item.redeemScript); err != nil {
@@ -119,7 +130,7 @@ func (item *DistributedTransactionItem) Serialize(w io.Writer) error {
 	return nil
 }
 
-func (item *DistributedTransactionItem) Deserialize(r io.Reader) error {
+func (item *DistributedItem) Deserialize(r io.Reader) error {
 	publickeyBytes, err := serialization.ReadVarBytes(r)
 	if err != nil {
 		return errors.New("TargetArbitratorPublicKey deserialization failed.")
@@ -131,7 +142,7 @@ func (item *DistributedTransactionItem) Deserialize(r io.Reader) error {
 		return errors.New("TargetArbitratorProgramHash deserialization failed.")
 	}
 
-	if err = item.RawTransaction.Deserialize(r); err != nil {
+	if err = item.ItemContent.Deserialize(r); err != nil {
 		return errors.New("RawTransaction deserialization failed.")
 	}
 
@@ -150,7 +161,7 @@ func (item *DistributedTransactionItem) Deserialize(r io.Reader) error {
 	return nil
 }
 
-func (item *DistributedTransactionItem) createMultiSignRedeemScript(arbitrator Arbitrator) error {
+func (item *DistributedItem) createMultiSignRedeemScript(arbitrator Arbitrator) error {
 	signers := make([]*crypto.PublicKey, 2)
 	signers[0] = arbitrator.GetPublicKey()
 	signers[1] = item.TargetArbitratorPublicKey
@@ -164,7 +175,7 @@ func (item *DistributedTransactionItem) createMultiSignRedeemScript(arbitrator A
 	return nil
 }
 
-func (item *DistributedTransactionItem) getMultiSignSigners() ([]*Uint168, error) {
+func (item *DistributedItem) getMultiSignSigners() ([]*Uint168, error) {
 	scripts, err := item.getMultiSignPublicKeys()
 	if err != nil {
 		return nil, err
@@ -180,7 +191,7 @@ func (item *DistributedTransactionItem) getMultiSignSigners() ([]*Uint168, error
 	return signers, nil
 }
 
-func (item *DistributedTransactionItem) getMultiSignPublicKeys() ([][]byte, error) {
+func (item *DistributedItem) getMultiSignPublicKeys() ([][]byte, error) {
 	if len(item.redeemScript) < MinMultiSignCodeLength || item.redeemScript[len(item.redeemScript)-1] != MULTISIG {
 		return nil, errors.New("not a valid multi sign transaction item.redeemScript, length not enough")
 	}
@@ -205,7 +216,7 @@ func (item *DistributedTransactionItem) getMultiSignPublicKeys() ([][]byte, erro
 	return publicKeys, nil
 }
 
-func (item *DistributedTransactionItem) appendSignature(signerIndex int, signature []byte, isFeedback bool) error {
+func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool) error {
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
 	newSign = append(newSign, signature...)
@@ -227,7 +238,7 @@ func (item *DistributedTransactionItem) appendSignature(signerIndex int, signatu
 		currentArbitratorPk := item.TargetArbitratorPublicKey
 
 		buf := new(bytes.Buffer)
-		err := item.RawTransaction.SerializeUnsigned(buf)
+		err := item.ItemContent.Serialize(buf)
 		if err != nil {
 			return err
 		}

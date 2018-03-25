@@ -1,15 +1,16 @@
 package mainchain
 
 import (
-	"Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
+	tx "Elastos.ELA.Arbiter/core/transaction"
 	"bytes"
 	"errors"
 )
 
 type MainChainClientImpl struct {
-	unsolvedProposals map[Uint256]*DistributedTransactionItem
+	unsolvedProposals map[Uint256]*DistributedItem
 }
 
 func (client *MainChainClientImpl) SignProposal(transactionHash Uint256) error {
@@ -18,27 +19,31 @@ func (client *MainChainClientImpl) SignProposal(transactionHash Uint256) error {
 		return errors.New("Can not find proposal.")
 	}
 
-	return transactionItem.Sign(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+	return transactionItem.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
 //todo called by p2p module
 func (client *MainChainClientImpl) OnReceivedProposal(content []byte) error {
-	transactionItem := &DistributedTransactionItem{}
+	transactionItem := &DistributedItem{}
 	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
 		return err
 	}
 
-	if _, ok := client.unsolvedProposals[transactionItem.RawTransaction.Hash()]; ok {
+	trans, ok := transactionItem.ItemContent.(*tx.Transaction)
+	if !ok {
+		return errors.New("Unknown transaction content.")
+	}
+	if _, ok := client.unsolvedProposals[trans.Hash()]; ok {
 		return errors.New("Proposal already exit.")
 	}
 
-	client.unsolvedProposals[transactionItem.RawTransaction.Hash()] = transactionItem
+	client.unsolvedProposals[trans.Hash()] = transactionItem
 
-	if err := client.SignProposal(transactionItem.RawTransaction.Hash()); err != nil {
+	if err := client.SignProposal(trans.Hash()); err != nil {
 		return err
 	}
 
-	if err := client.Feedback(transactionItem.RawTransaction.Hash()); err != nil {
+	if err := client.Feedback(trans.Hash()); err != nil {
 		return err
 	}
 	return nil
@@ -50,7 +55,7 @@ func (client *MainChainClientImpl) Feedback(transactionHash Uint256) error {
 		return errors.New("Can not find proposal.")
 	}
 
-	ar := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	ar := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
 
 	programHash, err := StandardAcccountPublicKeyToProgramHash(item.TargetArbitratorPublicKey)
