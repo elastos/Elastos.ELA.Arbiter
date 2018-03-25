@@ -1,9 +1,11 @@
 package complain
 
 import (
+	"bytes"
 	"errors"
 
-	"Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 )
 
@@ -14,26 +16,36 @@ type ComplainSolvingNode interface {
 }
 
 type ComplainSolvingNodeImpl struct {
-	unsolvedComplains map[Uint256]*ComplainItemImpl
+	unsolvedComplains map[Uint256]*DistributedItem
 }
 
 //todo call by p2p module
 func (comp *ComplainSolvingNodeImpl) OnReceived(message []byte) error {
-	var item ComplainItemImpl
-	if err := item.Deserialize(message); err != nil {
+	complainItem := &DistributedItem{}
+	if err := complainItem.Deserialize(bytes.NewReader(message)); err != nil {
 		return err
 	}
 
-	_, ok := comp.unsolvedComplains[item.GetTransactionHash()]
-	if ok {
-		return errors.New("Complaint alread exist.")
+	complain, ok := complainItem.ItemContent.(*ComplainItemImpl)
+	if !ok {
+		return errors.New("Unknown complain content.")
+	}
+	if _, ok := comp.unsolvedComplains[complain.TransactionHash]; ok {
+		return errors.New("Complaint already exit.")
+	}
+	if err := complain.Verify(); err != nil {
+		return err
 	}
 
-	if !item.Verify() {
-		return errors.New("Invalid complaint.")
+	comp.unsolvedComplains[complain.TransactionHash] = complainItem
+
+	if err := comp.Sign(complain.TransactionHash); err != nil {
+		return err
 	}
 
-	comp.unsolvedComplains[item.GetTransactionHash()] = &item
+	if err := comp.Feedback(complain.TransactionHash); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -43,17 +55,22 @@ func (comp *ComplainSolvingNodeImpl) Feedback(transactionHash Uint256) error {
 		return errors.New("Can not find complaint.")
 	}
 
-	message, err := item.Serialize()
+	ar := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	item.TargetArbitratorPublicKey = ar.GetPublicKey()
+
+	programHash, err := StandardAcccountPublicKeyToProgramHash(item.TargetArbitratorPublicKey)
+	if err != nil {
+		return err
+	}
+	item.TargetArbitratorProgramHash = programHash
+
+	messageReader := new(bytes.Buffer)
+	err = item.Serialize(messageReader)
 	if err != nil {
 		return errors.New("Send complaint failed.")
 	}
 
-	return comp.sendBack(message)
-}
-
-func (comp *ComplainSolvingNodeImpl) sendBack(message []byte) error {
-	//todo send feedback by p2p module
-	return nil
+	return comp.sendBack(messageReader.Bytes())
 }
 
 func (comp *ComplainSolvingNodeImpl) Sign(transactionHash Uint256) error {
@@ -61,5 +78,10 @@ func (comp *ComplainSolvingNodeImpl) Sign(transactionHash Uint256) error {
 	if !ok {
 		return errors.New("Can not find complaint.")
 	}
-	return item.SignItem(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+	return item.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator())
+}
+
+func (comp *ComplainSolvingNodeImpl) sendBack(message []byte) error {
+	//todo send feedback by p2p module
+	return nil
 }

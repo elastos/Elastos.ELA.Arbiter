@@ -1,11 +1,11 @@
 package complain
 
 import (
-	"errors"
-	"sync"
-
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
+	tx "Elastos.ELA.Arbiter/core/transaction"
+	"errors"
 )
 
 const (
@@ -20,20 +20,15 @@ var (
 )
 
 type ComplainSolvingImpl struct {
-	mux               sync.Mutex
-	complains         map[common.Uint256]*ComplainItemImpl
-	finishedComplains map[common.Uint256]bool
+	*DistributedNodeServer
 }
 
-func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash string, transaction common.Uint256) ([]byte, error) {
-	comp.mux.Lock()
-	defer comp.mux.Unlock()
-
-	if _, ok := comp.complains[transaction]; ok {
-		return nil, errors.New("Complaint already in solving list.")
+func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash string, transaction common.Uint256) error {
+	if _, ok := comp.UnsolvedTransactions()[transaction]; ok {
+		return errors.New("Complaint already in solving list.")
 	}
-	if _, ok := comp.finishedComplains[transaction]; ok {
-		return nil, errors.New("Complaint already solved.")
+	if _, ok := comp.FinishedTransactions()[transaction]; ok {
+		return errors.New("Complaint already solved.")
 	}
 
 	item := &ComplainItemImpl{
@@ -45,26 +40,21 @@ func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash st
 		item.IsFromMainBlock = true
 	}
 
-	if !item.Verify() {
-		return nil, errors.New("Invalid complaint.")
+	if err := item.Verify(); err != nil {
+		return err
+	}
+	trans, err := comp.CreateComplainTransaction(item)
+	if err != nil {
+		return err
 	}
 
-	comp.complains[transaction] = item
-	return item.Serialize()
-}
-
-func (comp *ComplainSolvingImpl) BroadcastComplainSolving([]byte) error {
-	//todo call p2p module to broadcast to other arbitrators
-	return nil
+	return comp.BroadcastWithdrawProposal(trans)
 }
 
 func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint256) uint {
-	comp.mux.Lock()
-	defer comp.mux.Unlock()
-
-	_, ok := comp.complains[transactionHash]
+	_, ok := comp.UnsolvedTransactions()[transactionHash]
 	if !ok {
-		success, ok := comp.finishedComplains[transactionHash]
+		success, ok := comp.FinishedTransactions()[transactionHash]
 		if !ok {
 			return None
 		}
@@ -78,44 +68,6 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 	}
 }
 
-//todo called by p2p module feedback callback
-func (comp *ComplainSolvingImpl) fireComplainFeedback(message []byte) error {
-	comp.mux.Lock()
-	defer comp.mux.Unlock()
-
-	item, err := comp.mergeComplainItem(message)
-	if err != nil {
-		return err
-	}
-
-	if item.Accepted() {
-		if err := comp.createSolvingTransaction(item); err != nil {
-			comp.finishedComplains[item.TransactionHash] = false
-			return err
-		}
-
-		comp.finishedComplains[item.TransactionHash] = true
-		delete(comp.complains, item.TransactionHash)
-	} else {
-		comp.complains[item.TransactionHash] = item
-	}
-	return nil
-}
-
-func (comp *ComplainSolvingImpl) mergeComplainItem(message []byte) (*ComplainItemImpl, error) {
-	var item ComplainItemImpl
-	item.Deserialize(message)
-
-	if _, ok := comp.complains[item.TransactionHash]; !ok {
-		return nil, errors.New("Unknown transcation.")
-	}
-
-	//todo merge to value of comp.complains[item.TransactionHash]
-
-	return comp.complains[item.TransactionHash], nil
-}
-
-func (comp *ComplainSolvingImpl) createSolvingTransaction(item *ComplainItemImpl) error {
-	//todo create solving transaction similar to tx4
-	return nil
+func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItemImpl) (*tx.Transaction, error) {
+	return nil, nil
 }
