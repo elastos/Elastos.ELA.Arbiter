@@ -8,7 +8,7 @@ import (
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
-	spvMsg "SPVWallet/p2p/msg"
+	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
 	"bytes"
 	"errors"
@@ -92,7 +92,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	return nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleBlock spvMsg.MerkleBlock, amount common.Fixed64) (*TransactionInfo, error) {
+func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error) {
 	var totalOutputAmount = amount // The total amount will be spend
 	var txOutputs []TxoutputInfo   // The outputs in transaction
 
@@ -114,7 +114,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, merkleB
 	txPayloadInfo := new(IssueTokenInfo)
 
 	// Create attributes
-	spvInfo, err := merkleBlock.Serialize()
+	spvInfo, err := proof.Serialize()
 	if err != nil {
 		return nil, err
 	}

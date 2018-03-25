@@ -12,8 +12,8 @@ import (
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
 	spvCore "SPVWallet/core"
-	spvTx "SPVWallet/core/transaction"
-	spvMsg "SPVWallet/p2p/msg"
+	spvtx "SPVWallet/core/transaction"
+	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
 	"bytes"
 	"errors"
@@ -348,7 +348,7 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([
 	return result, nil
 }
 
-func (mc *MainChainImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
+func (mc *MainChainImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.Transaction) {
 
 }
 

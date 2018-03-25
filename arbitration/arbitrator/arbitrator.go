@@ -5,9 +5,9 @@ import (
 	"Elastos.ELA.Arbiter/common"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
-	spvTx "SPVWallet/core/transaction"
+	spvtx "SPVWallet/core/transaction"
+	spvdb "SPVWallet/db"
 	spvInterface "SPVWallet/interface"
-	spvMsg "SPVWallet/p2p/msg"
 	"bytes"
 )
 
@@ -77,34 +77,32 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
-func (ar *ArbitratorImpl) OnTransactionConfirmed(merkleBlock spvMsg.MerkleBlock, trans []spvTx.Transaction) {
-	for _, tran := range trans {
-		buf := new(bytes.Buffer)
-		tran.Serialize(buf)
-		txBytes := buf.Bytes()
+func (ar *ArbitratorImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.Transaction) {
+	buf := new(bytes.Buffer)
+	spvtxn.Serialize(buf)
+	txBytes := buf.Bytes()
 
-		r := bytes.NewReader(txBytes)
-		txn := new(tx.Transaction)
-		txn.Deserialize(r)
-		depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
+	r := bytes.NewReader(txBytes)
+	txn := new(tx.Transaction)
+	txn.Deserialize(r)
+	depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
+	if err != nil {
+		//TODO heropan how to complain error
+		return
+	}
+
+	for _, info := range depositInfo {
+		sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
+		if !ok {
+			//TODO heropan how to complain error
+			continue
+		}
+		txInfo, err := sideChain.CreateDepositTransaction(info.TargetProgramHash, proof, info.Amount)
 		if err != nil {
 			//TODO heropan how to complain error
 			continue
 		}
-
-		for _, info := range depositInfo {
-			sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
-			if !ok {
-				//TODO heropan how to complain error
-				continue
-			}
-			txInfo, err := sideChain.CreateDepositTransaction(info.TargetProgramHash, merkleBlock, info.Amount)
-			if err != nil {
-				//TODO heropan how to complain error
-				continue
-			}
-			sideChain.SendTransaction(txInfo)
-		}
+		sideChain.SendTransaction(txInfo)
 	}
 }
 
