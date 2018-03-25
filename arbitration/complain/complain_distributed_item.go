@@ -16,11 +16,11 @@ type ComplainItemImpl struct {
 }
 
 func (item *ComplainItemImpl) Serialize(w io.Writer) error {
-	return item.RawTransaction.SerializeUnsigned(w)
+	return nil
 }
 
 func (item *ComplainItemImpl) Deserialize(r io.Reader) error {
-	return item.RawTransaction.DeserializeUnsigned(r)
+	return nil
 }
 
 func (item *ComplainItemImpl) Verify() error {
