@@ -47,6 +47,11 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return err
 	}
 
+	if transactionItem.IsFeedback() {
+		client.broadcast(content)
+		return nil
+	}
+
 	hash := transactionItem.ItemContent.Hash()
 	if _, ok := client.unsolvedProposals[hash]; ok {
 		return errors.New("Proposal already exit.")
@@ -85,11 +90,11 @@ func (client *DistributedNodeClient) Feedback(transactionHash Uint256) error {
 		return errors.New("Send complaint failed.")
 	}
 
-	client.sendBack(messageReader.Bytes())
+	client.broadcast(messageReader.Bytes())
 	return nil
 }
 
-func (client *DistributedNodeClient) sendBack(message []byte) {
+func (client *DistributedNodeClient) broadcast(message []byte) {
 	P2PClientSingleton.Broadcast(&SignMessage{
 		Command: client.P2pCommand,
 		Content: message,

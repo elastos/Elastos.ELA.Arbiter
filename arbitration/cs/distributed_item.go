@@ -210,6 +210,10 @@ func (item *DistributedItem) getMultiSignPublicKeys() ([][]byte, error) {
 	return publicKeys, nil
 }
 
+func (item *DistributedItem) IsFeedback() bool {
+	return len(item.signedData)/SignatureScriptLength == 2
+}
+
 func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool) error {
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
