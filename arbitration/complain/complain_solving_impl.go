@@ -5,7 +5,6 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/cs"
 	"Elastos.ELA.Arbiter/common"
 	tx "Elastos.ELA.Arbiter/core/transaction"
-	"errors"
 )
 
 const (
@@ -24,14 +23,7 @@ type ComplainSolvingImpl struct {
 }
 
 func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash string, transaction common.Uint256) error {
-	if _, ok := comp.UnsolvedTransactions()[transaction]; ok {
-		return errors.New("Complaint already in solving list.")
-	}
-	if _, ok := comp.FinishedTransactions()[transaction]; ok {
-		return errors.New("Complaint already solved.")
-	}
-
-	item := &ComplainItemImpl{
+	item := &ComplainItem{
 		UserAddress:      userAddress,
 		GenesisBlockHash: genesisBlockHash,
 		TransactionHash:  transaction,
@@ -40,16 +32,8 @@ func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash st
 		item.IsFromMainBlock = true
 	}
 
-	if err := item.Verify(); err != nil {
-		return err
-	}
 	trans, err := comp.CreateComplainTransaction(item)
 	if err != nil {
-		return err
-	}
-	item.RawTransaction = trans
-
-	if err := item.Verify(); err != nil {
 		return err
 	}
 
@@ -73,7 +57,7 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 	}
 }
 
-func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItemImpl) (*tx.Transaction, error) {
-	//todo append ComplainItemImpl variables into attribute of transaction
+func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*tx.Transaction, error) {
+	//todo append ComplainItem variables into attribute of transaction
 	return nil, nil
 }

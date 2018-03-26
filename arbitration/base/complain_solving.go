@@ -10,15 +10,3 @@ type ComplainSolving interface {
 
 	GetComplainStatus(transactionHash common.Uint256) uint
 }
-
-type ComplainItem interface {
-	GetUserAddress() string
-	GetGenesisBlockHash() string
-	GetTransactionHash() common.Uint256
-	GetIsFromMainBlock() bool
-
-	Accepted() bool
-	Verify() bool
-	Serialize() ([]byte, error)
-	Deserialize(content []byte) error
-}

@@ -12,16 +12,10 @@ import (
 	"io"
 )
 
-type DistributedItemContent interface {
-	Serialize(w io.Writer) error
-	Deserialize(r io.Reader) error
-	Hash() Uint256
-}
-
 type DistributedItem struct {
 	TargetArbitratorPublicKey   *crypto.PublicKey
 	TargetArbitratorProgramHash *Uint168
-	ItemContent                 DistributedItemContent
+	ItemContent                 *Transaction
 
 	redeemScript []byte
 	signedData   []byte
@@ -113,7 +107,7 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 	if _, err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
 		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
-	if err := item.ItemContent.Serialize(w); err != nil {
+	if err := item.ItemContent.SerializeUnsigned(w); err != nil {
 		return err
 	}
 	if err := serialization.WriteVarBytes(w, item.redeemScript); err != nil {
@@ -138,7 +132,7 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		return errors.New("TargetArbitratorProgramHash deserialization failed.")
 	}
 
-	if err = item.ItemContent.Deserialize(r); err != nil {
+	if err = item.ItemContent.DeserializeUnsigned(r); err != nil {
 		return errors.New("RawTransaction deserialization failed.")
 	}
 

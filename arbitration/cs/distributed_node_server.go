@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"sync"
 
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
@@ -22,16 +23,21 @@ const (
 )
 
 type DistributedNodeServer struct {
+	mux                  *sync.Mutex
 	P2pCommand           string
 	unsolvedTransactions map[common.Uint256]*tx.Transaction
 	finishedTransactions map[common.Uint256]bool
 }
 
 func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*tx.Transaction {
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
 	return dns.unsolvedTransactions
 }
 
 func (dns *DistributedNodeServer) FinishedTransactions() map[common.Uint256]bool {
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
 	return dns.finishedTransactions
 }
 
@@ -86,6 +92,9 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 }
 
 func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction) ([]byte, error) {
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
+
 	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
 		return nil, errors.New("Transaction already in process.")
 	}
@@ -118,6 +127,9 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 }
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
+
 	transactionItem := DistributedItem{}
 	transactionItem.Deserialize(bytes.NewReader(content))
 	newSign, err := transactionItem.ParseFeedbackSignedData()
@@ -125,11 +137,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return err
 	}
 
-	trans, ok := transactionItem.ItemContent.(*tx.Transaction)
-	if !ok {
-		return errors.New("Unknown transaction content.")
-	}
-	txn, ok := dns.unsolvedTransactions[trans.Hash()]
+	txn, ok := dns.unsolvedTransactions[transactionItem.ItemContent.Hash()]
 	if !ok {
 		errors.New("Can not find transaction.")
 	}
