@@ -9,6 +9,11 @@ var (
 	P2PClientSingleton *P2PClientAdapter
 )
 
+const (
+	WithdrawCommand = "withdraw"
+	ComplainCommand = "complain"
+)
+
 type P2PClientListener interface {
 	OnP2PReceived(peer *p2p.Peer, msg p2p.Message)
 }
