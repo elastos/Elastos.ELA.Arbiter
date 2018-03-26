@@ -9,9 +9,12 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/log"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
+	spvI "SPVWallet/interface"
+	"SPVWallet/p2p"
 )
 
 const (
@@ -19,6 +22,8 @@ const (
 )
 
 type DistributedNodeServer struct {
+	P2pCommand           string
+	P2pClient            spvI.P2PClient
 	unsolvedTransactions map[common.Uint256]*tx.Transaction
 	finishedTransactions map[common.Uint256]bool
 }
@@ -31,7 +36,7 @@ func (dns *DistributedNodeServer) FinishedTransactions() map[common.Uint256]bool
 	return dns.finishedTransactions
 }
 
-func (dns *DistributedNodeServer) CreateRedeemScript() ([]byte, error) {
+func CreateRedeemScript() ([]byte, error) {
 	arbitratorCount := ArbitratorGroupSingleton.GetArbitratorsCount()
 	publicKeys := make([]*crypto.PublicKey, arbitratorCount)
 	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
@@ -50,24 +55,38 @@ func getTransactionAgreementArbitratorsCount() int {
 	return int(math.Ceil(float64(ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
 }
 
-func (dns *DistributedNodeServer) sendToArbitrator(otherArbitrator string, content []byte) error {
-	//todo call p2p module to broadcast to other arbitrators
-	return nil
+func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
+	dns.P2pClient.PeerManager().Broadcast(&SignMessage{
+		Command: dns.P2pCommand,
+		Content: content,
+	})
+}
+
+func (dns *DistributedNodeServer) onReceived(peer *p2p.Peer, msg p2p.Message) {
+	if msg.CMD() != dns.P2pCommand {
+		return
+	}
+
+	signMessage, ok := msg.(*SignMessage)
+	if !ok {
+		log.Warn("Unknown p2p message content.")
+		return
+	}
+
+	dns.ReceiveProposalFeedback(signMessage.Content)
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Transaction) error {
-	proposals, err := dns.generateWithdrawProposals(transaction)
+	proposal, err := dns.generateWithdrawProposal(transaction)
 	if err != nil {
 		return err
 	}
 
-	for pkStr, content := range proposals {
-		dns.sendToArbitrator(pkStr, content)
-	}
+	dns.sendToArbitrator(proposal)
 	return nil
 }
 
-func (dns *DistributedNodeServer) generateWithdrawProposals(transaction *tx.Transaction) (map[string][]byte, error) {
+func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction) ([]byte, error) {
 	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
 		return nil, errors.New("Transaction already in process.")
 	}
@@ -78,35 +97,25 @@ func (dns *DistributedNodeServer) generateWithdrawProposals(transaction *tx.Tran
 		return nil, errors.New("Can not start a new proposal, you are not on duty.")
 	}
 
-	publicKeys := make(map[string]*crypto.PublicKey, ArbitratorGroupSingleton.GetArbitratorsCount())
-	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
-		temp := &crypto.PublicKey{}
-		temp.FromString(arStr)
-		publicKeys[arStr] = temp
+	programHash, err := StandardAcccountPublicKeyToProgramHash(currentArbitrator.GetPublicKey())
+	if err != nil {
+		return nil, err
+	}
+	transactionItem := &DistributedItem{
+		ItemContent:                 transaction,
+		TargetArbitratorPublicKey:   currentArbitrator.GetPublicKey(),
+		TargetArbitratorProgramHash: programHash,
+	}
+	transactionItem.InitScript(currentArbitrator)
+	transactionItem.Sign(currentArbitrator)
+
+	buf := new(bytes.Buffer)
+	err = transactionItem.Serialize(buf)
+	if err != nil {
+		return nil, err
 	}
 
-	results := make(map[string][]byte, len(publicKeys))
-	for pkStr, pk := range publicKeys {
-		programHash, err := StandardAcccountPublicKeyToProgramHash(pk)
-		if err != nil {
-			return nil, err
-		}
-		transactionItem := &DistributedItem{
-			ItemContent:                 transaction,
-			TargetArbitratorPublicKey:   pk,
-			TargetArbitratorProgramHash: programHash,
-		}
-		transactionItem.InitScript(currentArbitrator)
-		transactionItem.Sign(currentArbitrator)
-
-		buf := new(bytes.Buffer)
-		err = transactionItem.Serialize(buf)
-		if err != nil {
-			return nil, err
-		}
-		results[pkStr] = buf.Bytes()
-	}
-	return results, nil
+	return buf.Bytes(), nil
 }
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {

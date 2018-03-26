@@ -26,7 +26,7 @@ type DistributedItem struct {
 }
 
 func (item *DistributedItem) InitScript(arbitrator Arbitrator) error {
-	err := item.createMultiSignRedeemScript(arbitrator)
+	err := item.createMultiSignRedeemScript()
 	if err != nil {
 		return err
 	}
@@ -37,13 +37,9 @@ func (item *DistributedItem) InitScript(arbitrator Arbitrator) error {
 func (item *DistributedItem) Sign(arbitrator Arbitrator) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
-	var targetIndex = -1
 	programHashes, err := item.getMultiSignSigners()
 	if err != nil {
 		return err
-	}
-	if len(programHashes) != 2 {
-		return errors.New("Invalid multi sign signer count.")
 	}
 
 	userProgramBytes, err := CreateStandardRedeemScript(arbitrator.GetPublicKey())
@@ -57,11 +53,9 @@ func (item *DistributedItem) Sign(arbitrator Arbitrator) error {
 	for i, programHash := range programHashes {
 		if *userProgramHash == *programHash {
 			signerIndex = i
-		} else if *item.TargetArbitratorProgramHash == *programHash {
-			targetIndex = i
 		}
 	}
-	if signerIndex == -1 || targetIndex == -1 {
+	if signerIndex == -1 {
 		return errors.New("Invalid multi sign signer")
 	}
 	// Sign transaction
@@ -161,12 +155,8 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	return nil
 }
 
-func (item *DistributedItem) createMultiSignRedeemScript(arbitrator Arbitrator) error {
-	signers := make([]*crypto.PublicKey, 2)
-	signers[0] = arbitrator.GetPublicKey()
-	signers[1] = item.TargetArbitratorPublicKey
-
-	script, err := CreateMultiSignRedeemScript(2, signers)
+func (item *DistributedItem) createMultiSignRedeemScript() error {
+	script, err := CreateRedeemScript()
 	if err != nil {
 		return err
 	}
@@ -195,21 +185,23 @@ func (item *DistributedItem) getMultiSignPublicKeys() ([][]byte, error) {
 	if len(item.redeemScript) < MinMultiSignCodeLength || item.redeemScript[len(item.redeemScript)-1] != MULTISIG {
 		return nil, errors.New("not a valid multi sign transaction item.redeemScript, length not enough")
 	}
+
+	redeemScript := item.redeemScript
 	// remove last byte MULTISIG
-	item.redeemScript = item.redeemScript[:len(item.redeemScript)-1]
+	redeemScript = redeemScript[:len(redeemScript)-1]
 	// remove m
-	item.redeemScript = item.redeemScript[1:]
+	redeemScript = redeemScript[1:]
 	// remove n
-	item.redeemScript = item.redeemScript[:len(item.redeemScript)-1]
-	if len(item.redeemScript)%(PublicKeyScriptLength-1) != 0 {
+	redeemScript = redeemScript[:len(redeemScript)-1]
+	if len(redeemScript)%(PublicKeyScriptLength-1) != 0 {
 		return nil, errors.New("not a valid multi sign transaction item.redeemScript, length not match")
 	}
 
 	var publicKeys [][]byte
 	i := 0
-	for i < len(item.redeemScript) {
+	for i < len(redeemScript) {
 		script := make([]byte, PublicKeyScriptLength-1)
-		copy(script, item.redeemScript[i:i+PublicKeyScriptLength-1])
+		copy(script, redeemScript[i:i+PublicKeyScriptLength-1])
 		i += PublicKeyScriptLength - 1
 		publicKeys = append(publicKeys, script)
 	}
