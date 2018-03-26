@@ -1,14 +1,16 @@
 package arbitrator
 
 import (
-	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
-	. "SPVWallet/interface"
 	"encoding/binary"
 	"fmt"
 	"os"
 	"sync"
 	"time"
+
+	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/log"
+	. "SPVWallet/interface"
+	spvLog "SPVWallet/log"
 )
 
 var (
@@ -112,6 +114,7 @@ func init() {
 		currentArbitrator.keystore.NewAccount()
 	}
 
+	spvLog.Init(false)
 	// SPV module init
 	var err error
 	publicKey := currentArbitrator.keystore.MainAccount().PublicKey()

@@ -20,3 +20,5 @@ deps/
 arbiter
 .*.swp
 *.db
+*.bin
+*.dat
