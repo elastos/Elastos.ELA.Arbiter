@@ -1,9 +1,9 @@
-package mainchain
+package complain
 
 import (
 	. "Elastos.ELA.Arbiter/arbitration/cs"
 )
 
-type MainChainClientImpl struct {
+type ComplainSolvingClientImpl struct {
 	*DistributedNodeClient
 }

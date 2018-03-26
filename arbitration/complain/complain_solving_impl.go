@@ -1,8 +1,8 @@
 package complain
 
 import (
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
+	. "Elastos.ELA.Arbiter/arbitration/cs"
 	"Elastos.ELA.Arbiter/common"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"errors"

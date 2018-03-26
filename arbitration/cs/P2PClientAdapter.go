@@ -1,4 +1,4 @@
-package arbitrator
+package cs
 
 import (
 	spvI "SPVWallet/interface"

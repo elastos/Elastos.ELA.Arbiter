@@ -3,6 +3,7 @@ package mainchain
 import (
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
+	. "Elastos.ELA.Arbiter/arbitration/cs"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/core/asset"
 	pg "Elastos.ELA.Arbiter/core/program"
@@ -107,7 +108,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 		return nil, errors.New("Available token is not enough")
 	}
 
-	redeemScript, err := mc.DistributedNodeServer.CreateRedeemScript()
+	redeemScript, err := CreateRedeemScript()
 	if err != nil {
 		return nil, err
 	}

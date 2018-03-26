@@ -1,8 +1,9 @@
-package arbitrator
+package cs
 
 import (
 	"errors"
 
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/serialization"
 	. "Elastos.ELA.Arbiter/core/transaction"
@@ -14,6 +15,7 @@ import (
 type DistributedItemContent interface {
 	Serialize(w io.Writer) error
 	Deserialize(r io.Reader) error
+	Hash() Uint256
 }
 
 type DistributedItem struct {

@@ -23,6 +23,10 @@ func (item *ComplainItemImpl) Deserialize(r io.Reader) error {
 	return nil
 }
 
+func (item *ComplainItemImpl) Hash() Uint256 {
+	return item.TransactionHash
+}
+
 func (item *ComplainItemImpl) Verify() error {
 	return nil
 }

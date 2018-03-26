@@ -1,4 +1,4 @@
-package arbitrator
+package cs
 
 type SignMessage struct {
 	Command string

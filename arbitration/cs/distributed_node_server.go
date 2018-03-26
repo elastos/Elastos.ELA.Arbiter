@@ -1,4 +1,4 @@
-package arbitrator
+package cs
 
 import (
 	"bytes"
@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"math"
 
+	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
