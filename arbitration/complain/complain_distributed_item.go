@@ -2,6 +2,7 @@ package complain
 
 import (
 	. "Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/core/transaction"
 	"io"
 )
 
@@ -11,16 +12,15 @@ type ComplainItemImpl struct {
 	TransactionHash  Uint256
 	IsFromMainBlock  bool
 
-	redeemScript []byte
-	signedData   []byte
+	RawTransaction *transaction.Transaction
 }
 
 func (item *ComplainItemImpl) Serialize(w io.Writer) error {
-	return nil
+	return item.RawTransaction.SerializeUnsigned(w)
 }
 
 func (item *ComplainItemImpl) Deserialize(r io.Reader) error {
-	return nil
+	return item.RawTransaction.DeserializeUnsigned(r)
 }
 
 func (item *ComplainItemImpl) Verify() error {

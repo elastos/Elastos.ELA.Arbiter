@@ -39,12 +39,13 @@ func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash st
 	if len(genesisBlockHash) == 0 {
 		item.IsFromMainBlock = true
 	}
-
-	if err := item.Verify(); err != nil {
-		return err
-	}
 	trans, err := comp.CreateComplainTransaction(item)
 	if err != nil {
+		return err
+	}
+	item.RawTransaction = trans
+
+	if err := item.Verify(); err != nil {
 		return err
 	}
 
@@ -69,5 +70,6 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 }
 
 func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItemImpl) (*tx.Transaction, error) {
+	//todo append ComplainItemImpl variables into attribute of transaction
 	return nil, nil
 }
