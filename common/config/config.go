@@ -18,8 +18,11 @@ var (
 )
 
 type Configuration struct {
-	Version int    `json:"Version"`
-	UUID    string `json:"UUID"`
+	Magic    uint32   `json:"Magic"`
+	Version  int      `json:"Version"`
+	SeedList []string `json:"SeedList"`
+	NodePort uint16   `json:"NordPort"`
+	UUID     string   `json:"UUID"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
