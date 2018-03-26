@@ -3,8 +3,7 @@ package arbitrator
 import (
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
-	"Elastos.ELA.Arbiter/crypto"
-	"SPVWallet/interface"
+	. "SPVWallet/interface"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -104,12 +103,20 @@ func init() {
 	currentArbitrator := &ArbitratorImpl{}
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 
+	// keystore init
+	currentArbitrator.keystore = NewKeystore()
+	// TODO heropan Fix password later.
+	currentArbitrator.keystore.Open("123456")
+	accounts := currentArbitrator.keystore.GetAccounts()
+	if len(accounts) <= 0 {
+		currentArbitrator.keystore.NewAccount()
+	}
+
 	// SPV module init
 	var err error
-	publicKey := crypto.PublicKey{}
-	publicKey.FromString(config.Parameters.UUID)
+	publicKey := currentArbitrator.keystore.MainAccount().PublicKey()
 	publicKeyBytes, _ := publicKey.EncodePoint(true)
-	currentArbitrator.spvService, err = _interface.NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
+	currentArbitrator.spvService, err = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
 	if err != nil {
 		fmt.Println("[Error] " + err.Error())
 		os.Exit(1)

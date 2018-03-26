@@ -7,7 +7,7 @@ import (
 	"Elastos.ELA.Arbiter/crypto"
 	spvtx "SPVWallet/core/transaction"
 	spvdb "SPVWallet/db"
-	spvInterface "SPVWallet/interface"
+	. "SPVWallet/interface"
 	"bytes"
 )
 
@@ -23,20 +23,29 @@ type Arbitrator interface {
 
 	IsOnDuty() bool
 	GetArbitratorGroup() ArbitratorGroup
-	getSPVService() spvInterface.SPVService
+	getSPVService() SPVService
 }
 
 type ArbitratorImpl struct {
 	mainChainImpl        MainChain
 	mainChainClientImpl  MainChainClient
 	sideChainManagerImpl SideChainManager
-	spvService           spvInterface.SPVService
+	spvService           SPVService
+	keystore             Keystore
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
-	//todo get from spv service
-	//return ar.spvService.GetPublicKey()
-	return nil
+	mainAccount := ar.keystore.MainAccount()
+
+	buf := new(bytes.Buffer)
+
+	spvPublicKey := mainAccount.PublicKey()
+	spvPublicKey.Serialize(buf)
+
+	publicKey := new(crypto.PublicKey)
+	publicKey.Deserialize(buf)
+
+	return publicKey
 }
 
 func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
@@ -44,7 +53,9 @@ func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
 }
 
 func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
-	return nil, nil
+	mainAccount := ar.keystore.MainAccount()
+
+	return mainAccount.Sign(content)
 }
 
 func (ar *ArbitratorImpl) IsOnDuty() bool {
@@ -57,7 +68,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) getSPVService() spvInterface.SPVService {
+func (ar *ArbitratorImpl) getSPVService() SPVService {
 	return ar.spvService
 }
 

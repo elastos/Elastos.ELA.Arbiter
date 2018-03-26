@@ -2,19 +2,22 @@ package crypto
 
 import (
 	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/common/serialization"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"strings"
 )
 
 const (
-	SIGNRLEN     = 32
-	SIGNATURELEN = 64
+	SIGNRLEN          = 32
+	SIGNATURELEN      = 64
+	NegativeBigLength = 33
 )
 
 type CryptoAlgSet struct {
@@ -113,6 +116,52 @@ func Verify(publicKey PublicKey, data []byte, signature []byte) error {
 		return errors.New("[Validation], Verify failed.")
 	}
 
+}
+
+func (e *PublicKey) Serialize(w io.Writer) error {
+	bufX := []byte{}
+	if e.X.Sign() == -1 {
+		// prefix 0x00 means the big number X is negative
+		bufX = append(bufX, 0x00)
+	}
+	bufX = append(bufX, e.X.Bytes()...)
+
+	if err := serialization.WriteVarBytes(w, bufX); err != nil {
+		return err
+	}
+
+	bufY := []byte{}
+	if e.Y.Sign() == -1 {
+		// prefix 0x00 means the big number Y is negative
+		bufY = append(bufY, 0x00)
+	}
+	bufY = append(bufY, e.Y.Bytes()...)
+	if err := serialization.WriteVarBytes(w, bufY); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (e *PublicKey) Deserialize(r io.Reader) error {
+	bufX, err := serialization.ReadVarBytes(r)
+	if err != nil {
+		return err
+	}
+	e.X = big.NewInt(0)
+	e.X = e.X.SetBytes(bufX)
+	if len(bufX) == NegativeBigLength {
+		e.X.Neg(e.X)
+	}
+	bufY, err := serialization.ReadVarBytes(r)
+	if err != nil {
+		return err
+	}
+	e.Y = big.NewInt(0)
+	e.Y = e.Y.SetBytes(bufY)
+	if len(bufY) == NegativeBigLength {
+		e.Y.Neg(e.Y)
+	}
+	return nil
 }
 
 type PubKeySlice []*PublicKey
