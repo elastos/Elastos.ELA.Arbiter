@@ -13,7 +13,6 @@ import (
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
-	spvI "SPVWallet/interface"
 	"SPVWallet/p2p"
 )
 
@@ -23,7 +22,6 @@ const (
 
 type DistributedNodeServer struct {
 	P2pCommand           string
-	P2pClient            spvI.P2PClient
 	unsolvedTransactions map[common.Uint256]*tx.Transaction
 	finishedTransactions map[common.Uint256]bool
 }
@@ -56,13 +54,13 @@ func getTransactionAgreementArbitratorsCount() int {
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
-	dns.P2pClient.PeerManager().Broadcast(&SignMessage{
+	P2PClientSingleton.Broadcast(&SignMessage{
 		Command: dns.P2pCommand,
 		Content: content,
 	})
 }
 
-func (dns *DistributedNodeServer) onReceived(peer *p2p.Peer, msg p2p.Message) {
+func (dns *DistributedNodeServer) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) {
 	if msg.CMD() != dns.P2pCommand {
 		return
 	}
