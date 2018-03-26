@@ -18,11 +18,22 @@ type SideChainAccountMonitorImpl struct {
 	accountListenerMap map[string]AccountListener
 }
 
+func (sync *SideChainAccountMonitorImpl) tryInit() {
+	if sync.accountListenerMap == nil {
+		sync.accountListenerMap = make(map[string]AccountListener)
+	}
+}
+
 func (sync *SideChainAccountMonitorImpl) AddListener(listener AccountListener) {
+	sync.tryInit()
 	sync.accountListenerMap[listener.GetAccountAddress()] = listener
 }
 
 func (sync *SideChainAccountMonitorImpl) RemoveListener(account string) error {
+	if sync.accountListenerMap == nil {
+		return nil
+	}
+
 	if _, ok := sync.accountListenerMap[account]; !ok {
 		return errors.New("Do not exist listener.")
 	}
@@ -31,6 +42,10 @@ func (sync *SideChainAccountMonitorImpl) RemoveListener(account string) error {
 }
 
 func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo, genesisBlockAddress string) error {
+	if sync.accountListenerMap == nil {
+		return nil
+	}
+
 	item, ok := sync.accountListenerMap[genesisBlockAddress]
 	if !ok {
 		return errors.New("Fired unknown listener.")

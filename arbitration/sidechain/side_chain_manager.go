@@ -29,7 +29,7 @@ func (sideManager *SideChainManagerImpl) GetAllChains() []SideChain {
 func init() {
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
 
-	sideChainManager := &SideChainManagerImpl{}
+	sideChainManager := &SideChainManagerImpl{sideChains: make(map[string]SideChain)}
 	for _, sideConfig := range config.Parameters.SideNodeList {
 		side := &SideChainImpl{
 			key:           sideConfig.GenesisBlockAddress,

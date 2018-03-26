@@ -18,6 +18,12 @@ type DistributedNodeClient struct {
 	unsolvedProposals map[Uint256]*DistributedItem
 }
 
+func (client *DistributedNodeClient) tryInit() {
+	if client.unsolvedProposals == nil {
+		client.unsolvedProposals = make(map[Uint256]*DistributedItem)
+	}
+}
+
 func (client *DistributedNodeClient) SignProposal(transactionHash Uint256) error {
 	transactionItem, ok := client.unsolvedProposals[transactionHash]
 	if !ok {
@@ -52,11 +58,16 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return nil
 	}
 
+	if client.unsolvedProposals == nil {
+		return errors.New("Can not find proposal.")
+	}
+
 	hash := transactionItem.ItemContent.Hash()
 	if _, ok := client.unsolvedProposals[hash]; ok {
 		return errors.New("Proposal already exit.")
 	}
 
+	client.tryInit()
 	client.unsolvedProposals[hash] = transactionItem
 
 	if err := client.SignProposal(hash); err != nil {

@@ -29,6 +29,15 @@ type DistributedNodeServer struct {
 	finishedTransactions map[common.Uint256]bool
 }
 
+func (dns *DistributedNodeServer) tryInit() {
+	if dns.unsolvedTransactions == nil {
+		dns.unsolvedTransactions = make(map[common.Uint256]*tx.Transaction)
+	}
+	if dns.finishedTransactions == nil {
+		dns.finishedTransactions = make(map[common.Uint256]bool)
+	}
+}
+
 func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*tx.Transaction {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
@@ -95,6 +104,7 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 
+	dns.tryInit()
 	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
 		return nil, errors.New("Transaction already in process.")
 	}
@@ -137,9 +147,12 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return err
 	}
 
+	if dns.unsolvedTransactions == nil {
+		return errors.New("Can not find proposal.")
+	}
 	txn, ok := dns.unsolvedTransactions[transactionItem.ItemContent.Hash()]
 	if !ok {
-		errors.New("Can not find transaction.")
+		errors.New("Can not find proposal.")
 	}
 
 	var signerIndex = -1
