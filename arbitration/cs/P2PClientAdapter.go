@@ -1,6 +1,7 @@
 package cs
 
 import (
+	"Elastos.ELA.Arbiter/common/log"
 	spvI "SPVWallet/interface"
 	"SPVWallet/p2p"
 )
@@ -15,7 +16,7 @@ const (
 )
 
 type P2PClientListener interface {
-	OnP2PReceived(peer *p2p.Peer, msg p2p.Message)
+	OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error
 }
 
 type P2PClientAdapter struct {
@@ -31,9 +32,21 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 	adapter.p2pClient.PeerManager().Broadcast(msg)
 }
 
+func (adapter *P2PClientAdapter) fireP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
+	for _, listener := range adapter.listeners {
+		if err := listener.OnP2PReceived(peer, msg); err != nil {
+			log.Warn(err)
+			continue
+		}
+	}
+
+	return nil
+}
+
 func init() {
 	var client spvI.P2PClient
 	//client = spvI.NewP2PClient()
 	client.Start()
 	P2PClientSingleton = &P2PClientAdapter{p2pClient: client}
+	client.HandleMessage(P2PClientSingleton.fireP2PReceived)
 }

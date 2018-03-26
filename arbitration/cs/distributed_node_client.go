@@ -27,18 +27,18 @@ func (client *DistributedNodeClient) SignProposal(transactionHash Uint256) error
 	return transactionItem.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
-func (client *DistributedNodeClient) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) {
+func (client *DistributedNodeClient) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
 	if msg.CMD() != client.P2pCommand {
-		return
+		return nil
 	}
 
 	signMessage, ok := msg.(*SignMessage)
 	if !ok {
 		log.Warn("Unknown p2p message content.")
-		return
+		return nil
 	}
 
-	client.OnReceivedProposal(signMessage.Content)
+	return client.OnReceivedProposal(signMessage.Content)
 }
 
 func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {

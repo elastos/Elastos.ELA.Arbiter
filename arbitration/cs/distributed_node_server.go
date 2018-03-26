@@ -67,18 +67,18 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	})
 }
 
-func (dns *DistributedNodeServer) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) {
+func (dns *DistributedNodeServer) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
 	if msg.CMD() != dns.P2pCommand {
-		return
+		return nil
 	}
 
 	signMessage, ok := msg.(*SignMessage)
 	if !ok {
 		log.Warn("Unknown p2p message content.")
-		return
+		return nil
 	}
 
-	dns.ReceiveProposalFeedback(signMessage.Content)
+	return dns.ReceiveProposalFeedback(signMessage.Content)
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Transaction) error {
