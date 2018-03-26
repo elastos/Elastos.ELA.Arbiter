@@ -63,6 +63,10 @@ func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
 	return nil
 }
 
+func (sc *SideChainImpl) GetAccountAddress() string {
+	return sc.GetKey()
+}
+
 func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	//TODO　verify tx [jzh]
 
