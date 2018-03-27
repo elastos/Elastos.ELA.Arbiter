@@ -3,10 +3,12 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/password"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	spvtx "SPVWallet/core/transaction"
@@ -27,7 +29,7 @@ type Arbitrator interface {
 	IsOnDuty() bool
 	GetArbitratorGroup() ArbitratorGroup
 
-	InitAccount(password string) error
+	InitAccount() error
 	StartSpvModule() error
 }
 
@@ -150,9 +152,14 @@ func (ar *ArbitratorImpl) SetSideChainManager(manager SideChainManager) {
 	ar.sideChainManagerImpl = manager
 }
 
-func (ar *ArbitratorImpl) InitAccount(password string) error {
+func (ar *ArbitratorImpl) InitAccount() error {
+	passwd, err := password.GetAccountPassword()
+	if err != nil {
+		return errors.New("Get password error.")
+	}
+
 	ar.keystore = NewKeystore()
-	_, err := ar.keystore.Open(password)
+	_, err = ar.keystore.Open(string(passwd[:]))
 	if err != nil {
 		return err
 	}

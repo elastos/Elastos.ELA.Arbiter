@@ -54,7 +54,7 @@ func main() {
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 
 	log.Info("2. Init arbitrator account.")
-	if err := currentArbitrator.InitAccount("123456"); err != nil {
+	if err := currentArbitrator.InitAccount(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
@@ -76,7 +76,7 @@ func main() {
 
 	log.Info("6. Start side chain account monitor.")
 	go setSideChainAccountMonitor(currentArbitrator)
-	// Start Server
+
 	log.Info("7. Start servers.")
 	go httpjsonrpc.StartRPCServer()
 
