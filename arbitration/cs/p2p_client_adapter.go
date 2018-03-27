@@ -29,6 +29,30 @@ type P2PClientAdapter struct {
 	listeners []P2PClientListener
 }
 
+func StartP2P(arbitrator Arbitrator) error {
+	publicKey := arbitrator.GetPublicKey()
+	publicKeyBytes, err := publicKey.EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
+	magic := config.Parameters.Magic
+	port := config.Parameters.NodePort
+	seedList := config.Parameters.SeedList
+
+	client := spvI.NewP2PClient(clientId, magic, port, seedList)
+	P2PClientSingleton = &P2PClientAdapter{p2pClient: client}
+
+	client.HandleMessage(P2PClientSingleton.fireP2PReceived)
+	client.MakeMessage(P2PClientSingleton.makeMessage)
+	client.HandleVersion(P2PClientSingleton.handleVersion)
+	client.PeerConnected(P2PClientSingleton.peerConnected)
+
+	client.Start()
+	return nil
+}
+
 func (adapter *P2PClientAdapter) AddListener(listener P2PClientListener) {
 	adapter.listeners = append(adapter.listeners, listener)
 }
@@ -75,23 +99,4 @@ func (adapter *P2PClientAdapter) handleVersion(v *p2p.Version) error {
 
 func (adapter *P2PClientAdapter) peerConnected(peer *p2p.Peer) {
 	//peer.Send(msg.NewFilterLoad(spv.chain.GetBloomFilter()))
-}
-
-func init() {
-	publicKey := ArbitratorGroupSingleton.GetCurrentArbitrator().GetPublicKey()
-	publicKeyBytes, _ := publicKey.EncodePoint(true)
-	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
-	magic := config.Parameters.Magic
-	port := config.Parameters.NodePort
-	seedList := config.Parameters.SeedList
-
-	var client spvI.P2PClient
-	client = spvI.NewP2PClient(clientId, magic, port, seedList)
-	client.Start()
-	P2PClientSingleton = &P2PClientAdapter{p2pClient: client}
-
-	client.HandleMessage(P2PClientSingleton.fireP2PReceived)
-	client.MakeMessage(P2PClientSingleton.makeMessage)
-	client.HandleVersion(P2PClientSingleton.handleVersion)
-	client.PeerConnected(P2PClientSingleton.peerConnected)
 }

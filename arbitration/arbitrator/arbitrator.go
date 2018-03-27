@@ -1,14 +1,17 @@
 package arbitrator
 
 import (
+	"bytes"
+	"encoding/binary"
+
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
+	"Elastos.ELA.Arbiter/common/config"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	spvtx "SPVWallet/core/transaction"
 	spvdb "SPVWallet/db"
 	. "SPVWallet/interface"
-	"bytes"
 )
 
 type Arbitrator interface {
@@ -23,7 +26,9 @@ type Arbitrator interface {
 
 	IsOnDuty() bool
 	GetArbitratorGroup() ArbitratorGroup
-	getSPVService() SPVService
+
+	InitAccount(password string) error
+	StartSpvModule() error
 }
 
 type ArbitratorImpl struct {
@@ -66,10 +71,6 @@ func (ar *ArbitratorImpl) IsOnDuty() bool {
 
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
-}
-
-func (ar *ArbitratorImpl) getSPVService() SPVService {
-	return ar.spvService
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*tx.Transaction, error) {
@@ -147,4 +148,42 @@ func (ar *ArbitratorImpl) SetMainChainClient(client MainChainClient) {
 
 func (ar *ArbitratorImpl) SetSideChainManager(manager SideChainManager) {
 	ar.sideChainManagerImpl = manager
+}
+
+func (ar *ArbitratorImpl) InitAccount(password string) error {
+	ar.keystore = NewKeystore()
+	_, err := ar.keystore.Open(password)
+	if err != nil {
+		return err
+	}
+	accounts := ar.keystore.GetAccounts()
+	if len(accounts) <= 0 {
+		ar.keystore.NewAccount()
+	}
+
+	return nil
+}
+
+func (ar *ArbitratorImpl) StartSpvModule() error {
+	publicKey := ar.keystore.MainAccount().PublicKey()
+	publicKeyBytes, err := publicKey.EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	ar.spvService, err = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
+	if err != nil {
+		return err
+	}
+	for _, sideNode := range config.Parameters.SideNodeList {
+		if err = ar.spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
+			return err
+		}
+	}
+	ar.spvService.OnTransactionConfirmed(ar.OnTransactionConfirmed)
+	if err = ar.spvService.Start(); err != nil {
+		return err
+	}
+
+	return nil
 }

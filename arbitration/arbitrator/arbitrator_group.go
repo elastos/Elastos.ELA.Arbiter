@@ -1,15 +1,11 @@
 package arbitrator
 
 import (
-	"encoding/binary"
-	"fmt"
-	"os"
 	"sync"
 	"time"
 
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
-	. "SPVWallet/interface"
 	spvLog "SPVWallet/log"
 )
 
@@ -105,28 +101,5 @@ func init() {
 	currentArbitrator := &ArbitratorImpl{}
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 
-	// keystore init
-	currentArbitrator.keystore = NewKeystore()
-	// TODO heropan Fix password later.
-	currentArbitrator.keystore.Open("123456")
-	accounts := currentArbitrator.keystore.GetAccounts()
-	if len(accounts) <= 0 {
-		currentArbitrator.keystore.NewAccount()
-	}
-
 	spvLog.Init(false)
-	// SPV module init
-	var err error
-	publicKey := currentArbitrator.keystore.MainAccount().PublicKey()
-	publicKeyBytes, _ := publicKey.EncodePoint(true)
-	currentArbitrator.spvService, err = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
-	if err != nil {
-		fmt.Println("[Error] " + err.Error())
-		os.Exit(1)
-	}
-	for _, sideNode := range config.Parameters.SideNodeList {
-		currentArbitrator.spvService.RegisterAccount(sideNode.GenesisBlockAddress)
-	}
-	currentArbitrator.spvService.OnTransactionConfirmed(currentArbitrator.OnTransactionConfirmed)
-	currentArbitrator.spvService.Start()
 }
