@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 )
 
 type MainChainImpl struct {
@@ -42,10 +43,12 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target U
 
 	txOutputs = append(txOutputs, txOutput)
 
-	availableUTXOs, err := DB.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
+	utxos, err := DbCache.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
 	if err != nil {
 		return nil, errors.New("Get spender's UTXOs failed.")
 	}
+	availableUTXOs := mc.getAvailableUTXOs(utxos)
+	availableUTXOs = SortUTXOs(availableUTXOs)
 
 	// Create transaction inputs
 	var txInputs []*tx.UTXOTxInput
@@ -153,7 +156,7 @@ func (mc *MainChainImpl) syncChainData() {
 			mc.processBlock(block)
 
 			// Update wallet height
-			currentHeight = DB.CurrentHeight(block.BlockData.Height + 1)
+			currentHeight = DbCache.CurrentHeight(block.BlockData.Height + 1)
 
 			fmt.Print(">")
 		}
@@ -169,13 +172,28 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 		return 0, 0, false
 	}
 
-	currentHeight := DB.CurrentHeight(QueryHeightCode)
+	currentHeight := DbCache.CurrentHeight(QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
 	}
 
 	return chainHeight, currentHeight, true
+}
+
+func (mc *MainChainImpl) getAvailableUTXOs(utxos []*AddressUTXO) []*AddressUTXO {
+	var availableUTXOs []*AddressUTXO
+	var currentHeight = DbCache.CurrentHeight(QueryHeightCode)
+	for _, utxo := range utxos {
+		if utxo.Input.Sequence > 0 {
+			if utxo.Input.Sequence >= currentHeight {
+				continue
+			}
+			utxo.Input.Sequence = math.MaxUint32 - 1
+		}
+		availableUTXOs = append(availableUTXOs, utxo)
+	}
+	return availableUTXOs
 }
 
 func (mc *MainChainImpl) containGenesisBlockAddress(address string) (string, bool) {
@@ -214,7 +232,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 					GenesisBlockAddress: genesisAddress,
 					DestroyAddress:      output.Address,
 				}
-				DB.AddAddressUTXO(addressUTXO)
+				DbCache.AddAddressUTXO(addressUTXO)
 			}
 		}
 
@@ -227,7 +245,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 				ReferTxOutputIndex: input.ReferTxOutputIndex,
 				Sequence:           input.Sequence,
 			}
-			DB.DeleteUTXO(txInput)
+			DbCache.DeleteUTXO(txInput)
 		}
 	}
 }

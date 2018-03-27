@@ -42,7 +42,7 @@ const (
 )
 
 var (
-	DB DataStore
+	DbCache DataStore
 )
 
 type AddressUTXO struct {

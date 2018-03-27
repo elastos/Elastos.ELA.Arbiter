@@ -65,7 +65,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData() {
 			sync.processBlock(block)
 
 			// Update wallet height
-			currentHeight = DB.CurrentSideHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
+			currentHeight = DbCache.CurrentSideHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
 
 			fmt.Print(">")
 		}
@@ -81,7 +81,7 @@ func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress stri
 		return 0, 0, false
 	}
 
-	currentHeight := DB.CurrentSideHeight(genesisBlockAddress, QueryHeightCode)
+	currentHeight := DbCache.CurrentSideHeight(genesisBlockAddress, QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false

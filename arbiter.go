@@ -54,7 +54,7 @@ func main() {
 	if err != nil {
 		log.Error("Side chain monitor setup error: ", err)
 	}
-	store.DB = dataStore
+	store.DbCache = dataStore
 
 	log.Info("2. Init arbitrator account.")
 	if err := currentArbitrator.InitAccount(); err != nil {
