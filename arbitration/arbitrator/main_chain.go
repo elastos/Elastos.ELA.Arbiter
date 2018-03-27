@@ -9,7 +9,7 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target Uint168, amount Fixed64) (*tx.Transaction, error)
+	CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64) (*tx.Transaction, error)
 	ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error)
 
 	OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.Transaction)

@@ -12,7 +12,7 @@ type SideChain interface {
 	SideChainNode
 
 	GetKey() string
-	CreateDepositTransaction(target common.Uint168, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error)
+	CreateDepositTransaction(target string, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error)
 	ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error)
 }
 

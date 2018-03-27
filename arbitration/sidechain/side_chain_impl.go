@@ -7,7 +7,6 @@ import (
 	"Elastos.ELA.Arbiter/common/config"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
-	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
 	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
@@ -69,7 +68,6 @@ func (sc *SideChainImpl) GetAccountAddress() string {
 }
 
 func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
-	//TODO　verify tx [jzh]
 
 	txn, err := txinfo.ToTransaction()
 	if err != nil {
@@ -84,7 +82,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		if err != nil {
 			return err
 		}
-		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(sc.GetKey(), info.TargetProgramHash, info.Amount)
+		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(sc.GetKey(), info.TargetAddress, info.Amount)
 		if err != nil {
 			return err
 		}
@@ -97,26 +95,21 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	return nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error) {
+func (sc *SideChainImpl) CreateDepositTransaction(target string, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error) {
 	var totalOutputAmount = amount // The total amount will be spend
 	var txOutputs []TxoutputInfo   // The outputs in transaction
-
-	toAddress, err := target.ToAddress()
-	if err != nil {
-		return nil, err
-	}
 
 	assetID := spvWallet.SystemAssetId
 	txOutput := TxoutputInfo{
 		AssetID:    assetID.String(),
 		Value:      totalOutputAmount.String(),
-		Address:    toAddress,
+		Address:    target,
 		OutputLock: uint32(0),
 	}
 	txOutputs = append(txOutputs, txOutput)
 
 	spvInfo := new(bytes.Buffer)
-	err = proof.Serialize(spvInfo)
+	err := proof.Serialize(spvInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -145,20 +138,10 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) (
 
 	switch payloadObj := txn.Payload.(type) {
 	case *payload.TransferCrossChainAsset:
-		for key, index := range payloadObj.PublicKeys {
-			publicKeyBytes, err := common.HexStringToBytes(key)
-			key, err := crypto.DecodePoint(publicKeyBytes)
-			if err != nil {
-				return nil, err
-			}
-			targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
-			if err != nil {
-				return nil, err
-			}
-
+		for address, index := range payloadObj.Addresses {
 			info := &WithdrawInfo{
-				TargetProgramHash: *targetProgramHash,
-				Amount:            txn.Outputs[index].Value,
+				TargetAddress: address,
+				Amount:        txn.Outputs[index].Value,
 			}
 			result = append(result, info)
 		}

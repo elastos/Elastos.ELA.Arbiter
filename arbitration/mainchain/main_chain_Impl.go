@@ -9,7 +9,6 @@ import (
 	pg "Elastos.ELA.Arbiter/core/program"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
-	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
 	. "Elastos.ELA.Arbiter/store"
 	spvtx "SPVWallet/core/transaction"
@@ -24,18 +23,21 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target Uint168, amount Fixed64) (*tx.Transaction, error) {
+func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64) (*tx.Transaction, error) {
 	mc.syncChainData()
 
 	// Check if from address is valid
 	assetID := spvWallet.SystemAssetId
-
+	programhash, err := Uint168FromAddress(target)
+	if err != nil {
+		return nil, err
+	}
 	// Create transaction outputs
 	var totalOutputAmount = amount
 	var txOutputs []*tx.TxOutput
 	txOutput := &tx.TxOutput{
 		AssetID:     Uint256(assetID),
-		ProgramHash: target,
+		ProgramHash: *programhash,
 		Value:       amount,
 		OutputLock:  uint32(0),
 	}
@@ -104,29 +106,18 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([
 
 	switch payloadObj := txn.Payload.(type) {
 	case *payload.TransferCrossChainAsset:
-		if len(payloadObj.PublicKeys) != len(txn.Outputs) {
-			return nil, errors.New("Invalid publickeys in payload")
+		if len(payloadObj.Addresses) != len(txn.Outputs) {
+			return nil, errors.New("Invalid addresses in payload")
 		}
 
-		for key, index := range payloadObj.PublicKeys {
-			publicKeyBytes, err := HexStringToBytes(key)
-			key, err := crypto.DecodePoint(publicKeyBytes)
-			if err != nil {
-				return nil, err
-			}
-
-			targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
-			if err != nil {
-				return nil, err
-			}
-
+		for address, index := range payloadObj.Addresses {
 			if index >= uint64(len(txn.Outputs)) {
-				return nil, errors.New("Invalid publickeys map value")
+				return nil, errors.New("Invalid addresses map value")
 			}
 
 			info := &DepositInfo{
 				MainChainProgramHash: txn.Outputs[index].ProgramHash,
-				TargetProgramHash:    *targetProgramHash,
+				TargetAddress:        address,
 				Amount:               txn.Outputs[index].Value,
 			}
 			result = append(result, info)

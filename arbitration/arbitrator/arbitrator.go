@@ -75,7 +75,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*tx.Transaction, error) {
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount common.Fixed64) (*tx.Transaction, error) {
 	return ar.mainChainImpl.CreateWithdrawTransaction(withdrawBank, target, amount)
 }
 
@@ -111,7 +111,7 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx
 			//TODO heropan how to complain error
 			continue
 		}
-		txInfo, err := sideChain.CreateDepositTransaction(info.TargetProgramHash, proof, info.Amount)
+		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, info.Amount)
 		if err != nil {
 			//TODO heropan how to complain error
 			continue
