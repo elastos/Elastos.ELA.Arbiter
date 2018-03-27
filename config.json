@@ -20,7 +20,7 @@
           "IpAddress": "localhost",
           "HttpJsonPort": 20038
         },
-        "GenesisBlockAddress": "XTahcU98Z5aTkibcdy9rEm28RnFqdmv6Zd",
+        "GenesisBlockAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB",
         "DestroyAddress": "XV3qTRxKoffDFWsVZXWo421MRyEmEGCuNu"
       },
       {
@@ -28,7 +28,7 @@
           "IpAddress": "localhost",
           "HttpJsonPort": 30038
         },
-        "GenesisBlockAddress": "XQJh7nL7bR3QtsD6F3PPHCD34wVRhJ5jvh",
+        "GenesisBlockAddress": "XH6gHwZC1yKaRRx62tzvWu5oxa3hekEgXp",
         "DestroyAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB2"
       }
     ],

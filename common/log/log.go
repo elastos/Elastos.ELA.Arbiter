@@ -1,6 +1,7 @@
 package log
 
 import (
+	"Elastos.ELA.Arbiter/common/config"
 	"bytes"
 	"errors"
 	"fmt"
@@ -13,7 +14,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"Elastos.ELA.Arbiter/common/config"
 )
 
 const (
@@ -57,7 +57,7 @@ const (
 	defaultMaxLogSize = 20
 	byteToMb          = 1024 * 1024
 	byteToKb          = 1024
-	Path              = "./Log/"
+	Path              = "./ArbiterLog/"
 )
 
 func GetGID() uint64 {

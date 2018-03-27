@@ -24,7 +24,11 @@ const (
 
 const (
 	//TODO set all addresses with fix width varchar.
-	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS HeightInfo (
+	CreateInfoTable = `CREATE TABLE IF NOT EXISTS Info (
+				Name VARCHAR(20) NOT NULL PRIMARY KEY,
+				Value BLOB
+			);`
+	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
 				GenesisBlockAddress VARCHAR NOT NULL PRIMARY KEY,
 				Height INTEGER 
 			);`
@@ -37,6 +41,10 @@ const (
 			);`
 )
 
+var (
+	DB DataStore
+)
+
 type AddressUTXO struct {
 	Input               *tx.UTXOTxInput
 	Amount              *Fixed64
@@ -47,7 +55,8 @@ type AddressUTXO struct {
 type DataStore interface {
 	sync.Locker
 
-	CurrentHeight(genesisBlockAddress string, height uint32) uint32
+	CurrentHeight(height uint32) uint32
+	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
 
 	AddAddressUTXO(utxo *AddressUTXO) error
 	DeleteUTXO(input *tx.UTXOTxInput) error
@@ -82,7 +91,12 @@ func initDB() (*sql.DB, error) {
 		log.Error("Open data db error:", err)
 		return nil, err
 	}
-	// Create HeightInfo table
+	// Create info table
+	_, err = db.Exec(CreateInfoTable)
+	if err != nil {
+		return nil, err
+	}
+	// Create SideHeightInfo table
 	_, err = db.Exec(CreateHeightInfoTable)
 	if err != nil {
 		return nil, err
@@ -93,8 +107,14 @@ func initDB() (*sql.DB, error) {
 		return nil, err
 	}
 
+	stmt, err := db.Prepare("INSERT INTO Info(Name, Value) values(?,?)")
+	if err != nil {
+		return nil, err
+	}
+	stmt.Exec("Height", uint32(0))
+
 	for _, node := range config.Parameters.SideNodeList {
-		stmt, err := db.Prepare("INSERT INTO HeightInfo(GenesisBlockAddress, Height) values(?,?)")
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
 		if err != nil {
 			return nil, err
 		}
@@ -125,11 +145,11 @@ func (store *DataStoreImpl) ResetDataStore() error {
 	return nil
 }
 
-func (store *DataStoreImpl) CurrentHeight(genesisBlockAddress string, height uint32) uint32 {
+func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
 	store.Lock()
 	defer store.Unlock()
 
-	row := store.QueryRow("SELECT Height FROM HeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
+	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
 	var storedHeight uint32
 	row.Scan(&storedHeight)
 
@@ -139,7 +159,34 @@ func (store *DataStoreImpl) CurrentHeight(genesisBlockAddress string, height uin
 			height = 0
 		}
 		// Insert current height
-		stmt, err := store.Prepare("UPDATE HeightInfo SET Height=? WHERE GenesisBlockAddress=?")
+		stmt, err := store.Prepare("UPDATE Info SET Value=? WHERE Name=?")
+		if err != nil {
+			return uint32(0)
+		}
+		_, err = stmt.Exec(height, "Height")
+		if err != nil {
+			return uint32(0)
+		}
+		return height
+	}
+	return storedHeight
+}
+
+func (store *DataStoreImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
+	store.Lock()
+	defer store.Unlock()
+
+	row := store.QueryRow("SELECT Height FROM SideHeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
+	var storedHeight uint32
+	row.Scan(&storedHeight)
+
+	if height > storedHeight {
+		// Received reset height code
+		if height == ResetHeightCode {
+			height = 0
+		}
+		// Insert current height
+		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=? WHERE GenesisBlockAddress=?")
 		if err != nil {
 			return uint32(0)
 		}

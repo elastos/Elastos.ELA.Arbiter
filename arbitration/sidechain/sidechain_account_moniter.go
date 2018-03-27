@@ -4,17 +4,13 @@ import (
 	"fmt"
 
 	. "Elastos.ELA.Arbiter/arbitration/base"
-	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
-	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/rpc"
-	"Elastos.ELA.Arbiter/store"
+	. "Elastos.ELA.Arbiter/store"
 	"errors"
 )
 
 type SideChainAccountMonitorImpl struct {
-	store.DataStore
-
 	accountListenerMap map[string]AccountListener
 }
 
@@ -69,7 +65,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData() {
 			sync.processBlock(block)
 
 			// Update wallet height
-			currentHeight = sync.CurrentHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
+			currentHeight = DB.CurrentSideHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
 
 			fmt.Print(">")
 		}
@@ -85,7 +81,7 @@ func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress stri
 		return 0, 0, false
 	}
 
-	currentHeight := sync.CurrentHeight(genesisBlockAddress, store.QueryHeightCode)
+	currentHeight := DB.CurrentSideHeight(genesisBlockAddress, QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
@@ -108,44 +104,10 @@ func (sync *SideChainAccountMonitorImpl) processBlock(block *BlockInfo) {
 	for _, txn := range block.Transactions {
 
 		// Add UTXOs to wallet address from transaction outputs
-		for index, output := range txn.Outputs {
+		for _, output := range txn.Outputs {
 			if genesisAddress, ok := sync.containDestroyAddress(output.Address); ok {
-				// Create UTXO input from output
-				txHashBytes, _ := HexStringToBytesReverse(txn.Hash)
-				referTxHash, _ := Uint256FromBytes(txHashBytes)
-				sequence := output.OutputLock
-				if txn.TxType == tx.CoinBase {
-					sequence = block.BlockData.Height + 100
-				}
-				input := &tx.UTXOTxInput{
-					ReferTxID:          *referTxHash,
-					ReferTxOutputIndex: uint16(index),
-					Sequence:           sequence,
-				}
-				amount, _ := StringToFixed64(output.Value)
-				// Save UTXO input to data store
-				addressUTXO := &store.AddressUTXO{
-					Input:               input,
-					Amount:              amount,
-					GenesisBlockAddress: genesisAddress,
-					DestroyAddress:      output.Address,
-				}
-				sync.AddAddressUTXO(addressUTXO)
-
 				sync.fireUTXOChanged(txn, genesisAddress)
 			}
-		}
-
-		// Delete UTXOs from wallet by transaction inputs
-		for _, input := range txn.UTXOInputs {
-			txHashBytes, _ := HexStringToBytesReverse(input.ReferTxID)
-			referTxID, _ := Uint256FromBytes(txHashBytes)
-			txInput := &tx.UTXOTxInput{
-				ReferTxID:          *referTxID,
-				ReferTxOutputIndex: input.ReferTxOutputIndex,
-				Sequence:           input.Sequence,
-			}
-			sync.DeleteUTXO(txInput)
 		}
 	}
 }

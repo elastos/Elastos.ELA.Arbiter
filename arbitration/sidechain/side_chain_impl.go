@@ -118,11 +118,11 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, proof s
 	txPayloadInfo := new(IssueTokenInfo)
 
 	// Create attributes
-	spvInfo, err := proof.Serialize()
-	if err != nil {
+	spvInfoBuf := new(bytes.Buffer)
+	if err = proof.Serialize(spvInfoBuf); err != nil {
 		return nil, err
 	}
-	txAttr := TxAttributeInfo{tx.SpvInfo, common.BytesToHexString(spvInfo)}
+	txAttr := TxAttributeInfo{tx.SpvInfo, common.BytesToHexString(spvInfoBuf.Bytes())}
 	attributes := make([]TxAttributeInfo, 0)
 	attributes = append(attributes, txAttr)
 

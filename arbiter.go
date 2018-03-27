@@ -19,11 +19,7 @@ func init() {
 }
 
 func setSideChainAccountMonitor(arbitrator Arbitrator) {
-	dataStore, err := store.OpenDataStore()
-	if err != nil {
-		log.Error("Side chain monitor setup error: ", err)
-	}
-	monitor := sidechain.SideChainAccountMonitorImpl{DataStore: dataStore}
+	monitor := sidechain.SideChainAccountMonitorImpl{}
 
 	for _, side := range arbitrator.GetAllChains() {
 		monitor.AddListener(side)
@@ -50,8 +46,15 @@ func initP2P(arbitrator Arbitrator) error {
 }
 
 func main() {
-	log.Info("1. Init arbitrator configuration.")
+	log.Info("0. Init arbitrator configuration.")
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+
+	log.Info("1. Init chain utxo cache.")
+	dataStore, err := store.OpenDataStore()
+	if err != nil {
+		log.Error("Side chain monitor setup error: ", err)
+	}
+	store.DB = dataStore
 
 	log.Info("2. Init arbitrator account.")
 	if err := currentArbitrator.InitAccount(); err != nil {

@@ -103,5 +103,5 @@ func init() {
 	currentArbitrator := &ArbitratorImpl{}
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 
-	spvLog.Init(false)
+	spvLog.Init()
 }
