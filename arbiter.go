@@ -11,7 +11,7 @@ import (
 	"Elastos.ELA.Arbiter/store"
 )
 
-func SetSideChainAccountMonitor(arbitrator Arbitrator) {
+func setSideChainAccountMonitor(arbitrator Arbitrator) {
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
 		log.Error("Side chain monitor setup error: ", err)
@@ -24,7 +24,7 @@ func SetSideChainAccountMonitor(arbitrator Arbitrator) {
 
 	for {
 		monitor.SyncChainData()
-		time.Sleep(time.Millisecond * config.Parameters.SidechainMoniterScanInterval)
+		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
 	}
 }
 
@@ -32,7 +32,7 @@ func main() {
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 
 	go ArbitratorGroupSingleton.SyncLoop()
-	go SetSideChainAccountMonitor(currentArbitrator)
+	go setSideChainAccountMonitor(currentArbitrator)
 	// Start Server
 	go httpjsonrpc.StartRPCServer()
 

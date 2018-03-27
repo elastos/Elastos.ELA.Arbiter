@@ -32,8 +32,7 @@
         "DestroyAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB2"
       }
     ],
-    "UUID": "02b55caf1eb93cae446da92512e78a87aac6dd3d56bf546cf4cc916b8909ad5cac",
     "SyncInterval": 10000,
-    "SidechainMoniterScanInterval": 1000
+    "SideChainMonitorScanInterval": 1000
   }
 }

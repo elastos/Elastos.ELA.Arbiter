@@ -22,7 +22,6 @@ type Configuration struct {
 	Version  int      `json:"Version"`
 	SeedList []string `json:"SeedList"`
 	NodePort uint16   `json:"NordPort"`
-	UUID     string   `json:"UUID"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
@@ -32,7 +31,7 @@ type Configuration struct {
 	PrintLevel   int           `json:"PrintLevel"`
 	MaxLogSize   int64         `json:"MaxLogSize"`
 
-	SidechainMoniterScanInterval time.Duration `json:"SidechainMoniterScanInterval"`
+	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
 }
 
 type RpcConfig struct {
