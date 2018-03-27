@@ -19,12 +19,13 @@ import (
 type TransactionType byte
 
 const (
-	CoinBase      TransactionType = 0x00
-	RegisterAsset TransactionType = 0x01
-	TransferAsset TransactionType = 0x02
-	Record        TransactionType = 0x03
-	Deploy        TransactionType = 0x04
-	IssueToken    TransactionType = 0x05
+	CoinBase                TransactionType = 0x00
+	RegisterAsset           TransactionType = 0x01
+	TransferAsset           TransactionType = 0x02
+	Record                  TransactionType = 0x03
+	Deploy                  TransactionType = 0x04
+	IssueToken              TransactionType = 0x05
+	TransferCrossChainAsset TransactionType = 0x06
 
 	PUSH1 = 0x51
 
@@ -47,6 +48,8 @@ func (self TransactionType) Name() string {
 		return "Deploy"
 	case IssueToken:
 		return "IssueToken"
+	case TransferCrossChainAsset:
+		return "TransferCrossChainAsset"
 	default:
 		return "Unknown"
 	}
@@ -231,6 +234,10 @@ func (tx *Transaction) DeserializeUnsignedWithoutType(r io.Reader) error {
 	case TransferAsset:
 		tx.Payload = new(payload.TransferAsset)
 	case Deploy:
+	case IssueToken:
+		tx.Payload = new(payload.IssueToken)
+	case TransferCrossChainAsset:
+		tx.Payload = new(payload.TransferCrossChainAsset)
 	default:
 		return errors.New("[Transaction], invalid transaction type.")
 	}

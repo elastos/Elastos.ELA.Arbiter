@@ -6,6 +6,7 @@ import (
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
 	tx "Elastos.ELA.Arbiter/core/transaction"
+	"Elastos.ELA.Arbiter/core/transaction/payload"
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
 	spvdb "SPVWallet/db"
@@ -114,24 +115,22 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, proof s
 	}
 	txOutputs = append(txOutputs, txOutput)
 
-	// Create payload
-	txPayloadInfo := new(IssueTokenInfo)
-
-	// Create attributes
-	spvInfoBuf := new(bytes.Buffer)
-	if err = proof.Serialize(spvInfoBuf); err != nil {
+	spvInfo := new(bytes.Buffer)
+	err = proof.Serialize(spvInfo)
+	if err != nil {
 		return nil, err
 	}
-	txAttr := TxAttributeInfo{tx.SpvInfo, common.BytesToHexString(spvInfoBuf.Bytes())}
-	attributes := make([]TxAttributeInfo, 0)
-	attributes = append(attributes, txAttr)
+
+	// Create payload
+	txPayloadInfo := new(IssueTokenInfo)
+	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
 
 	// Create program
 	program := ProgramInfo{}
 	return &TransactionInfo{
 		TxType:        tx.IssueToken,
 		Payload:       txPayloadInfo,
-		Attributes:    attributes,
+		Attributes:    []TxAttributeInfo{},
 		UTXOInputs:    []UTXOTxInputInfo{},
 		BalanceInputs: []BalanceTxInputInfo{},
 		Outputs:       txOutputs,
@@ -143,12 +142,12 @@ func (sc *SideChainImpl) CreateDepositTransaction(target common.Uint168, proof s
 func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error) {
 
 	var result []*WithdrawInfo
-	txAttribute := txn.Attributes
-	for _, txAttr := range txAttribute {
-		if txAttr.Usage == tx.TargetPublicKey {
-			// Get public key
-			keyBytes := txAttr.Data[0 : len(txAttr.Data)-1]
-			key, err := crypto.DecodePoint(keyBytes)
+
+	switch payloadObj := txn.Payload.(type) {
+	case *payload.TransferCrossChainAsset:
+		for key, index := range payloadObj.PublicKeys {
+			publicKeyBytes, err := common.HexStringToBytes(key)
+			key, err := crypto.DecodePoint(publicKeyBytes)
 			if err != nil {
 				return nil, err
 			}
@@ -156,18 +155,15 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) (
 			if err != nil {
 				return nil, err
 			}
-			attrIndex := txAttr.Data[len(txAttr.Data)-1 : len(txAttr.Data)]
-			for index, output := range txn.Outputs {
-				if bytes.Equal([]byte{byte(index)}, attrIndex) {
-					info := &WithdrawInfo{
-						TargetProgramHash: *targetProgramHash,
-						Amount:            output.Value,
-					}
-					result = append(result, info)
-					break
-				}
+
+			info := &WithdrawInfo{
+				TargetProgramHash: *targetProgramHash,
+				Amount:            txn.Outputs[index].Value,
 			}
+			result = append(result, info)
 		}
+	default:
+		return nil, errors.New("Invalid payload")
 	}
 
 	return result, nil

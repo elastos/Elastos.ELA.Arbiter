@@ -15,7 +15,6 @@ import (
 	spvtx "SPVWallet/core/transaction"
 	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
-	"bytes"
 	"errors"
 	"fmt"
 	"math"
@@ -102,32 +101,38 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target U
 func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
 
 	var result []*DepositInfo
-	txAttribute := txn.Attributes
-	for _, txAttr := range txAttribute {
-		if txAttr.Usage == tx.TargetPublicKey {
-			// Get public key
-			keyBytes := txAttr.Data[0 : len(txAttr.Data)-1]
-			key, err := crypto.DecodePoint(keyBytes)
+
+	switch payloadObj := txn.Payload.(type) {
+	case *payload.TransferCrossChainAsset:
+		if len(payloadObj.PublicKeys) != len(txn.Outputs) {
+			return nil, errors.New("Invalid publickeys in payload")
+		}
+
+		for key, index := range payloadObj.PublicKeys {
+			publicKeyBytes, err := HexStringToBytes(key)
+			key, err := crypto.DecodePoint(publicKeyBytes)
 			if err != nil {
 				return nil, err
 			}
+
 			targetProgramHash, err := StandardAcccountPublicKeyToProgramHash(key)
 			if err != nil {
 				return nil, err
 			}
-			attrIndex := txAttr.Data[len(txAttr.Data)-1 : len(txAttr.Data)]
-			for index, output := range txn.Outputs {
-				if bytes.Equal([]byte{byte(index)}, attrIndex) {
-					info := &DepositInfo{
-						MainChainProgramHash: output.ProgramHash,
-						TargetProgramHash:    *targetProgramHash,
-						Amount:               output.Value,
-					}
-					result = append(result, info)
-					break
-				}
+
+			if index >= uint64(len(txn.Outputs)) {
+				return nil, errors.New("Invalid publickeys map value")
 			}
+
+			info := &DepositInfo{
+				MainChainProgramHash: txn.Outputs[index].ProgramHash,
+				TargetProgramHash:    *targetProgramHash,
+				Amount:               txn.Outputs[index].Value,
+			}
+			result = append(result, info)
 		}
+	default:
+		return nil, errors.New("Invalid payload")
 	}
 
 	return result, nil
