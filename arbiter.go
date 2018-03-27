@@ -6,6 +6,7 @@ import (
 
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/arbitration/cs"
+	"Elastos.ELA.Arbiter/arbitration/mainchain"
 	"Elastos.ELA.Arbiter/arbitration/sidechain"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
@@ -34,6 +35,20 @@ func setSideChainAccountMonitor(arbitrator Arbitrator) {
 	}
 }
 
+func initP2P(arbitrator Arbitrator) error {
+	if err := cs.InitP2PClient(arbitrator); err != nil {
+		return err
+	}
+
+	//register p2p client listener
+	if err := mainchain.InitMainChain(arbitrator); err != nil {
+		return err
+	}
+
+	cs.P2PClientSingleton.Start()
+	return nil
+}
+
 func main() {
 	log.Info("1. Init arbitrator configuration.")
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
@@ -51,7 +66,7 @@ func main() {
 	}
 
 	log.Info("4. Start arbitrator P2P networks.")
-	if err := cs.StartP2P(currentArbitrator); err != nil {
+	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}

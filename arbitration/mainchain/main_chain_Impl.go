@@ -143,8 +143,11 @@ func (mc *MainChainImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.
 
 }
 
-func init() {
-	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
+func InitMainChain(arbitrator Arbitrator) error {
+	currentArbitrator, ok := arbitrator.(*ArbitratorImpl)
+	if !ok {
+		return errors.New("Unknown arbitrator type.")
+	}
 
 	mainChainServer := &MainChainImpl{&DistributedNodeServer{P2pCommand: WithdrawCommand}}
 	P2PClientSingleton.AddListener(mainChainServer)
@@ -153,4 +156,6 @@ func init() {
 	mainChainClient := &MainChainClientImpl{&DistributedNodeClient{P2pCommand: WithdrawCommand}}
 	P2PClientSingleton.AddListener(mainChainClient)
 	currentArbitrator.SetMainChainClient(mainChainClient)
+
+	return nil
 }

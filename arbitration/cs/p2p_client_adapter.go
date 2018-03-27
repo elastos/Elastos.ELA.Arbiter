@@ -18,6 +18,8 @@ var (
 const (
 	WithdrawCommand = "withdraw"
 	ComplainCommand = "complain"
+
+	GeneralListenerCount = 4
 )
 
 type P2PClientListener interface {
@@ -29,7 +31,7 @@ type P2PClientAdapter struct {
 	listeners []P2PClientListener
 }
 
-func StartP2P(arbitrator Arbitrator) error {
+func InitP2PClient(arbitrator Arbitrator) error {
 	publicKey := arbitrator.GetPublicKey()
 	publicKeyBytes, err := publicKey.EncodePoint(true)
 	if err != nil {
@@ -53,7 +55,18 @@ func StartP2P(arbitrator Arbitrator) error {
 	return nil
 }
 
+func (adapter *P2PClientAdapter) tryInit() {
+	if adapter.listeners == nil {
+		adapter.listeners = make([]P2PClientListener, GeneralListenerCount)
+	}
+}
+
+func (adapter *P2PClientAdapter) Start() {
+	adapter.p2pClient.Start()
+}
+
 func (adapter *P2PClientAdapter) AddListener(listener P2PClientListener) {
+	adapter.tryInit()
 	adapter.listeners = append(adapter.listeners, listener)
 }
 
@@ -62,6 +75,10 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 }
 
 func (adapter *P2PClientAdapter) fireP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
+	if adapter.listeners == nil {
+		return nil
+	}
+
 	for _, listener := range adapter.listeners {
 		if err := listener.OnP2PReceived(peer, msg); err != nil {
 			log.Warn(err)
