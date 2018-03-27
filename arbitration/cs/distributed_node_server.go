@@ -30,6 +30,9 @@ type DistributedNodeServer struct {
 }
 
 func (dns *DistributedNodeServer) tryInit() {
+	if dns.mux == nil {
+		dns.mux = new(sync.Mutex)
+	}
 	if dns.unsolvedTransactions == nil {
 		dns.unsolvedTransactions = make(map[common.Uint256]*tx.Transaction)
 	}
@@ -51,8 +54,7 @@ func (dns *DistributedNodeServer) FinishedTransactions() map[common.Uint256]bool
 }
 
 func CreateRedeemScript() ([]byte, error) {
-	arbitratorCount := ArbitratorGroupSingleton.GetArbitratorsCount()
-	publicKeys := make([]*crypto.PublicKey, arbitratorCount)
+	var publicKeys []*crypto.PublicKey
 	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
 		temp := &crypto.PublicKey{}
 		temp.FromString(arStr)
@@ -101,10 +103,10 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 }
 
 func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction) ([]byte, error) {
+	dns.tryInit()
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 
-	dns.tryInit()
 	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
 		return nil, errors.New("Transaction already in process.")
 	}

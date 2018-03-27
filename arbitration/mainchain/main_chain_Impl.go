@@ -12,7 +12,6 @@ import (
 	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
 	. "Elastos.ELA.Arbiter/store"
-	spvCore "SPVWallet/core"
 	spvtx "SPVWallet/core/transaction"
 	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
@@ -32,7 +31,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target U
 	assetID := spvWallet.SystemAssetId
 
 	// Create transaction outputs
-	var totalOutputAmount = spvCore.Fixed64(0)
+	var totalOutputAmount = amount
 	var txOutputs []*tx.TxOutput
 	txOutput := &tx.TxOutput{
 		AssetID:     Uint256(assetID),
@@ -51,20 +50,20 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target U
 	// Create transaction inputs
 	var txInputs []*tx.UTXOTxInput
 	for _, utxo := range availableUTXOs {
-		txInputs = append(txInputs, TxUTXOFromSpvUTXO(utxo))
-		if utxo.Value < totalOutputAmount {
-			totalOutputAmount -= utxo.Value
-		} else if utxo.Value == totalOutputAmount {
+		txInputs = append(txInputs, utxo.Input)
+		if *utxo.Amount < totalOutputAmount {
+			totalOutputAmount -= *utxo.Amount
+		} else if *utxo.Amount == totalOutputAmount {
 			totalOutputAmount = 0
 			break
-		} else if utxo.Value > totalOutputAmount {
+		} else if *utxo.Amount > totalOutputAmount {
 			programHash, err := Uint168FromAddress(withdrawBank)
 			if err != nil {
 				return nil, err
 			}
 			change := &tx.TxOutput{
 				AssetID:     Uint256(assetID),
-				Value:       Fixed64(utxo.Value - totalOutputAmount),
+				Value:       Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
 			}

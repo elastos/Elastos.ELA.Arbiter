@@ -68,7 +68,7 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 func (ar *ArbitratorImpl) IsOnDuty() bool {
 	pk := crypto.PublicKey{}
 	pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitrator())
-	return pk == *ar.GetPublicKey()
+	return crypto.Equal(&pk, ar.GetPublicKey())
 }
 
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {

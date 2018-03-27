@@ -7,7 +7,6 @@ import (
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
 	"Elastos.ELA.Arbiter/crypto"
-	spvDb "SPVWallet/db"
 	"errors"
 	"io"
 )
@@ -680,14 +679,6 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		Programs:       txPrograms,
 	}
 	return txTransaction, nil
-}
-
-func TxUTXOFromSpvUTXO(utxo *spvDb.UTXO) *UTXOTxInput {
-	return &UTXOTxInput{
-		ReferTxID:          Uint256(utxo.Op.TxID),
-		ReferTxOutputIndex: utxo.Op.Index,
-		Sequence:           utxo.LockTime,
-	}
 }
 
 func StandardAcccountPublicKeyToProgramHash(key *crypto.PublicKey) (*Uint168, error) {
