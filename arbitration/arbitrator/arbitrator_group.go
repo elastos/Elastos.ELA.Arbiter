@@ -56,8 +56,10 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	//todo synchronize from main chain block info
-	group.arbitrators = append(group.arbitrators, "")
-	group.arbitrators = append(group.arbitrators, "")
+	var arbiters []string
+	arbiters = append(arbiters, "")
+	arbiters = append(arbiters, "")
+	group.arbitrators = arbiters
 	group.onDutyArbitratorIndex = 0
 
 	group.lastSyncTime = &currentTime

@@ -5,7 +5,6 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/arbitration/cs"
 	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/core/asset"
 	pg "Elastos.ELA.Arbiter/core/program"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
@@ -19,31 +18,8 @@ import (
 	"fmt"
 )
 
-var SystemAssetId = getSystemAssetId()
-
 type MainChainImpl struct {
 	*DistributedNodeServer
-}
-
-func getSystemAssetId() common.Uint256 {
-	systemToken := &tx.Transaction{
-		TxType:         tx.RegisterAsset,
-		PayloadVersion: 0,
-		Payload: &payload.RegisterAsset{
-			Asset: &asset.Asset{
-				Name:      "ELA",
-				Precision: 0x08,
-				AssetType: 0x00,
-			},
-			Amount:     0 * 100000000,
-			Controller: common.Uint168{},
-		},
-		Attributes: []*tx.TxAttribute{},
-		UTXOInputs: []*tx.UTXOTxInput{},
-		Outputs:    []*tx.TxOutput{},
-		Programs:   []*pg.Program{},
-	}
-	return systemToken.Hash()
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target common.Uint168, amount common.Fixed64) (*tx.Transaction, error) {
@@ -53,11 +29,13 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 		return nil, errors.New(fmt.Sprint("Invalid spender address: ", withdrawBank, ", error: ", err))
 	}
 
+	assetID := spvWallet.SystemAssetId
+
 	// Create transaction outputs
 	var totalOutputAmount = spvCore.Fixed64(0)
 	var txOutputs []*tx.TxOutput
 	txOutput := &tx.TxOutput{
-		AssetID:     SystemAssetId,
+		AssetID:     common.Uint256(assetID),
 		ProgramHash: target,
 		Value:       amount,
 		OutputLock:  uint32(0),
@@ -93,7 +71,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target c
 				return nil, err
 			}
 			change := &tx.TxOutput{
-				AssetID:     SystemAssetId,
+				AssetID:     common.Uint256(assetID),
 				Value:       common.Fixed64(utxo.Value - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
