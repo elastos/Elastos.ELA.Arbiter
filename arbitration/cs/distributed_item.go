@@ -151,6 +151,11 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	return nil
 }
 
+func (item *DistributedItem) isForComplain() bool {
+	//todo judge if raw transaction is for complain (by payload)
+	return false
+}
+
 func (item *DistributedItem) createMultiSignRedeemScript() error {
 	script, err := CreateRedeemScript()
 	if err != nil {
@@ -227,7 +232,17 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		sign := signedData[1:]
-		currentArbitratorPk := item.TargetArbitratorPublicKey
+		targetPk := item.TargetArbitratorPublicKey
+
+		if !item.isForComplain() {
+			onDutyArbitratorPk := &crypto.PublicKey{}
+			if err := onDutyArbitratorPk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitrator()); err != nil {
+				return err
+			}
+			if !crypto.Equal(targetPk, onDutyArbitratorPk) {
+				return errors.New("Can not sign without current arbitrator's signing.")
+			}
+		}
 
 		buf := new(bytes.Buffer)
 		err := item.ItemContent.Serialize(buf)
@@ -235,7 +250,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 			return err
 		}
 
-		err = crypto.Verify(*currentArbitratorPk, buf.Bytes(), sign)
+		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
 		if err != nil {
 			return errors.New("Can not sign without current arbitrator's signing.")
 		}
