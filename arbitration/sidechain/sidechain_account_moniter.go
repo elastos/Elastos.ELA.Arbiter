@@ -52,23 +52,26 @@ func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo
 
 func (sync *SideChainAccountMonitorImpl) SyncChainData() {
 	for _, node := range config.Parameters.SideNodeList {
-		chainHeight, currentHeight, needSync := sync.needSyncBlocks(node.GenesisBlockAddress, node.Rpc)
-		if !needSync {
-			continue
-		}
 
-		for currentHeight < chainHeight {
-			block, err := rpc.GetBlockByHeight(currentHeight, node.Rpc)
-			if err != nil {
-				break
+		go func() {
+			chainHeight, currentHeight, needSync := sync.needSyncBlocks(node.GenesisBlockAddress, node.Rpc)
+			if !needSync {
+				return
 			}
-			sync.processBlock(block)
 
-			// Update wallet height
-			currentHeight = DbCache.CurrentSideHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
+			for currentHeight < chainHeight {
+				block, err := rpc.GetBlockByHeight(currentHeight, node.Rpc)
+				if err != nil {
+					break
+				}
+				sync.processBlock(block)
 
-			fmt.Print(">")
-		}
+				// Update wallet height
+				currentHeight = DbCache.CurrentSideHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
+
+				fmt.Print(">")
+			}
+		}()
 	}
 
 	fmt.Print("\n")

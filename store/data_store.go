@@ -66,7 +66,8 @@ type DataStore interface {
 }
 
 type DataStoreImpl struct {
-	sync.Mutex
+	mainMux *sync.Mutex
+	sideMux *sync.Mutex
 
 	*sql.DB
 }
@@ -76,7 +77,7 @@ func OpenDataStore() (DataStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	dataStore := &DataStoreImpl{DB: db}
+	dataStore := &DataStoreImpl{DB: db, mainMux: new(sync.Mutex), sideMux: new(sync.Mutex)}
 
 	// Handle system interrupt signals
 	dataStore.catchSystemSignals()
@@ -125,7 +126,8 @@ func initDB() (*sql.DB, error) {
 
 func (store *DataStoreImpl) catchSystemSignals() {
 	HandleSignal(func() {
-		store.Lock()
+		store.mainMux.Lock()
+		store.sideMux.Lock()
 		store.Close()
 	})
 }
@@ -145,8 +147,8 @@ func (store *DataStoreImpl) ResetDataStore() error {
 }
 
 func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
-	store.Lock()
-	defer store.Unlock()
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
 
 	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
 	var storedHeight uint32
@@ -172,8 +174,8 @@ func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
 }
 
 func (store *DataStoreImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
-	store.Lock()
-	defer store.Unlock()
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
 
 	row := store.QueryRow("SELECT Height FROM SideHeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
 	var storedHeight uint32
@@ -199,8 +201,8 @@ func (store *DataStoreImpl) CurrentSideHeight(genesisBlockAddress string, height
 }
 
 func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
-	store.Lock()
-	defer store.Unlock()
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress, DestroyAddress) values(?,?,?,?)")
@@ -224,8 +226,8 @@ func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 }
 
 func (store *DataStoreImpl) DeleteUTXO(input *tx.UTXOTxInput) error {
-	store.Lock()
-	defer store.Unlock()
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("DELETE FROM UTXOs WHERE UTXOInput=?")
@@ -245,8 +247,8 @@ func (store *DataStoreImpl) DeleteUTXO(input *tx.UTXOTxInput) error {
 }
 
 func (store *DataStoreImpl) GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error) {
-	store.Lock()
-	defer store.Unlock()
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
 
 	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount, UTXOs.GenesisBlockAddress FROM UTXOs WHERE DestroyAddress=?`, destroyAddress)
 	if err != nil {
@@ -278,8 +280,8 @@ func (store *DataStoreImpl) GetAddressUTXOsFromDestroyAddress(destroyAddress str
 }
 
 func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error) {
-	store.Lock()
-	defer store.Unlock()
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
 
 	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount, UTXOs.DestroyAddress FROM UTXOs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
 	if err != nil {
