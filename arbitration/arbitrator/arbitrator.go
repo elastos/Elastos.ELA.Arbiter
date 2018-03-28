@@ -8,6 +8,7 @@ import (
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
+	"Elastos.ELA.Arbiter/common/log"
 	"Elastos.ELA.Arbiter/common/password"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
@@ -101,19 +102,19 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx
 	txn.Deserialize(r)
 	depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
 	if err != nil {
-		//TODO heropan how to complain error
+		log.Error(err)
 		return
 	}
 
 	for _, info := range depositInfo {
 		sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
 		if !ok {
-			//TODO heropan how to complain error
+			log.Warn("Invalid deposit address.")
 			continue
 		}
 		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, info.Amount)
 		if err != nil {
-			//TODO heropan how to complain error
+			log.Error(err)
 			continue
 		}
 		sideChain.SendTransaction(txInfo)

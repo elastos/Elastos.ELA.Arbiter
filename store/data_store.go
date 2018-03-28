@@ -23,21 +23,20 @@ const (
 )
 
 const (
-	//TODO set all addresses with fix width varchar.
 	CreateInfoTable = `CREATE TABLE IF NOT EXISTS Info (
 				Name VARCHAR(20) NOT NULL PRIMARY KEY,
 				Value BLOB
 			);`
 	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
-				GenesisBlockAddress VARCHAR NOT NULL PRIMARY KEY,
+				GenesisBlockAddress VARCHAR(34) NOT NULL PRIMARY KEY,
 				Height INTEGER 
 			);`
 	CreateUTXOsTable = `CREATE TABLE IF NOT EXISTS UTXOs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				UTXOInput BLOB UNIQUE,
 				Amount VARCHAR,
-				GenesisBlockAddress VARCHAR,
-				DestroyAddress VARCHAR
+				GenesisBlockAddress VARCHAR(34),
+				DestroyAddress VARCHAR(34)
 			);`
 )
 

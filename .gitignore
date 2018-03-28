@@ -22,3 +22,4 @@ arbiter
 *.db
 *.bin
 *.dat
+ArbiterLog/*
