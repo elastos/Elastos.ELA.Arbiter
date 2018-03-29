@@ -25,9 +25,8 @@ func setSideChainAccountMonitor(arbitrator Arbitrator) {
 		monitor.AddListener(side)
 	}
 
-	for {
-		monitor.SyncChainData()
-		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
+	for _, node := range config.Parameters.SideNodeList {
+		go monitor.SyncChainData(node)
 	}
 }
 

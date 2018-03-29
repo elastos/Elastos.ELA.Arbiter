@@ -1,13 +1,14 @@
 package sidechain
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/rpc"
 	. "Elastos.ELA.Arbiter/store"
-	"errors"
 )
 
 type SideChainAccountMonitorImpl struct {
@@ -50,31 +51,28 @@ func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo
 	return item.OnUTXOChanged(txinfo)
 }
 
-func (sync *SideChainAccountMonitorImpl) SyncChainData() {
-	for _, node := range config.Parameters.SideNodeList {
+func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
+	for {
+		chainHeight, currentHeight, needSync := sync.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
-		go func() {
-			chainHeight, currentHeight, needSync := sync.needSyncBlocks(node.GenesisBlockAddress, node.Rpc)
-			if !needSync {
-				return
-			}
-
+		if needSync {
 			for currentHeight < chainHeight {
-				block, err := rpc.GetBlockByHeight(currentHeight, node.Rpc)
+				block, err := rpc.GetBlockByHeight(currentHeight, sideNode.Rpc)
 				if err != nil {
 					break
 				}
 				sync.processBlock(block)
 
 				// Update wallet height
-				currentHeight = DbCache.CurrentSideHeight(node.GenesisBlockAddress, block.BlockData.Height+1)
+				currentHeight = DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, block.BlockData.Height+1)
 
 				fmt.Print(">")
 			}
-		}()
-	}
+			fmt.Print("\n")
+		}
 
-	fmt.Print("\n")
+		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
+	}
 }
 
 func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
