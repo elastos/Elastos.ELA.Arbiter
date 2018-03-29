@@ -27,7 +27,7 @@ type IssueTokenInfo struct {
 }
 
 type TransferCrossChainAssetInfo struct {
-	Addresses map[string]uint64
+	AddressesMap map[string]uint64
 }
 
 type TxAttributeInfo struct {

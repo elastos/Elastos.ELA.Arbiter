@@ -13,6 +13,8 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math/rand"
+	"strconv"
 )
 
 type SideChainImpl struct {
@@ -118,12 +120,17 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof spvdb.Pro
 	txPayloadInfo := new(IssueTokenInfo)
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
 
+	// Create attributes
+	txAttr := TxAttributeInfo{tx.Nonce, strconv.FormatInt(rand.Int63(), 10)}
+	attributesInfo := make([]TxAttributeInfo, 0)
+	attributesInfo = append(attributesInfo, txAttr)
+
 	// Create program
 	program := ProgramInfo{}
 	return &TransactionInfo{
 		TxType:        tx.IssueToken,
 		Payload:       txPayloadInfo,
-		Attributes:    []TxAttributeInfo{},
+		Attributes:    attributesInfo,
 		UTXOInputs:    []UTXOTxInputInfo{},
 		BalanceInputs: []BalanceTxInputInfo{},
 		Outputs:       txOutputs,
@@ -138,7 +145,7 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) (
 
 	switch payloadObj := txn.Payload.(type) {
 	case *payload.TransferCrossChainAsset:
-		for address, index := range payloadObj.Addresses {
+		for address, index := range payloadObj.AddressesMap {
 			info := &WithdrawInfo{
 				TargetAddress: address,
 				Amount:        txn.Outputs[index].Value,

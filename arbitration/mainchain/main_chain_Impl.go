@@ -17,7 +17,11 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
+	"strconv"
 )
+
+const WithdrawTokenLockTime uint32 = 6
 
 type MainChainImpl struct {
 	*DistributedNodeServer
@@ -39,7 +43,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 		AssetID:     Uint256(assetID),
 		ProgramHash: *programhash,
 		Value:       amount,
-		OutputLock:  uint32(0),
+		OutputLock:  uint32(WithdrawTokenLockTime),
 	}
 
 	txOutputs = append(txOutputs, txOutput)
@@ -85,13 +89,24 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	if err != nil {
 		return nil, err
 	}
-	txPayload := &payload.TransferAsset{}
+
+	// Create payload
+	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+	txPayload := &payload.WithdrawToken{chainHeight}
 	program := &pg.Program{redeemScript, nil}
 
+	// Create attributes
+	txAttr := tx.NewTxAttribute(tx.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*tx.TxAttribute, 0)
+	attributes = append(attributes, &txAttr)
+
 	return &tx.Transaction{
-		TxType:        tx.TransferAsset,
+		TxType:        tx.WithdrawToken,
 		Payload:       txPayload,
-		Attributes:    []*tx.TxAttribute{},
+		Attributes:    attributes,
 		UTXOInputs:    txInputs,
 		BalanceInputs: []*tx.BalanceTxInput{},
 		Outputs:       txOutputs,
@@ -106,19 +121,11 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([
 
 	switch payloadObj := txn.Payload.(type) {
 	case *payload.TransferCrossChainAsset:
-		if len(payloadObj.Addresses) != len(txn.Outputs) {
-			return nil, errors.New("Invalid addresses in payload")
-		}
-
-		for address, index := range payloadObj.Addresses {
-			if index >= uint64(len(txn.Outputs)) {
-				return nil, errors.New("Invalid addresses map value")
-			}
-
+		for k, v := range payloadObj.AddressesMap {
 			info := &DepositInfo{
-				MainChainProgramHash: txn.Outputs[index].ProgramHash,
-				TargetAddress:        address,
-				Amount:               txn.Outputs[index].Value,
+				MainChainProgramHash: txn.Outputs[v].ProgramHash,
+				TargetAddress:        k,
+				Amount:               txn.Outputs[v].Value,
 			}
 			result = append(result, info)
 		}

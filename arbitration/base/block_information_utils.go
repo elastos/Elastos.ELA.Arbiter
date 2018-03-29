@@ -63,15 +63,15 @@ func (a *TransferCrossChainAssetInfo) Data(version byte) string {
 }
 
 func (a *TransferCrossChainAssetInfo) Serialize(w io.Writer, version byte) error {
-	if a.Addresses == nil {
+	if a.AddressesMap == nil {
 		return errors.New("Invalid address map")
 	}
 
-	if err := serialization.WriteVarUint(w, uint64(len(a.Addresses))); err != nil {
+	if err := serialization.WriteVarUint(w, uint64(len(a.AddressesMap))); err != nil {
 		return errors.New("address map's length serialize failed")
 	}
 
-	for k, v := range a.Addresses {
+	for k, v := range a.AddressesMap {
 		if err := serialization.WriteVarString(w, k); err != nil {
 			return errors.New("address map's key serialize failed")
 		}
@@ -85,7 +85,7 @@ func (a *TransferCrossChainAssetInfo) Serialize(w io.Writer, version byte) error
 }
 
 func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) error {
-	if a.Addresses == nil {
+	if a.AddressesMap == nil {
 		return errors.New("Invalid address key map")
 	}
 
@@ -94,8 +94,8 @@ func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) err
 		return errors.New("address map's length deserialize failed")
 	}
 
-	a.Addresses = nil
-	a.Addresses = make(map[string]uint64)
+	a.AddressesMap = nil
+	a.AddressesMap = make(map[string]uint64)
 	for i := uint64(0); i < length; i++ {
 		k, err := serialization.ReadVarString(r)
 		if err != nil {
@@ -107,7 +107,7 @@ func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) err
 			return errors.New("address map's value deserialize failed")
 		}
 
-		a.Addresses[k] = v
+		a.AddressesMap[k] = v
 	}
 
 	return nil
@@ -202,7 +202,7 @@ func (b *BalanceTxInputInfo) Serialize(w io.Writer) error {
 	if err := serialization.WriteVarString(w, b.AssetID); err != nil {
 		return errors.New("Transaction BalanceTxInputInfo AssetID serialization failed.")
 	}
-	if err := serialization.WriteVarUint(w, uint64(b.Value)); err != nil {
+	if err := b.Value.Serialize(w); err != nil {
 		return errors.New("Transaction BalanceTxInputInfo Value serialization failed.")
 	}
 	if err := serialization.WriteVarString(w, b.ProgramHash); err != nil {
@@ -218,11 +218,9 @@ func (b *BalanceTxInputInfo) Deserialize(r io.Reader) error {
 	}
 	b.AssetID = assetid
 
-	value, err := serialization.ReadVarUint(r, 0)
-	if err != nil {
+	if err := b.Value.Deserialize(r); err != nil {
 		return errors.New("Transaction BalanceTxInputInfo Value deserialization failed.")
 	}
-	b.Value = Fixed64(value)
 
 	programHash, err := serialization.ReadVarString(r)
 	if err != nil {
@@ -342,7 +340,7 @@ func (m *AmountMap) Serialize(w io.Writer) error {
 	if _, err := m.Key.Serialize(w); err != nil {
 		return errors.New("Transaction AmountMap Key serialization failed.")
 	}
-	if err := serialization.WriteVarUint(w, uint64(m.Value)); err != nil {
+	if err := m.Value.Serialize(w); err != nil {
 		return errors.New("Transaction AmountMap Value serialization failed.")
 	}
 	return nil
@@ -352,11 +350,10 @@ func (m *AmountMap) Deserialize(r io.Reader) error {
 	if err := m.Key.Deserialize(r); err != nil {
 		return errors.New("Transaction AmountMap Key deserialization failed.")
 	}
-	val, err := serialization.ReadVarUint(r, 0)
-	if err != nil {
+
+	if err := m.Value.Deserialize(r); err != nil {
 		return errors.New("Transaction AmountMap Value deserialization failed.")
 	}
-	m.Value = Fixed64(val)
 	return nil
 }
 
@@ -660,7 +657,7 @@ func PayloadInfoToTransPayload(p PayloadInfo) (Payload, error) {
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
 		obj := new(payload.TransferCrossChainAsset)
-		obj.Addresses = object.Addresses
+		obj.AddressesMap = object.AddressesMap
 		return obj, nil
 	}
 

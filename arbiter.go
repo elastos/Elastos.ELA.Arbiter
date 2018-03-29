@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"time"
 
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/arbitration/cs"
