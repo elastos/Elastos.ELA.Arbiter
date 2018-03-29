@@ -207,7 +207,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 
 		// Add UTXOs to wallet address from transaction outputs
 		for index, output := range txn.Outputs {
-			if genesisAddress, ok := mc.containGenesisBlockAddress(output.Address); ok {
+			if destroyAddress, ok := mc.containGenesisBlockAddress(output.Address); ok {
 				// Create UTXO input from output
 				txHashBytes, _ := HexStringToBytesReverse(txn.Hash)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
@@ -225,8 +225,8 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 				addressUTXO := &AddressUTXO{
 					Input:               input,
 					Amount:              amount,
-					GenesisBlockAddress: genesisAddress,
-					DestroyAddress:      output.Address,
+					GenesisBlockAddress: output.Address,
+					DestroyAddress:      destroyAddress,
 				}
 				DbCache.AddAddressUTXO(addressUTXO)
 			}

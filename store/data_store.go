@@ -52,8 +52,6 @@ type AddressUTXO struct {
 }
 
 type DataStore interface {
-	sync.Locker
-
 	CurrentHeight(height uint32) uint32
 	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
 
@@ -294,7 +292,7 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 		var outputBytes []byte
 		var amountBytes []byte
 		var destroyAddress string
-		err = rows.Scan(&outputBytes, &amountBytes, &genesisBlockAddress, &destroyAddress)
+		err = rows.Scan(&outputBytes, &amountBytes, &destroyAddress)
 		if err != nil {
 			return nil, err
 		}
