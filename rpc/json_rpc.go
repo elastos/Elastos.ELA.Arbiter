@@ -18,6 +18,22 @@ type Response struct {
 	Result interface{} `json:"result""`
 }
 
+type ArbitratorGroupInfo struct {
+	OnDutyArbitratorIndex int
+	Arbitrators           []string
+}
+
+func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error) {
+	resp, err := CallAndUnmarshal("getarbitratorgroupbyheight", Param("height", height), config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+	groupInfo := &ArbitratorGroupInfo{}
+	unmarshal(&resp, groupInfo)
+
+	return groupInfo, nil
+}
+
 func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	result, err := CallAndUnmarshal("getcurrentheight", nil, config)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
+	"Elastos.ELA.Arbiter/rpc"
 	spvLog "SPVWallet/log"
 )
 
@@ -55,12 +56,18 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 
 	group.mux.Lock()
 	defer group.mux.Unlock()
-	//todo synchronize from main chain block info
-	var arbiters []string
-	arbiters = append(arbiters, "")
-	arbiters = append(arbiters, "")
-	group.arbitrators = arbiters
-	group.onDutyArbitratorIndex = 0
+
+	height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return err
+	}
+
+	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
+	if err != nil {
+		return err
+	}
+	group.arbitrators = groupInfo.Arbitrators
+	group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
 
 	group.lastSyncTime = &currentTime
 	return nil
