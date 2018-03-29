@@ -1,6 +1,8 @@
 package httpjsonrpc
 
 import (
+	"encoding/json"
+	"io/ioutil"
 	"net/http"
 	"strconv"
 
@@ -8,8 +10,6 @@ import (
 	"Elastos.ELA.Arbiter/common/log"
 	"Elastos.ELA.Arbiter/errors"
 	. "Elastos.ELA.Arbiter/net/servers"
-	"encoding/json"
-	"io/ioutil"
 )
 
 //an instance of the multiplexer

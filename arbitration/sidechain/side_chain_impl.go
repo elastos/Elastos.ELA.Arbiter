@@ -1,6 +1,12 @@
 package sidechain
 
 import (
+	"bytes"
+	"errors"
+	"fmt"
+	"math/rand"
+	"strconv"
+
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
@@ -10,11 +16,6 @@ import (
 	"Elastos.ELA.Arbiter/rpc"
 	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
-	"bytes"
-	"errors"
-	"fmt"
-	"math/rand"
-	"strconv"
 )
 
 type SideChainImpl struct {

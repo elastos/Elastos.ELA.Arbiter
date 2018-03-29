@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common/config"
-	"errors"
 )
 
 type Response struct {

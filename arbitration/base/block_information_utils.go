@@ -1,15 +1,16 @@
 package base
 
 import (
+	"bytes"
+	"errors"
+	"io"
+
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/serialization"
 	"Elastos.ELA.Arbiter/core/program"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/core/transaction/payload"
 	"Elastos.ELA.Arbiter/crypto"
-	"bytes"
-	"errors"
-	"io"
 )
 
 func (i *IssueTokenInfo) Data(version byte) string {

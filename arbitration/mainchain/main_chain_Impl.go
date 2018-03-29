@@ -1,6 +1,12 @@
 package mainchain
 
 import (
+	"errors"
+	"fmt"
+	"math"
+	"math/rand"
+	"strconv"
+
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/arbitration/cs"
@@ -14,11 +20,6 @@ import (
 	spvtx "SPVWallet/core/transaction"
 	spvdb "SPVWallet/db"
 	spvWallet "SPVWallet/wallet"
-	"errors"
-	"fmt"
-	"math"
-	"math/rand"
-	"strconv"
 )
 
 const WithdrawTokenLockTime uint32 = 6

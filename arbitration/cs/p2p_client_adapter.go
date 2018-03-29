@@ -1,14 +1,15 @@
 package cs
 
 import (
+	"encoding/binary"
+	"errors"
+	"fmt"
+
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
 	spvI "SPVWallet/interface"
 	"SPVWallet/p2p"
-	"encoding/binary"
-	"errors"
-	"fmt"
 )
 
 var (

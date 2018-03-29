@@ -1,15 +1,15 @@
 package cs
 
 import (
+	"bytes"
 	"errors"
+	"io"
 
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/serialization"
 	. "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
-	"bytes"
-	"io"
 )
 
 type DistributedItem struct {

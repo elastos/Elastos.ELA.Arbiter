@@ -1,16 +1,14 @@
 package cs
 
 import (
-	"SPVWallet/p2p"
 	"bytes"
-)
+	"errors"
 
-import (
 	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	. "Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/log"
-	"errors"
+	"SPVWallet/p2p"
 )
 
 type DistributedNodeClient struct {
