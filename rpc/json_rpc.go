@@ -23,6 +23,12 @@ type ArbitratorGroupInfo struct {
 	Arbitrators           []string
 }
 
+type BlockTransactions struct {
+	Hash         string
+	Height       uint32
+	Transactions []*TransactionInfo
+}
+
 func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error) {
 	resp, err := CallAndUnmarshal("getarbitratorgroupbyheight", Param("height", height), config.Parameters.MainNode.Rpc)
 	if err != nil {
@@ -51,6 +57,17 @@ func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, erro
 	unmarshal(&resp, block)
 
 	return block, nil
+}
+
+func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*BlockTransactions, error) {
+	resp, err := CallAndUnmarshal("getdestroyedtransactions", Param("height", height), config)
+	if err != nil {
+		return nil, err
+	}
+	transactions := &BlockTransactions{}
+	unmarshal(&resp, transactions)
+
+	return transactions, nil
 }
 
 func Call(method string, params map[string]string, config *config.RpcConfig) ([]byte, error) {

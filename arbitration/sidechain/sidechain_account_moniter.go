@@ -7,7 +7,7 @@ import (
 
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/rpc"
+	. "Elastos.ELA.Arbiter/rpc"
 	. "Elastos.ELA.Arbiter/store"
 )
 
@@ -57,14 +57,14 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNode
 
 		if needSync {
 			for currentHeight < chainHeight {
-				block, err := rpc.GetBlockByHeight(currentHeight, sideNode.Rpc)
+				transactions, err := GetDestroyedTransactionByHeight(currentHeight, sideNode.Rpc)
 				if err != nil {
 					break
 				}
-				sync.processBlock(block)
+				sync.processTransactions(transactions)
 
 				// Update wallet height
-				currentHeight = DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, block.BlockData.Height+1)
+				currentHeight = DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height+1)
 
 				fmt.Print(">")
 			}
@@ -77,7 +77,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNode
 
 func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
 
-	chainHeight, err := rpc.GetCurrentHeight(config)
+	chainHeight, err := GetCurrentHeight(config)
 	if err != nil {
 		return 0, 0, false
 	}
@@ -100,11 +100,8 @@ func (sync *SideChainAccountMonitorImpl) containDestroyAddress(address string) (
 	return "", false
 }
 
-func (sync *SideChainAccountMonitorImpl) processBlock(block *BlockInfo) {
-	// Add UTXO to wallet address from transaction outputs
-	for _, txn := range block.Transactions {
-
-		// Add UTXOs to wallet address from transaction outputs
+func (sync *SideChainAccountMonitorImpl) processTransactions(transactions *BlockTransactions) {
+	for _, txn := range transactions.Transactions {
 		for _, output := range txn.Outputs {
 			if genesisAddress, ok := sync.containDestroyAddress(output.Address); ok {
 				sync.fireUTXOChanged(txn, genesisAddress)
