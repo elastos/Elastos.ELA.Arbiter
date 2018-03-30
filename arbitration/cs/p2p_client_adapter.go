@@ -7,8 +7,8 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	spvI "github.com/elastos/SPVWallet/interface"
-	"github.com/elastos/SPVWallet/p2p"
+	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.SPV/p2p"
 )
 
 var (

@@ -12,9 +12,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/common/password"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
-	spvtx "github.com/elastos/SPVWallet/core/transaction"
-	spvdb "github.com/elastos/SPVWallet/db"
-	. "github.com/elastos/SPVWallet/interface"
+	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/db"
+	. "github.com/elastos/Elastos.ELA.SPV/interface"
 )
 
 type Arbitrator interface {

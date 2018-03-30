@@ -15,7 +15,7 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/SPVWallet/p2p"
+	"github.com/elastos/Elastos.ELA.SPV/p2p"
 )
 
 const (

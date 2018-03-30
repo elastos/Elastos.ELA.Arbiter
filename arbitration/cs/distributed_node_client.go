@@ -8,7 +8,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/common"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	"github.com/elastos/SPVWallet/p2p"
+	"github.com/elastos/Elastos.ELA.SPV/p2p"
 )
 
 type DistributedNodeClient struct {

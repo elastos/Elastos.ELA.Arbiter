@@ -4,8 +4,8 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/common"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	spvtx "github.com/elastos/SPVWallet/core/transaction"
-	spvdb "github.com/elastos/SPVWallet/db"
+	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/db"
 )
 
 type MainChain interface {

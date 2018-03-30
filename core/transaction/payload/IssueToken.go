@@ -3,7 +3,7 @@ package payload
 import (
 	"bytes"
 	"errors"
-	spvdb "github.com/elastos/SPVWallet/db"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/db"
 	"io"
 )
 

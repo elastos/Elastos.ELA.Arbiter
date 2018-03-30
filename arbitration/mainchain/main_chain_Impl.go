@@ -17,9 +17,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
-	spvtx "github.com/elastos/SPVWallet/core/transaction"
-	spvdb "github.com/elastos/SPVWallet/db"
-	spvWallet "github.com/elastos/SPVWallet/wallet"
+	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/db"
+	spvWallet "github.com/elastos/Elastos.ELA.SPV/wallet"
 )
 
 const WithdrawTokenLockTime uint32 = 6
