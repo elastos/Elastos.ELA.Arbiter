@@ -13,6 +13,8 @@ import (
 	"Elastos.ELA.Arbiter/store"
 )
 
+var currentOnDuty bool
+
 func init() {
 	log.Init(log.Path, log.Stdout)
 }
@@ -43,9 +45,22 @@ func initP2P(arbitrator Arbitrator) error {
 	return nil
 }
 
+func onDutyChanged(isOnDuty bool) {
+	if currentOnDuty == isOnDuty {
+		return
+	}
+
+	if isOnDuty {
+		setSideChainAccountMonitor(ArbitratorGroupSingleton.GetCurrentArbitrator())
+	}
+	currentOnDuty = isOnDuty
+}
+
 func main() {
-	log.Info("0. Init arbitrator configuration.")
+	log.Info("0. Init configurations.")
+	currentOnDuty = false
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	ArbitratorGroupSingleton.RegisterDutyChangedCallback(onDutyChanged)
 
 	log.Info("1. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
@@ -75,10 +90,7 @@ func main() {
 	log.Info("5. Start arbitrator group monitor.")
 	go ArbitratorGroupSingleton.SyncLoop()
 
-	log.Info("6. Start side chain account monitor.")
-	go setSideChainAccountMonitor(currentArbitrator)
-
-	log.Info("7. Start servers.")
+	log.Info("6. Start servers.")
 	go httpjsonrpc.StartRPCServer()
 
 	select {}

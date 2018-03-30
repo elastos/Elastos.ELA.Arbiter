@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common/config"
 	. "Elastos.ELA.Arbiter/rpc"
@@ -53,6 +54,10 @@ func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo
 
 func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
 	for {
+		if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDuty() {
+			break
+		}
+
 		chainHeight, currentHeight, needSync := sync.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {

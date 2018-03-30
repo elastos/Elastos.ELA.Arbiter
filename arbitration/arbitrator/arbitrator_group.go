@@ -6,6 +6,7 @@ import (
 
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
+	"Elastos.ELA.Arbiter/crypto"
 	"Elastos.ELA.Arbiter/rpc"
 	spvLog "SPVWallet/log"
 )
@@ -33,8 +34,10 @@ type ArbitratorGroupImpl struct {
 	arbitrators           []string
 	currentArbitrator     Arbitrator
 
-	lastSyncTime *int64
-	timeoutLimit int64 //millisecond
+	currentHeight       *uint32
+	dutyChangedCallback func(bool)
+	lastSyncTime        *int64
+	timeoutLimit        int64 //millisecond
 }
 
 func (group *ArbitratorGroupImpl) SyncLoop() {
@@ -62,6 +65,10 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 		return err
 	}
 
+	if group.currentHeight != nil && height == *group.currentHeight {
+		return nil
+	}
+
 	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
 	if err != nil {
 		return err
@@ -69,8 +76,19 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	group.arbitrators = groupInfo.Arbitrators
 	group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
 
+	if group.dutyChangedCallback != nil {
+		var onDutyPk crypto.PublicKey
+		onDutyPk.FromString(group.GetOnDutyArbitrator())
+		group.dutyChangedCallback(crypto.Equal(&onDutyPk, group.currentArbitrator.GetPublicKey()))
+	}
+
+	*group.currentHeight = height
 	group.lastSyncTime = &currentTime
 	return nil
+}
+
+func (group *ArbitratorGroupImpl) RegisterDutyChangedCallback(callback func(bool)) {
+	group.dutyChangedCallback = callback
 }
 
 func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {

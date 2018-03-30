@@ -5,11 +5,11 @@ import (
 	"encoding/binary"
 	"errors"
 
+	"ELA/common/password"
 	. "Elastos.ELA.Arbiter/arbitration/base"
 	"Elastos.ELA.Arbiter/common"
 	"Elastos.ELA.Arbiter/common/config"
 	"Elastos.ELA.Arbiter/common/log"
-	"Elastos.ELA.Arbiter/common/password"
 	tx "Elastos.ELA.Arbiter/core/transaction"
 	"Elastos.ELA.Arbiter/crypto"
 	spvtx "SPVWallet/core/transaction"
@@ -93,6 +93,10 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 }
 
 func (ar *ArbitratorImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.Transaction) {
+	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDuty() {
+		return
+	}
+
 	buf := new(bytes.Buffer)
 	spvtxn.Serialize(buf)
 	txBytes := buf.Bytes()
