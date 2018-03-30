@@ -41,6 +41,10 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	return sc.currentConfig
 }
 
+func (sc *SideChainImpl) GetRage() float32 {
+	return sc.getCurrentConfig().Rate
+}
+
 func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
 	return rpc.GetCurrentHeight(sc.getCurrentConfig().Rpc)
 }
@@ -85,7 +89,11 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		if err != nil {
 			return err
 		}
-		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(sc.GetKey(), info.TargetAddress, info.Amount)
+
+		rateFloat := sc.GetRage()
+		rate := common.Fixed64(rateFloat * 10000)
+		amount := info.Amount * 10000 / rate
+		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(sc.GetKey(), info.TargetAddress, amount)
 		if err != nil {
 			return err
 		}

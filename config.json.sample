@@ -20,6 +20,7 @@
           "IpAddress": "localhost",
           "HttpJsonPort": 20038
         },
+        "Rate": 1.0,
         "GenesisBlockAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB",
         "DestroyAddress": "XV3qTRxKoffDFWsVZXWo421MRyEmEGCuNu"
       },
@@ -28,6 +29,7 @@
           "IpAddress": "localhost",
           "HttpJsonPort": 30038
         },
+        "Rate": 1.0,
         "GenesisBlockAddress": "XH6gHwZC1yKaRRx62tzvWu5oxa3hekEgXp",
         "DestroyAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB2"
       }

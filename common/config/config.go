@@ -46,8 +46,9 @@ type MainNodeConfig struct {
 type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
-	GenesisBlockAddress string `json:"GenesisBlockAddress"`
-	DestroyAddress      string `json:"DestroyAddress"`
+	Rate                float32 `json:"Rate"`
+	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
+	DestroyAddress      string  `json:"DestroyAddress"`
 }
 
 type ConfigFile struct {

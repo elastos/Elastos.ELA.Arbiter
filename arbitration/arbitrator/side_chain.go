@@ -12,6 +12,7 @@ type SideChain interface {
 	SideChainNode
 
 	GetKey() string
+	GetRage() float32
 	CreateDepositTransaction(target string, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error)
 	ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error)
 }

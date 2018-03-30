@@ -116,7 +116,11 @@ func (ar *ArbitratorImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx
 			log.Warn("Invalid deposit address.")
 			continue
 		}
-		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, info.Amount)
+
+		rateFloat := sideChain.GetRage()
+		rate := common.Fixed64(rateFloat * 10000)
+		amount := info.Amount * rate / 10000
+		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, amount)
 		if err != nil {
 			log.Error(err)
 			continue
