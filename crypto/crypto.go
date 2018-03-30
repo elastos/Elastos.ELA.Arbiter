@@ -1,14 +1,14 @@
 package crypto
 
 import (
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/serialization"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"fmt"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
 	"io"
 	"math/big"
 	"strings"

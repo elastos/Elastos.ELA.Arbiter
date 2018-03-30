@@ -1,7 +1,7 @@
 package arbitrator
 
 import (
-	. "Elastos.ELA.Arbiter/arbitration/base"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 )
 
 type SideChainNode interface {

@@ -3,8 +3,9 @@ package password
 import (
 	"flag"
 	"fmt"
-	"github.com/howeyc/gopass"
 	"os"
+
+	"github.com/howeyc/gopass"
 )
 
 // GetPassword gets password from user input

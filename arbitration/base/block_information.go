@@ -3,9 +3,9 @@ package base
 import (
 	"io"
 
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/core/asset"
-	. "Elastos.ELA.Arbiter/core/transaction"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/asset"
+	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 )
 
 type PayloadInfo interface {

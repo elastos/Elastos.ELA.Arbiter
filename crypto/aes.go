@@ -1,12 +1,12 @@
 package crypto
 
 import (
-	"errors"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/sha256"
+	"errors"
 
-	. "Elastos.ELA.Arbiter/common"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
 )
 
 func ToAesKey(pwd []byte) []byte {

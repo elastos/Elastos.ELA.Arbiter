@@ -1,8 +1,8 @@
 package transaction
 
 import (
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/serialization"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
 	"io"
 )
 

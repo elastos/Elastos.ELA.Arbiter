@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	"Elastos.ELA.Arbiter/common/config"
-	. "Elastos.ELA.Arbiter/rpc"
-	. "Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 )
 
 type SideChainAccountMonitorImpl struct {

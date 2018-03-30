@@ -3,7 +3,7 @@ package transaction
 import (
 	"io"
 
-	"Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
 )
 
 type BalanceTxInput struct {

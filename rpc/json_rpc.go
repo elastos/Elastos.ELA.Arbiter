@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	"Elastos.ELA.Arbiter/common/config"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 )
 
 type Response struct {

@@ -1,6 +1,6 @@
 package base
 
-import "Elastos.ELA.Arbiter/common"
+import "github.com/elastos/Elastos.ELA.Arbiter/common"
 
 type WithdrawInfo struct {
 	TargetAddress string

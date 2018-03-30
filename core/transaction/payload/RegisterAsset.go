@@ -1,11 +1,11 @@
 package payload
 
 import (
-	"io"
 	"errors"
+	"io"
 
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/core/asset"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/asset"
 )
 
 type RegisterAsset struct {

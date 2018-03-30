@@ -1,10 +1,10 @@
 package complain
 
 import (
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	. "Elastos.ELA.Arbiter/arbitration/cs"
-	"Elastos.ELA.Arbiter/common"
-	tx "Elastos.ELA.Arbiter/core/transaction"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 )
 
 const (

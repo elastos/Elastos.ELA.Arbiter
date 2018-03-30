@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"io"
 
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/serialization"
-	"Elastos.ELA.Arbiter/core/program"
-	"Elastos.ELA.Arbiter/core/transaction/payload"
-	"Elastos.ELA.Arbiter/crypto"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/program"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 )
 
 //for different transaction types with different payload format

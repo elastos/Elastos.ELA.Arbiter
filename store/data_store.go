@@ -7,11 +7,11 @@ import (
 	"os"
 	"sync"
 
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/log"
-	tx "Elastos.ELA.Arbiter/core/transaction"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 
-	"Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	_ "github.com/mattn/go-sqlite3"
 )
 

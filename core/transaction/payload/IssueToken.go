@@ -1,9 +1,9 @@
 package payload
 
 import (
-	spvdb "SPVWallet/db"
 	"bytes"
 	"errors"
+	spvdb "github.com/elastos/SPVWallet/db"
 	"io"
 )
 

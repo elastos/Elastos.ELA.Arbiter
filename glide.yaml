@@ -1,0 +1,14 @@
+package: Elastos.ELA.Arbiter
+import:
+- package: github.com/elastos/SPVWallet
+  repo:    ssh://git@git.elastos.org:2222/elatest/SPVWallet.git
+- package: github.com/howeyc/gopass
+- package: github.com/itchyny/base58-go
+- package: github.com/mattn/go-sqlite3
+- package: github.com/golang/crypto
+  subpackages:
+  - ripemd160
+  - ssh/terminal
+ignore:
+  - golang.org/x/sys/unix
+  - golang.org/x/crypto/ssh/terminal

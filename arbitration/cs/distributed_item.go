@@ -5,11 +5,11 @@ import (
 	"errors"
 	"io"
 
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/serialization"
-	. "Elastos.ELA.Arbiter/core/transaction"
-	"Elastos.ELA.Arbiter/crypto"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
+	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 )
 
 type DistributedItem struct {

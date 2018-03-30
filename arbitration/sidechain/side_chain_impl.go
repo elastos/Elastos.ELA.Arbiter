@@ -7,15 +7,15 @@ import (
 	"math/rand"
 	"strconv"
 
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/config"
-	tx "Elastos.ELA.Arbiter/core/transaction"
-	"Elastos.ELA.Arbiter/core/transaction/payload"
-	"Elastos.ELA.Arbiter/rpc"
-	spvdb "SPVWallet/db"
-	spvWallet "SPVWallet/wallet"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	spvdb "github.com/elastos/SPVWallet/db"
+	spvWallet "github.com/elastos/SPVWallet/wallet"
 )
 
 type SideChainImpl struct {

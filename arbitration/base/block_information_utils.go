@@ -5,12 +5,12 @@ import (
 	"errors"
 	"io"
 
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/serialization"
-	"Elastos.ELA.Arbiter/core/program"
-	. "Elastos.ELA.Arbiter/core/transaction"
-	"Elastos.ELA.Arbiter/core/transaction/payload"
-	"Elastos.ELA.Arbiter/crypto"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/program"
+	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 )
 
 func (i *IssueTokenInfo) Data(version byte) string {

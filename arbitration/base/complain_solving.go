@@ -1,7 +1,7 @@
 package base
 
 import (
-	"Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
 )
 
 type ComplainSolving interface {

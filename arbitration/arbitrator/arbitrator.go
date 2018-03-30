@@ -5,16 +5,16 @@ import (
 	"encoding/binary"
 	"errors"
 
-	"ELA/common/password"
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
-	tx "Elastos.ELA.Arbiter/core/transaction"
-	"Elastos.ELA.Arbiter/crypto"
-	spvtx "SPVWallet/core/transaction"
-	spvdb "SPVWallet/db"
-	. "SPVWallet/interface"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/password"
+	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	spvtx "github.com/elastos/SPVWallet/core/transaction"
+	spvdb "github.com/elastos/SPVWallet/db"
+	. "github.com/elastos/SPVWallet/interface"
 )
 
 type Arbitrator interface {

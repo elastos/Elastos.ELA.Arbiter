@@ -1,7 +1,7 @@
 package mainchain
 
 import (
-	. "Elastos.ELA.Arbiter/arbitration/cs"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 )
 
 type MainChainClientImpl struct {

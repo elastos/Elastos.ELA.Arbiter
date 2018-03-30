@@ -3,14 +3,14 @@ package main
 import (
 	"os"
 
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"Elastos.ELA.Arbiter/arbitration/cs"
-	"Elastos.ELA.Arbiter/arbitration/mainchain"
-	"Elastos.ELA.Arbiter/arbitration/sidechain"
-	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
-	"Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
-	"Elastos.ELA.Arbiter/store"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
 
 var currentOnDuty bool

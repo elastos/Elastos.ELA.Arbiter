@@ -1,8 +1,8 @@
 package payload
 
 import (
-	"Elastos.ELA.Arbiter/common/serialization"
 	"errors"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
 	"io"
 )
 

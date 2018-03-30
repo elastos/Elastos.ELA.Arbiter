@@ -1,11 +1,11 @@
 package program
 
 import (
-	"io"
 	"errors"
+	"io"
 
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/serialization"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
 )
 
 type Program struct {

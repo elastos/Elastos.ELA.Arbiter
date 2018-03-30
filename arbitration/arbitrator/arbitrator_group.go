@@ -4,11 +4,11 @@ import (
 	"sync"
 	"time"
 
-	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
-	"Elastos.ELA.Arbiter/crypto"
-	"Elastos.ELA.Arbiter/rpc"
-	spvLog "SPVWallet/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	spvLog "github.com/elastos/SPVWallet/log"
 )
 
 var (

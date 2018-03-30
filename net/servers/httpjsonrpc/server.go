@@ -6,10 +6,10 @@ import (
 	"net/http"
 	"strconv"
 
-	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
-	"Elastos.ELA.Arbiter/errors"
-	. "Elastos.ELA.Arbiter/net/servers"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/errors"
+	. "github.com/elastos/Elastos.ELA.Arbiter/net/servers"
 )
 
 //an instance of the multiplexer

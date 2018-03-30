@@ -1,11 +1,11 @@
 package arbitrator
 
 import (
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	. "Elastos.ELA.Arbiter/common"
-	tx "Elastos.ELA.Arbiter/core/transaction"
-	spvtx "SPVWallet/core/transaction"
-	spvdb "SPVWallet/db"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	spvtx "github.com/elastos/SPVWallet/core/transaction"
+	spvdb "github.com/elastos/SPVWallet/db"
 )
 
 type MainChain interface {

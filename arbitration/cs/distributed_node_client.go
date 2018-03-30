@@ -4,11 +4,11 @@ import (
 	"bytes"
 	"errors"
 
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/log"
-	"SPVWallet/p2p"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/SPVWallet/p2p"
 )
 
 type DistributedNodeClient struct {

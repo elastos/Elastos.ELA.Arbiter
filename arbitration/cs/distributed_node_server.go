@@ -7,15 +7,15 @@ import (
 	"math"
 	"sync"
 
-	. "Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "Elastos.ELA.Arbiter/arbitration/base"
-	"Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/common/config"
-	"Elastos.ELA.Arbiter/common/log"
-	tx "Elastos.ELA.Arbiter/core/transaction"
-	"Elastos.ELA.Arbiter/crypto"
-	"Elastos.ELA.Arbiter/rpc"
-	"SPVWallet/p2p"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/SPVWallet/p2p"
 )
 
 const (

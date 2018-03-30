@@ -7,10 +7,10 @@ import (
 	"io"
 	"sort"
 
-	. "Elastos.ELA.Arbiter/common"
-	"Elastos.ELA.Arbiter/crypto"
+	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 
-	"golang.org/x/crypto/ripemd160"
+	"github.com/golang/crypto/ripemd160"
 )
 
 type OpCode byte
