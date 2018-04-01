@@ -9,6 +9,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SPV/p2p"
+	"github.com/elastos/Elastos.ELA.SPV/sdk"
 )
 
 var (
@@ -108,8 +109,8 @@ func (adapter *P2PClientAdapter) makeMessage(cmd string) (message p2p.Message, e
 
 func (adapter *P2PClientAdapter) handleVersion(v *p2p.Version) error {
 
-	if v.Version < p2p.ProtocolVersion {
-		return errors.New(fmt.Sprint("To support SPV protocol, peer version must greater than ", p2p.ProtocolVersion))
+	if v.Version < sdk.ProtocolVersion {
+		return errors.New(fmt.Sprint("To support SPV protocol, peer version must greater than ", sdk.ProtocolVersion))
 	}
 
 	//if v.Services/ServiveSPV&1 == 0 {

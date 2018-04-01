@@ -4,7 +4,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/common"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/db"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 )
 
 type SideChain interface {

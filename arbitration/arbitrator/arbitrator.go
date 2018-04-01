@@ -13,7 +13,7 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/db"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 )
 

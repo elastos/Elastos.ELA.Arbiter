@@ -8,7 +8,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
+	spvLog "github.com/elastos/Elastos.ELA.SPV/spvwallet/log"
 )
 
 var (
