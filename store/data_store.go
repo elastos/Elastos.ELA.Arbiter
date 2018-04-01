@@ -8,10 +8,9 @@ import (
 	"sync"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -127,6 +126,7 @@ func (store *DataStoreImpl) catchSystemSignals() {
 		store.mainMux.Lock()
 		store.sideMux.Lock()
 		store.Close()
+		os.Exit(-1)
 	})
 }
 

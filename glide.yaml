@@ -1,4 +1,4 @@
-package: Elastos.ELA.Arbiter
+package: github.com/elastos/Elastos.ELA.Arbiter
 import:
 - package: github.com/elastos/Elastos.ELA.SPV
   repo:    git@github.com:elastos/Elastos.ELA.SPV.git
