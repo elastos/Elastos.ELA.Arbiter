@@ -38,11 +38,11 @@ func (item *DistributedItem) Sign(arbitrator Arbitrator) error {
 		return err
 	}
 
-	userProgramBytes, err := CreateStandardRedeemScript(arbitrator.GetPublicKey())
+	userRedeemScript, err := CreateStandardRedeemScript(arbitrator.GetPublicKey())
 	if err != nil {
 		return err
 	}
-	userProgramHash, err := Uint168FromBytes(userProgramBytes)
+	userProgramHash, err := ToProgramHash(userRedeemScript)
 	if err != nil {
 		return err
 	}

@@ -10,6 +10,7 @@ import (
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SPV/p2p"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
+	"encoding/binary"
 )
 
 var (
@@ -28,26 +29,23 @@ type P2PClientListener interface {
 }
 
 type P2PClientAdapter struct {
-	p2pClient spvI.P2PClient
-	listeners []P2PClientListener
+	p2pClient  spvI.P2PClient
+	listeners  []P2PClientListener
+	arbitrator Arbitrator
 }
 
 func InitP2PClient(arbitrator Arbitrator) error {
-	//publicKey := arbitrator.GetPublicKey()
-	//publicKeyBytes, err := publicKey.EncodePoint(true)
-	//if err != nil {
-	//	return err
-	//}
 
-	//clientId := binary.LittleEndian.Uint64(publicKeyBytes)
 	magic := config.Parameters.Magic
-	//port := config.Parameters.NodePort
 	seedList := config.Parameters.SeedList
 
 	client := spvI.NewP2PClient(magic, seedList)
-	P2PClientSingleton = &P2PClientAdapter{p2pClient: client}
+	P2PClientSingleton = &P2PClientAdapter{
+		p2pClient:  client,
+		arbitrator: arbitrator,
+	}
 
-	client.InitLocalPeer(P2PClientSingleton.initLocal)
+	client.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
 	client.HandleMessage(P2PClientSingleton.fireP2PReceived)
 	client.MakeMessage(P2PClientSingleton.makeMessage)
 	client.HandleVersion(P2PClientSingleton.handleVersion)
@@ -67,6 +65,17 @@ func (adapter *P2PClientAdapter) Start() {
 	adapter.p2pClient.Start()
 }
 
+func (adapter *P2PClientAdapter) InitLocalPeer(peer *p2p.Peer) {
+	publicKey := adapter.arbitrator.GetPublicKey()
+	publicKeyBytes, _ := publicKey.EncodePoint(true)
+	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
+	port := config.Parameters.NodePort
+
+	peer.SetID(clientId)
+	peer.SetPort(port)
+	peer.SetRelay(uint8(1))
+}
+
 func (adapter *P2PClientAdapter) AddListener(listener P2PClientListener) {
 	adapter.tryInit()
 	adapter.listeners = append(adapter.listeners, listener)
@@ -74,10 +83,6 @@ func (adapter *P2PClientAdapter) AddListener(listener P2PClientListener) {
 
 func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 	adapter.p2pClient.PeerManager().Broadcast(msg)
-}
-
-func (adapter *P2PClientAdapter) initLocal(peer *p2p.Peer) {
-	peer.SetRelay(1)
 }
 
 func (adapter *P2PClientAdapter) fireP2PReceived(peer *p2p.Peer, msg p2p.Message) error {

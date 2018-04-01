@@ -142,7 +142,10 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 
-	transactionItem := DistributedItem{}
+	transactionItem := DistributedItem{
+		TargetArbitratorProgramHash: new(common.Uint168),
+		ItemContent:                 new(tx.Transaction),
+	}
 	transactionItem.Deserialize(bytes.NewReader(content))
 	newSign, err := transactionItem.ParseFeedbackSignedData()
 	if err != nil {

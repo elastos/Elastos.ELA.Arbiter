@@ -21,7 +21,7 @@ type Configuration struct {
 	Magic    uint32   `json:"Magic"`
 	Version  int      `json:"Version"`
 	SeedList []string `json:"SeedList"`
-	NodePort uint16   `json:"NordPort"`
+	NodePort uint16   `json:"NodePort"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
