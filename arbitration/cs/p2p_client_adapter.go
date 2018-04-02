@@ -46,10 +46,7 @@ func InitP2PClient(arbitrator Arbitrator) error {
 	}
 
 	client.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
-	client.HandleMessage(P2PClientSingleton.fireP2PReceived)
-	client.MakeMessage(P2PClientSingleton.makeMessage)
-	client.HandleVersion(P2PClientSingleton.handleVersion)
-	client.PeerConnected(P2PClientSingleton.peerConnected)
+	client.SetMessageHandler(P2PClientSingleton)
 
 	client.Start()
 	return nil
@@ -85,7 +82,7 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 	adapter.p2pClient.PeerManager().Broadcast(msg)
 }
 
-func (adapter *P2PClientAdapter) fireP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
+func (adapter *P2PClientAdapter) HandleMessage(peer *p2p.Peer, msg p2p.Message) error {
 	if adapter.listeners == nil {
 		return nil
 	}
@@ -100,7 +97,7 @@ func (adapter *P2PClientAdapter) fireP2PReceived(peer *p2p.Peer, msg p2p.Message
 	return nil
 }
 
-func (adapter *P2PClientAdapter) makeMessage(cmd string) (message p2p.Message, err error) {
+func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, err error) {
 	switch cmd {
 	case WithdrawCommand:
 		message = &SignMessage{Command: WithdrawCommand}
@@ -112,7 +109,7 @@ func (adapter *P2PClientAdapter) makeMessage(cmd string) (message p2p.Message, e
 	return message, nil
 }
 
-func (adapter *P2PClientAdapter) handleVersion(v *p2p.Version) error {
+func (adapter *P2PClientAdapter) OnHandshake(v *p2p.Version) error {
 
 	if v.Version < sdk.ProtocolVersion {
 		return errors.New(fmt.Sprint("To support SPV protocol, peer version must greater than ", sdk.ProtocolVersion))
@@ -125,6 +122,6 @@ func (adapter *P2PClientAdapter) handleVersion(v *p2p.Version) error {
 	return nil
 }
 
-func (adapter *P2PClientAdapter) peerConnected(peer *p2p.Peer) {
+func (adapter *P2PClientAdapter) OnPeerEstablish(peer *p2p.Peer) {
 	//peer.Send(msg.NewFilterLoad(spv.chain.GetBloomFilter()))
 }
