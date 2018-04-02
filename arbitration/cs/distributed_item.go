@@ -9,7 +9,9 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/common"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
 	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 )
 
 type DistributedItem struct {
@@ -236,7 +238,15 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 
 		if !item.isForComplain() {
 			onDutyArbitratorPk := &crypto.PublicKey{}
-			if err := onDutyArbitratorPk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitrator()); err != nil {
+			withdrawPayload, ok := item.ItemContent.Payload.(*payload.WithdrawToken)
+			if !ok {
+				return errors.New("Invalid payload type.")
+			}
+			groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(withdrawPayload.BlockHeight)
+			if err != nil {
+				return err
+			}
+			if err := onDutyArbitratorPk.FromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex]); err != nil {
 				return err
 			}
 			if !crypto.Equal(targetPk, onDutyArbitratorPk) {
