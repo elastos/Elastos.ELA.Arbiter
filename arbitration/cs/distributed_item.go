@@ -109,7 +109,7 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 	if _, err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
 		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
-	if err := item.ItemContent.SerializeUnsigned(w); err != nil {
+	if err := item.ItemContent.Serialize(w); err != nil {
 		return err
 	}
 	if err := serialization.WriteVarBytes(w, item.redeemScript); err != nil {
@@ -130,11 +130,15 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	publickey, _ := crypto.DecodePoint(publickeyBytes)
 	item.TargetArbitratorPublicKey = publickey
 
+	item.TargetArbitratorProgramHash = nil
+	item.TargetArbitratorProgramHash = new(Uint168)
 	if err = item.TargetArbitratorProgramHash.Deserialize(r); err != nil {
 		return errors.New("TargetArbitratorProgramHash deserialization failed.")
 	}
 
-	if err = item.ItemContent.DeserializeUnsigned(r); err != nil {
+	item.ItemContent = nil
+	item.ItemContent = new(Transaction)
+	if err = item.ItemContent.Deserialize(r); err != nil {
 		return errors.New("RawTransaction deserialization failed.")
 	}
 
@@ -185,7 +189,7 @@ func (item *DistributedItem) getMultiSignSigners() ([]*Uint168, error) {
 }
 
 func (item *DistributedItem) getMultiSignPublicKeys() ([][]byte, error) {
-	if len(item.redeemScript) < MinMultiSignCodeLength || item.redeemScript[len(item.redeemScript)-1] != MULTISIG {
+	if len(item.redeemScript) < MinMultiSignCodeLength || item.redeemScript[len(item.redeemScript)-1] != CROSSCHAIN {
 		return nil, errors.New("not a valid multi sign transaction item.redeemScript, length not enough")
 	}
 

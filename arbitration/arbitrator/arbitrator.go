@@ -13,8 +13,8 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 )
 
 type Arbitrator interface {
@@ -194,9 +194,12 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		}
 	}
 	ar.spvService.OnTransactionConfirmed(ar.OnTransactionConfirmed)
-	if err = ar.spvService.Start(); err != nil {
-		return err
-	}
+
+	go func() {
+		if err = ar.spvService.Start(); err != nil {
+			log.Error("spvService start failed ：", err)
+		}
+	}()
 
 	return nil
 }

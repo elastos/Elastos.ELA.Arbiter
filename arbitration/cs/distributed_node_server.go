@@ -139,6 +139,7 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 }
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {
+	dns.tryInit()
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 
@@ -223,7 +224,7 @@ func (dns *DistributedNodeServer) mergeSignToTransaction(newSign []byte, signerI
 			return 0, err
 		}
 		buf := new(bytes.Buffer)
-		txn.SerializeUnsigned(buf)
+		txn.Serialize(buf)
 		for i := 0; i < len(param); i += tx.SignatureScriptLength {
 			// Remove length byte
 			sign := param[i : i+tx.SignatureScriptLength][1:]
@@ -244,5 +245,5 @@ func (dns *DistributedNodeServer) mergeSignToTransaction(newSign []byte, signerI
 	buf.Write(newSign)
 
 	txn.Programs[0].Parameter = buf.Bytes()
-	return len(txn.Programs[0].Parameter) / tx.SignatureScriptLength, nil
+	return len(txn.Programs[0].Parameter) / (tx.SignatureScriptLength - 1), nil
 }

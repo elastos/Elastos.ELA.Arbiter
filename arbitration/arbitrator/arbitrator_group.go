@@ -13,6 +13,7 @@ import (
 
 var (
 	ArbitratorGroupSingleton *ArbitratorGroupImpl
+	syncMainChain            bool
 )
 
 type ArbitratorsElection interface {
@@ -36,11 +37,12 @@ type ArbitratorGroupImpl struct {
 
 	currentHeight       *uint32
 	dutyChangedCallback func(bool)
-	lastSyncTime        *int64
-	timeoutLimit        int64 //millisecond
+	lastSyncTime        *uint64
+	timeoutLimit        uint64 //millisecond
 }
 
 func (group *ArbitratorGroupImpl) SyncLoop() {
+	syncMainChain = false
 	for {
 		err := group.syncFromMainNode()
 		if err != nil {
@@ -52,38 +54,46 @@ func (group *ArbitratorGroupImpl) SyncLoop() {
 }
 
 func (group *ArbitratorGroupImpl) syncFromMainNode() error {
-	currentTime := time.Now().UnixNano()
-	if group.lastSyncTime != nil && (currentTime-*group.lastSyncTime)*int64(time.Millisecond) < group.timeoutLimit {
+	currentTime := uint64(time.Now().UnixNano())
+	if group.lastSyncTime != nil && currentTime*uint64(time.Millisecond) < group.timeoutLimit {
 		return nil
 	}
-
-	group.mux.Lock()
-	defer group.mux.Unlock()
-
 	height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
 	}
 
+	group.mux.Lock()
 	if group.currentHeight != nil && height == *group.currentHeight {
+		group.mux.Unlock()
 		return nil
 	}
+	group.mux.Unlock()
 
 	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
 	if err != nil {
 		return err
 	}
+	group.mux.Lock()
 	group.arbitrators = groupInfo.Arbitrators
 	group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
+	group.mux.Unlock()
 
-	if group.dutyChangedCallback != nil {
+	if group.dutyChangedCallback != nil && false == syncMainChain {
 		var onDutyPk crypto.PublicKey
+		syncMainChain = true
 		onDutyPk.FromString(group.GetOnDutyArbitrator())
+		syncMainChain = false
 		group.dutyChangedCallback(crypto.Equal(&onDutyPk, group.currentArbitrator.GetPublicKey()))
 	}
 
+	//TODO add syncChainData [jzh]
+	//group.currentArbitrator.SyncChainData()
+
+	group.mux.Lock()
 	*group.currentHeight = height
 	group.lastSyncTime = &currentTime
+	group.mux.Unlock()
 	return nil
 }
 
@@ -95,7 +105,7 @@ func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
 	group.syncFromMainNode()
 
 	group.mux.Lock()
-	group.mux.Unlock()
+	defer group.mux.Unlock()
 	return len(group.arbitrators)
 }
 
@@ -109,6 +119,9 @@ func (group *ArbitratorGroupImpl) GetOnDutyArbitrator() string {
 
 func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {
 	group.syncFromMainNode()
+
+	group.mux.Lock()
+	defer group.mux.Unlock()
 	return group.currentArbitrator
 }
 
@@ -122,7 +135,9 @@ func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
 
 func init() {
 	ArbitratorGroupSingleton = &ArbitratorGroupImpl{
-		timeoutLimit: 1000,
+		timeoutLimit:  1000,
+		currentHeight: new(uint32),
+		lastSyncTime:  new(uint64),
 	}
 
 	currentArbitrator := &ArbitratorImpl{}
