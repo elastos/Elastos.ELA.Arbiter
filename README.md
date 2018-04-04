@@ -172,20 +172,24 @@ Run `make` to build the executable files `ela-cli`
 A file named `config.json` should be placed in the same folder with `arbiter` with the parameters as below.
 ```
 {
+  "PrintLevel": 4,
   "Configuration": {
     "Magic": 7630402,
     "Version": 0,
     "SeedList": [
       "127.0.0.1:20338"
     ],
-    "NodePort": 20338,
+    "NodePort": 10338,
     "PrintLevel": 1,
     "HttpJsonPort": 10010,
     "MainNode": {
       "Rpc": {
         "IpAddress": "localhost",
         "HttpJsonPort": 10038
-      }
+      },
+      "SpvSeedList": [
+        "127.0.0.1:20866"
+      ]
     },
     "SideNodeList": [
       {

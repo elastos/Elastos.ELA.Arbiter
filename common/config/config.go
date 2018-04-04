@@ -40,7 +40,8 @@ type RpcConfig struct {
 }
 
 type MainNodeConfig struct {
-	Rpc *RpcConfig `json:"Rpc"`
+	Rpc         *RpcConfig `json:"Rpc"`
+	SpvSeedList []string   `json:SpvSeedList`
 }
 
 type SideNodeConfig struct {

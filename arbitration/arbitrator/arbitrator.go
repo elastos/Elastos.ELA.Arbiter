@@ -187,7 +187,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		return err
 	}
 
-	ar.spvService = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes))
+	ar.spvService = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes), config.Parameters.MainNode.SpvSeedList)
 	for _, sideNode := range config.Parameters.SideNodeList {
 		if err = ar.spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
 			return err
