@@ -18,11 +18,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 )
 
-const WithdrawTokenLockTime uint32 = 6
+const WithdrawAssetLockTime uint32 = 6
 
 type MainChainImpl struct {
 	*DistributedNodeServer
@@ -44,7 +44,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 		AssetID:     Uint256(assetID),
 		ProgramHash: *programhash,
 		Value:       amount,
-		OutputLock:  uint32(WithdrawTokenLockTime),
+		OutputLock:  uint32(WithdrawAssetLockTime),
 	}
 
 	txOutputs = append(txOutputs, txOutput)
@@ -96,7 +96,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	if err != nil {
 		return nil, err
 	}
-	txPayload := &payload.WithdrawToken{chainHeight}
+	txPayload := &payload.WithdrawAsset{chainHeight}
 	program := &pg.Program{redeemScript, nil}
 
 	// Create attributes
@@ -105,7 +105,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	attributes = append(attributes, &txAttr)
 
 	return &tx.Transaction{
-		TxType:        tx.WithdrawToken,
+		TxType:        tx.WithdrawAsset,
 		Payload:       txPayload,
 		Attributes:    attributes,
 		UTXOInputs:    txInputs,
