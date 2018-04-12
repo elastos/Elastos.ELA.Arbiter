@@ -17,9 +17,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
-	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 )
 
 const WithdrawAssetLockTime uint32 = 6
@@ -135,10 +133,6 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([
 	}
 
 	return result, nil
-}
-
-func (mc *MainChainImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.Transaction) {
-	//implement directly in arbitrator struct
 }
 
 func (mc *MainChainImpl) syncChainData() {

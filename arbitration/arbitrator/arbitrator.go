@@ -92,7 +92,15 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
-func (ar *ArbitratorImpl) OnTransactionConfirmed(proof spvdb.Proof, spvtxn spvtx.Transaction) {
+func (ar *ArbitratorImpl) Type() spvtx.TransactionType {
+	return spvtx.TransferCrossChainAsset
+}
+
+func (ar *ArbitratorImpl) Confirmed() bool {
+	return true
+}
+
+func (ar *ArbitratorImpl) Notify(proof spvdb.Proof, spvtxn spvtx.Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDuty() {
 		return
 	}
@@ -193,7 +201,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 			return err
 		}
 	}
-	ar.spvService.OnTransactionConfirmed(ar.OnTransactionConfirmed)
+	ar.spvService.RegisterTransactionListener(ar)
 
 	go func() {
 		if err = ar.spvService.Start(); err != nil {
