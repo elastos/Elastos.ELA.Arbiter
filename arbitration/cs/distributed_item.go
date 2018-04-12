@@ -32,7 +32,7 @@ func (item *DistributedItem) InitScript(arbitrator Arbitrator) error {
 	return nil
 }
 
-func (item *DistributedItem) Sign(arbitrator Arbitrator) error {
+func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
 	programHashes, err := item.getMultiSignSigners()
@@ -68,7 +68,7 @@ func (item *DistributedItem) Sign(arbitrator Arbitrator) error {
 		return err
 	}
 	// Append signature
-	err = item.appendSignature(signerIndex, newSign, !arbitrator.IsOnDuty())
+	err = item.appendSignature(signerIndex, newSign, isFeedback)
 	if err != nil {
 		return err
 	}

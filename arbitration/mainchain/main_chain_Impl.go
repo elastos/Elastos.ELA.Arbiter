@@ -12,6 +12,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	. "github.com/elastos/Elastos.ELA.Arbiter/common"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	pg "github.com/elastos/Elastos.ELA.Arbiter/core/program"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
@@ -94,7 +95,8 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	if err != nil {
 		return nil, err
 	}
-	txPayload := &payload.WithdrawAsset{chainHeight}
+
+	txPayload := &payload.WithdrawAsset{BlockHeight: chainHeight, GenesisBlockAddress: withdrawBank}
 	program := &pg.Program{redeemScript, nil}
 
 	// Create attributes
@@ -245,6 +247,34 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 			}
 			DbCache.DeleteUTXO(txInput)
 		}
+	}
+
+	//scan mining info
+	//todo [zhouyang] get side chains height info from block
+	var sideHeightMap map[string]uint32
+
+	arbitratorsCount := uint8(len(ArbitratorGroupSingleton.GetAllArbitrators()))
+	var formerMainHeight, formerSideHeight uint32
+	var offset uint8
+	for _, node := range config.Parameters.SideNodeList {
+
+		sideHeight, ok := sideHeightMap[node.GenesisBlockAddress]
+		if !ok {
+			continue
+		}
+
+		ok, err := DbCache.GetMiningRecord(node.GenesisBlockAddress, &formerMainHeight, &formerSideHeight, &offset)
+		if err != nil {
+			log.Warn("Error occurred when getting mining record of side node [%s], details: %s", node.GenesisBlockAddress, err.Error())
+		}
+
+		if ok {
+			offset += uint8((block.BlockData.Height - formerMainHeight) - (sideHeight - formerSideHeight))
+			offset = offset % arbitratorsCount
+		} else {
+			offset = 0
+		}
+		DbCache.SetMiningRecord(node.GenesisBlockAddress, block.BlockData.Height, sideHeight, offset)
 	}
 }
 

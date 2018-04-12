@@ -28,7 +28,7 @@ func (client *DistributedNodeClient) SignProposal(transactionHash Uint256) error
 		return errors.New("Can not find proposal.")
 	}
 
-	return transactionItem.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator())
+	return transactionItem.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true)
 }
 
 func (client *DistributedNodeClient) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error {

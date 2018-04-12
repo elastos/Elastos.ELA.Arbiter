@@ -6,14 +6,13 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvLog "github.com/elastos/Elastos.ELA.SPV/spvwallet/log"
 )
 
 var (
 	ArbitratorGroupSingleton *ArbitratorGroupImpl
-	syncMainChain            bool
 )
 
 type ArbitratorsElection interface {
@@ -25,7 +24,8 @@ type ArbitratorGroup interface {
 	GetCurrentArbitrator() Arbitrator
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
-	GetOnDutyArbitrator() string
+	GetOnDutyArbitratorOfMain() string
+	GetOnDutyArbitratorOfSide(sideChainKey string) string
 }
 
 type ArbitratorGroupImpl struct {
@@ -35,14 +35,12 @@ type ArbitratorGroupImpl struct {
 	arbitrators           []string
 	currentArbitrator     Arbitrator
 
-	currentHeight       *uint32
-	dutyChangedCallback func(bool)
-	lastSyncTime        *uint64
-	timeoutLimit        uint64 //millisecond
+	currentHeight *uint32
+	lastSyncTime  *uint64
+	timeoutLimit  uint64 //millisecond
 }
 
 func (group *ArbitratorGroupImpl) SyncLoop() {
-	syncMainChain = false
 	for {
 		err := group.syncFromMainNode()
 		if err != nil {
@@ -79,14 +77,6 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
 	group.mux.Unlock()
 
-	if group.dutyChangedCallback != nil && false == syncMainChain {
-		var onDutyPk crypto.PublicKey
-		syncMainChain = true
-		onDutyPk.FromString(group.GetOnDutyArbitrator())
-		syncMainChain = false
-		group.dutyChangedCallback(crypto.Equal(&onDutyPk, group.currentArbitrator.GetPublicKey()))
-	}
-
 	//TODO add syncChainData [jzh]
 	//group.currentArbitrator.SyncChainData()
 
@@ -97,10 +87,6 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	return nil
 }
 
-func (group *ArbitratorGroupImpl) RegisterDutyChangedCallback(callback func(bool)) {
-	group.dutyChangedCallback = callback
-}
-
 func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
 	group.syncFromMainNode()
 
@@ -109,12 +95,28 @@ func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
 	return len(group.arbitrators)
 }
 
-func (group *ArbitratorGroupImpl) GetOnDutyArbitrator() string {
+func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() string {
 	group.syncFromMainNode()
 
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.arbitrators[group.onDutyArbitratorIndex]
+}
+
+func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfSide(sideChainKey string) string {
+	group.syncFromMainNode()
+
+	var mainHeight, sideHeight uint32
+	var offset uint8
+	if ok, err := store.DbCache.GetMiningRecord(sideChainKey, &mainHeight, &sideHeight, &offset); err != nil || !ok {
+		return group.GetOnDutyArbitratorOfMain()
+	}
+
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	index := group.onDutyArbitratorIndex + int(offset)
+	index = index % len(group.arbitrators)
+	return group.arbitrators[index]
 }
 
 func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {

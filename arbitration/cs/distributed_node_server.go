@@ -113,7 +113,7 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 	dns.unsolvedTransactions[transaction.Hash()] = transaction
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if !currentArbitrator.IsOnDuty() {
+	if !currentArbitrator.IsOnDutyOfMain() {
 		return nil, errors.New("Can not start a new proposal, you are not on duty.")
 	}
 
@@ -127,7 +127,7 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 		TargetArbitratorProgramHash: programHash,
 	}
 	transactionItem.InitScript(currentArbitrator)
-	transactionItem.Sign(currentArbitrator)
+	transactionItem.Sign(currentArbitrator, false)
 
 	buf := new(bytes.Buffer)
 	err = transactionItem.Serialize(buf)

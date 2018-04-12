@@ -27,7 +27,8 @@ type Arbitrator interface {
 
 	Sign(content []byte) ([]byte, error)
 
-	IsOnDuty() bool
+	IsOnDutyOfMain() bool
+	IsOnDutyOfSide(sideChainKey string) bool
 	GetArbitratorGroup() ArbitratorGroup
 
 	InitAccount() error
@@ -66,9 +67,15 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 	return mainAccount.Sign(content)
 }
 
-func (ar *ArbitratorImpl) IsOnDuty() bool {
+func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 	pk := crypto.PublicKey{}
-	pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitrator())
+	pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
+	return crypto.Equal(&pk, ar.GetPublicKey())
+}
+
+func (ar *ArbitratorImpl) IsOnDutyOfSide(sideChainKey string) bool {
+	pk := crypto.PublicKey{}
+	pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(sideChainKey))
 	return crypto.Equal(&pk, ar.GetPublicKey())
 }
 
@@ -101,7 +108,7 @@ func (ar *ArbitratorImpl) Confirmed() bool {
 }
 
 func (ar *ArbitratorImpl) Notify(proof spvdb.Proof, spvtxn spvtx.Transaction) {
-	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDuty() {
+	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}
 

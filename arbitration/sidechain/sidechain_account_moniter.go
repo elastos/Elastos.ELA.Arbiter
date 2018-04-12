@@ -2,14 +2,14 @@ package sidechain
 
 import (
 	"errors"
-	"fmt"
 	"time"
 
+	"fmt"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	. "github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
 
 type SideChainAccountMonitorImpl struct {
@@ -53,11 +53,8 @@ func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo
 }
 
 func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
-	for {
-		if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDuty() {
-			break
-		}
 
+	for {
 		chainHeight, currentHeight, needSync := sync.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {
@@ -69,11 +66,15 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNode
 				sync.processTransactions(transactions)
 
 				// Update wallet height
-				currentHeight = DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height+1)
+				currentHeight = store.DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height+1)
 
 				fmt.Print(">")
 			}
 			fmt.Print("\n")
+		}
+
+		if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfSide(sideNode.GenesisBlockAddress) {
+			//add side chain mining related logic here
 		}
 
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
@@ -87,7 +88,7 @@ func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress stri
 		return 0, 0, false
 	}
 
-	currentHeight := DbCache.CurrentSideHeight(genesisBlockAddress, QueryHeightCode)
+	currentHeight := store.DbCache.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
