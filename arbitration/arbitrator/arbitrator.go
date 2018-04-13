@@ -83,8 +83,9 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount common.Fixed64) (*tx.Transaction, error) {
-	return ar.mainChainImpl.CreateWithdrawTransaction(withdrawBank, target, amount)
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target string,
+	amount common.Fixed64, sideChainTransactionHash string) (*tx.Transaction, error) {
+	return ar.mainChainImpl.CreateWithdrawTransaction(withdrawBank, target, amount, sideChainTransactionHash)
 }
 
 func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
@@ -144,16 +145,8 @@ func (ar *ArbitratorImpl) Notify(proof spvdb.Proof, spvtxn spvtx.Transaction) {
 	}
 }
 
-func (ar *ArbitratorImpl) SignProposal(uint256 common.Uint256) error {
-	return ar.mainChainClientImpl.SignProposal(uint256)
-}
-
 func (ar *ArbitratorImpl) OnReceivedProposal(content []byte) error {
 	return ar.mainChainClientImpl.OnReceivedProposal(content)
-}
-
-func (ar *ArbitratorImpl) Feedback(transactionHash common.Uint256) error {
-	return ar.mainChainClientImpl.Feedback(transactionHash)
 }
 
 func (ar *ArbitratorImpl) GetChain(key string) (SideChain, bool) {

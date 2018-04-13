@@ -70,6 +70,15 @@ func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*
 	return transactions, nil
 }
 
+func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool, error) {
+	_, err := CallAndUnmarshal("getrawtransaction", Param("hash", transactionHash), config)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 func Call(method string, params map[string]string, config *config.RpcConfig) ([]byte, error) {
 	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	data, err := json.Marshal(map[string]interface{}{

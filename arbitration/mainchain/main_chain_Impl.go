@@ -27,7 +27,9 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64) (*tx.Transaction, error) {
+func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64,
+	sideChainTransactionHash string) (*tx.Transaction, error) {
+
 	mc.syncChainData()
 
 	// Check if from address is valid
@@ -96,7 +98,10 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 		return nil, err
 	}
 
-	txPayload := &payload.WithdrawAsset{BlockHeight: chainHeight, GenesisBlockAddress: withdrawBank}
+	txPayload := &payload.WithdrawAsset{
+		BlockHeight:              chainHeight,
+		GenesisBlockAddress:      withdrawBank,
+		SideChainTransactionHash: sideChainTransactionHash}
 	program := &pg.Program{redeemScript, nil}
 
 	// Create attributes

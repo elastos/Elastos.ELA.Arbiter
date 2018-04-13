@@ -14,8 +14,8 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 )
 
 type SideChainImpl struct {
@@ -93,7 +93,8 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		rateFloat := sc.GetRage()
 		rate := common.Fixed64(rateFloat * 10000)
 		amount := info.Amount * 10000 / rate
-		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(sc.GetKey(), info.TargetAddress, amount)
+		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(
+			sc.GetKey(), info.TargetAddress, amount, txinfo.Hash)
 		if err != nil {
 			return err
 		}

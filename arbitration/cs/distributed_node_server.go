@@ -13,8 +13,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/p2p"
 )
 
@@ -93,6 +95,19 @@ func (dns *DistributedNodeServer) OnP2PReceived(peer *p2p.Peer, msg p2p.Message)
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Transaction) error {
+
+	withdrawAsset, ok := transaction.Payload.(*payload.WithdrawAsset)
+	if !ok {
+		return errors.New("Unknown playload typed.")
+	}
+	ok, err := store.DbCache.HashSideChainTx(withdrawAsset.SideChainTransactionHash)
+	if err != nil {
+		return err
+	}
+	if ok {
+		log.Warnf("Received redundant transaction: [%s]", withdrawAsset.SideChainTransactionHash)
+	}
+
 	proposal, err := dns.generateWithdrawProposal(transaction)
 	if err != nil {
 		return err
@@ -104,13 +119,13 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 
 func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction) ([]byte, error) {
 	dns.tryInit()
-	dns.mux.Lock()
-	defer dns.mux.Unlock()
 
+	dns.mux.Lock()
 	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
 		return nil, errors.New("Transaction already in process.")
 	}
 	dns.unsolvedTransactions[transaction.Hash()] = transaction
+	dns.mux.Unlock()
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	if !currentArbitrator.IsOnDutyOfMain() {
@@ -140,8 +155,6 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {
 	dns.tryInit()
-	dns.mux.Lock()
-	defer dns.mux.Unlock()
 
 	transactionItem := DistributedItem{
 		TargetArbitratorProgramHash: new(common.Uint168),
@@ -153,6 +166,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return err
 	}
 
+	dns.mux.Lock()
 	if dns.unsolvedTransactions == nil {
 		return errors.New("Can not find proposal.")
 	}
@@ -160,6 +174,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	if !ok {
 		errors.New("Can not find proposal.")
 	}
+	dns.mux.Unlock()
 
 	var signerIndex = -1
 	programHashes, err := txn.GetMultiSignSigners()
@@ -183,6 +198,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	}
 
 	if signedCount >= getTransactionAgreementArbitratorsCount() {
+		dns.mux.Lock()
 		delete(dns.unsolvedTransactions, txn.Hash())
 
 		content, err := dns.convertToTransactionContent(txn)
@@ -196,6 +212,8 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			return err
 		}
 		dns.finishedTransactions[txn.Hash()] = true
+		dns.mux.Unlock()
+
 		fmt.Println(result)
 	}
 	return nil

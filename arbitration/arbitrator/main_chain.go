@@ -7,7 +7,7 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64) (*tx.Transaction, error)
+	CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64, sideChainTransactionHash string) (*tx.Transaction, error)
 	ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error)
 
 	BroadcastWithdrawProposal(txn *tx.Transaction) error
@@ -15,7 +15,5 @@ type MainChain interface {
 }
 
 type MainChainClient interface {
-	SignProposal(transactionHash Uint256) error
 	OnReceivedProposal(content []byte) error
-	Feedback(transactionHash Uint256) error
 }

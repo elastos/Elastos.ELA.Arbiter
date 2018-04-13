@@ -43,6 +43,11 @@ const (
 				SideHeight INTEGER,
 				Offset INTEGER
 			);`
+	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				TransactionHash VARCHAR,
+				GenesisBlockAddress VARCHAR(34)
+			);`
 )
 
 var (
@@ -67,6 +72,9 @@ type DataStore interface {
 
 	SetMiningRecord(genesisBlockAddress string, mainHeight uint32, sideHeight uint32, offset uint8) error
 	GetMiningRecord(genesisBlockAddress string, mainHeight *uint32, sideHeight *uint32, offset *uint8) (bool, error)
+
+	AddSideChainTx(transactionHash, genesisBlockAddress string) error
+	HashSideChainTx(transactionHash string) (bool, error)
 
 	ResetDataStore() error
 }
@@ -115,6 +123,11 @@ func initDB() (*sql.DB, error) {
 	}
 	// Create SideChainMining table
 	_, err = db.Exec(CreateSideChainMiningTable)
+	if err != nil {
+		return nil, err
+	}
+	// Create SideChainTxs table
+	_, err = db.Exec(CreateSideChainTxsTable)
 	if err != nil {
 		return nil, err
 	}
@@ -387,4 +400,34 @@ func (store *DataStoreImpl) GetMiningRecord(genesisBlockAddress string, mainHeig
 	}
 
 	return false, nil
+}
+
+func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress string) error {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	// Prepare sql statement
+	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress) values(?,?)")
+	if err != nil {
+		return err
+	}
+	// Do insert
+	_, err = stmt.Exec(transactionHash, genesisBlockAddress)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (store *DataStoreImpl) HashSideChainTx(transactionHash string) (bool, error) {
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
+
+	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
+	defer rows.Close()
+	if err != nil {
+		return false, err
+	}
+
+	return rows.Next(), nil
 }

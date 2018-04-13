@@ -6,29 +6,20 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/p2p"
 )
 
 type DistributedNodeClient struct {
-	P2pCommand        string
-	unsolvedProposals map[Uint256]*DistributedItem
+	P2pCommand string
 }
 
-func (client *DistributedNodeClient) tryInit() {
-	if client.unsolvedProposals == nil {
-		client.unsolvedProposals = make(map[Uint256]*DistributedItem)
-	}
-}
-
-func (client *DistributedNodeClient) SignProposal(transactionHash Uint256) error {
-	transactionItem, ok := client.unsolvedProposals[transactionHash]
-	if !ok {
-		return errors.New("Can not find proposal.")
-	}
-
-	return transactionItem.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true)
+func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
+	return item.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true)
 }
 
 func (client *DistributedNodeClient) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
@@ -56,33 +47,32 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return nil
 	}
 
-	if client.unsolvedProposals == nil {
-		return errors.New("Can not find proposal.")
+	withdrawAsset, ok := transactionItem.ItemContent.Payload.(*payload.WithdrawAsset)
+	if !ok {
+		return errors.New("Unknown payload type.")
 	}
 
-	hash := transactionItem.ItemContent.Hash()
-	if _, ok := client.unsolvedProposals[hash]; ok {
+	if ok, err := store.DbCache.HashSideChainTx(withdrawAsset.SideChainTransactionHash); err != nil || ok {
 		return errors.New("Proposal already exit.")
 	}
 
-	client.tryInit()
-	client.unsolvedProposals[hash] = transactionItem
-
-	if err := client.SignProposal(hash); err != nil {
+	if err := client.SignProposal(transactionItem); err != nil {
 		return err
 	}
 
-	if err := client.Feedback(hash); err != nil {
+	if err := client.Feedback(transactionItem); err != nil {
 		return err
 	}
+
+	if err := store.DbCache.AddSideChainTx(
+		withdrawAsset.SideChainTransactionHash, withdrawAsset.GenesisBlockAddress); err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (client *DistributedNodeClient) Feedback(transactionHash Uint256) error {
-	item, ok := client.unsolvedProposals[transactionHash]
-	if !ok {
-		return errors.New("Can not find proposal.")
-	}
+func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
 
 	ar := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
@@ -101,6 +91,33 @@ func (client *DistributedNodeClient) Feedback(transactionHash Uint256) error {
 
 	client.broadcast(messageReader.Bytes())
 	return nil
+}
+
+func (client *DistributedNodeClient) Verify(withdrawAsset *payload.WithdrawAsset) error {
+	rpcConfig, ok := client.getRpcConfig(withdrawAsset.GenesisBlockAddress)
+	if !ok {
+		return errors.New("Unknown side chain.")
+	}
+
+	ok, err := rpc.IsTransactionExist(withdrawAsset.SideChainTransactionHash, rpcConfig)
+	if err != nil {
+		return err
+	}
+
+	if !ok {
+		return errors.New("Unknown transaction.")
+	}
+
+	return nil
+}
+
+func (client *DistributedNodeClient) getRpcConfig(genesisBlockHash string) (*config.RpcConfig, bool) {
+	for _, node := range config.Parameters.SideNodeList {
+		if node.GenesisBlockAddress == genesisBlockHash {
+			return node.Rpc, true
+		}
+	}
+	return nil, false
 }
 
 func (client *DistributedNodeClient) broadcast(message []byte) {
