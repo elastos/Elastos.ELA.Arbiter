@@ -14,7 +14,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
+	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 )
 
 type Arbitrator interface {
@@ -108,7 +108,7 @@ func (ar *ArbitratorImpl) Confirmed() bool {
 	return true
 }
 
-func (ar *ArbitratorImpl) Notify(proof spvdb.Proof, spvtxn spvtx.Transaction) {
+func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn spvtx.Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}

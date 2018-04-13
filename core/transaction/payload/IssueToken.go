@@ -3,14 +3,14 @@ package payload
 import (
 	"bytes"
 	"errors"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
+	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 	"io"
 )
 
 const IssueTokenPayloadVersion byte = 0x00
 
 type IssueToken struct {
-	Proof *spvdb.Proof
+	Proof *spv.Proof
 }
 
 func (t *IssueToken) Data(version byte) []byte {

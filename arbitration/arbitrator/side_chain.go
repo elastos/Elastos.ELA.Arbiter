@@ -4,7 +4,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/common"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
+	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 )
 
 type SideChain interface {
@@ -13,7 +13,7 @@ type SideChain interface {
 
 	GetKey() string
 	GetRage() float32
-	CreateDepositTransaction(target string, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error)
+	CreateDepositTransaction(target string, proof spv.Proof, amount common.Fixed64) (*TransactionInfo, error)
 	ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error)
 }
 
