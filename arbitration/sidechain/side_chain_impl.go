@@ -14,8 +14,8 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	spvdb "github.com/elastos/Elastos.ELA.SPV/interface"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/spvwallet/db"
 )
 
 type SideChainImpl struct {
