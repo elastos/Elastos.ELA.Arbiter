@@ -24,6 +24,7 @@ const (
 	TransferAsset           TransactionType = 0x02
 	Record                  TransactionType = 0x03
 	Deploy                  TransactionType = 0x04
+	SideMining              TransactionType = 0x05
 	IssueToken              TransactionType = 0x06
 	WithdrawAsset           TransactionType = 0x07
 	TransferCrossChainAsset TransactionType = 0x08
@@ -47,6 +48,8 @@ func (self TransactionType) Name() string {
 		return "Record"
 	case Deploy:
 		return "Deploy"
+	case SideMining:
+		return "SideMining"
 	case IssueToken:
 		return "IssueToken"
 	case WithdrawAsset:
@@ -237,6 +240,8 @@ func (tx *Transaction) DeserializeUnsignedWithoutType(r io.Reader) error {
 	case TransferAsset:
 		tx.Payload = new(payload.TransferAsset)
 	case Deploy:
+	case SideMining:
+		tx.Payload = new(payload.SideMining)
 	case IssueToken:
 		tx.Payload = new(payload.IssueToken)
 	case WithdrawAsset:
