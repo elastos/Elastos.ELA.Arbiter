@@ -45,13 +45,18 @@ func initP2P(arbitrator Arbitrator) error {
 
 func main() {
 	log.Info("0. Init configurations.")
+	if err := ArbitratorGroupSingleton.InitArbitrators(); err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	setSideChainAccountMonitor(currentArbitrator)
 
 	log.Info("1. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
-		log.Error("Side chain monitor setup error: ", err)
+		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
+		os.Exit(1)
 	}
 	store.DbCache = dataStore
 
