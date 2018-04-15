@@ -104,7 +104,6 @@ func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() string {
 }
 
 func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfSide(sideChainKey string) string {
-	group.syncFromMainNode()
 
 	var mainHeight, sideHeight uint32
 	var offset uint8

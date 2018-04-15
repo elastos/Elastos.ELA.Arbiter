@@ -100,13 +100,6 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 	if !ok {
 		return errors.New("Unknown playload typed.")
 	}
-	ok, err := store.DbCache.HashSideChainTx(withdrawAsset.SideChainTransactionHash)
-	if err != nil {
-		return err
-	}
-	if ok {
-		log.Warnf("Received redundant transaction: [%s]", withdrawAsset.SideChainTransactionHash)
-	}
 
 	proposal, err := dns.generateWithdrawProposal(transaction)
 	if err != nil {
@@ -114,6 +107,12 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 	}
 
 	dns.sendToArbitrator(proposal)
+
+	if err := store.DbCache.AddSideChainTx(
+		withdrawAsset.SideChainTransactionHash, withdrawAsset.GenesisBlockAddress); err != nil {
+		return err
+	}
+
 	return nil
 }
 

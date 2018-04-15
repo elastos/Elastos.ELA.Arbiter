@@ -75,7 +75,9 @@ func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 
 func (ar *ArbitratorImpl) IsOnDutyOfSide(sideChainKey string) bool {
 	pk := crypto.PublicKey{}
-	pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(sideChainKey))
+	if err := pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(sideChainKey)); err != nil {
+		return false
+	}
 	return crypto.Equal(&pk, ar.GetPublicKey())
 }
 
