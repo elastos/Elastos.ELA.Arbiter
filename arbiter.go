@@ -49,8 +49,6 @@ func main() {
 		log.Fatal(err)
 		os.Exit(1)
 	}
-	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-	setSideChainAccountMonitor(currentArbitrator)
 
 	log.Info("1. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
@@ -60,11 +58,15 @@ func main() {
 	}
 	store.DbCache = dataStore
 
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+
 	log.Info("2. Init arbitrator account.")
 	if err := currentArbitrator.InitAccount(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
+
+	setSideChainAccountMonitor(currentArbitrator)
 
 	log.Info("3. Start arbitrator spv module.")
 	if err := currentArbitrator.StartSpvModule(); err != nil {
