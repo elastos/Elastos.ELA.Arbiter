@@ -60,6 +60,15 @@ type configParams struct {
 	*Configuration
 }
 
+func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
+	for _, node := range Parameters.SideNodeList {
+		if node.GenesisBlockAddress == genesisBlockHash {
+			return node.Rpc, true
+		}
+	}
+	return nil, false
+}
+
 func init() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {

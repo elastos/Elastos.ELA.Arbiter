@@ -37,12 +37,6 @@ const (
 				GenesisBlockAddress VARCHAR(34),
 				DestroyAddress VARCHAR(34)
 			);`
-	CreateSideChainMiningTable = `CREATE TABLE IF NOT EXISTS SideChainMining (
-				GenesisBlockAddress VARCHAR(34) NOT NULL PRIMARY KEY,
-				MainHeight INTEGER,
-				SideHeight INTEGER,
-				Offset INTEGER
-			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
@@ -69,9 +63,6 @@ type DataStore interface {
 	DeleteUTXO(input *tx.UTXOTxInput) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
 	GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error)
-
-	SetMiningRecord(genesisBlockAddress string, mainHeight uint32, sideHeight uint32, offset uint8) error
-	GetMiningRecord(genesisBlockAddress string, mainHeight *uint32, sideHeight *uint32, offset *uint8) (bool, error)
 
 	AddSideChainTx(transactionHash, genesisBlockAddress string) error
 	HashSideChainTx(transactionHash string) (bool, error)
@@ -118,11 +109,6 @@ func initDB() (*sql.DB, error) {
 	}
 	// Create UTXOs table
 	_, err = db.Exec(CreateUTXOsTable)
-	if err != nil {
-		return nil, err
-	}
-	// Create SideChainMining table
-	_, err = db.Exec(CreateSideChainMiningTable)
 	if err != nil {
 		return nil, err
 	}
@@ -337,69 +323,6 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 		inputs = append(inputs, &AddressUTXO{&input, &amount, genesisBlockAddress, destroyAddress})
 	}
 	return inputs, nil
-}
-
-func (store *DataStoreImpl) SetMiningRecord(genesisBlockAddress string, mainHeight uint32, sideHeight uint32, offset uint8) error {
-	store.miningMux.Lock()
-	defer store.miningMux.Unlock()
-
-	rows, err := store.Query(`SELECT * FROM SideChainMining WHERE GenesisBlockAddress=?`, genesisBlockAddress)
-	if err != nil {
-		return err
-	}
-
-	if rows.Next() {
-		err = rows.Close()
-		if err != nil {
-			return err
-		}
-
-		stmt, err := store.Prepare("UPDATE SideChainMining SET MainHeight=?, SideHeight=?, Offset=? WHERE GenesisBlockAddress=?")
-		if err != nil {
-			return err
-		}
-		_, err = stmt.Exec(mainHeight, sideHeight, offset, genesisBlockAddress)
-		if err != nil {
-			return err
-		}
-
-	} else {
-		rows.Close()
-
-		// Prepare sql statement
-		stmt, err := store.Prepare("INSERT INTO SideChainMining(GenesisBlockAddress, MainHeight, SideHeight, Offset) values(?,?,?,?)")
-		if err != nil {
-			return err
-		}
-		// Do insert
-		_, err = stmt.Exec(genesisBlockAddress, mainHeight, sideHeight, offset)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (store *DataStoreImpl) GetMiningRecord(genesisBlockAddress string, mainHeight *uint32, sideHeight *uint32, offset *uint8) (bool, error) {
-	store.miningMux.Lock()
-	defer store.miningMux.Unlock()
-
-	rows, err := store.Query(`SELECT MainHeight, SideHeight, Offset FROM SideChainMining WHERE GenesisBlockAddress=?`, genesisBlockAddress)
-	defer rows.Close()
-	if err != nil {
-		return false, err
-	}
-
-	if rows.Next() {
-		err = rows.Scan(mainHeight, sideHeight, offset)
-		if err != nil {
-			return false, err
-		}
-
-		return true, nil
-	}
-
-	return false, nil
 }
 
 func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress string) error {

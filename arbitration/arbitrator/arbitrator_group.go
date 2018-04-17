@@ -7,7 +7,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
 )
 
@@ -109,15 +108,18 @@ func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() string {
 
 func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfSide(sideChainKey string) string {
 
-	var mainHeight, sideHeight uint32
-	var offset uint8
-	if ok, err := store.DbCache.GetMiningRecord(sideChainKey, &mainHeight, &sideHeight, &offset); err != nil || !ok {
+	rpcConfig, ok := config.GetRpcConfig(sideChainKey)
+	if !ok {
+		return group.GetOnDutyArbitratorOfMain()
+	}
+	height, err := rpc.GetCurrentHeight(rpcConfig)
+	if err != nil {
 		return group.GetOnDutyArbitratorOfMain()
 	}
 
 	group.mux.Lock()
 	defer group.mux.Unlock()
-	index := group.onDutyArbitratorIndex + int(offset)
+	index := int(height)
 	index = index % len(group.arbitrators)
 	return group.arbitrators[index]
 }

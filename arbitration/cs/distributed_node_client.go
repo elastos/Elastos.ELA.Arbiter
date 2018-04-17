@@ -94,7 +94,7 @@ func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
 }
 
 func (client *DistributedNodeClient) Verify(withdrawAsset *payload.WithdrawAsset) error {
-	rpcConfig, ok := client.getRpcConfig(withdrawAsset.GenesisBlockAddress)
+	rpcConfig, ok := config.GetRpcConfig(withdrawAsset.GenesisBlockAddress)
 	if !ok {
 		return errors.New("Unknown side chain.")
 	}
@@ -109,15 +109,6 @@ func (client *DistributedNodeClient) Verify(withdrawAsset *payload.WithdrawAsset
 	}
 
 	return nil
-}
-
-func (client *DistributedNodeClient) getRpcConfig(genesisBlockHash string) (*config.RpcConfig, bool) {
-	for _, node := range config.Parameters.SideNodeList {
-		if node.GenesisBlockAddress == genesisBlockHash {
-			return node.Rpc, true
-		}
-	}
-	return nil, false
 }
 
 func (client *DistributedNodeClient) broadcast(message []byte) {
