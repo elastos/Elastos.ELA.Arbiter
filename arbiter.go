@@ -14,6 +14,7 @@ import (
 )
 
 func init() {
+	config.InitConfig()
 	log.Init(log.Path, log.Stdout)
 }
 

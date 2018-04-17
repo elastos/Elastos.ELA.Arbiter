@@ -69,7 +69,7 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	return nil, false
 }
 
-func init() {
+func InitConfig() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)

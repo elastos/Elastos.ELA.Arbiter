@@ -1,6 +1,20 @@
 package store
 
-import "testing"
+import (
+	"os"
+	"testing"
+
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+)
+
+func TestMain(m *testing.M) {
+	setup()
+	os.Exit(m.Run())
+}
+
+func setup() {
+	config.InitMockConfig()
+}
 
 func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 	datastore, err := OpenDataStore()
