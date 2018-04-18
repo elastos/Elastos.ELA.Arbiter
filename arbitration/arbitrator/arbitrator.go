@@ -12,6 +12,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/common/password"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
@@ -38,9 +39,10 @@ type Arbitrator interface {
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
 
 	//withdraw
-	CreateWithdrawTransaction(withdrawBank string, target string,
-		amount common.Fixed64, sideChainTransactionHash string) (*tx.Transaction, error)
-	BroadcastWithdrawProposal(txn *tx.Transaction) error
+	CreateWithdrawTransaction(
+		withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string) []*tx.Transaction
+	BroadcastWithdrawProposal(txns []*tx.Transaction)
+	SendWithdrawTransaction(txn *tx.Transaction) (interface{}, error)
 }
 
 type ArbitratorImpl struct {
@@ -97,9 +99,30 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawBank string, target string,
-	amount common.Fixed64, sideChainTransactionHash string) (*tx.Transaction, error) {
-	return ar.mainChainImpl.CreateWithdrawTransaction(withdrawBank, target, amount, sideChainTransactionHash)
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(
+	withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string) []*tx.Transaction {
+
+	var result []*tx.Transaction
+	for _, info := range withdrawInfoMap {
+
+		rateFloat := sideChain.GetRage()
+		rate := common.Fixed64(rateFloat * 10000)
+		amount := info.Amount * 10000 / rate
+		withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(
+			sideChain.GetKey(), info.TargetAddress, amount, sideTransactionHash)
+		if err != nil {
+			log.Warn(err.Error())
+			continue
+		}
+		if withdrawTransaction == nil {
+			log.Warn("Created an empty withdraw transaction.")
+			continue
+		}
+
+		result = append(result, withdrawTransaction)
+	}
+
+	return result
 }
 
 func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
@@ -132,12 +155,35 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof spv.Proof, infoArray [
 
 func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain) {
 	for info, sideChain := range transactionInfoMap {
-		sideChain.SendTransaction(info)
+		err := sideChain.SendTransaction(info)
+		if err != nil {
+			log.Warn(err.Error())
+		}
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *tx.Transaction) error {
-	return ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*tx.Transaction) {
+	for _, txn := range txns {
+		err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+		if err != nil {
+			log.Warn(err.Error())
+		}
+	}
+}
+
+func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *tx.Transaction) (interface{}, error) {
+	content, err := ar.convertToTransactionContent(txn)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := rpc.CallAndUnmarshal("sendrawtransaction",
+		rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
@@ -240,4 +286,14 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	}()
 
 	return nil
+}
+
+func (ar *ArbitratorImpl) convertToTransactionContent(txn *tx.Transaction) (string, error) {
+	buf := new(bytes.Buffer)
+	err := txn.Serialize(buf)
+	if err != nil {
+		return "", err
+	}
+	content := common.BytesToHexString(buf.Bytes())
+	return content, nil
 }

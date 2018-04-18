@@ -61,7 +61,7 @@ func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
 	}
 	content := common.BytesToHexString(infoDataReader.Bytes())
 
-	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), sc.currentConfig.Rpc)
+	result, err := rpc.CallAndUnmarshal("sendtransactioninfo", rpc.Param("Info", content), sc.currentConfig.Rpc)
 	if err != nil {
 		return err
 	}
@@ -80,29 +80,14 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	if err != nil {
 		return err
 	}
-	withdrawInfo, err := sc.ParseUserWithdrawTransactionInfo(txn)
+	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfo(txn)
 	if err != nil {
 		return err
 	}
-	for _, info := range withdrawInfo {
-		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-		if err != nil {
-			return err
-		}
 
-		rateFloat := sc.GetRage()
-		rate := common.Fixed64(rateFloat * 10000)
-		amount := info.Amount * 10000 / rate
-		withdrawTransaction, err := currentArbitrator.CreateWithdrawTransaction(
-			sc.GetKey(), info.TargetAddress, amount, txinfo.Hash)
-		if err != nil {
-			return err
-		}
-		if withdrawTransaction == nil {
-			return errors.New("Created an empty withdraw transaction.")
-		}
-		currentArbitrator.BroadcastWithdrawProposal(withdrawTransaction)
-	}
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc, txinfo.Hash)
+	currentArbitrator.BroadcastWithdrawProposal(transactions)
 
 	return nil
 }

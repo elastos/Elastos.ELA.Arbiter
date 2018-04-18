@@ -10,12 +10,10 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
-	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/p2p"
 )
@@ -199,33 +197,25 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	if signedCount >= getTransactionAgreementArbitratorsCount() {
 		dns.mux.Lock()
 		delete(dns.unsolvedTransactions, txn.Hash())
+		dns.mux.Unlock()
 
-		content, err := dns.convertToTransactionContent(txn)
+		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+		result, err := currentArbitrator.SendWithdrawTransaction(txn)
+
 		if err != nil {
+			dns.mux.Lock()
 			dns.finishedTransactions[txn.Hash()] = false
+			dns.mux.Unlock()
 			return err
 		}
 
-		result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
-		if err != nil {
-			return err
-		}
+		dns.mux.Unlock()
 		dns.finishedTransactions[txn.Hash()] = true
 		dns.mux.Unlock()
 
 		fmt.Println(result)
 	}
 	return nil
-}
-
-func (dns *DistributedNodeServer) convertToTransactionContent(txn *tx.Transaction) (string, error) {
-	buf := new(bytes.Buffer)
-	err := txn.Serialize(buf)
-	if err != nil {
-		return "", err
-	}
-	content := common.BytesToHexString(buf.Bytes())
-	return content, nil
 }
 
 func (dns *DistributedNodeServer) mergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction) (int, error) {
