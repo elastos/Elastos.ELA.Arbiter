@@ -18,11 +18,8 @@ import (
 )
 
 type Arbitrator interface {
-	MainChain
-	MainChainClient
-	SideChainManager
-
 	GetPublicKey() *crypto.PublicKey
+
 	GetComplainSolving() ComplainSolving
 
 	Sign(content []byte) ([]byte, error)
@@ -30,9 +27,20 @@ type Arbitrator interface {
 	IsOnDutyOfMain() bool
 	IsOnDutyOfSide(sideChainKey string) bool
 	GetArbitratorGroup() ArbitratorGroup
+	GetSideChainManager() SideChainManager
 
 	InitAccount() error
 	StartSpvModule() error
+
+	//deposit
+	ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error)
+	CreateDepositTransactions(proof spv.Proof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain
+	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
+
+	//withdraw
+	CreateWithdrawTransaction(withdrawBank string, target string,
+		amount common.Fixed64, sideChainTransactionHash string) (*tx.Transaction, error)
+	BroadcastWithdrawProposal(txn *tx.Transaction) error
 }
 
 type ArbitratorImpl struct {
@@ -41,6 +49,10 @@ type ArbitratorImpl struct {
 	sideChainManagerImpl SideChainManager
 	spvService           SPVService
 	keystore             Keystore
+}
+
+func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
+	return ar.GetSideChainManager()
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
@@ -94,6 +106,36 @@ func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) (
 	return ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
 }
 
+func (ar *ArbitratorImpl) CreateDepositTransactions(proof spv.Proof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain {
+
+	result := make(map[*TransactionInfo]SideChain, len(infoArray))
+	for _, info := range infoArray {
+		sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
+		if !ok {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+
+		rateFloat := sideChain.GetRage()
+		rate := common.Fixed64(rateFloat * 10000)
+		amount := info.Amount * rate / 10000
+		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, amount)
+		if err != nil {
+			log.Error(err)
+			continue
+		}
+
+		result[txInfo] = sideChain
+	}
+	return result
+}
+
+func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain) {
+	for info, sideChain := range transactionInfoMap {
+		sideChain.SendTransaction(info)
+	}
+}
+
 func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *tx.Transaction) error {
 	return ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 }
@@ -122,29 +164,15 @@ func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn spvtx.Transaction) {
 	r := bytes.NewReader(txBytes)
 	txn := new(tx.Transaction)
 	txn.Deserialize(r)
+
 	depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
-	for _, info := range depositInfo {
-		sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
-		if !ok {
-			log.Warn("Invalid deposit address.")
-			continue
-		}
-
-		rateFloat := sideChain.GetRage()
-		rate := common.Fixed64(rateFloat * 10000)
-		amount := info.Amount * rate / 10000
-		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, amount)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		sideChain.SendTransaction(txInfo)
-	}
+	transactionInfoMap := ar.CreateDepositTransactions(proof, depositInfo)
+	ar.SendDepositTransactions(transactionInfoMap)
 }
 
 func (ar *ArbitratorImpl) OnReceivedProposal(content []byte) error {
