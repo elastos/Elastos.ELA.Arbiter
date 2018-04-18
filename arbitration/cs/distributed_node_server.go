@@ -147,16 +147,16 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 		return nil, err
 	}
 
+	transaction.Programs[0].Code = transactionItem.GetRedeemScript()
+	transaction.Programs[0].Parameter = transactionItem.GetSignedData()
+
 	return buf.Bytes(), nil
 }
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {
 	dns.tryInit()
 
-	transactionItem := DistributedItem{
-		TargetArbitratorProgramHash: new(common.Uint168),
-		ItemContent:                 new(tx.Transaction),
-	}
+	transactionItem := DistributedItem{}
 	transactionItem.Deserialize(bytes.NewReader(content))
 	newSign, err := transactionItem.ParseFeedbackSignedData()
 	if err != nil {
@@ -189,7 +189,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return errors.New("Invalid multi sign signer")
 	}
 
-	signedCount, err := dns.mergeSignToTransaction(newSign, signerIndex, txn)
+	signedCount, err := MergeSignToTransaction(newSign, signerIndex, txn)
 	if err != nil {
 		return err
 	}
@@ -216,41 +216,4 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		fmt.Println(result)
 	}
 	return nil
-}
-
-func (dns *DistributedNodeServer) mergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction) (int, error) {
-	param := txn.Programs[0].Parameter
-
-	// Check if is first signature
-	if param == nil {
-		param = []byte{}
-	} else {
-		// Check if singer already signed
-		publicKeys, err := txn.GetMultiSignPublicKeys()
-		if err != nil {
-			return 0, err
-		}
-		buf := new(bytes.Buffer)
-		txn.Serialize(buf)
-		for i := 0; i < len(param); i += tx.SignatureScriptLength {
-			// Remove length byte
-			sign := param[i : i+tx.SignatureScriptLength][1:]
-			publicKey := publicKeys[signerIndex][1:]
-			pubKey, err := crypto.DecodePoint(publicKey)
-			if err != nil {
-				return 0, err
-			}
-			err = crypto.Verify(*pubKey, buf.Bytes(), sign)
-			if err == nil {
-				return 0, errors.New("signer already signed")
-			}
-		}
-	}
-
-	buf := new(bytes.Buffer)
-	buf.Write(param)
-	buf.Write(newSign)
-
-	txn.Programs[0].Parameter = buf.Bytes()
-	return len(txn.Programs[0].Parameter) / (tx.SignatureScriptLength - 1), nil
 }

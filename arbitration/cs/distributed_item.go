@@ -32,6 +32,14 @@ func (item *DistributedItem) InitScript(arbitrator Arbitrator) error {
 	return nil
 }
 
+func (item *DistributedItem) GetRedeemScript() []byte {
+	return item.redeemScript
+}
+
+func (item *DistributedItem) SetRedeemScript(script []byte) {
+	item.redeemScript = script
+}
+
 func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
@@ -168,7 +176,7 @@ func (item *DistributedItem) createMultiSignRedeemScript() error {
 		return err
 	}
 
-	item.redeemScript = script
+	item.SetRedeemScript(script)
 	return nil
 }
 

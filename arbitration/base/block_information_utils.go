@@ -10,7 +10,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/core/program"
 	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 )
 
 func (i *IssueTokenInfo) Data(version byte) string {
@@ -758,16 +757,4 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		Programs:       txPrograms,
 	}
 	return txTransaction, nil
-}
-
-func StandardAcccountPublicKeyToProgramHash(key *crypto.PublicKey) (*Uint168, error) {
-	targetRedeemScript, err := CreateStandardRedeemScript(key)
-	if err != nil {
-		return nil, err
-	}
-	targetProgramHash, err := ToProgramHash(targetRedeemScript)
-	if err != nil {
-		return nil, err
-	}
-	return targetProgramHash, err
 }
