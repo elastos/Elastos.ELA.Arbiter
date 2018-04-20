@@ -54,6 +54,13 @@ func (group *ArbitratorGroupImpl) InitArbitrators() error {
 	return group.syncFromMainNode()
 }
 
+func (group *ArbitratorGroupImpl) InitArbitratorsByStrings(arbiters []string, onDutyIndex int) {
+	group.mux.Lock()
+	group.arbitrators = arbiters
+	group.onDutyArbitratorIndex = onDutyIndex
+	group.mux.Unlock()
+}
+
 func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	currentTime := uint64(time.Now().UnixNano())
 	if group.lastSyncTime != nil && currentTime*uint64(time.Millisecond) < group.timeoutLimit {

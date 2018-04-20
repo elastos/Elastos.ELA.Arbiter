@@ -23,6 +23,13 @@ type DistributedItem struct {
 	signedData   []byte
 }
 
+type DistrubutedItemFunc interface {
+	GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error)
+}
+
+type DistrubutedItemFuncImpl struct {
+}
+
 func (item *DistributedItem) InitScript(arbitrator Arbitrator) error {
 	err := item.createMultiSignRedeemScript()
 	if err != nil {
@@ -40,7 +47,7 @@ func (item *DistributedItem) SetRedeemScript(script []byte) {
 	item.redeemScript = script
 }
 
-func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool) error {
+func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool, itemFunc DistrubutedItemFunc) error {
 	// Check if current user is a valid signer
 	var signerIndex = -1
 	programHashes, err := item.getMultiSignSigners()
@@ -76,7 +83,7 @@ func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool) error 
 		return err
 	}
 	// Append signature
-	err = item.appendSignature(signerIndex, newSign, isFeedback)
+	err = item.appendSignature(signerIndex, newSign, isFeedback, itemFunc)
 	if err != nil {
 		return err
 	}
@@ -227,7 +234,15 @@ func (item *DistributedItem) IsFeedback() bool {
 	return len(item.signedData)/SignatureScriptLength == 2
 }
 
-func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool) error {
+func (itemFunc *DistrubutedItemFuncImpl) GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error) {
+	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
+	if err != nil {
+		return nil, err
+	}
+	return groupInfo, nil
+}
+
+func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool, itemFunc DistrubutedItemFunc) error {
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
 	newSign = append(newSign, signature...)
@@ -254,7 +269,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 			if !ok {
 				return errors.New("Invalid payload type.")
 			}
-			groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(withdrawPayload.BlockHeight)
+			groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(withdrawPayload.BlockHeight)
 			if err != nil {
 				return err
 			}

@@ -15,7 +15,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.SPV/p2p"
+	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
+	"github.com/elastos/Elastos.ELA.Utility/p2p"
 )
 
 const (
@@ -78,7 +79,7 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	})
 }
 
-func (dns *DistributedNodeServer) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
+func (dns *DistributedNodeServer) OnP2PReceived(peer *spvnet.Peer, msg p2p.Message) error {
 	if msg.CMD() != dns.P2pCommand {
 		return nil
 	}
@@ -99,7 +100,7 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 		return errors.New("Unknown playload typed.")
 	}
 
-	proposal, err := dns.generateWithdrawProposal(transaction)
+	proposal, err := dns.generateWithdrawProposal(transaction, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
 	}
@@ -114,7 +115,7 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 	return nil
 }
 
-func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction) ([]byte, error) {
+func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction, itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
 	dns.mux.Lock()
@@ -139,7 +140,7 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 		TargetArbitratorProgramHash: programHash,
 	}
 	transactionItem.InitScript(currentArbitrator)
-	transactionItem.Sign(currentArbitrator, false)
+	transactionItem.Sign(currentArbitrator, false, itemFunc)
 
 	buf := new(bytes.Buffer)
 	err = transactionItem.Serialize(buf)
@@ -147,7 +148,6 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Trans
 		return nil, err
 	}
 
-	transaction.Programs[0].Code = transactionItem.GetRedeemScript()
 	transaction.Programs[0].Parameter = transactionItem.GetSignedData()
 
 	return buf.Bytes(), nil

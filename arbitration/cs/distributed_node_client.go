@@ -11,7 +11,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.SPV/p2p"
+	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
+	"github.com/elastos/Elastos.ELA.Utility/p2p"
 )
 
 type DistributedNodeClient struct {
@@ -19,10 +20,10 @@ type DistributedNodeClient struct {
 }
 
 func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
-	return item.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true)
+	return item.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
 }
 
-func (client *DistributedNodeClient) OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error {
+func (client *DistributedNodeClient) OnP2PReceived(peer *spvnet.Peer, msg p2p.Message) error {
 	if msg.CMD() != client.P2pCommand {
 		return nil
 	}

@@ -14,31 +14,32 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvdb "github.com/elastos/Elastos.ELA.SPV/interface"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 )
 
 type SideChainImpl struct {
 	AccountListener
-	key string
+	Key string
 
-	currentConfig *config.SideNodeConfig
+	CurrentConfig *config.SideNodeConfig
 }
 
 func (sc *SideChainImpl) GetKey() string {
-	return sc.key
+	return sc.Key
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
-	if sc.currentConfig == nil {
+	if sc.CurrentConfig == nil {
 		for _, sideConfig := range config.Parameters.SideNodeList {
 			if sc.GetKey() == sideConfig.GenesisBlockAddress {
-				sc.currentConfig = sideConfig
+				sc.CurrentConfig = sideConfig
 				break
 			}
 		}
 	}
-	return sc.currentConfig
+	return sc.CurrentConfig
 }
 
 func (sc *SideChainImpl) GetRage() float32 {
@@ -61,7 +62,7 @@ func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
 	}
 	content := common.BytesToHexString(infoDataReader.Bytes())
 
-	result, err := rpc.CallAndUnmarshal("sendtransactioninfo", rpc.Param("Info", content), sc.currentConfig.Rpc)
+	result, err := rpc.CallAndUnmarshal("sendtransactioninfo", rpc.Param("Info", content), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return err
 	}
@@ -86,7 +87,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	}
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc, txinfo.Hash)
+	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc, txinfo.Hash, &store.DbMainChainFunc{})
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
 
 	return nil

@@ -27,7 +27,7 @@ type MainChainImpl struct {
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64,
-	sideChainTransactionHash string) (*tx.Transaction, error) {
+	sideChainTransactionHash string, mcFunc MainChainFunc) (*tx.Transaction, error) {
 
 	mc.syncChainData()
 
@@ -38,7 +38,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 		return nil, err
 	}
 	// Create transaction outputs
-	var totalOutputAmount = amount
 	var txOutputs []*tx.TxOutput
 	txOutput := &tx.TxOutput{
 		AssetID:     Uint256(assetID),
@@ -49,15 +48,14 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 
 	txOutputs = append(txOutputs, txOutput)
 
-	utxos, err := DbCache.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
+	var txInputs []*tx.UTXOTxInput
+	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
 	if err != nil {
-		return nil, errors.New("Get spender's UTXOs failed.")
+		return nil, err
 	}
-	availableUTXOs := mc.getAvailableUTXOs(utxos)
-	availableUTXOs = SortUTXOs(availableUTXOs)
 
 	// Create transaction inputs
-	var txInputs []*tx.UTXOTxInput
+	var totalOutputAmount = amount
 	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -71,7 +69,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 				return nil, err
 			}
 			change := &tx.TxOutput{
-				AssetID:     Uint256(assetID),
+				AssetID:     Uint256(spvWallet.SystemAssetId),
 				Value:       Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
@@ -85,6 +83,9 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	if totalOutputAmount > 0 {
 		return nil, errors.New("Available token is not enough")
 	}
+	if err != nil {
+		return nil, err
+	}
 
 	redeemScript, err := CreateRedeemScript()
 	if err != nil {
@@ -92,7 +93,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	}
 
 	// Create payload
-	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+	chainHeight, err := mcFunc.GetMainNodeCurrentHeight()
 	if err != nil {
 		return nil, err
 	}

@@ -13,9 +13,9 @@ import (
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	spvtx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
+	utcore "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 type Arbitrator interface {
@@ -40,7 +40,7 @@ type Arbitrator interface {
 
 	//withdraw
 	CreateWithdrawTransaction(
-		withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string) []*tx.Transaction
+		withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*tx.Transaction
 	BroadcastWithdrawProposal(txns []*tx.Transaction)
 	SendWithdrawTransaction(txn *tx.Transaction) (interface{}, error)
 }
@@ -50,7 +50,7 @@ type ArbitratorImpl struct {
 	mainChainClientImpl  MainChainClient
 	sideChainManagerImpl SideChainManager
 	spvService           SPVService
-	keystore             Keystore
+	Keystore             Keystore
 }
 
 func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
@@ -58,7 +58,7 @@ func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
-	mainAccount := ar.keystore.MainAccount()
+	mainAccount := ar.Keystore.MainAccount()
 
 	buf := new(bytes.Buffer)
 
@@ -76,7 +76,7 @@ func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
 }
 
 func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
-	mainAccount := ar.keystore.MainAccount()
+	mainAccount := ar.Keystore.MainAccount()
 
 	return mainAccount.Sign(content)
 }
@@ -100,7 +100,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(
-	withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string) []*tx.Transaction {
+	withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*tx.Transaction {
 
 	var result []*tx.Transaction
 	for _, info := range withdrawInfoMap {
@@ -109,7 +109,7 @@ func (ar *ArbitratorImpl) CreateWithdrawTransaction(
 		rate := common.Fixed64(rateFloat * 10000)
 		amount := info.Amount * 10000 / rate
 		withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(
-			sideChain.GetKey(), info.TargetAddress, amount, sideTransactionHash)
+			sideChain.GetKey(), info.TargetAddress, amount, sideTransactionHash, mcFunc)
 		if err != nil {
 			log.Warn(err.Error())
 			continue
@@ -133,7 +133,12 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof spv.Proof, infoArray [
 
 	result := make(map[*TransactionInfo]SideChain, len(infoArray))
 	for _, info := range infoArray {
-		sideChain, ok := ar.GetChain(info.MainChainProgramHash.String())
+		addr, err := info.MainChainProgramHash.ToAddress()
+		if err != nil {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+		sideChain, ok := ar.GetChain(addr)
 		if !ok {
 			log.Warn("Invalid deposit address.")
 			continue
@@ -190,15 +195,15 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
-func (ar *ArbitratorImpl) Type() spvtx.TransactionType {
-	return spvtx.TransferCrossChainAsset
+func (ar *ArbitratorImpl) Type() utcore.TransactionType {
+	return utcore.TransferCrossChainAsset
 }
 
 func (ar *ArbitratorImpl) Confirmed() bool {
 	return true
 }
 
-func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn spvtx.Transaction) {
+func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn utcore.Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}
@@ -251,21 +256,21 @@ func (ar *ArbitratorImpl) InitAccount() error {
 		return errors.New("Get password error.")
 	}
 
-	ar.keystore = NewKeystore()
-	_, err = ar.keystore.Open(string(passwd[:]))
+	ar.Keystore = NewKeystore()
+	_, err = ar.Keystore.Open(string(passwd[:]))
 	if err != nil {
 		return err
 	}
-	accounts := ar.keystore.GetAccounts()
+	accounts := ar.Keystore.GetAccounts()
 	if len(accounts) <= 0 {
-		ar.keystore.NewAccount()
+		ar.Keystore.NewAccount()
 	}
 
 	return nil
 }
 
 func (ar *ArbitratorImpl) StartSpvModule() error {
-	publicKey := ar.keystore.MainAccount().PublicKey()
+	publicKey := ar.Keystore.MainAccount().PublicKey()
 	publicKeyBytes, err := publicKey.EncodePoint(true)
 	if err != nil {
 		return err

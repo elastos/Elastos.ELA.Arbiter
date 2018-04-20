@@ -4,13 +4,15 @@ import (
 	"errors"
 	"fmt"
 
+	"encoding/binary"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.SPV/p2p"
+	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
-	"encoding/binary"
+	"github.com/elastos/Elastos.ELA.Utility/p2p"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
 )
 
 var (
@@ -25,7 +27,7 @@ const (
 )
 
 type P2PClientListener interface {
-	OnP2PReceived(peer *p2p.Peer, msg p2p.Message) error
+	OnP2PReceived(peer *spvnet.Peer, msg p2p.Message) error
 }
 
 type P2PClientAdapter struct {
@@ -62,7 +64,7 @@ func (adapter *P2PClientAdapter) Start() {
 	adapter.p2pClient.Start()
 }
 
-func (adapter *P2PClientAdapter) InitLocalPeer(peer *p2p.Peer) {
+func (adapter *P2PClientAdapter) InitLocalPeer(peer *spvnet.Peer) {
 	publicKey := adapter.arbitrator.GetPublicKey()
 	publicKeyBytes, _ := publicKey.EncodePoint(true)
 	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
@@ -82,7 +84,7 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 	adapter.p2pClient.PeerManager().Broadcast(msg)
 }
 
-func (adapter *P2PClientAdapter) HandleMessage(peer *p2p.Peer, msg p2p.Message) error {
+func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
 	if adapter.listeners == nil {
 		return nil
 	}
@@ -109,7 +111,7 @@ func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, e
 	return message, nil
 }
 
-func (adapter *P2PClientAdapter) OnHandshake(v *p2p.Version) error {
+func (adapter *P2PClientAdapter) OnHandshake(v *msg.Version) error {
 
 	if v.Version < sdk.ProtocolVersion {
 		return errors.New(fmt.Sprint("To support SPV protocol, peer version must greater than ", sdk.ProtocolVersion))
@@ -122,6 +124,6 @@ func (adapter *P2PClientAdapter) OnHandshake(v *p2p.Version) error {
 	return nil
 }
 
-func (adapter *P2PClientAdapter) OnPeerEstablish(peer *p2p.Peer) {
+func (adapter *P2PClientAdapter) OnPeerEstablish(peer *spvnet.Peer) {
 	//peer.Send(msg.NewFilterLoad(spv.chain.GetBloomFilter()))
 }

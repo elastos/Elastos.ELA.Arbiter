@@ -1,8 +1,15 @@
 package examples
 
 import (
+	"bytes"
 	"fmt"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
+	"github.com/elastos/Elastos.ELA.Arbiter/common"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 )
@@ -28,13 +35,35 @@ func ExampleNormalDeposit() {
 	//--------------Part3(On arbiter)-------------------------
 	//let's suppose we get the object of current on duty arbitrator
 	arbitrator := arbitrator.ArbitratorImpl{}
+	mc := &mainchain.MainChainImpl{&cs.DistributedNodeServer{P2pCommand: cs.WithdrawCommand}}
+	arbitrator.SetMainChain(mc)
+
+	sideChainManager := &sidechain.SideChainManagerImpl{make(map[string]SideChain)}
+	side := &sidechain.SideChainImpl{
+		nil,
+		"EMmfgnrDLQmFPBJiWvsyYGV2jzLQY58J4Y",
+		nil,
+	}
+	sideChainManager.AddChain("EMmfgnrDLQmFPBJiWvsyYGV2jzLQY58J4Y", side)
+	arbitrator.SetSideChainManager(sideChainManager)
+
 	//Step3.1 spv module found the tx1, and fire Notify callback of TransactionListener
 
 	//let's suppose we already known the serialized code of tx1 and proof of tx1 from the callback
-	//strTx1 := "080001001335353737303036373931393437373739343130097a8a95e1b1500619ac8d580ddfed35e0af05ae517f8a84f68638206129696f7d0100feffffffb2f6277b253dda0b96dbe9ee7ccb10ad54c69f9f64af4cf1de9ad758d213afd50100feffffffb3662e1de29786ef8bd7f2186805d5be23131e37aeb57a2381f7f82d34c6569d0100feffffff175ee361d1709b890061fea045a2f60eb1a18c270523430c772dbcccc5b862a30100fefffffff6464235320ebb3807a53b452ff939af2d9f70296ab78a0791a25a83926826590100feffffff922f5eeb615bcf972118e812463e5e04074e548acf07db54a3f5d3381f3142a30100feffffff4d75fee59710aa59c135b5f2bebaa9084d2df16a6e92d769778a9dce59bb4bf20100feffffff81ef63eed85b2ec5ef66856330c135355c586b5a4e4dcce3aacd350e1cecb3c70100feffffff21e3eecc88f5b1d3ca5ad3014c5ac064094705082e5deb44d74349913e343ef70100feffffff02b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3005ed0b20000000000000000216aa3b2ea55c432c8833182922a8f22e1a43aa64fb037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a34e6ad6030000000000000000210bdb36abfc877cf36131911d42a651f0e2187995720000000141407b961028fa53710f0e1e059b8650e22e59187443870c3764adad12854171c752a539584a94690f8a31f4069f5835e5cde966f8ce1bdcb6bf072658b2d93e6781232102884d2487f0c98bb00b00d69c93ea6aa84daa4dc63ff272200947864a4220ba77ac"
-	//strProof := ""
+	var strTx1 string
+	strTx1 = "0800012245544d4751433561473131627752677553704357324e6b7950387a75544833486e3200010013353537373030363739313934373737393431300403229feeff99fa03357d09648a93363d1d01f234e61d04d10f93c9ad1aef3c150100feffffff737a4387ebf5315b74c508e40ba4f0179fc1d68bf76ce079b6bbf26e0fd2aa470100feffffff592c415c08ac1e1312d98cf6a28f68b62dd28ae964ed33af882b2d16b3a44a900100feffffff34255723e2249e8d965892edb9cd4cbbe27fa30e1292372a07206079dfad4a260100feffffff02b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a300ca9a3b00000000000000002132a3f3d36f0db243743debee55155d5343322c2ab037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3782e43120000000000000000216fd749255076c304942d16a8023a63b504b6022f570200000100232103c3ffe56a4c68b4dfe91573081898cb9a01830e48b8f181de684e415ecfc0e098ac"
+	strProof := ""
+
 	var tx1 *tx.Transaction
+	tx1 = new(tx.Transaction)
+	byteTx1, _ := common.HexStringToBytes(strTx1)
+	txReader := bytes.NewReader(byteTx1)
+	tx1.Deserialize(txReader)
+
 	var proof spv.Proof
+	byteProof, _ := common.HexStringToBytes(strProof)
+	proofReader := bytes.NewReader(byteProof)
+	proof.Deserialize(proofReader)
 
 	//step3.2 parse deposit info from tx1
 	depositInfos, _ := arbitrator.ParseUserDepositTransactionInfo(tx1)
@@ -50,6 +79,11 @@ func ExampleNormalDeposit() {
 
 	//let's suppose we already known the serialized tx2 info
 	var serializedTx2 string
+	for info, _ := range transactionInfos {
+		infoDataReader := new(bytes.Buffer)
+		info.Serialize(infoDataReader)
+		serializedTx2 = common.BytesToHexString(infoDataReader.Bytes())
+	}
 
 	//convert tx2 info to tx2
 
@@ -57,7 +91,7 @@ func ExampleNormalDeposit() {
 
 	//step4.3 tx2 has been confirmed and packaged in a new block
 
-	fmt.Printf("Length of transaction info array: [%t]\n, serialized tx2: [%s]",
+	fmt.Printf("Length of transaction info array: [%d]\n serialized tx2: [%s]",
 		len(transactionInfos), serializedTx2)
 
 	//Output:

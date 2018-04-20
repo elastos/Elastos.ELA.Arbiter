@@ -6,21 +6,21 @@ import (
 )
 
 type SideChainManagerImpl struct {
-	sideChains map[string]SideChain
+	SideChains map[string]SideChain
 }
 
 func (sideManager *SideChainManagerImpl) AddChain(key string, chain SideChain) {
-	sideManager.sideChains[key] = chain
+	sideManager.SideChains[key] = chain
 }
 
 func (sideManager *SideChainManagerImpl) GetChain(key string) (SideChain, bool) {
-	elem, ok := sideManager.sideChains[key]
+	elem, ok := sideManager.SideChains[key]
 	return elem, ok
 }
 
 func (sideManager *SideChainManagerImpl) GetAllChains() []SideChain {
 	var chains []SideChain
-	for _, v := range sideManager.sideChains {
+	for _, v := range sideManager.SideChains {
 		chains = append(chains, v)
 	}
 	return chains
@@ -29,11 +29,11 @@ func (sideManager *SideChainManagerImpl) GetAllChains() []SideChain {
 func init() {
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
 
-	sideChainManager := &SideChainManagerImpl{sideChains: make(map[string]SideChain)}
+	sideChainManager := &SideChainManagerImpl{SideChains: make(map[string]SideChain)}
 	for _, sideConfig := range config.Parameters.SideNodeList {
 		side := &SideChainImpl{
-			key:           sideConfig.GenesisBlockAddress,
-			currentConfig: sideConfig,
+			Key:           sideConfig.GenesisBlockAddress,
+			CurrentConfig: sideConfig,
 		}
 
 		sideChainManager.AddChain(sideConfig.GenesisBlockAddress, side)
