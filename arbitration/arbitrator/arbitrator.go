@@ -54,7 +54,7 @@ type ArbitratorImpl struct {
 }
 
 func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
-	return ar.GetSideChainManager()
+	return ar.sideChainManagerImpl
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
