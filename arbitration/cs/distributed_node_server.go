@@ -9,13 +9,12 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 )
 
@@ -26,7 +25,7 @@ const (
 type DistributedNodeServer struct {
 	mux                  *sync.Mutex
 	P2pCommand           string
-	unsolvedTransactions map[common.Uint256]*tx.Transaction
+	unsolvedTransactions map[common.Uint256]*Transaction
 	finishedTransactions map[common.Uint256]bool
 }
 
@@ -35,14 +34,14 @@ func (dns *DistributedNodeServer) tryInit() {
 		dns.mux = new(sync.Mutex)
 	}
 	if dns.unsolvedTransactions == nil {
-		dns.unsolvedTransactions = make(map[common.Uint256]*tx.Transaction)
+		dns.unsolvedTransactions = make(map[common.Uint256]*Transaction)
 	}
 	if dns.finishedTransactions == nil {
 		dns.finishedTransactions = make(map[common.Uint256]bool)
 	}
 }
 
-func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*tx.Transaction {
+func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*Transaction {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 	return dns.unsolvedTransactions
@@ -57,11 +56,14 @@ func (dns *DistributedNodeServer) FinishedTransactions() map[common.Uint256]bool
 func CreateRedeemScript() ([]byte, error) {
 	var publicKeys []*crypto.PublicKey
 	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
-		temp := &crypto.PublicKey{}
-		temp.FromString(arStr)
+		temp, err := PublicKeyFromString(arStr)
+		if err != nil {
+			return nil, err
+		}
 		publicKeys = append(publicKeys, temp)
 	}
-	redeemScript, err := tx.CreateWithdrawRedeemScript(getTransactionAgreementArbitratorsCount(), publicKeys)
+	redeemScript, err := CreateWithdrawRedeemScript(
+		getTransactionAgreementArbitratorsCount(), publicKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +95,9 @@ func (dns *DistributedNodeServer) OnP2PReceived(peer *spvnet.Peer, msg p2p.Messa
 	return dns.ReceiveProposalFeedback(signMessage.Content)
 }
 
-func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Transaction) error {
+func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transaction) error {
 
-	withdrawAsset, ok := transaction.Payload.(*payload.WithdrawAsset)
+	withdrawAsset, ok := transaction.Payload.(*PayloadWithdrawAsset)
 	if !ok {
 		return errors.New("Unknown playload typed.")
 	}
@@ -115,7 +117,7 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *tx.Tran
 	return nil
 }
 
-func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *tx.Transaction, itemFunc DistrubutedItemFunc) ([]byte, error) {
+func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transaction, itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
 	dns.mux.Lock()
@@ -174,7 +176,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Unlock()
 
 	var signerIndex = -1
-	programHashes, err := txn.GetMultiSignSigners()
+	programHashes, err := crypto.GetSigners(txn.Programs[0].Code)
 	if err != nil {
 		return err
 	}

@@ -8,11 +8,11 @@ import (
 	"os"
 	"sync"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -51,7 +51,7 @@ var (
 )
 
 type AddressUTXO struct {
-	Input               *tx.UTXOTxInput
+	Input               *Input
 	Amount              *Fixed64
 	GenesisBlockAddress string
 	DestroyAddress      string
@@ -62,7 +62,7 @@ type DataStore interface {
 	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
 
 	AddAddressUTXO(utxo *AddressUTXO) error
-	DeleteUTXO(input *tx.UTXOTxInput) error
+	DeleteUTXO(input *Input) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
 	GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error)
 
@@ -240,7 +240,7 @@ func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 	return nil
 }
 
-func (store *DataStoreImpl) DeleteUTXO(input *tx.UTXOTxInput) error {
+func (store *DataStoreImpl) DeleteUTXO(input *Input) error {
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 
@@ -281,7 +281,7 @@ func (store *DataStoreImpl) GetAddressUTXOsFromDestroyAddress(destroyAddress str
 			return nil, err
 		}
 
-		var input tx.UTXOTxInput
+		var input Input
 		reader := bytes.NewReader(outputBytes)
 		input.Deserialize(reader)
 
@@ -314,7 +314,7 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 			return nil, err
 		}
 
-		var input tx.UTXOTxInput
+		var input Input
 		reader := bytes.NewReader(outputBytes)
 		input.Deserialize(reader)
 

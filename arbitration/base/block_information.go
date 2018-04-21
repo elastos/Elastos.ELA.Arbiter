@@ -3,9 +3,8 @@ package base
 import (
 	"io"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/asset"
-	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 type PayloadInfo interface {
@@ -15,7 +14,7 @@ type PayloadInfo interface {
 }
 
 type RegisterAssetInfo struct {
-	Asset      *asset.Asset
+	Asset      *Asset
 	Amount     string
 	Controller string
 }
@@ -32,7 +31,7 @@ type TransferCrossChainAssetInfo struct {
 }
 
 type TxAttributeInfo struct {
-	Usage TransactionAttributeUsage
+	Usage AttributeUsage
 	Data  string
 }
 

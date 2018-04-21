@@ -9,11 +9,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 func init() {
@@ -28,10 +28,12 @@ func (mcFunc *TestMainChainFunc) GetAvailableUtxos(withdrawBank string) ([]*stor
 	var utxos []*store.AddressUTXO
 	amount := common.Fixed64(10000000000)
 	utxo := &store.AddressUTXO{
-		Input: &tx.UTXOTxInput{
-			ReferTxID:          common.Uint256{},
-			ReferTxOutputIndex: 0,
-			Sequence:           0,
+		Input: &Input{
+			Previous: OutPoint{
+				TxID:  common.Uint256{},
+				Index: 0,
+			},
+			Sequence: 0,
 		},
 		Amount:              &amount,
 		GenesisBlockAddress: "EMmfgnrDLQmFPBJiWvsyYGV2jzLQY58J4Y",
@@ -94,9 +96,9 @@ func ExampleNormalWithdraw() {
 	// from parameter of OnUTXOChanged
 	var strTx3 string
 	strTx3 = "0800012245544d4751433561473131627752677553704357324e6b7950387a75544833486e320001001335353737303036373931393437373739343130049147d096d23f3fa718ddcca4f0fc051f832f2b823020666aa16ccc65c03c4e3c0100feffffff737a4387ebf5315b74c508e40ba4f0179fc1d68bf76ce079b6bbf26e0fd2aa470100feffffff2593c8dc8e4d2106291ac6e77a298f75b598957f1e7efd0221ee76584d63abbe0100feffffff152186d284028bbff9b3ebcb016b0fab2088aa3c8105d77e1a23c6cc7de6856a0100feffffff02b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a300ca9a3b000000000000000021e879146ef5119f34ce35b2f50624deea68c74924b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3782e43120000000000000000216fd749255076c304942d16a8023a63b504b6022f5d0300000100232103c3ffe56a4c68b4dfe91573081898cb9a01830e48b8f181de684e415ecfc0e098ac"
-	var tx3 *tx.Transaction
+	var tx3 *Transaction
 
-	tx3 = new(tx.Transaction)
+	tx3 = new(Transaction)
 	byteTx1, _ := common.HexStringToBytes(strTx3)
 	txReader := bytes.NewReader(byteTx1)
 	tx3.Deserialize(txReader)

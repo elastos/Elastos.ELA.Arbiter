@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 )
 
 func TestMain(m *testing.M) {

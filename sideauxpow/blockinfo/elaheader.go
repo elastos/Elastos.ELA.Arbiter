@@ -6,8 +6,7 @@ import (
 	"errors"
 	"io"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 type Blockdata struct {
@@ -33,13 +32,13 @@ func (bd *Blockdata) Serialize(w io.Writer) error {
 //Serialize the blockheader data without program
 func (bd *Blockdata) SerializeUnsigned(w io.Writer) error {
 	//REVD: implement blockheader SerializeUnsigned
-	serialization.WriteUint32(w, bd.Version)
+	WriteUint32(w, bd.Version)
 	bd.PrevBlockHash.Serialize(w)
 	bd.TransactionsRoot.Serialize(w)
-	serialization.WriteUint32(w, bd.Timestamp)
-	serialization.WriteUint32(w, bd.Bits)
-	serialization.WriteUint32(w, bd.Nonce)
-	serialization.WriteUint32(w, bd.Height)
+	WriteUint32(w, bd.Timestamp)
+	WriteUint32(w, bd.Bits)
+	WriteUint32(w, bd.Nonce)
+	WriteUint32(w, bd.Height)
 
 	return nil
 }
@@ -64,7 +63,7 @@ func (bd *Blockdata) Deserialize(r io.Reader) error {
 
 func (bd *Blockdata) DeserializeUnsigned(r io.Reader) error {
 	//Version
-	temp, err := serialization.ReadUint32(r)
+	temp, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("Blockdata item Version Deserialize failed.")
 	}
@@ -87,19 +86,19 @@ func (bd *Blockdata) DeserializeUnsigned(r io.Reader) error {
 	bd.TransactionsRoot = *txRoot
 
 	//Timestamp
-	temp, _ = serialization.ReadUint32(r)
+	temp, _ = ReadUint32(r)
 	bd.Timestamp = uint32(temp)
 
 	//Bits
-	temp, _ = serialization.ReadUint32(r)
+	temp, _ = ReadUint32(r)
 	bd.Bits = uint32(temp)
 
 	//Nonce
-	temp, _ = serialization.ReadUint32(r)
+	temp, _ = ReadUint32(r)
 	bd.Nonce = uint32(temp)
 
 	//Height
-	temp, _ = serialization.ReadUint32(r)
+	temp, _ = ReadUint32(r)
 	bd.Height = uint32(temp)
 
 	return nil

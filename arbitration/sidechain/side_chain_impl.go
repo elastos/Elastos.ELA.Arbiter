@@ -9,14 +9,13 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	spvdb "github.com/elastos/Elastos.ELA.SPV/interface"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
+	"github.com/elastos/Elastos.ELA.Utility/bloom"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 type SideChainImpl struct {
@@ -93,7 +92,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	return nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target string, proof spvdb.Proof, amount common.Fixed64) (*TransactionInfo, error) {
+func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64) (*TransactionInfo, error) {
 	var totalOutputAmount = amount // The total amount will be spend
 	var txOutputs []TxoutputInfo   // The outputs in transaction
 
@@ -117,14 +116,14 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof spvdb.Pro
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
 
 	// Create attributes
-	txAttr := TxAttributeInfo{tx.Nonce, strconv.FormatInt(rand.Int63(), 10)}
+	txAttr := TxAttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
 	attributesInfo := make([]TxAttributeInfo, 0)
 	attributesInfo = append(attributesInfo, txAttr)
 
 	// Create program
 	program := ProgramInfo{}
 	return &TransactionInfo{
-		TxType:        tx.IssueToken,
+		TxType:        core.IssueToken,
 		Payload:       txPayloadInfo,
 		Attributes:    attributesInfo,
 		UTXOInputs:    []UTXOTxInputInfo{},
@@ -135,12 +134,12 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof spvdb.Pro
 	}, nil
 }
 
-func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error) {
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *core.Transaction) ([]*WithdrawInfo, error) {
 
 	var result []*WithdrawInfo
 
 	switch payloadObj := txn.Payload.(type) {
-	case *payload.TransferCrossChainAsset:
+	case *core.PayloadTransferCrossChainAsset:
 		for address, index := range payloadObj.AddressesMap {
 			info := &WithdrawInfo{
 				TargetAddress: address,

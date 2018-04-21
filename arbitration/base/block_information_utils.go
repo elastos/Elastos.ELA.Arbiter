@@ -1,15 +1,11 @@
 package base
 
 import (
-	"bytes"
 	"errors"
 	"io"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/program"
-	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 func (i *IssueTokenInfo) Data(version byte) string {
@@ -17,7 +13,7 @@ func (i *IssueTokenInfo) Data(version byte) string {
 }
 
 func (i *IssueTokenInfo) Serialize(w io.Writer, version byte) error {
-	if err := serialization.WriteVarString(w, i.Proof); err != nil {
+	if err := WriteVarString(w, i.Proof); err != nil {
 		return errors.New("Transaction IssueTokenInfo serialization failed.")
 	}
 
@@ -25,7 +21,7 @@ func (i *IssueTokenInfo) Serialize(w io.Writer, version byte) error {
 }
 
 func (i *IssueTokenInfo) Deserialize(r io.Reader, version byte) error {
-	value, err := serialization.ReadVarString(r)
+	value, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction IssueTokenInfo deserialization failed.")
 	}
@@ -67,16 +63,16 @@ func (a *TransferCrossChainAssetInfo) Serialize(w io.Writer, version byte) error
 		return errors.New("Invalid address map")
 	}
 
-	if err := serialization.WriteVarUint(w, uint64(len(a.AddressesMap))); err != nil {
+	if err := WriteVarUint(w, uint64(len(a.AddressesMap))); err != nil {
 		return errors.New("address map's length serialize failed")
 	}
 
 	for k, v := range a.AddressesMap {
-		if err := serialization.WriteVarString(w, k); err != nil {
+		if err := WriteVarString(w, k); err != nil {
 			return errors.New("address map's key serialize failed")
 		}
 
-		if err := serialization.WriteVarUint(w, v); err != nil {
+		if err := WriteVarUint(w, v); err != nil {
 			return errors.New("address map's value serialize failed")
 		}
 	}
@@ -89,7 +85,7 @@ func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) err
 		return errors.New("Invalid address key map")
 	}
 
-	length, err := serialization.ReadVarUint(r, 0)
+	length, err := ReadVarUint(r, 0)
 	if err != nil {
 		return errors.New("address map's length deserialize failed")
 	}
@@ -97,12 +93,12 @@ func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) err
 	a.AddressesMap = nil
 	a.AddressesMap = make(map[string]uint64)
 	for i := uint64(0); i < length; i++ {
-		k, err := serialization.ReadVarString(r)
+		k, err := ReadVarString(r)
 		if err != nil {
 			return errors.New("address map's key deserialize failed")
 		}
 
-		v, err := serialization.ReadVarUint(r, 0)
+		v, err := ReadVarUint(r, 0)
 		if err != nil {
 			return errors.New("address map's value deserialize failed")
 		}
@@ -114,29 +110,29 @@ func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) err
 }
 
 func (a *TxAttributeInfo) Serialize(w io.Writer) error {
-	if err := serialization.WriteUint8(w, byte(a.Usage)); err != nil {
+	if err := WriteUint8(w, byte(a.Usage)); err != nil {
 		return errors.New("Transaction attribute Usage serialization failed.")
 	}
 	if !IsValidAttributeType(a.Usage) {
-		return errors.New("[TxAttribute] error: Unsupported attribute Description.")
+		return errors.New("[Attribute] error: Unsupported attribute Description.")
 	}
-	if err := serialization.WriteVarString(w, a.Data); err != nil {
+	if err := WriteVarString(w, a.Data); err != nil {
 		return errors.New("Transaction attribute Data serialization failed.")
 	}
 	return nil
 }
 
 func (a *TxAttributeInfo) Deserialize(r io.Reader) error {
-	usage, err := serialization.ReadBytes(r, 1)
+	usage, err := ReadBytes(r, 1)
 	if err != nil {
 		return errors.New("Transaction attribute Usage deserialization failed.")
 	}
-	a.Usage = TransactionAttributeUsage(usage[0])
+	a.Usage = AttributeUsage(usage[0])
 	if !IsValidAttributeType(a.Usage) {
-		return errors.New("[TxAttribute] error: Unsupported attribute Description.")
+		return errors.New("[Attribute] error: Unsupported attribute Description.")
 	}
 
-	data, err := serialization.ReadVarString(r)
+	data, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction attribute Data deserialization failed.")
 	}
@@ -146,50 +142,50 @@ func (a *TxAttributeInfo) Deserialize(r io.Reader) error {
 }
 
 func (u *UTXOTxInputInfo) Serialize(w io.Writer) error {
-	if err := serialization.WriteVarString(w, u.ReferTxID); err != nil {
+	if err := WriteVarString(w, u.ReferTxID); err != nil {
 		return errors.New("Transaction UTXOTxInputInfo ReferTxID serialization failed.")
 	}
-	if err := serialization.WriteUint16(w, u.ReferTxOutputIndex); err != nil {
+	if err := WriteUint16(w, u.ReferTxOutputIndex); err != nil {
 		return errors.New("Transaction UTXOTxInputInfo ReferTxOutputIndex serialization failed.")
 	}
-	if err := serialization.WriteUint32(w, u.Sequence); err != nil {
+	if err := WriteUint32(w, u.Sequence); err != nil {
 		return errors.New("Transaction UTXOTxInputInfo Sequence serialization failed.")
 	}
-	if err := serialization.WriteVarString(w, u.Address); err != nil {
+	if err := WriteVarString(w, u.Address); err != nil {
 		return errors.New("Transaction UTXOTxInputInfo Address serialization failed.")
 	}
-	if err := serialization.WriteVarString(w, u.Value); err != nil {
+	if err := WriteVarString(w, u.Value); err != nil {
 		return errors.New("Transaction UTXOTxInputInfo Value serialization failed.")
 	}
 	return nil
 }
 
 func (u *UTXOTxInputInfo) Deserialize(r io.Reader) error {
-	refer, err := serialization.ReadVarString(r)
+	refer, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction UTXOTxInputInfo ReferTxID deserialization failed.")
 	}
 	u.ReferTxID = refer
 
-	index, err := serialization.ReadUint16(r)
+	index, err := ReadUint16(r)
 	if err != nil {
 		return errors.New("Transaction UTXOTxInputInfo ReferTxOutputIndex deserialization failed.")
 	}
 	u.ReferTxOutputIndex = index
 
-	sequence, err := serialization.ReadUint32(r)
+	sequence, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("Transaction UTXOTxInputInfo Sequence deserialization failed.")
 	}
 	u.Sequence = sequence
 
-	addr, err := serialization.ReadVarString(r)
+	addr, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction UTXOTxInputInfo Address deserialization failed.")
 	}
 	u.Address = addr
 
-	value, err := serialization.ReadVarString(r)
+	value, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction UTXOTxInputInfo Value deserialization failed.")
 	}
@@ -199,20 +195,20 @@ func (u *UTXOTxInputInfo) Deserialize(r io.Reader) error {
 }
 
 func (b *BalanceTxInputInfo) Serialize(w io.Writer) error {
-	if err := serialization.WriteVarString(w, b.AssetID); err != nil {
+	if err := WriteVarString(w, b.AssetID); err != nil {
 		return errors.New("Transaction BalanceTxInputInfo AssetID serialization failed.")
 	}
 	if err := b.Value.Serialize(w); err != nil {
 		return errors.New("Transaction BalanceTxInputInfo Value serialization failed.")
 	}
-	if err := serialization.WriteVarString(w, b.ProgramHash); err != nil {
+	if err := WriteVarString(w, b.ProgramHash); err != nil {
 		return errors.New("Transaction BalanceTxInputInfo ProgramHash serialization failed.")
 	}
 	return nil
 }
 
 func (b *BalanceTxInputInfo) Deserialize(r io.Reader) error {
-	assetid, err := serialization.ReadVarString(r)
+	assetid, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction BalanceTxInputInfo AssetID deserialization failed.")
 	}
@@ -222,7 +218,7 @@ func (b *BalanceTxInputInfo) Deserialize(r io.Reader) error {
 		return errors.New("Transaction BalanceTxInputInfo Value deserialization failed.")
 	}
 
-	programHash, err := serialization.ReadVarString(r)
+	programHash, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction BalanceTxInputInfo ProgramHash deserialization failed.")
 	}
@@ -232,16 +228,16 @@ func (b *BalanceTxInputInfo) Deserialize(r io.Reader) error {
 }
 
 func (o *TxoutputInfo) Serialize(w io.Writer) error {
-	if err := serialization.WriteVarString(w, o.AssetID); err != nil {
+	if err := WriteVarString(w, o.AssetID); err != nil {
 		return errors.New("Transaction TxoutputInfo AssetID serialization failed.")
 	}
-	if err := serialization.WriteVarString(w, o.Value); err != nil {
+	if err := WriteVarString(w, o.Value); err != nil {
 		return errors.New("Transaction TxoutputInfo Value serialization failed.")
 	}
-	if err := serialization.WriteVarString(w, o.Address); err != nil {
+	if err := WriteVarString(w, o.Address); err != nil {
 		return errors.New("Transaction TxoutputInfo Address serialization failed.")
 	}
-	if err := serialization.WriteUint32(w, o.OutputLock); err != nil {
+	if err := WriteUint32(w, o.OutputLock); err != nil {
 		return errors.New("Transaction TxoutputInfo OutputLock serialization failed.")
 	}
 
@@ -249,25 +245,25 @@ func (o *TxoutputInfo) Serialize(w io.Writer) error {
 }
 
 func (b *TxoutputInfo) Deserialize(r io.Reader) error {
-	assetid, err := serialization.ReadVarString(r)
+	assetid, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction TxoutputInfo AssetID deserialization failed.")
 	}
 	b.AssetID = assetid
 
-	value, err := serialization.ReadVarString(r)
+	value, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction TxoutputInfo Value deserialization failed.")
 	}
 	b.Value = value
 
-	addr, err := serialization.ReadVarString(r)
+	addr, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction TxoutputInfo Address deserialization failed.")
 	}
 	b.Address = addr
 
-	lock, err := serialization.ReadUint32(r)
+	lock, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("Transaction TxoutputInfo OutputLock deserialization failed.")
 	}
@@ -277,23 +273,23 @@ func (b *TxoutputInfo) Deserialize(r io.Reader) error {
 }
 
 func (p *ProgramInfo) Serialize(w io.Writer) error {
-	if err := serialization.WriteVarString(w, p.Code); err != nil {
+	if err := WriteVarString(w, p.Code); err != nil {
 		return errors.New("Transaction ProgramInfo Code serialization failed.")
 	}
-	if err := serialization.WriteVarString(w, p.Parameter); err != nil {
+	if err := WriteVarString(w, p.Parameter); err != nil {
 		return errors.New("Transaction ProgramInfo Parameter serialization failed.")
 	}
 	return nil
 }
 
 func (p *ProgramInfo) Deserialize(r io.Reader) error {
-	code, err := serialization.ReadVarString(r)
+	code, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction ProgramInfo Code deserialization failed.")
 	}
 	p.Code = code
 
-	param, err := serialization.ReadVarString(r)
+	param, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Transaction ProgramInfo Parameter deserialization failed.")
 	}
@@ -303,10 +299,10 @@ func (p *ProgramInfo) Deserialize(r io.Reader) error {
 }
 
 func (m *TxoutputMap) Serialize(w io.Writer) error {
-	if _, err := m.Key.Serialize(w); err != nil {
+	if err := m.Key.Serialize(w); err != nil {
 		return errors.New("Transaction TxoutputMap Key serialization failed.")
 	}
-	if err := serialization.WriteVarUint(w, uint64(len(m.Txout))); err != nil {
+	if err := WriteVarUint(w, uint64(len(m.Txout))); err != nil {
 		return errors.New("Transaction TxoutputMap Txout length serialization failed.")
 	}
 	for _, txout := range m.Txout {
@@ -322,7 +318,7 @@ func (m *TxoutputMap) Deserialize(r io.Reader) error {
 	if err := m.Key.Deserialize(r); err != nil {
 		return errors.New("Transaction TxoutputMap Key deserialization failed.")
 	}
-	length, err := serialization.ReadVarUint(r, 0)
+	length, err := ReadVarUint(r, 0)
 	if err != nil {
 		return errors.New("Transaction TxoutputMap Txout length deserialization failed.")
 	}
@@ -337,7 +333,7 @@ func (m *TxoutputMap) Deserialize(r io.Reader) error {
 }
 
 func (m *AmountMap) Serialize(w io.Writer) error {
-	if _, err := m.Key.Serialize(w); err != nil {
+	if err := m.Key.Serialize(w); err != nil {
 		return errors.New("Transaction AmountMap Key serialization failed.")
 	}
 	if err := m.Value.Serialize(w); err != nil {
@@ -369,7 +365,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 	//Serialize Payload
 	t.Payload.Serialize(w, t.PayloadVersion)
 	//[]TxAttributeInfo
-	if err = serialization.WriteVarUint(w, uint64(len(t.Attributes))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.Attributes))); err != nil {
 		return errors.New("Transaction item txAttribute length serialization failed.")
 	}
 	for _, attr := range t.Attributes {
@@ -378,7 +374,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//[]UTXOTxInputInfo
-	if err = serialization.WriteVarUint(w, uint64(len(t.UTXOInputs))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.UTXOInputs))); err != nil {
 		return errors.New("Transaction item UTXOInputs length serialization failed.")
 	}
 	for _, utxo := range t.UTXOInputs {
@@ -387,7 +383,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//[]BalanceTxInputInfo
-	if err = serialization.WriteVarUint(w, uint64(len(t.BalanceInputs))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.BalanceInputs))); err != nil {
 		return errors.New("Transaction item BalanceInputs length serialization failed.")
 	}
 	for _, balance := range t.BalanceInputs {
@@ -396,7 +392,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//[]TxoutputInfo
-	if err = serialization.WriteVarUint(w, uint64(len(t.Outputs))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.Outputs))); err != nil {
 		return errors.New("Transaction item BalanceInputs length serialization failed.")
 	}
 	for _, output := range t.Outputs {
@@ -405,11 +401,11 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//LockTime
-	if err = serialization.WriteUint32(w, t.LockTime); err != nil {
+	if err = WriteUint32(w, t.LockTime); err != nil {
 		return errors.New("Transaction item LockTime length serialization failed.")
 	}
 	//[]ProgramInfo
-	if err = serialization.WriteVarUint(w, uint64(len(t.Outputs))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.Outputs))); err != nil {
 		return errors.New("Transaction item ProgramInfo length serialization failed.")
 	}
 	for _, program := range t.Programs {
@@ -418,7 +414,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//[]TxoutputMap
-	if err = serialization.WriteVarUint(w, uint64(len(t.AssetOutputs))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.AssetOutputs))); err != nil {
 		return errors.New("Transaction item TxoutputMap length serialization failed.")
 	}
 	for _, m := range t.AssetOutputs {
@@ -427,7 +423,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//[]AmountMap
-	if err = serialization.WriteVarUint(w, uint64(len(t.AssetInputAmount))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.AssetInputAmount))); err != nil {
 		return errors.New("Transaction item AssetInputAmount length serialization failed.")
 	}
 	for _, m := range t.AssetInputAmount {
@@ -436,7 +432,7 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//[]AmountMap
-	if err = serialization.WriteVarUint(w, uint64(len(t.AssetOutputAmount))); err != nil {
+	if err = WriteVarUint(w, uint64(len(t.AssetOutputAmount))); err != nil {
 		return errors.New("Transaction item AssetOutputAmount length serialization failed.")
 	}
 	for _, m := range t.AssetOutputAmount {
@@ -445,19 +441,19 @@ func (t *TransactionInfo) Serialize(w io.Writer) error {
 		}
 	}
 	//Timestamp uint32 `json:",omitempty"`
-	if err = serialization.WriteUint32(w, t.Timestamp); err != nil {
+	if err = WriteUint32(w, t.Timestamp); err != nil {
 		return errors.New("Transaction item Timestamp serialization failed.")
 	}
 	//Confirminations uint32 `json:",omitempty"`
-	if err = serialization.WriteUint32(w, t.Confirmations); err != nil {
+	if err = WriteUint32(w, t.Confirmations); err != nil {
 		return errors.New("Transaction item Confirminations serialization failed.")
 	}
 	//TxSize uint32 `json:",omitempty"`
-	if err = serialization.WriteUint32(w, t.TxSize); err != nil {
+	if err = WriteUint32(w, t.TxSize); err != nil {
 		return errors.New("Transaction item TxSize serialization failed.")
 	}
 	//Hash string
-	if err = serialization.WriteVarString(w, t.Hash); err != nil {
+	if err = WriteVarString(w, t.Hash); err != nil {
 		return errors.New("Transaction item Hash serialization failed.")
 	}
 
@@ -494,7 +490,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		return err
 	}
 	//Attributes     []TxAttributeInfo
-	length, err := serialization.ReadVarUint(r, 0)
+	length, err := ReadVarUint(r, 0)
 	if err != nil {
 		return errors.New("Attributes length deserialize failed.")
 	}
@@ -506,7 +502,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.Attributes = append(t.Attributes, attr)
 	}
 	//UTXOInputs     []UTXOTxInputInfo
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("UTXOInputs length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -517,7 +513,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.UTXOInputs = append(t.UTXOInputs, utxo)
 	}
 	//BalanceInputs  []BalanceTxInputInfo
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("BalanceInputs length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -528,7 +524,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.BalanceInputs = append(t.BalanceInputs, balance)
 	}
 	//Outputs        []TxoutputInfo
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("TxoutputInfo length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -539,13 +535,13 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.Outputs = append(t.Outputs, output)
 	}
 	//LockTime       uint32
-	temp, err := serialization.ReadUint32(r)
+	temp, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("LockTime deserialize failed.")
 	}
 	t.LockTime = temp
 	//Programs       []ProgramInfo
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("Programinfo length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -556,7 +552,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.Programs = append(t.Programs, program)
 	}
 	//AssetOutputs      []TxoutputMap
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("AssetOutputs length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -567,7 +563,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.AssetOutputs = append(t.AssetOutputs, output)
 	}
 	//AssetInputAmount  []AmountMap
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("AssetInputAmount length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -578,7 +574,7 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.AssetInputAmount = append(t.AssetInputAmount, amount)
 	}
 	//AssetOutputAmount []AmountMap
-	if length, err = serialization.ReadVarUint(r, 0); err != nil {
+	if length, err = ReadVarUint(r, 0); err != nil {
 		return errors.New("AssetOutputAmount length deserialize failed.")
 	}
 	for i := uint64(0); i < length; i++ {
@@ -589,25 +585,25 @@ func (t *TransactionInfo) Deserialize(r io.Reader) error {
 		t.AssetOutputAmount = append(t.AssetOutputAmount, amount)
 	}
 	//Timestamp uint32 `json:",omitempty"`
-	timestamp, err := serialization.ReadUint32(r)
+	timestamp, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("Timestamp deserialize failed.")
 	}
 	t.Timestamp = timestamp
 	//Confirminations uint32 `json:",omitempty"`
-	confirm, err := serialization.ReadUint32(r)
+	confirm, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("Confirminations deserialize failed.")
 	}
 	t.Confirmations = confirm
 	//TxSize uint32 `json:",omitempty"`
-	txSize, err := serialization.ReadUint32(r)
+	txSize, err := ReadUint32(r)
 	if err != nil {
 		return errors.New("TxSize deserialize failed.")
 	}
 	t.TxSize = txSize
 	//Hash string
-	hash, err := serialization.ReadVarString(r)
+	hash, err := ReadVarString(r)
 	if err != nil {
 		return errors.New("Hash deserialize failed.")
 	}
@@ -628,8 +624,8 @@ func PayloadInfoToTransPayload(p PayloadInfo) (Payload, error) {
 
 	switch object := p.(type) {
 	case *RegisterAssetInfo:
-		obj := new(payload.RegisterAsset)
-		obj.Asset = object.Asset
+		obj := new(PayloadRegisterAsset)
+		obj.Asset = *object.Asset
 		amount, err := StringToFixed64(object.Amount)
 		if err != nil {
 			return nil, err
@@ -643,20 +639,18 @@ func PayloadInfoToTransPayload(p PayloadInfo) (Payload, error) {
 		obj.Controller = *controller
 		return obj, nil
 	case *TransferAssetInfo:
-		return new(payload.TransferAsset), nil
+		return new(PayloadTransferAsset), nil
 	case *IssueTokenInfo:
-		obj := new(payload.IssueToken)
+		obj := new(PayloadIssueToken)
 		proofBytes, err := HexStringToBytes(object.Proof)
 		if err != nil {
 			return nil, err
 		}
-		err = obj.Proof.Deserialize(bytes.NewReader(proofBytes))
-		if err != nil {
-			return nil, err
-		}
+
+		obj.MerkleProof = proofBytes
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
-		obj := new(payload.TransferCrossChainAsset)
+		obj := new(PayloadTransferCrossChainAsset)
 		obj.AddressesMap = object.AddressesMap
 		return obj, nil
 	}
@@ -671,13 +665,13 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		return nil, err
 	}
 
-	var txAttribute []*TxAttribute
+	var txAttribute []*Attribute
 	for _, att := range txinfo.Attributes {
 		attData, err := HexStringToBytes(att.Data)
 		if err != nil {
 			return nil, err
 		}
-		txAttr := &TxAttribute{
+		txAttr := &Attribute{
 			Usage: att.Usage,
 			Data:  attData,
 			Size:  0,
@@ -685,7 +679,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txAttribute = append(txAttribute, txAttr)
 	}
 
-	var txUTXOTxInput []*UTXOTxInput
+	var txUTXOTxInput []*Input
 	for _, input := range txinfo.UTXOInputs {
 		txID, err := HexStringToBytes(input.ReferTxID)
 		if err != nil {
@@ -695,15 +689,17 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		utxoInput := &UTXOTxInput{
-			ReferTxID:          *referID,
-			ReferTxOutputIndex: input.ReferTxOutputIndex,
-			Sequence:           input.Sequence,
+		utxoInput := &Input{
+			Previous: OutPoint{
+				TxID:  *referID,
+				Index: input.ReferTxOutputIndex,
+			},
+			Sequence: input.Sequence,
 		}
 		txUTXOTxInput = append(txUTXOTxInput, utxoInput)
 	}
 
-	var txOutputs []*TxOutput
+	var txOutputs []*Output
 	for _, output := range txinfo.Outputs {
 		assetIdBytes, err := HexStringToBytes(output.AssetID)
 		if err != nil {
@@ -721,7 +717,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		output := &TxOutput{
+		output := &Output{
 			AssetID:     *assetId,
 			Value:       *value,
 			OutputLock:  output.OutputLock,
@@ -730,7 +726,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txOutputs = append(txOutputs, output)
 	}
 
-	var txPrograms []*program.Program
+	var txPrograms []*Program
 	for _, pgrm := range txinfo.Programs {
 		code, err := HexStringToBytes(pgrm.Code)
 		if err != nil {
@@ -740,7 +736,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		txProgram := &program.Program{
+		txProgram := &Program{
 			Code:      code,
 			Parameter: parameter,
 		}
@@ -752,7 +748,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		PayloadVersion: txinfo.PayloadVersion,
 		Payload:        txPaload,
 		Attributes:     txAttribute,
-		UTXOInputs:     txUTXOTxInput,
+		Inputs:         txUTXOTxInput,
 		Outputs:        txOutputs,
 		Programs:       txPrograms,
 	}

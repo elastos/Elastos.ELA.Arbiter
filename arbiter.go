@@ -7,8 +7,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )

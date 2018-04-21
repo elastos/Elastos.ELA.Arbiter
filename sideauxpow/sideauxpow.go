@@ -8,13 +8,13 @@ import (
 	"os"
 	"strconv"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/password"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
 func getPassword(passwd []byte, confirmed bool) []byte {
@@ -70,7 +70,7 @@ func Transfer(name string, password []byte, wallet wallet.Wallet) error {
 
 	fmt.Println(sideAuxBlock)
 
-	txType := tx.SideMining
+	txType := SideMining
 
 	sideGenesisHashData, _ := HexStringToBytes(sideAuxBlock.GenesisHash)
 	sideBlockHashData, _ := HexStringToBytes(sideAuxBlock.Hash)
@@ -78,7 +78,7 @@ func Transfer(name string, password []byte, wallet wallet.Wallet) error {
 	sideGenesisHash, _ := Uint256FromBytes(sideGenesisHashData)
 	sideBlockHash, _ := Uint256FromBytes(sideBlockHashData)
 	// Create payload
-	txPayload := &payload.SideMining{
+	txPayload := &PayloadSideMining{
 		SideBlockHash:   *sideBlockHash,
 		SideGenesisHash: *sideGenesisHash,
 	}
@@ -113,7 +113,7 @@ func Transfer(name string, password []byte, wallet wallet.Wallet) error {
 	}
 
 	lockStr := ""
-	var txn *tx.Transaction
+	var txn *Transaction
 	if lockStr == "" {
 		txn, err = wallet.CreateTransaction(txType, txPayload, from, to, amount, fee)
 		if err != nil {
@@ -131,7 +131,7 @@ func Transfer(name string, password []byte, wallet wallet.Wallet) error {
 	}
 
 	// sign transaction
-	haveSign, needSign, err := txn.GetSignStatus()
+	haveSign, needSign, err := GetSignStatus(txn.Programs[0].Code, txn.Programs[0].Code)
 	if haveSign == needSign {
 		return errors.New("transaction was fully signed, no need more sign")
 	}
@@ -139,7 +139,7 @@ func Transfer(name string, password []byte, wallet wallet.Wallet) error {
 	if err != nil {
 		return err
 	}
-	haveSign, needSign, _ = txn.GetSignStatus()
+	haveSign, needSign, _ = GetSignStatus(txn.Programs[0].Code, txn.Programs[0].Parameter)
 	fmt.Println("[", haveSign, "/", needSign, "] Transaction successfully signed")
 
 	buf := new(bytes.Buffer)

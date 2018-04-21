@@ -2,9 +2,9 @@ package arbitrator
 
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	spv "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.Utility/bloom"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 type SideChain interface {
@@ -13,8 +13,8 @@ type SideChain interface {
 
 	GetKey() string
 	GetRage() float32
-	CreateDepositTransaction(target string, proof spv.Proof, amount common.Fixed64) (*TransactionInfo, error)
-	ParseUserWithdrawTransactionInfo(txn *tx.Transaction) ([]*WithdrawInfo, error)
+	CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64) (*TransactionInfo, error)
+	ParseUserWithdrawTransactionInfo(txn *core.Transaction) ([]*WithdrawInfo, error)
 }
 
 type SideChainManager interface {

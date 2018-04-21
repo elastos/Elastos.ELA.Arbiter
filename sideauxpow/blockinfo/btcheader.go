@@ -5,8 +5,7 @@ import (
 	"crypto/sha256"
 	"io"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 type BtcBlockHeader struct {
@@ -19,18 +18,18 @@ type BtcBlockHeader struct {
 }
 
 func (bh *BtcBlockHeader) Serialize(w io.Writer) error {
-	serialization.WriteUint32(w, uint32(bh.Version))
+	WriteUint32(w, uint32(bh.Version))
 	bh.PrevBlock.Serialize(w)
 	bh.MerkleRoot.Serialize(w)
-	serialization.WriteUint32(w, bh.Timestamp)
-	serialization.WriteUint32(w, bh.Bits)
-	serialization.WriteUint32(w, bh.Nonce)
+	WriteUint32(w, bh.Timestamp)
+	WriteUint32(w, bh.Bits)
+	WriteUint32(w, bh.Nonce)
 	return nil
 }
 
 func (bh *BtcBlockHeader) Deserialize(r io.Reader) error {
 	//Version
-	temp, err := serialization.ReadUint32(r)
+	temp, err := ReadUint32(r)
 	if err != nil {
 		return err
 	}
@@ -53,15 +52,15 @@ func (bh *BtcBlockHeader) Deserialize(r io.Reader) error {
 	bh.MerkleRoot = *txRoot
 
 	//Timestamp
-	temp, _ = serialization.ReadUint32(r)
+	temp, _ = ReadUint32(r)
 	bh.Timestamp = temp
 
 	//Bits
-	temp, _ = serialization.ReadUint32(r)
+	temp, _ = ReadUint32(r)
 	bh.Bits = temp
 
 	//Nonce
-	bh.Nonce, _ = serialization.ReadUint32(r)
+	bh.Nonce, _ = ReadUint32(r)
 
 	return nil
 }

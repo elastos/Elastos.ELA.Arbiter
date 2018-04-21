@@ -9,13 +9,13 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
 func init() {
@@ -96,8 +96,8 @@ func ExampleSignCollectingOfTwoArbitrators() {
 	//let's suppose we already have a withdraw transaction(like tx4 referenced in withdraw_procedure_test)
 	strTx4 := "0700c800000022454d6d66676e72444c516d4650424a6957767379594756326a7a4c515935384a34594063633534646165393633386530393737383335323964363530363035323939383361343562646532316337363564343833393930396430313534393034653935010013353537373030363739313934373737393431300001b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a300ca9a3b0000000006000000216fd749255076c304942d16a8023a63b504b6022f00000000010047522103a5274a21aa242231a1a95f88d1508be31a782303becaedc99f0016c46d105d7f2103b8fbf8aa1eba7b7ccb7b4925a56ea71e487ea6fe0ec9c3ff0c725d3850a7b34f52af"
 
-	var tx4 *tx.Transaction
-	tx4 = new(tx.Transaction)
+	var tx4 *Transaction
+	tx4 = new(Transaction)
 	byteTx1, _ := common.HexStringToBytes(strTx4)
 	txReader := bytes.NewReader(byteTx1)
 	tx4.Deserialize(txReader)
@@ -117,7 +117,7 @@ func ExampleSignCollectingOfTwoArbitrators() {
 	publicKeys := make([]*crypto.PublicKey, 2)
 	publicKeys[0] = onDutyArbitrator.GetPublicKey()
 	publicKeys[1] = anotherArbitrator.GetPublicKey()
-	redeemScript, _ := tx.CreateWithdrawRedeemScript(2, publicKeys)
+	redeemScript, _ := CreateWithdrawRedeemScript(2, publicKeys)
 	transactionItem.SetRedeemScript(redeemScript)
 
 	//step1.3 on duty arbitrator sign she self

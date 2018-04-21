@@ -3,8 +3,8 @@ package complain
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 const (
@@ -57,7 +57,7 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 	}
 }
 
-func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*tx.Transaction, error) {
+func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*core.Transaction, error) {
 	//todo append ComplainItem variables into attribute of transaction
 	return nil, nil
 }

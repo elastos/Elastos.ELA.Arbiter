@@ -6,8 +6,8 @@ import (
 
 	"encoding/binary"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
 	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"

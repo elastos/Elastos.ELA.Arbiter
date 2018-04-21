@@ -6,16 +6,15 @@ import (
 	"io"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
-	. "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
 type DistributedItem struct {
-	TargetArbitratorPublicKey   *crypto.PublicKey
+	TargetArbitratorPublicKey   *PublicKey
 	TargetArbitratorProgramHash *Uint168
 	ItemContent                 *Transaction
 
@@ -108,7 +107,7 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 		return nil, err
 	}
 
-	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), sign)
+	err = Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), sign)
 	if err != nil {
 		return nil, errors.New("Invalid sign data.")
 	}
@@ -118,19 +117,19 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 
 func (item *DistributedItem) Serialize(w io.Writer) error {
 	publickeyBytes, _ := item.TargetArbitratorPublicKey.EncodePoint(true)
-	if err := serialization.WriteVarBytes(w, publickeyBytes); err != nil {
+	if err := WriteVarBytes(w, publickeyBytes); err != nil {
 		return errors.New("TargetArbitratorPublicKey serialization failed.")
 	}
-	if _, err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
+	if err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
 		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
 	if err := item.ItemContent.Serialize(w); err != nil {
 		return err
 	}
-	if err := serialization.WriteVarBytes(w, item.redeemScript); err != nil {
+	if err := WriteVarBytes(w, item.redeemScript); err != nil {
 		return errors.New("redeemScript serialization failed.")
 	}
-	if err := serialization.WriteVarBytes(w, item.signedData); err != nil {
+	if err := WriteVarBytes(w, item.signedData); err != nil {
 		return errors.New("signedData serialization failed.")
 	}
 
@@ -138,11 +137,11 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 }
 
 func (item *DistributedItem) Deserialize(r io.Reader) error {
-	publickeyBytes, err := serialization.ReadVarBytes(r)
+	publickeyBytes, err := ReadVarBytes(r)
 	if err != nil {
 		return errors.New("TargetArbitratorPublicKey deserialization failed.")
 	}
-	publickey, _ := crypto.DecodePoint(publickeyBytes)
+	publickey, _ := DecodePoint(publickeyBytes)
 	item.TargetArbitratorPublicKey = publickey
 
 	item.TargetArbitratorProgramHash = nil
@@ -157,13 +156,13 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		return errors.New("RawTransaction deserialization failed.")
 	}
 
-	redeemScript, err := serialization.ReadVarBytes(r)
+	redeemScript, err := ReadVarBytes(r)
 	if err != nil {
 		return errors.New("redeemScript deserialization failed.")
 	}
 	item.redeemScript = redeemScript
 
-	signedData, err := serialization.ReadVarBytes(r)
+	signedData, err := ReadVarBytes(r)
 	if err != nil {
 		return errors.New("signedData deserialization failed.")
 	}
@@ -264,8 +263,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		targetPk := item.TargetArbitratorPublicKey
 
 		if !item.isForComplain() {
-			onDutyArbitratorPk := &crypto.PublicKey{}
-			withdrawPayload, ok := item.ItemContent.Payload.(*payload.WithdrawAsset)
+			withdrawPayload, ok := item.ItemContent.Payload.(*PayloadWithdrawAsset)
 			if !ok {
 				return errors.New("Invalid payload type.")
 			}
@@ -273,10 +271,12 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 			if err != nil {
 				return err
 			}
-			if err := onDutyArbitratorPk.FromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex]); err != nil {
+			onDutyArbitratorPk, err :=
+				base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
+			if err != nil {
 				return err
 			}
-			if !crypto.Equal(targetPk, onDutyArbitratorPk) {
+			if !Equal(targetPk, onDutyArbitratorPk) {
 				return errors.New("Can not sign without current arbitrator's signing.")
 			}
 		}
@@ -287,7 +287,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 			return err
 		}
 
-		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
+		err = Verify(*targetPk, buf.Bytes(), sign)
 		if err != nil {
 			return errors.New("Can not sign without current arbitrator's signing.")
 		}

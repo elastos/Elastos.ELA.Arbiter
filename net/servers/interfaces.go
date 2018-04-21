@@ -2,8 +2,8 @@ package servers
 
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/complain"
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
 	. "github.com/elastos/Elastos.ELA.Arbiter/errors"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 func SubmitComplain(param map[string]interface{}) map[string]interface{} {

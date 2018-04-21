@@ -7,9 +7,9 @@ import (
 	"os"
 	"sync"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -50,7 +50,7 @@ type Address struct {
 }
 
 type AddressUTXO struct {
-	Op       *tx.OutPoint
+	Op       *OutPoint
 	Amount   *Fixed64
 	LockTime uint32
 }
@@ -67,7 +67,7 @@ type DataStore interface {
 	GetAddresses() ([]*Address, error)
 
 	AddAddressUTXO(programHash *Uint168, utxo *AddressUTXO) error
-	DeleteUTXO(input *tx.OutPoint) error
+	DeleteUTXO(input *OutPoint) error
 	GetAddressUTXOs(programHash *Uint168) ([]*AddressUTXO, error)
 
 	ResetDataStore() error
@@ -192,7 +192,7 @@ func (store *DataStoreImpl) AddAddress(programHash *Uint168, redeemScript []byte
 	if err != nil {
 		return err
 	}
-	_, err = stmt.Exec(programHash.ToArray(), redeemScript)
+	_, err = stmt.Exec(programHash.Bytes(), redeemScript)
 	if err != nil {
 		return err
 	}
@@ -204,7 +204,7 @@ func (store *DataStoreImpl) DeleteAddress(programHash *Uint168) error {
 	defer store.Unlock()
 
 	// Find addressId by ProgramHash
-	row := store.QueryRow("SELECT Id FROM Addresses WHERE ProgramHash=?", programHash.ToArray())
+	row := store.QueryRow("SELECT Id FROM Addresses WHERE ProgramHash=?", programHash.Bytes())
 	var addressId int
 	err := row.Scan(&addressId)
 	if err != nil {
@@ -240,7 +240,7 @@ func (store *DataStoreImpl) GetAddressInfo(programHash *Uint168) (*Address, erro
 
 	// Query address info by it's ProgramHash
 	sql := `SELECT RedeemScript FROM Addresses WHERE ProgramHash=?`
-	row := store.QueryRow(sql, programHash.ToArray())
+	row := store.QueryRow(sql, programHash.Bytes())
 	var redeemScript []byte
 	err := row.Scan(&redeemScript)
 	if err != nil {
@@ -291,7 +291,7 @@ func (store *DataStoreImpl) AddAddressUTXO(programHash *Uint168, utxo *AddressUT
 	defer store.Unlock()
 
 	// Find addressId by ProgramHash
-	row := store.QueryRow("SELECT Id FROM Addresses WHERE ProgramHash=?", programHash.ToArray())
+	row := store.QueryRow("SELECT Id FROM Addresses WHERE ProgramHash=?", programHash.Bytes())
 	var addressId int
 	err := row.Scan(&addressId)
 	if err != nil {
@@ -318,7 +318,7 @@ func (store *DataStoreImpl) AddAddressUTXO(programHash *Uint168, utxo *AddressUT
 	return nil
 }
 
-func (store *DataStoreImpl) DeleteUTXO(op *tx.OutPoint) error {
+func (store *DataStoreImpl) DeleteUTXO(op *OutPoint) error {
 	store.Lock()
 	defer store.Unlock()
 
@@ -344,7 +344,7 @@ func (store *DataStoreImpl) GetAddressUTXOs(programHash *Uint168) ([]*AddressUTX
 	defer store.Unlock()
 
 	rows, err := store.Query(`SELECT UTXOs.OutPoint, UTXOs.Amount, UTXOs.LockTime FROM UTXOs INNER JOIN Addresses
- 								ON UTXOs.AddressId=Addresses.Id WHERE Addresses.ProgramHash=?`, programHash.ToArray())
+ 								ON UTXOs.AddressId=Addresses.Id WHERE Addresses.ProgramHash=?`, programHash.Bytes())
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ func (store *DataStoreImpl) GetAddressUTXOs(programHash *Uint168) ([]*AddressUTX
 			return nil, err
 		}
 
-		var op tx.OutPoint
+		var op OutPoint
 		reader := bytes.NewReader(opBytes)
 		op.Deserialize(reader)
 

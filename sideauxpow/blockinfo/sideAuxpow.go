@@ -3,15 +3,14 @@ package blockinfo
 import (
 	"io"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 type SideAuxPow struct {
 	SideAuxMerkleBranch []Uint256
 	SideAuxMerkleIndex  int
-	SideAuxBlockTx      transaction.Transaction
+	SideAuxBlockTx      Transaction
 	MainBlockHeader     Blockdata
 }
 
@@ -22,19 +21,19 @@ func (sap *SideAuxPow) Serialize(w io.Writer) error {
 	}
 
 	count := uint64(len(sap.SideAuxMerkleBranch))
-	err = serialization.WriteVarUint(w, count)
+	err = WriteVarUint(w, count)
 	if err != nil {
 		return err
 	}
 
 	for _, pcbm := range sap.SideAuxMerkleBranch {
-		_, err = pcbm.Serialize(w)
+		err = pcbm.Serialize(w)
 		if err != nil {
 			return err
 		}
 	}
 	idx := uint32(sap.SideAuxMerkleIndex)
-	err = serialization.WriteUint32(w, idx)
+	err = WriteUint32(w, idx)
 	if err != nil {
 		return err
 	}
@@ -52,7 +51,7 @@ func (sap *SideAuxPow) Deserialize(r io.Reader) error {
 		return err
 	}
 
-	count, err := serialization.ReadVarUint(r, 0)
+	count, err := ReadVarUint(r, 0)
 	if err != nil {
 		return err
 	}
@@ -68,7 +67,7 @@ func (sap *SideAuxPow) Deserialize(r io.Reader) error {
 
 	}
 
-	temp, err := serialization.ReadUint32(r)
+	temp, err := ReadUint32(r)
 	if err != nil {
 		return err
 	}

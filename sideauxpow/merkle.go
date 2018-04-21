@@ -5,7 +5,7 @@ import (
 	"crypto/sha256"
 	"errors"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 type MerkleTree struct {

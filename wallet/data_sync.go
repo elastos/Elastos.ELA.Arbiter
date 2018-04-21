@@ -4,10 +4,10 @@ import (
 	"fmt"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 type DataSync interface {
@@ -92,13 +92,13 @@ func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 				txHashBytes, _ := HexStringToBytesReverse(txn.Hash)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				lockTime := output.OutputLock
-				if txn.TxType == tx.CoinBase {
+				if txn.TxType == CoinBase {
 					lockTime = block.BlockData.Height + 100
 				}
 				amount, _ := StringToFixed64(output.Value)
 				// Save UTXO input to data store
 				addressUTXO := &AddressUTXO{
-					Op:       tx.NewOutPoint(*referTxHash, uint16(index)),
+					Op:       NewOutPoint(*referTxHash, uint16(index)),
 					Amount:   amount,
 					LockTime: lockTime,
 				}
@@ -110,7 +110,7 @@ func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 		for _, input := range txn.UTXOInputs {
 			txHashBytes, _ := HexStringToBytesReverse(input.ReferTxID)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
-			sync.DeleteUTXO(tx.NewOutPoint(*referTxID, input.ReferTxOutputIndex))
+			sync.DeleteUTXO(NewOutPoint(*referTxID, input.ReferTxOutputIndex))
 		}
 	}
 }

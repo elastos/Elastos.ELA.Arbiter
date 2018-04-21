@@ -4,24 +4,38 @@ import (
 	"bytes"
 	"errors"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA.Utility/crypto"
+	"strings"
 )
 
-func StandardAcccountPublicKeyToProgramHash(key *crypto.PublicKey) (*Uint168, error) {
-	targetRedeemScript, err := tx.CreateStandardRedeemScript(key)
+func PublicKeyFromString(str string) (*PublicKey, error) {
+	keyBytes, err := HexStringToBytes(strings.TrimSpace(str))
 	if err != nil {
 		return nil, err
 	}
-	targetProgramHash, err := tx.ToProgramHash(targetRedeemScript)
+	publicKey, err := DecodePoint(keyBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return publicKey, nil
+}
+
+func StandardAcccountPublicKeyToProgramHash(key *PublicKey) (*Uint168, error) {
+	targetRedeemScript, err := CreateStandardRedeemScript(key)
+	if err != nil {
+		return nil, err
+	}
+	targetProgramHash, err := ToProgramHash(targetRedeemScript)
 	if err != nil {
 		return nil, err
 	}
 	return targetProgramHash, err
 }
 
-func MergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction) (int, error) {
+func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (int, error) {
 	param := txn.Programs[0].Parameter
 
 	// Check if is first signature
@@ -29,21 +43,21 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction
 		param = []byte{}
 	} else {
 		// Check if singer already signed
-		publicKeys, err := txn.GetMultiSignPublicKeys()
+		publicKeys, err := GetSigners(txn.Programs[0].Code)
 		if err != nil {
 			return 0, err
 		}
 		buf := new(bytes.Buffer)
 		txn.Serialize(buf)
-		for i := 0; i < len(param); i += tx.SignatureScriptLength {
+		for i := 0; i < len(param); i += SignatureScriptLength {
 			// Remove length byte
-			sign := param[i : i+tx.SignatureScriptLength][1:]
+			sign := param[i : i+SignatureScriptLength][1:]
 			publicKey := publicKeys[signerIndex][1:]
-			pubKey, err := crypto.DecodePoint(publicKey)
+			pubKey, err := DecodePoint(publicKey)
 			if err != nil {
 				return 0, err
 			}
-			err = crypto.Verify(*pubKey, buf.Bytes(), sign)
+			err = Verify(*pubKey, buf.Bytes(), sign)
 			if err == nil {
 				return 0, errors.New("signer already signed")
 			}
@@ -55,5 +69,5 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *tx.Transaction
 	buf.Write(newSign)
 
 	txn.Programs[0].Parameter = buf.Bytes()
-	return len(txn.Programs[0].Parameter) / (tx.SignatureScriptLength - 1), nil
+	return len(txn.Programs[0].Parameter) / (SignatureScriptLength - 1), nil
 }

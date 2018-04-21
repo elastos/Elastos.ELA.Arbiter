@@ -2,7 +2,7 @@ package sidechain
 
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 )
 
 type SideChainManagerImpl struct {

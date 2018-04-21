@@ -7,17 +7,15 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow/blockinfo"
-	"github.com/elastos/Elastos.ELA.SPV/bloom"
-	tx "github.com/elastos/Elastos.ELA.SPV/core/transaction"
 	i "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SPV/log"
 	spvconfig "github.com/elastos/Elastos.ELA.SPV/spvwallet/config"
+	"github.com/elastos/Elastos.ELA.Utility/bloom"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 var spv i.SPVService
@@ -40,17 +38,20 @@ func StartSPVListener() {
 	}
 
 	// Set on transaction confirmed callback
-	spv.RegisterTransactionListener(&UnconfirmedListener{txType: tx.SideMining})
+	spv.RegisterTransactionListener(&UnconfirmedListener{txType: SideMining})
 
 	// Start spv service
 	spv.Start()
 }
 
 type UnconfirmedListener struct {
-	txType tx.TransactionType
+	txType TransactionType
 }
 
-func (l *UnconfirmedListener) Type() tx.TransactionType {
+func (l *UnconfirmedListener) Rollback(height uint32) {
+}
+
+func (l *UnconfirmedListener) Type() TransactionType {
 	return l.txType
 }
 
@@ -58,7 +59,7 @@ func (l *UnconfirmedListener) Confirmed() bool {
 	return false
 }
 
-func (l *UnconfirmedListener) Notify(proof i.Proof, tx tx.Transaction) {
+func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
 	log.Debug("Receive unconfirmed transaction hash:", tx.Hash().String())
 	err := spv.VerifyTransaction(proof, tx)
 	if err != nil {
@@ -75,14 +76,14 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx tx.Transaction) {
 
 	// Check if merkleroot is match
 	merkleBlock := bloom.MerkleBlock{
-		BlockHeader:  header.Header,
+		Header:       header.Header,
 		Transactions: proof.Transactions,
 		Hashes:       proof.Hashes,
 		Flags:        proof.Flags,
 	}
 
 	txId := tx.Hash()
-	merkleBranch, err := merkleBlock.GetTxMerkleBranch(txId)
+	merkleBranch, err := merkleBlock.GetTxMerkleBranch(&txId)
 	if err != nil {
 		log.Error("can not get merkle branch")
 		return
@@ -102,7 +103,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx tx.Transaction) {
 		log.Error("can not serialize tx")
 		return
 	}
-	sideAuxBlockTx := transaction.Transaction{}
+	sideAuxBlockTx := Transaction{}
 	err = sideAuxBlockTx.Deserialize(txBuf)
 	if err != nil {
 		fmt.Println(err)
@@ -141,7 +142,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx tx.Transaction) {
 	// fmt.Println("sideAuxpowBuf", sideAuxpowBuf)
 
 	// send submit block
-	payloadData := tx.Payload.Data(payload.SideMiningPayloadVersion)
+	payloadData := Payload.Data(SideMiningPayloadVersion)
 	blockhashData := payloadData[0:32]
 	blockhashString := BytesToHexString(blockhashData)
 
@@ -154,7 +155,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx tx.Transaction) {
 	submitAuxpow(blockhashString, sideAuxpowString)
 
 	// Submit transaction receipt
-	spv.SubmitTransactionReceipt(*tx.Hash())
+	spv.SubmitTransactionReceipt(tx.Hash())
 }
 
 func submitAuxpow(blockhash string, submitauxpow string) error {

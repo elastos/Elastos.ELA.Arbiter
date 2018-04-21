@@ -6,8 +6,7 @@ import (
 	"encoding/binary"
 	"io"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/serialization"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 type BtcOutPoint struct {
@@ -68,7 +67,7 @@ func BtcReadTxIn(r io.Reader, ti *BtcTxIn) error {
 	}
 	ti.PreviousOutPoint = op
 
-	ti.SignatureScript, err = serialization.ReadVarBytes(r)
+	ti.SignatureScript, err = ReadVarBytes(r)
 	if err != nil {
 		return err
 	}
@@ -89,7 +88,7 @@ func BtcWriteTxIn(w io.Writer, ti *BtcTxIn) error {
 		return err
 	}
 
-	err = serialization.WriteVarBytes(w, ti.SignatureScript)
+	err = WriteVarBytes(w, ti.SignatureScript)
 	if err != nil {
 		return err
 	}
@@ -108,7 +107,7 @@ func BtcReadTxOut(r io.Reader, to *BtcTxOut) error {
 	}
 	to.Value = int64(binary.LittleEndian.Uint64(buf[:]))
 
-	to.PkScript, err = serialization.ReadVarBytes(r)
+	to.PkScript, err = ReadVarBytes(r)
 	return err
 }
 
@@ -120,7 +119,7 @@ func BtcWriteTxOut(w io.Writer, to *BtcTxOut) error {
 		return err
 	}
 
-	err = serialization.WriteVarBytes(w, to.PkScript)
+	err = WriteVarBytes(w, to.PkScript)
 	return err
 }
 
@@ -132,7 +131,7 @@ func (tx *BtcTx) Serialize(w io.Writer) error {
 		return err
 	}
 	count := uint64(len(tx.TxIn))
-	err = serialization.WriteVarUint(w, count)
+	err = WriteVarUint(w, count)
 	if err != nil {
 		return err
 	}
@@ -144,7 +143,7 @@ func (tx *BtcTx) Serialize(w io.Writer) error {
 	}
 
 	count = uint64(len(tx.TxOut))
-	err = serialization.WriteVarUint(w, count)
+	err = WriteVarUint(w, count)
 	if err != nil {
 		return err
 	}
@@ -168,7 +167,7 @@ func (tx *BtcTx) Deserialize(r io.Reader) error {
 	}
 	tx.Version = int32(binary.LittleEndian.Uint32(buf[:]))
 
-	count, err := serialization.ReadVarUint(r, 0)
+	count, err := ReadVarUint(r, 0)
 	if err != nil {
 		return err
 	}
@@ -183,7 +182,7 @@ func (tx *BtcTx) Deserialize(r io.Reader) error {
 		tx.TxIn[i] = &ti
 	}
 
-	count, err = serialization.ReadVarUint(r, 0)
+	count, err = ReadVarUint(r, 0)
 	if err != nil {
 		return err
 	}

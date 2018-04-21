@@ -10,14 +10,12 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
-	. "github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	pg "github.com/elastos/Elastos.ELA.Arbiter/core/program"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 const WithdrawAssetLockTime uint32 = 6
@@ -27,7 +25,7 @@ type MainChainImpl struct {
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64,
-	sideChainTransactionHash string, mcFunc MainChainFunc) (*tx.Transaction, error) {
+	sideChainTransactionHash string, mcFunc MainChainFunc) (*Transaction, error) {
 
 	mc.syncChainData()
 
@@ -38,8 +36,8 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 		return nil, err
 	}
 	// Create transaction outputs
-	var txOutputs []*tx.TxOutput
-	txOutput := &tx.TxOutput{
+	var txOutputs []*Output
+	txOutput := &Output{
 		AssetID:     Uint256(assetID),
 		ProgramHash: *programhash,
 		Value:       amount,
@@ -48,7 +46,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 
 	txOutputs = append(txOutputs, txOutput)
 
-	var txInputs []*tx.UTXOTxInput
+	var txInputs []*Input
 	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
 	if err != nil {
 		return nil, err
@@ -68,7 +66,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 			if err != nil {
 				return nil, err
 			}
-			change := &tx.TxOutput{
+			change := &Output{
 				AssetID:     Uint256(spvWallet.SystemAssetId),
 				Value:       Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
@@ -98,35 +96,34 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 		return nil, err
 	}
 
-	txPayload := &payload.WithdrawAsset{
+	txPayload := &PayloadWithdrawAsset{
 		BlockHeight:              chainHeight,
 		GenesisBlockAddress:      withdrawBank,
 		SideChainTransactionHash: sideChainTransactionHash}
-	program := &pg.Program{redeemScript, nil}
+	program := &Program{redeemScript, nil}
 
 	// Create attributes
-	txAttr := tx.NewTxAttribute(tx.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*tx.TxAttribute, 0)
+	txAttr := NewAttribute(Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
-	return &tx.Transaction{
-		TxType:        tx.WithdrawAsset,
-		Payload:       txPayload,
-		Attributes:    attributes,
-		UTXOInputs:    txInputs,
-		BalanceInputs: []*tx.BalanceTxInput{},
-		Outputs:       txOutputs,
-		Programs:      []*pg.Program{program},
-		LockTime:      uint32(0),
+	return &Transaction{
+		TxType:     WithdrawAsset,
+		Payload:    txPayload,
+		Attributes: attributes,
+		Inputs:     txInputs,
+		Outputs:    txOutputs,
+		Programs:   []*Program{program},
+		LockTime:   uint32(0),
 	}, nil
 }
 
-func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
+func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error) {
 
 	var result []*DepositInfo
 
 	switch payloadObj := txn.Payload.(type) {
-	case *payload.TransferCrossChainAsset:
+	case *PayloadTransferCrossChainAsset:
 		for k, v := range payloadObj.AddressesMap {
 			info := &DepositInfo{
 				MainChainProgramHash: txn.Outputs[v].ProgramHash,
@@ -221,13 +218,15 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 				txHashBytes, _ := HexStringToBytesReverse(txn.Hash)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
-				if txn.TxType == tx.CoinBase {
+				if txn.TxType == CoinBase {
 					sequence = block.BlockData.Height + 100
 				}
-				input := &tx.UTXOTxInput{
-					ReferTxID:          *referTxHash,
-					ReferTxOutputIndex: uint16(index),
-					Sequence:           sequence,
+				input := &Input{
+					Previous: OutPoint{
+						TxID:  *referTxHash,
+						Index: uint16(index),
+					},
+					Sequence: sequence,
 				}
 				amount, _ := StringToFixed64(output.Value)
 				// Save UTXO input to data store
@@ -245,10 +244,12 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 		for _, input := range txn.UTXOInputs {
 			txHashBytes, _ := HexStringToBytesReverse(input.ReferTxID)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
-			txInput := &tx.UTXOTxInput{
-				ReferTxID:          *referTxID,
-				ReferTxOutputIndex: input.ReferTxOutputIndex,
-				Sequence:           input.Sequence,
+			txInput := &Input{
+				Previous: OutPoint{
+					TxID:  *referTxID,
+					Index: input.ReferTxOutputIndex,
+				},
+				Sequence: input.Sequence,
 			}
 			DbCache.DeleteUTXO(txInput)
 		}

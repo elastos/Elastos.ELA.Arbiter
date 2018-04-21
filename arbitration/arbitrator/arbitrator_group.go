@@ -4,8 +4,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
 )

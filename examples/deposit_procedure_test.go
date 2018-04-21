@@ -9,11 +9,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	spv "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Utility/bloom"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 )
 
 func init() {
@@ -61,13 +61,13 @@ func ExampleNormalDeposit() {
 	strTx1 = "0800012245544d4751433561473131627752677553704357324e6b7950387a75544833486e3200010013353537373030363739313934373737393431300403229feeff99fa03357d09648a93363d1d01f234e61d04d10f93c9ad1aef3c150100feffffff737a4387ebf5315b74c508e40ba4f0179fc1d68bf76ce079b6bbf26e0fd2aa470100feffffff592c415c08ac1e1312d98cf6a28f68b62dd28ae964ed33af882b2d16b3a44a900100feffffff34255723e2249e8d965892edb9cd4cbbe27fa30e1292372a07206079dfad4a260100feffffff02b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a300ca9a3b00000000000000002132a3f3d36f0db243743debee55155d5343322c2ab037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3782e43120000000000000000216fd749255076c304942d16a8023a63b504b6022f570200000100232103c3ffe56a4c68b4dfe91573081898cb9a01830e48b8f181de684e415ecfc0e098ac"
 	strProof := ""
 
-	var tx1 *tx.Transaction
-	tx1 = new(tx.Transaction)
+	var tx1 *Transaction
+	tx1 = new(Transaction)
 	byteTx1, _ := common.HexStringToBytes(strTx1)
 	txReader := bytes.NewReader(byteTx1)
 	tx1.Deserialize(txReader)
 
-	var proof spv.Proof
+	var proof bloom.MerkleProof
 	byteProof, _ := common.HexStringToBytes(strProof)
 	proofReader := bytes.NewReader(byteProof)
 	proof.Deserialize(proofReader)
@@ -86,7 +86,7 @@ func ExampleNormalDeposit() {
 
 	//let's suppose we already known the serialized tx2 info
 	var serializedTx2 string
-	for info, _ := range transactionInfos {
+	for info := range transactionInfos {
 		infoDataReader := new(bytes.Buffer)
 		info.Serialize(infoDataReader)
 		serializedTx2 = common.BytesToHexString(infoDataReader.Bytes())

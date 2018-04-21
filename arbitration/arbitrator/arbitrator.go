@@ -6,16 +6,16 @@ import (
 	"errors"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/common"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/password"
-	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
-	"github.com/elastos/Elastos.ELA.Arbiter/crypto"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	spv "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.Utility/bloom"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 	utcore "github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
 type Arbitrator interface {
@@ -34,15 +34,15 @@ type Arbitrator interface {
 	StartSpvModule() error
 
 	//deposit
-	ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error)
-	CreateDepositTransactions(proof spv.Proof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain
+	ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error)
+	CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
 
 	//withdraw
 	CreateWithdrawTransaction(
-		withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*tx.Transaction
-	BroadcastWithdrawProposal(txns []*tx.Transaction)
-	SendWithdrawTransaction(txn *tx.Transaction) (interface{}, error)
+		withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*Transaction
+	BroadcastWithdrawProposal(txns []*Transaction)
+	SendWithdrawTransaction(txn *Transaction) (interface{}, error)
 }
 
 type ArbitratorImpl struct {
@@ -82,17 +82,19 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
-	pk := crypto.PublicKey{}
-	pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
-	return crypto.Equal(&pk, ar.GetPublicKey())
+	pk, err := PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
+	if err != nil {
+		return false
+	}
+	return crypto.Equal(pk, ar.GetPublicKey())
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfSide(sideChainKey string) bool {
-	pk := crypto.PublicKey{}
-	if err := pk.FromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(sideChainKey)); err != nil {
+	pk, err := PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(sideChainKey))
+	if err != nil {
 		return false
 	}
-	return crypto.Equal(&pk, ar.GetPublicKey())
+	return crypto.Equal(pk, ar.GetPublicKey())
 }
 
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
@@ -100,9 +102,9 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(
-	withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*tx.Transaction {
+	withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*Transaction {
 
-	var result []*tx.Transaction
+	var result []*Transaction
 	for _, info := range withdrawInfoMap {
 
 		rateFloat := sideChain.GetRage()
@@ -125,11 +127,11 @@ func (ar *ArbitratorImpl) CreateWithdrawTransaction(
 	return result
 }
 
-func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *tx.Transaction) ([]*DepositInfo, error) {
+func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error) {
 	return ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
 }
 
-func (ar *ArbitratorImpl) CreateDepositTransactions(proof spv.Proof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain {
+func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain {
 
 	result := make(map[*TransactionInfo]SideChain, len(infoArray))
 	for _, info := range infoArray {
@@ -167,7 +169,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*tx.Transaction) {
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*Transaction) {
 	for _, txn := range txns {
 		err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 		if err != nil {
@@ -176,7 +178,7 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*tx.Transaction) {
 	}
 }
 
-func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *tx.Transaction) (interface{}, error) {
+func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *Transaction) (interface{}, error) {
 	content, err := ar.convertToTransactionContent(txn)
 	if err != nil {
 		return nil, err
@@ -203,7 +205,7 @@ func (ar *ArbitratorImpl) Confirmed() bool {
 	return true
 }
 
-func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn utcore.Transaction) {
+func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn utcore.Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}
@@ -213,7 +215,7 @@ func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn utcore.Transaction) {
 	txBytes := buf.Bytes()
 
 	r := bytes.NewReader(txBytes)
-	txn := new(tx.Transaction)
+	txn := new(Transaction)
 	txn.Deserialize(r)
 
 	depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
@@ -296,7 +298,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	return nil
 }
 
-func (ar *ArbitratorImpl) convertToTransactionContent(txn *tx.Transaction) (string, error) {
+func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string, error) {
 	buf := new(bytes.Buffer)
 	err := txn.Serialize(buf)
 	if err != nil {

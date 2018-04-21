@@ -6,12 +6,12 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/core/transaction/payload"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
+	. "github.com/elastos/Elastos.ELA.Utility/core"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 )
 
@@ -48,7 +48,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return nil
 	}
 
-	withdrawAsset, ok := transactionItem.ItemContent.Payload.(*payload.WithdrawAsset)
+	withdrawAsset, ok := transactionItem.ItemContent.Payload.(*PayloadWithdrawAsset)
 	if !ok {
 		return errors.New("Unknown payload type.")
 	}
@@ -94,7 +94,7 @@ func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
 	return nil
 }
 
-func (client *DistributedNodeClient) Verify(withdrawAsset *payload.WithdrawAsset) error {
+func (client *DistributedNodeClient) Verify(withdrawAsset *PayloadWithdrawAsset) error {
 	rpcConfig, ok := config.GetRpcConfig(withdrawAsset.GenesisBlockAddress)
 	if !ok {
 		return errors.New("Unknown side chain.")
