@@ -10,9 +10,16 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
 	"github.com/elastos/Elastos.ELA.Arbiter/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/common/log"
 	tx "github.com/elastos/Elastos.ELA.Arbiter/core/transaction"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
+
+func init() {
+	config.Init()
+	log.Init(log.Path, log.Stdout)
+}
 
 type TestMainChainFunc struct {
 }

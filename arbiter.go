@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
@@ -14,11 +14,14 @@ import (
 )
 
 func init() {
-	config.InitConfig()
+	config.Init()
 	log.Init(log.Path, log.Stdout)
+
+	arbitrator.Init()
+	sidechain.Init()
 }
 
-func setSideChainAccountMonitor(arbitrator Arbitrator) {
+func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	monitor := sidechain.SideChainAccountMonitorImpl{}
 
 	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
@@ -30,7 +33,7 @@ func setSideChainAccountMonitor(arbitrator Arbitrator) {
 	}
 }
 
-func initP2P(arbitrator Arbitrator) error {
+func initP2P(arbitrator arbitrator.Arbitrator) error {
 	if err := cs.InitP2PClient(arbitrator); err != nil {
 		return err
 	}
@@ -46,7 +49,7 @@ func initP2P(arbitrator Arbitrator) error {
 
 func main() {
 	log.Info("0. Init configurations.")
-	if err := ArbitratorGroupSingleton.InitArbitrators(); err != nil {
+	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
@@ -59,7 +62,7 @@ func main() {
 	}
 	store.DbCache = dataStore
 
-	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
 	log.Info("2. Init arbitrator account.")
 	if err := currentArbitrator.InitAccount(); err != nil {
@@ -82,7 +85,7 @@ func main() {
 	}
 
 	log.Info("5. Start arbitrator group monitor.")
-	go ArbitratorGroupSingleton.SyncLoop()
+	go arbitrator.ArbitratorGroupSingleton.SyncLoop()
 
 	log.Info("6. Start servers.")
 	go httpjsonrpc.StartRPCServer()

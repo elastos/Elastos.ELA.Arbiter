@@ -7,7 +7,7 @@ import (
 	"math/rand"
 	"strconv"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/common"
 	"github.com/elastos/Elastos.ELA.Arbiter/common/config"
@@ -86,7 +86,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		return err
 	}
 
-	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc, txinfo.Hash, &store.DbMainChainFunc{})
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
 

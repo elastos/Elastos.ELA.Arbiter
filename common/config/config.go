@@ -70,40 +70,7 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	return nil, false
 }
 
-func InitConfig() {
-	file, e := ioutil.ReadFile(DefaultConfigFilename)
-	if e != nil {
-		fmt.Printf("File error: %v\n", e)
-		os.Exit(1)
-	}
-	// Remove the UTF-8 Byte Order Mark
-	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
-
-	config := ConfigFile{}
-	e = json.Unmarshal(file, &config)
-	if e != nil {
-		fmt.Printf("Unmarshal json file erro %v", e)
-		os.Exit(1)
-	}
-
-	Parameters.Configuration = &(config.ConfigFile)
-}
-
-func init() {
-	/*var filePath string
-	_, err := os.Stat(DefaultConfigFilename)
-	if os.IsNotExist(err) {
-		_, err = os.Stat(DefaultTestConfigFilename)
-		if os.IsNotExist(err) {
-			fmt.Println("config not exist: ", err)
-			return
-		}
-		filePath = DefaultTestConfigFilename
-
-	} else {
-		filePath = DefaultTestConfigFilename
-	}*/
-
+func Init() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		file, e = ioutil.ReadFile(DefaultTestConfigFilename)

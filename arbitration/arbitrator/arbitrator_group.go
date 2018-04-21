@@ -147,7 +147,7 @@ func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
 	return group.arbitrators
 }
 
-func init() {
+func Init() {
 	ArbitratorGroupSingleton = &ArbitratorGroupImpl{
 		timeoutLimit:  1000,
 		currentHeight: new(uint32),

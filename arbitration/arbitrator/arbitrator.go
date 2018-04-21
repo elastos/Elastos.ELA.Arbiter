@@ -226,6 +226,9 @@ func (ar *ArbitratorImpl) Notify(proof spv.Proof, spvtxn utcore.Transaction) {
 	ar.SendDepositTransactions(transactionInfoMap)
 }
 
+func (ar *ArbitratorImpl) Rollback(height uint32) {
+}
+
 func (ar *ArbitratorImpl) OnReceivedProposal(content []byte) error {
 	return ar.mainChainClientImpl.OnReceivedProposal(content)
 }
