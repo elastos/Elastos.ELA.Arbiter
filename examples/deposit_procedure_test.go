@@ -17,7 +17,7 @@ import (
 )
 
 func init() {
-	config.Init()
+	config.InitMockConfig()
 	log.Init(log.Path, log.Stdout)
 }
 

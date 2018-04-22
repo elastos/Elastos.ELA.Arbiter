@@ -3,8 +3,6 @@ package examples
 import (
 	"bytes"
 	"fmt"
-	"os"
-	"testing"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
@@ -19,18 +17,9 @@ import (
 )
 
 func init() {
-	config.Init()
+	config.InitMockConfig()
 	arbitrator.Init()
 	log.Init(log.Path, log.Stdout)
-}
-
-func TestMain(m *testing.M) {
-	setup()
-	os.Exit(m.Run())
-}
-
-func setup() {
-	//config.InitMockConfig()
 }
 
 type TestDistrubutedItemFunc struct {
