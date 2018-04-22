@@ -11,6 +11,7 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 )
 
 type Response struct {
@@ -92,7 +93,7 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 	//log.Trace("RPC call:", string(data))
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
 	if err != nil {
-		fmt.Printf("POST requset: %v\n", err)
+		log.Info("POST requset: %v\n", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
