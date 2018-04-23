@@ -56,7 +56,7 @@ func ExampleNormalWithdraw() {
 
 	//--------------Part1(On client of side chain)-------------------------
 	//Step1.1 create transaction(tx3)
-	//	./ela-cli wallet -t create --withdraw EZwPHEMQLNBpP2VStF3gRk8EVoMM2i3hda --amount 1 --fee 0.1
+	//	./ela-cli wallet -t create --withdraw EeM7JrxNdi8MzgBfDExcAUTRXgH3vVHn54 --amount 1 --fee 0.1
 
 	//Step1.2 sign tx3
 	//	./ela-cli wallet -t sign --hex
