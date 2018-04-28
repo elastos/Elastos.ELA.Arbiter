@@ -4,7 +4,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA/core"
 )
 
 const (

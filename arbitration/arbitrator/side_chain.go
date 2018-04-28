@@ -2,9 +2,9 @@ package arbitrator
 
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Utility/bloom"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA/bloom"
+	"github.com/elastos/Elastos.ELA/core"
 )
 
 type SideChain interface {

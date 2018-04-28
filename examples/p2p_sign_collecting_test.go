@@ -12,8 +12,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 func init() {

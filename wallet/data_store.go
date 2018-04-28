@@ -9,7 +9,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA/core"
 
 	_ "github.com/mattn/go-sqlite3"
 )

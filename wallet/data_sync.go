@@ -7,7 +7,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 type DataSync interface {
@@ -89,7 +89,8 @@ func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 		for index, output := range txn.Outputs {
 			if addr, ok := sync.containAddress(output.Address); ok {
 				// Create UTXO input from output
-				txHashBytes, _ := HexStringToBytesReverse(txn.Hash)
+				txHashBytes, _ := HexStringToBytes(txn.Hash)
+				txHashBytes = BytesReverse(txHashBytes)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				lockTime := output.OutputLock
 				if txn.TxType == CoinBase {
@@ -107,10 +108,11 @@ func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 		}
 
 		// Delete UTXOs from wallet by transaction inputs
-		for _, input := range txn.UTXOInputs {
-			txHashBytes, _ := HexStringToBytesReverse(input.ReferTxID)
+		for _, input := range txn.Inputs {
+			txHashBytes, _ := HexStringToBytes(input.TxID)
+			txHashBytes = BytesReverse(txHashBytes)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
-			sync.DeleteUTXO(NewOutPoint(*referTxID, input.ReferTxOutputIndex))
+			sync.DeleteUTXO(NewOutPoint(*referTxID, input.VOut))
 		}
 	}
 }

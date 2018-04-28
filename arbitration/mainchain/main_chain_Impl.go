@@ -15,7 +15,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 const WithdrawAssetLockTime uint32 = 6
@@ -215,7 +215,8 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 		for index, output := range txn.Outputs {
 			if destroyAddress, ok := mc.containGenesisBlockAddress(output.Address); ok {
 				// Create UTXO input from output
-				txHashBytes, _ := HexStringToBytesReverse(txn.Hash)
+				txHashBytes, _ := HexStringToBytes(txn.Hash)
+				txHashBytes = BytesReverse(txHashBytes)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
 				if txn.TxType == CoinBase {
@@ -241,13 +242,14 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 		}
 
 		// Delete UTXOs from wallet by transaction inputs
-		for _, input := range txn.UTXOInputs {
-			txHashBytes, _ := HexStringToBytesReverse(input.ReferTxID)
+		for _, input := range txn.Inputs {
+			txHashBytes, _ := HexStringToBytes(input.TxID)
+			txHashBytes = BytesReverse(txHashBytes)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
 			txInput := &Input{
 				Previous: OutPoint{
 					TxID:  *referTxID,
-					Index: input.ReferTxOutputIndex,
+					Index: input.VOut,
 				},
 				Sequence: input.Sequence,
 			}

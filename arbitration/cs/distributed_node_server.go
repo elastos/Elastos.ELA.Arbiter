@@ -13,9 +13,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 const (

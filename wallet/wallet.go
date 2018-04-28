@@ -10,8 +10,8 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
 	. "github.com/elastos/Elastos.ELA.Utility/crypto"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 var SystemAssetId = getSystemAssetId()

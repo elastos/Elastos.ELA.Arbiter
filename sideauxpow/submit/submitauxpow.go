@@ -13,9 +13,9 @@ import (
 	i "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SPV/log"
 	spvconfig "github.com/elastos/Elastos.ELA.SPV/spvwallet/config"
-	"github.com/elastos/Elastos.ELA.Utility/bloom"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA/bloom"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 var spv i.SPVService

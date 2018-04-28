@@ -4,7 +4,7 @@ import (
 	"io"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 type PayloadInfo interface {
@@ -30,31 +30,31 @@ type TransferCrossChainAssetInfo struct {
 	AddressesMap map[string]uint64
 }
 
-type TxAttributeInfo struct {
+/*type TxAttributeInfo struct {
 	Usage AttributeUsage
 	Data  string
-}
+}*/
 
-type UTXOTxInputInfo struct {
+/*type UTXOTxInputInfo struct {
 	ReferTxID          string
 	ReferTxOutputIndex uint16
 	Sequence           uint32
 	Address            string
 	Value              string
-}
+}*/
 
-type BalanceTxInputInfo struct {
+/*type BalanceTxInputInfo struct {
 	AssetID     string
 	Value       Fixed64
 	ProgramHash string
-}
+}*/
 
-type TxoutputInfo struct {
+/*type TxoutputInfo struct {
 	AssetID    string
 	Value      string
 	Address    string
 	OutputLock uint32
-}
+}*/
 
 type ProgramInfo struct {
 	Code      string
@@ -63,7 +63,7 @@ type ProgramInfo struct {
 
 type TxoutputMap struct {
 	Key   Uint256
-	Txout []TxoutputInfo
+	Txout []OutputInfo
 }
 
 type AmountMap struct {
@@ -83,7 +83,7 @@ type BlockHead struct {
 	Hash string
 }
 
-type TransactionInfo struct {
+/*type TransactionInfo struct {
 	TxType         TransactionType
 	PayloadVersion byte
 	Payload        PayloadInfo
@@ -101,6 +101,45 @@ type TransactionInfo struct {
 	Confirmations     uint32 `json:",omitempty"`
 	TxSize            uint32 `json:",omitempty"`
 	Hash              string
+}*/
+
+type AttributeInfo struct {
+	Usage AttributeUsage `json:"usage"`
+	Data  string         `json:"data"`
+}
+
+type InputInfo struct {
+	TxID     string `json:"txid"`
+	VOut     uint16 `json:"vout"`
+	Sequence uint32 `json:"sequence"`
+}
+
+type OutputInfo struct {
+	Value      string `json:"value"`
+	Index      uint32 `json:"n"`
+	Address    string `json:"address"`
+	AssetID    string `json:"assetid"`
+	OutputLock uint32 `json:"outputlock"`
+}
+
+type TransactionInfo struct {
+	TxId           string          `json:"txid"`
+	Hash           string          `json:"hash"`
+	Size           uint32          `json:"size"`
+	VSize          uint32          `json:"vsize"`
+	Version        uint32          `json:"version"`
+	LockTime       uint32          `json:"locktime"`
+	Inputs         []InputInfo     `json:"vin"`
+	Outputs        []OutputInfo    `json:"vout"`
+	BlockHash      string          `json:"blockhash"`
+	Confirmations  uint32          `json:"confirmations"`
+	Time           uint32          `json:"time"`
+	BlockTime      uint32          `json:"blocktime"`
+	TxType         TransactionType `json:"type"`
+	PayloadVersion byte            `json:"payloadversion"`
+	Payload        PayloadInfo     `json:"payload"`
+	Attributes     []AttributeInfo `json:"attributes"`
+	Programs       []ProgramInfo   `json:"programs"`
 }
 
 type BlockInfo struct {

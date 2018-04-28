@@ -4,7 +4,7 @@ import (
 	"io"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 type SideAuxPow struct {

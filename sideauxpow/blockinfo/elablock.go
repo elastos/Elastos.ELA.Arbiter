@@ -6,7 +6,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 type Block struct {

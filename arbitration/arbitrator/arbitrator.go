@@ -11,11 +11,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.Utility/bloom"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/core"
-	utcore "github.com/elastos/Elastos.ELA.Utility/core"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
+	"github.com/elastos/Elastos.ELA/bloom"
+	. "github.com/elastos/Elastos.ELA/core"
 )
 
 type Arbitrator interface {
@@ -197,15 +196,15 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
-func (ar *ArbitratorImpl) Type() utcore.TransactionType {
-	return utcore.TransferCrossChainAsset
+func (ar *ArbitratorImpl) Type() TransactionType {
+	return TransferCrossChainAsset
 }
 
 func (ar *ArbitratorImpl) Confirmed() bool {
 	return true
 }
 
-func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn utcore.Transaction) {
+func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}

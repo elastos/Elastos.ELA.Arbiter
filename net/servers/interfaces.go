@@ -12,7 +12,8 @@ func SubmitComplain(param map[string]interface{}) map[string]interface{} {
 	}
 
 	transactionHash := param["transactionhash"].(string)
-	txHashBytes, _ := HexStringToBytesReverse(transactionHash)
+	txHashBytes, _ := HexStringToBytes(transactionHash)
+	txHashBytes = BytesReverse(txHashBytes)
 	txHash, err := Uint256FromBytes(txHashBytes)
 	if err != nil {
 		return ResponsePack(InvalidParams, "")
@@ -42,7 +43,8 @@ func GetComplainStatus(param map[string]interface{}) map[string]interface{} {
 	}
 
 	transactionHash := param["transactionhash"].(string)
-	txHashBytes, _ := HexStringToBytesReverse(transactionHash)
+	txHashBytes, _ := HexStringToBytes(transactionHash)
+	txHashBytes = BytesReverse(txHashBytes)
 	txHash, err := Uint256FromBytes(txHashBytes)
 	if err != nil {
 		return ResponsePack(InvalidParams, "")

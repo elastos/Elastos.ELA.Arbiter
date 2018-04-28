@@ -7,15 +7,16 @@ import (
 	"math/rand"
 	"strconv"
 
+	"encoding/json"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
-	"github.com/elastos/Elastos.ELA.Utility/bloom"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/core"
+	"github.com/elastos/Elastos.ELA/bloom"
+	"github.com/elastos/Elastos.ELA/core"
 )
 
 type SideChainImpl struct {
@@ -54,14 +55,13 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 }
 
 func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
-	infoDataReader := new(bytes.Buffer)
-	err := info.Serialize(infoDataReader)
+	infoBytes, err := json.Marshal(info)
 	if err != nil {
 		return err
 	}
-	content := common.BytesToHexString(infoDataReader.Bytes())
 
-	result, err := rpc.CallAndUnmarshal("sendtransactioninfo", rpc.Param("Info", content), sc.CurrentConfig.Rpc)
+	result, err := rpc.CallAndUnmarshal("sendtransactioninfo",
+		rpc.Param("Info", common.BytesToHexString(infoBytes)), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return err
 	}
@@ -94,10 +94,10 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 
 func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64) (*TransactionInfo, error) {
 	var totalOutputAmount = amount // The total amount will be spend
-	var txOutputs []TxoutputInfo   // The outputs in transaction
+	var txOutputs []OutputInfo     // The outputs in transaction
 
 	assetID := spvWallet.SystemAssetId
-	txOutput := TxoutputInfo{
+	txOutput := OutputInfo{
 		AssetID:    assetID.String(),
 		Value:      totalOutputAmount.String(),
 		Address:    target,
@@ -116,21 +116,20 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.Mer
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
 
 	// Create attributes
-	txAttr := TxAttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
-	attributesInfo := make([]TxAttributeInfo, 0)
+	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
+	attributesInfo := make([]AttributeInfo, 0)
 	attributesInfo = append(attributesInfo, txAttr)
 
 	// Create program
 	program := ProgramInfo{}
 	return &TransactionInfo{
-		TxType:        core.IssueToken,
-		Payload:       txPayloadInfo,
-		Attributes:    attributesInfo,
-		UTXOInputs:    []UTXOTxInputInfo{},
-		BalanceInputs: []BalanceTxInputInfo{},
-		Outputs:       txOutputs,
-		Programs:      []ProgramInfo{program},
-		LockTime:      uint32(0),
+		TxType:     core.IssueToken,
+		Payload:    txPayloadInfo,
+		Attributes: attributesInfo,
+		Inputs:     []InputInfo{},
+		Outputs:    txOutputs,
+		Programs:   []ProgramInfo{program},
+		LockTime:   uint32(0),
 	}, nil
 }
 
