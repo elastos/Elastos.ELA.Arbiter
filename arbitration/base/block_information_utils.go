@@ -2,124 +2,25 @@ package base
 
 import (
 	"errors"
-	"io"
 
+	"bytes"
+	"encoding/json"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/auxpow"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
-func (i *IssueTokenInfo) Data(version byte) string {
-	return i.Proof
-}
-
-func (i *IssueTokenInfo) Serialize(w io.Writer, version byte) error {
-	if err := WriteVarString(w, i.Proof); err != nil {
-		return errors.New("Transaction IssueTokenInfo serialization failed.")
-	}
-
+func (txInfo *TransactionInfo) ConvertFrom(tx *Transaction) error {
 	return nil
 }
 
-func (i *IssueTokenInfo) Deserialize(r io.Reader, version byte) error {
-	value, err := ReadVarString(r)
-	if err != nil {
-		return errors.New("Transaction IssueTokenInfo deserialization failed.")
-	}
-	i.Proof = value
-
-	return nil
-}
-
-func (i *RegisterAssetInfo) Data(version byte) string {
-	return ""
-}
-
-func (i *RegisterAssetInfo) Serialize(w io.Writer, version byte) error {
-	return nil
-}
-
-func (i *RegisterAssetInfo) Deserialize(r io.Reader, version byte) error {
-	return nil
-}
-
-func (i *TransferAssetInfo) Data(version byte) string {
-	return ""
-}
-
-func (i *TransferAssetInfo) Serialize(w io.Writer, version byte) error {
-	return nil
-}
-
-func (i *TransferAssetInfo) Deserialize(r io.Reader, version byte) error {
-	return nil
-}
-
-func (a *TransferCrossChainAssetInfo) Data(version byte) string {
-	return ""
-}
-
-func (a *TransferCrossChainAssetInfo) Serialize(w io.Writer, version byte) error {
-	if a.AddressesMap == nil {
-		return errors.New("Invalid address map")
-	}
-
-	if err := WriteVarUint(w, uint64(len(a.AddressesMap))); err != nil {
-		return errors.New("address map's length serialize failed")
-	}
-
-	for k, v := range a.AddressesMap {
-		if err := WriteVarString(w, k); err != nil {
-			return errors.New("address map's key serialize failed")
-		}
-
-		if err := WriteVarUint(w, v); err != nil {
-			return errors.New("address map's value serialize failed")
-		}
-	}
-
-	return nil
-}
-
-func (a *TransferCrossChainAssetInfo) Deserialize(r io.Reader, version byte) error {
-	if a.AddressesMap == nil {
-		return errors.New("Invalid address key map")
-	}
-
-	length, err := ReadVarUint(r, 0)
-	if err != nil {
-		return errors.New("address map's length deserialize failed")
-	}
-
-	a.AddressesMap = nil
-	a.AddressesMap = make(map[string]uint64)
-	for i := uint64(0); i < length; i++ {
-		k, err := ReadVarString(r)
-		if err != nil {
-			return errors.New("address map's key deserialize failed")
-		}
-
-		v, err := ReadVarUint(r, 0)
-		if err != nil {
-			return errors.New("address map's value deserialize failed")
-		}
-
-		a.AddressesMap[k] = v
-	}
-
-	return nil
-}
-
-func (trans *TransactionInfo) ConvertFrom(tx *Transaction) error {
-	return nil
-}
-
-func (trans *TransactionInfo) ConvertTo() (*Transaction, error) {
+func (txInfo *TransactionInfo) ConvertTo() (*Transaction, error) {
 	return nil, nil
 }
 
-func PayloadInfoToTransPayload(p PayloadInfo) (Payload, error) {
+func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 
-	switch object := p.(type) {
+	switch object := plInfo.(type) {
 	case *RegisterAssetInfo:
 		obj := new(PayloadRegisterAsset)
 		obj.Asset = *object.Asset
@@ -155,15 +56,15 @@ func PayloadInfoToTransPayload(p PayloadInfo) (Payload, error) {
 	return nil, errors.New("Invalid payload type.")
 }
 
-func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
+func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 
-	txPaload, err := PayloadInfoToTransPayload(txinfo.Payload)
+	txPaload, err := PayloadInfoToTransPayload(txInfo.Payload)
 	if err != nil {
 		return nil, err
 	}
 
 	var txAttribute []*Attribute
-	for _, att := range txinfo.Attributes {
+	for _, att := range txInfo.Attributes {
 		attData, err := HexStringToBytes(att.Data)
 		if err != nil {
 			return nil, err
@@ -177,7 +78,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 	}
 
 	var txUTXOTxInput []*Input
-	for _, input := range txinfo.Inputs {
+	for _, input := range txInfo.Inputs {
 		txID, err := HexStringToBytes(input.TxID)
 		if err != nil {
 			return nil, err
@@ -197,7 +98,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 	}
 
 	var txOutputs []*Output
-	for _, output := range txinfo.Outputs {
+	for _, output := range txInfo.Outputs {
 		assetIdBytes, err := HexStringToBytes(output.AssetID)
 		if err != nil {
 			return nil, err
@@ -224,7 +125,7 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 	}
 
 	var txPrograms []*Program
-	for _, pgrm := range txinfo.Programs {
+	for _, pgrm := range txInfo.Programs {
 		code, err := HexStringToBytes(pgrm.Code)
 		if err != nil {
 			return nil, err
@@ -241,8 +142,8 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 	}
 
 	txTransaction := &Transaction{
-		TxType:         txinfo.TxType,
-		PayloadVersion: txinfo.PayloadVersion,
+		TxType:         txInfo.TxType,
+		PayloadVersion: txInfo.PayloadVersion,
 		Payload:        txPaload,
 		Attributes:     txAttribute,
 		Inputs:         txUTXOTxInput,
@@ -250,4 +151,81 @@ func (txinfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		Programs:       txPrograms,
 	}
 	return txTransaction, nil
+}
+
+func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
+
+	previousBytes, err := HexStringToBytes(blInfo.PreviousBlockHash)
+	if err != nil {
+		return nil, err
+	}
+	previous, err := Uint256FromBytes(previousBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	merkleRootBytes, err := HexStringToBytes(blInfo.PreviousBlockHash)
+	if err != nil {
+		return nil, err
+	}
+	merkleRoot, err := Uint256FromBytes(merkleRootBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	auxPowBytes, err := HexStringToBytes(blInfo.AuxPow)
+	if err != nil {
+		return nil, err
+	}
+	reader := bytes.NewReader(auxPowBytes)
+	auxpow := new(auxpow.AuxPow)
+	err = auxpow.Deserialize(reader)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Header{
+		Version:    blInfo.Version,
+		Previous:   *previous,
+		MerkleRoot: *merkleRoot,
+		Timestamp:  blInfo.Time,
+		Bits:       blInfo.Bits,
+		Nonce:      blInfo.Nonce,
+		Height:     blInfo.Height,
+		AuxPow:     *auxpow,
+	}, nil
+}
+
+func (blInfo *BlockInfo) ToBlock() (*Block, error) {
+
+	header, err := GetBlockHeader(blInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	var transactions []*Transaction
+	for _, txInfo := range blInfo.Tx {
+		switch txInfo.(type) {
+		case *TransactionInfo:
+			var tx TransactionInfo
+			data, err := json.Marshal(&txInfo)
+			if err != nil {
+				return nil, err
+			}
+			err = json.Unmarshal(data, &tx)
+			if err != nil {
+				return nil, err
+			}
+			transaction, err := tx.ToTransaction()
+			if err != nil {
+				return nil, err
+			}
+			transactions = append(transactions, transaction)
+		}
+	}
+
+	return &Block{
+		Header:       *header,
+		Transactions: transactions,
+	}, nil
 }

@@ -36,7 +36,7 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 		return nil, err
 	}
 	groupInfo := &ArbitratorGroupInfo{}
-	unmarshal(&resp, groupInfo)
+	Unmarshal(&resp, groupInfo)
 
 	return groupInfo, nil
 }
@@ -55,7 +55,7 @@ func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, erro
 		return nil, err
 	}
 	block := &BlockInfo{}
-	unmarshal(&resp, block)
+	Unmarshal(&resp, block)
 
 	return block, nil
 }
@@ -66,7 +66,16 @@ func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*
 		return nil, err
 	}
 	transactions := &BlockTransactions{}
-	unmarshal(&resp, transactions)
+	Unmarshal(&resp, transactions)
+
+	//todo fix bug of not support all type of Paylaod
+	for _, txInfo := range transactions.Transactions {
+		assetInfo := &TransferCrossChainAssetInfo{}
+		err := Unmarshal(&txInfo.Payload, assetInfo)
+		if err == nil {
+			txInfo.Payload = assetInfo
+		}
+	}
 
 	return transactions, nil
 }
@@ -126,7 +135,7 @@ func CallAndUnmarshal(method string, params map[string]string, config *config.Rp
 	return resp.Result, nil
 }
 
-func unmarshal(result interface{}, target interface{}) error {
+func Unmarshal(result interface{}, target interface{}) error {
 	data, err := json.Marshal(result)
 	if err != nil {
 		return err

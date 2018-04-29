@@ -158,7 +158,7 @@ func (mc *MainChainImpl) syncChainData() {
 			mc.processBlock(block)
 
 			// Update wallet height
-			currentHeight = DbCache.CurrentHeight(block.BlockData.Height + 1)
+			currentHeight = DbCache.CurrentHeight(block.Height + 1)
 
 			fmt.Print(">")
 		}
@@ -209,7 +209,9 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) (string, boo
 
 func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 	// Add UTXO to wallet address from transaction outputs
-	for _, txn := range block.Transactions {
+	for _, txnInfo := range block.Tx {
+		var txn TransactionInfo
+		rpc.Unmarshal(&txnInfo, &txn)
 
 		// Add UTXOs to wallet address from transaction outputs
 		for index, output := range txn.Outputs {
@@ -220,7 +222,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
 				if txn.TxType == CoinBase {
-					sequence = block.BlockData.Height + 100
+					sequence = block.Height + 100
 				}
 				input := &Input{
 					Previous: OutPoint{

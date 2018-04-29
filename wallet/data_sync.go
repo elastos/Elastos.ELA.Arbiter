@@ -47,7 +47,7 @@ func (sync *DataSyncImpl) SyncChainData() {
 			sync.processBlock(block)
 
 			// Update wallet height
-			currentHeight = sync.CurrentHeight(block.BlockData.Height + 1)
+			currentHeight = sync.CurrentHeight(block.Height + 1)
 
 			fmt.Print(">")
 		}
@@ -83,7 +83,9 @@ func (sync *DataSyncImpl) containAddress(address string) (*Address, bool) {
 
 func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 	// Add UTXO to wallet address from transaction outputs
-	for _, txn := range block.Transactions {
+	for _, txnInfo := range block.Tx {
+		var txn base.TransactionInfo
+		Unmarshal(&txnInfo, &txn)
 
 		// Add UTXOs to wallet address from transaction outputs
 		for index, output := range txn.Outputs {
@@ -94,7 +96,7 @@ func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				lockTime := output.OutputLock
 				if txn.TxType == CoinBase {
-					lockTime = block.BlockData.Height + 100
+					lockTime = block.Height + 100
 				}
 				amount, _ := StringToFixed64(output.Value)
 				// Save UTXO input to data store

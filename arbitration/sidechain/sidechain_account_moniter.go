@@ -110,9 +110,7 @@ func (sync *SideChainAccountMonitorImpl) processTransactions(transactions *Block
 	for _, txn := range transactions.Transactions {
 		for _, output := range txn.Outputs {
 			if genesisAddress, ok := sync.containDestroyAddress(output.Address); ok {
-				if ok, err := store.DbCache.HashSideChainTx(txn.Hash); err != nil && !ok {
-					sync.fireUTXOChanged(txn, genesisAddress)
-				}
+				sync.fireUTXOChanged(txn, genesisAddress)
 			}
 		}
 	}
