@@ -12,6 +12,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	elaCore "github.com/elastos/Elastos.ELA/core"
 )
 
 type Response struct {
@@ -65,16 +66,9 @@ func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*
 	if err != nil {
 		return nil, err
 	}
-	transactions := &BlockTransactions{}
-	Unmarshal(&resp, transactions)
-
-	//todo fix bug of not support all type of Paylaod
-	for _, txInfo := range transactions.Transactions {
-		assetInfo := &TransferCrossChainAssetInfo{}
-		err := Unmarshal(&txInfo.Payload, assetInfo)
-		if err == nil {
-			txInfo.Payload = assetInfo
-		}
+	transactions, err := GetBlockTransactions(resp)
+	if err != nil {
+		return nil, err
 	}
 
 	return transactions, nil
@@ -114,6 +108,43 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 	//log.Trace("RPC resp:", string(body))
 
 	return body, nil
+}
+
+func GetBlockTransactions(resp interface{}) (*BlockTransactions, error) {
+	transactions := &BlockTransactions{}
+	Unmarshal(&resp, transactions)
+
+	for _, txInfo := range transactions.Transactions {
+		switch txInfo.TxType {
+		case elaCore.RegisterAsset:
+			assetInfo := &RegisterAssetInfo{}
+			err := Unmarshal(&txInfo.Payload, assetInfo)
+			if err == nil {
+				txInfo.Payload = assetInfo
+			}
+		case elaCore.TransferAsset:
+			assetInfo := &TransferAssetInfo{}
+			err := Unmarshal(&txInfo.Payload, assetInfo)
+			if err == nil {
+				txInfo.Payload = assetInfo
+			}
+		case elaCore.IssueToken:
+			assetInfo := &IssueTokenInfo{}
+			err := Unmarshal(&txInfo.Payload, assetInfo)
+			if err == nil {
+				txInfo.Payload = assetInfo
+			}
+		case elaCore.TransferCrossChainAsset:
+			assetInfo := &TransferCrossChainAssetInfo{}
+			err := Unmarshal(&txInfo.Payload, assetInfo)
+			if err == nil {
+				txInfo.Payload = assetInfo
+			}
+		default:
+			return nil, errors.New("GetBlockTransactions: Unknown payload type")
+		}
+	}
+	return transactions, nil
 }
 
 func CallAndUnmarshal(method string, params map[string]string, config *config.RpcConfig) (interface{}, error) {
