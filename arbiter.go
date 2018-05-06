@@ -58,13 +58,13 @@ func main() {
 	}
 	sideauxpow.CurrentWallet = wallet
 
-	log.Info("0. Init configurations.")
+	log.Info("1. Init configurations.")
 	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("1. Init chain utxo cache.")
+	log.Info("2. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
 		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
@@ -74,7 +74,7 @@ func main() {
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
-	log.Info("2. Init arbitrator account.")
+	log.Info("3. Init arbitrator account.")
 	if err := currentArbitrator.InitAccount(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
@@ -82,24 +82,25 @@ func main() {
 
 	setSideChainAccountMonitor(currentArbitrator)
 
-	log.Info("3. Start arbitrator spv module.")
+	log.Info("4. Start arbitrator spv module.")
 	if err := currentArbitrator.StartSpvModule(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("4. Start arbitrator P2P networks.")
+	log.Info("5. Start arbitrator P2P networks.")
 	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("5. Start arbitrator group monitor.")
+	log.Info("6. Start arbitrator group monitor.")
 	go arbitrator.ArbitratorGroupSingleton.SyncLoop()
 
-	log.Info("6. Start servers.")
+	log.Info("7. Start servers.")
 	go httpjsonrpc.StartRPCServer()
 
+	log.Info("8. Start side chain mining.")
 	go sideauxpow.SendSidemining()
 
 	select {}
