@@ -12,6 +12,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 )
 
 func init() {
@@ -49,6 +50,14 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 }
 
 func main() {
+	log.Info("0. Init wallet.")
+	wallet, err := wallet.Open()
+	if err != nil {
+		log.Fatal("error: open wallet failed, ", err)
+		os.Exit(1)
+	}
+	sideauxpow.CurrentWallet = wallet
+
 	log.Info("0. Init configurations.")
 	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
 		log.Fatal(err)

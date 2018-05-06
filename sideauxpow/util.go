@@ -12,7 +12,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
-func selectAddress(wallet walt.Wallet) (string, error) {
+func SelectAddress(wallet walt.Wallet) (string, error) {
 	addresses, err := wallet.GetAddresses()
 	if err != nil || len(addresses) == 0 {
 		return "", errors.New("fail to load wallet addresses")

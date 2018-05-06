@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -18,6 +17,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
+
+var CurrentWallet wallet.Wallet
 
 func getPassword(passwd []byte, confirmed bool) []byte {
 	var tmp []byte
@@ -53,14 +54,13 @@ func unmarshal(result interface{}, target interface{}) error {
 func transfer_sidemining(name string, password []byte) error {
 	fmt.Println("getSideAuxpow")
 
-	wallet, err := wallet.Open()
-	if err != nil {
-		fmt.Println("error: open wallet failed, ", err)
-		os.Exit(2)
-	}
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), config.Parameters.SideNodeList[0].Rpc)
 	if err != nil {
 		return err
+	}
+	if resp == nil {
+		fmt.Println("resp nil ")
+		return nil
 	}
 
 	type SideAuxBlock struct {
@@ -73,7 +73,10 @@ func transfer_sidemining(name string, password []byte) error {
 
 	sideAuxBlock := &SideAuxBlock{}
 
-	unmarshal(resp, sideAuxBlock)
+	err = unmarshal(resp, sideAuxBlock)
+	if err != nil {
+		return err
+	}
 
 	fmt.Println(sideAuxBlock)
 
@@ -100,45 +103,22 @@ func transfer_sidemining(name string, password []byte) error {
 		return errors.New("invalid transaction fee")
 	}
 
-	from := "EJsnmbFTyhhaVcGFszdZ49dKgd9BzgkZih"
-	if from == "" {
-		from, err = selectAddress(wallet)
-		if err != nil {
-			return err
-		}
+	from, err := SelectAddress(CurrentWallet)
+	if err != nil {
+		return err
 	}
 
 	to := from
-	if to == "" {
-		return errors.New("use --to to specify receiver address")
-	}
-
 	amountStr := "0.1"
-	if amountStr == "" {
-		return errors.New("use --amount to specify transfer amount")
-	}
-
 	amount, err := StringToFixed64(amountStr)
 	if err != nil {
 		return errors.New("invalid transaction amount")
 	}
 
-	lockStr := ""
 	var txn *ela.Transaction
-	if lockStr == "" {
-		txn, err = wallet.CreateTransaction(txType, txPayload, from, to, amount, fee)
-		if err != nil {
-			return errors.New("create transaction failed: " + err.Error())
-		}
-	} else {
-		lock, err := strconv.ParseUint(lockStr, 10, 32)
-		if err != nil {
-			return errors.New("invalid lock height")
-		}
-		txn, err = wallet.CreateLockedTransaction(txType, txPayload, from, to, amount, fee, uint32(lock))
-		if err != nil {
-			return errors.New("create transaction failed: " + err.Error())
-		}
+	txn, err = CurrentWallet.CreateTransaction(txType, txPayload, from, to, amount, fee)
+	if err != nil {
+		return errors.New("create transaction failed: " + err.Error())
 	}
 
 	// sign transaction
@@ -148,25 +128,24 @@ func transfer_sidemining(name string, password []byte) error {
 	if haveSign == needSign {
 		return errors.New("transaction was fully signed, no need more sign")
 	}
-	_, err = wallet.Sign(name, getPassword(password, false), txn)
+	_, err = CurrentWallet.Sign(name, getPassword(password, false), txn)
 	if err != nil {
 		return err
 	}
 	haveSign, needSign, _ = crypto.GetSignStatus(program.Code, program.Parameter)
-	fmt.Println("[", haveSign, "/", needSign, "] Transaction successfully signed")
+	log.Debug("Transaction successfully signed: ", haveSign, needSign)
 
 	buf := new(bytes.Buffer)
 	txn.Serialize(buf)
 	content := BytesToHexString(buf.Bytes())
-	// Print transaction hex string content to console
-	fmt.Println(content)
+	log.Debug("Raw Sidemining transaction: ", content)
 
 	// send transaction
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
 	}
-	fmt.Println(result)
+	log.Debug("Send Sidemining transaction: ", result)
 
 	return nil
 }
@@ -182,7 +161,6 @@ func SendSidemining() {
 			if err != nil {
 				fmt.Println(err)
 			}
-
 		}
 	}
 }

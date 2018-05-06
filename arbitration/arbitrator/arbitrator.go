@@ -10,12 +10,15 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 )
+
+var spvService SPVService
 
 type Arbitrator interface {
 	GetPublicKey() *crypto.PublicKey
@@ -48,7 +51,6 @@ type ArbitratorImpl struct {
 	mainChainImpl        MainChain
 	mainChainClientImpl  MainChainClient
 	sideChainManagerImpl SideChainManager
-	spvService           SPVService
 	Keystore             Keystore
 }
 
@@ -280,16 +282,27 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		return err
 	}
 
-	ar.spvService = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes), config.Parameters.MainNode.SpvSeedList)
+	spvService = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes), config.Parameters.MainNode.SpvSeedList)
+
 	for _, sideNode := range config.Parameters.SideNodeList {
-		if err = ar.spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
+		if err = spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
 			return err
 		}
 	}
-	ar.spvService.RegisterTransactionListener(ar)
+
+	account, err := sideauxpow.SelectAddress(sideauxpow.CurrentWallet)
+	if err != nil {
+		return err
+	}
+	if err = spvService.RegisterAccount(account); err != nil {
+		return err
+	}
+
+	spvService.RegisterTransactionListener(ar)
+	spvService.RegisterTransactionListener(&auxpowListener)
 
 	go func() {
-		if err = ar.spvService.Start(); err != nil {
+		if err = spvService.Start(); err != nil {
 			log.Error("spvService start failed ：", err)
 		}
 	}()
