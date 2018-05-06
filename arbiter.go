@@ -10,6 +10,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
 
@@ -89,6 +90,8 @@ func main() {
 
 	log.Info("6. Start servers.")
 	go httpjsonrpc.StartRPCServer()
+
+	go sideauxpow.SendSidemining()
 
 	select {}
 }

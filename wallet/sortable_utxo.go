@@ -4,7 +4,7 @@ import (
 	"sort"
 )
 
-type SortableUTXOs []*AddressUTXO
+type SortableUTXOs []*UTXO
 
 func (utxos SortableUTXOs) Len() int      { return len(utxos) }
 func (utxos SortableUTXOs) Swap(i, j int) { utxos[i], utxos[j] = utxos[j], utxos[i] }
@@ -16,7 +16,7 @@ func (utxos SortableUTXOs) Less(i, j int) bool {
 	}
 }
 
-func SortUTXOs(utxos []*AddressUTXO) []*AddressUTXO {
+func SortUTXOs(utxos []*UTXO) []*UTXO {
 	sortableUTXOs := SortableUTXOs(utxos)
 	sort.Sort(sortableUTXOs)
 	return sortableUTXOs

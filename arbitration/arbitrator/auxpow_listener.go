@@ -1,65 +1,37 @@
-package submit
+package arbitrator
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/binary"
 	"fmt"
-	"os"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow/blockinfo"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	i "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.SPV/log"
-	spvconfig "github.com/elastos/Elastos.ELA.SPV/spvwallet/config"
+	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
-	. "github.com/elastos/Elastos.ELA/core"
+	ela "github.com/elastos/Elastos.ELA/core"
 )
 
 var spv i.SPVService
 
-func StartSPVListener() {
-	log.Init()
-
-	var id = make([]byte, 8)
-	var clientId uint64
-	var err error
-	rand.Read(id)
-	binary.Read(bytes.NewReader(id), binary.LittleEndian, clientId)
-	spv = i.NewSPVService(clientId, spvconfig.Values().SeedList)
-
-	// Register account
-	err = spv.RegisterAccount("EN1M19RYHuFPS91hNRzR15TNtoAUDhi7hk")
-	if err != nil {
-		log.Error("Register account error: ", err)
-		os.Exit(0)
-	}
-
-	// Set on transaction confirmed callback
-	spv.RegisterTransactionListener(&UnconfirmedListener{txType: SideMining})
-
-	// Start spv service
-	spv.Start()
+type AuxpowListener struct {
+	txType ela.TransactionType
 }
 
-type UnconfirmedListener struct {
-	txType TransactionType
-}
-
-func (l *UnconfirmedListener) Rollback(height uint32) {
-}
-
-func (l *UnconfirmedListener) Type() TransactionType {
+func (l *AuxpowListener) Type() ela.TransactionType {
 	return l.txType
 }
 
-func (l *UnconfirmedListener) Confirmed() bool {
+func (l *AuxpowListener) Confirmed() bool {
 	return false
 }
 
-func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
+func (l *AuxpowListener) Rollback(height uint32) {
+
+}
+
+func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
 	log.Debug("Receive unconfirmed transaction hash:", tx.Hash().String())
 	err := spv.VerifyTransaction(proof, tx)
 	if err != nil {
@@ -103,7 +75,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
 		log.Error("can not serialize tx")
 		return
 	}
-	sideAuxBlockTx := Transaction{}
+	sideAuxBlockTx := ela.Transaction{}
 	err = sideAuxBlockTx.Deserialize(txBuf)
 	if err != nil {
 		fmt.Println(err)
@@ -117,7 +89,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
 		log.Error("can not serialize blockheader")
 		return
 	}
-	mainBlockHeader := blockinfo.Blockdata{}
+	mainBlockHeader := ela.Header{}
 	err = mainBlockHeader.Deserialize(headerBuf)
 	if err != nil {
 		fmt.Println(err)
@@ -125,7 +97,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
 	}
 
 	// sideAuxpow serilze
-	sideAuxpow := blockinfo.SideAuxPow{
+	sideAuxpow := auxpow.SideAuxPow{
 		SideAuxMerkleBranch: branch,
 		SideAuxMerkleIndex:  merkleBranch.Index,
 		SideAuxBlockTx:      sideAuxBlockTx,
@@ -142,7 +114,7 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
 	// fmt.Println("sideAuxpowBuf", sideAuxpowBuf)
 
 	// send submit block
-	payloadData := Payload.Data(SideMiningPayloadVersion)
+	payloadData := tx.Payload.Data(ela.SideMiningPayloadVersion)
 	blockhashData := payloadData[0:32]
 	blockhashString := BytesToHexString(blockhashData)
 
@@ -152,22 +124,8 @@ func (l *UnconfirmedListener) Notify(proof i.Proof, tx Transaction) {
 	fmt.Println("blockhashString", blockhashString)
 	fmt.Println("sideAuxpowString", sideAuxpowString)
 
-	submitAuxpow(blockhashString, sideAuxpowString)
+	sideauxpow.SubmitAuxpow(blockhashString, sideAuxpowString)
 
 	// Submit transaction receipt
 	spv.SubmitTransactionReceipt(tx.Hash())
-}
-
-func submitAuxpow(blockhash string, submitauxpow string) error {
-	fmt.Println("submitauxblock")
-	params := make(map[string]string, 2)
-	params["blockhash"] = blockhash
-	params["sideauxpow"] = submitauxpow
-	resp, err := rpc.CallAndUnmarshal("submitauxblock", params, config.Parameters.SideNodeList[0].Rpc)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(resp)
-	return nil
 }

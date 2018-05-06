@@ -1,11 +1,13 @@
 package wallet
 
 import (
-	"fmt"
+	"encoding/json"
+	"os"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
-	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Client/log"
+	. "github.com/elastos/Elastos.ELA.Client/rpc"
+
+	// "github.com/cheggaaa/pb"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	. "github.com/elastos/Elastos.ELA/core"
 )
@@ -38,27 +40,31 @@ func (sync *DataSyncImpl) SyncChainData() {
 		if !needSync {
 			break
 		}
-
+		// bar := pb.StartNew(int(chainHeight - currentHeight + 1))
 		for currentHeight <= chainHeight {
-			block, err := GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+			hash, err := GetBlockHash(currentHeight)
 			if err != nil {
-				break
+				log.Error("Get block hash failed at height:", currentHeight, "error:", err)
+				os.Exit(1)
+			}
+			block, err := GetBlock(hash)
+			if err != nil {
+				log.Error("Get block failed at height:", currentHeight, "error:", err)
+				os.Exit(1)
 			}
 			sync.processBlock(block)
 
 			// Update wallet height
 			currentHeight = sync.CurrentHeight(block.Height + 1)
-
-			fmt.Print(">")
+			// bar.Increment()
 		}
+		// bar.Finish()
 	}
-
-	fmt.Print("\n")
 }
 
 func (sync *DataSyncImpl) needSyncBlocks() (uint32, uint32, bool) {
 
-	chainHeight, err := GetCurrentHeight(config.Parameters.MainNode.Rpc)
+	chainHeight, err := GetChainHeight()
 	if err != nil {
 		return 0, 0, false
 	}
@@ -81,26 +87,33 @@ func (sync *DataSyncImpl) containAddress(address string) (*Address, bool) {
 	return nil, false
 }
 
-func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
+func (sync *DataSyncImpl) processBlock(block *BlockInfo) {
 	// Add UTXO to wallet address from transaction outputs
-	for _, txnInfo := range block.Tx {
-		var txn base.TransactionInfo
-		Unmarshal(&txnInfo, &txn)
-
+	for _, txInfo := range block.Tx {
+		data, err := json.Marshal(txInfo)
+		if err != nil {
+			log.Error("Resolve transaction info failed")
+			os.Exit(1)
+		}
+		var tx TransactionInfo
+		err = json.Unmarshal(data, &tx)
+		if err != nil {
+			log.Error("Resolve transaction info failed")
+			os.Exit(1)
+		}
 		// Add UTXOs to wallet address from transaction outputs
-		for index, output := range txn.Outputs {
+		for index, output := range tx.Outputs {
 			if addr, ok := sync.containAddress(output.Address); ok {
 				// Create UTXO input from output
-				txHashBytes, _ := HexStringToBytes(txn.Hash)
-				txHashBytes = BytesReverse(txHashBytes)
+				txHashBytes, _ := HexStringToBytes(tx.Hash)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				lockTime := output.OutputLock
-				if txn.TxType == CoinBase {
+				if tx.TxType == CoinBase {
 					lockTime = block.Height + 100
 				}
 				amount, _ := StringToFixed64(output.Value)
 				// Save UTXO input to data store
-				addressUTXO := &AddressUTXO{
+				addressUTXO := &UTXO{
 					Op:       NewOutPoint(*referTxHash, uint16(index)),
 					Amount:   amount,
 					LockTime: lockTime,
@@ -110,9 +123,8 @@ func (sync *DataSyncImpl) processBlock(block *base.BlockInfo) {
 		}
 
 		// Delete UTXOs from wallet by transaction inputs
-		for _, input := range txn.Inputs {
+		for _, input := range tx.Inputs {
 			txHashBytes, _ := HexStringToBytes(input.TxID)
-			txHashBytes = BytesReverse(txHashBytes)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
 			sync.DeleteUTXO(NewOutPoint(*referTxID, input.VOut))
 		}

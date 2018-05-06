@@ -1,20 +1,17 @@
 package wallet
 
 import (
+	"sync"
 	"bytes"
+	"errors"
 	"crypto/rand"
 	"crypto/sha256"
-	"errors"
-	"sync"
 
+	. "github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
 )
 
-/*
-秘钥数据库，存储IV，MasterKey，PasswordHash地址公钥私钥，使用JsonFile存储
-*/
 const (
 	KeystoreVersion = "1.0"
 )
@@ -25,6 +22,7 @@ type Keystore interface {
 	GetPublicKey() *crypto.PublicKey
 	GetRedeemScript() []byte
 	GetProgramHash() *Uint168
+	Address() string
 
 	Sign(password []byte, txn *Transaction) ([]byte, error)
 }
@@ -37,6 +35,7 @@ type KeystoreImpl struct {
 	publicKey    *crypto.PublicKey
 	redeemScript []byte
 	programHash  *Uint168
+	address      string
 }
 
 func CreateKeystore(name string, password []byte) (Keystore, error) {
@@ -137,19 +136,24 @@ func (store *KeystoreImpl) init(privateKey []byte, publicKey *crypto.PublicKey) 
 	// Set public key
 	store.publicKey = publicKey
 
-	signatureRedeemScript, err := crypto.CreateStandardRedeemScript(publicKey)
-	if err != nil {
-		return err
-	}
+	var err error
 	// Set redeem script
-	store.redeemScript = signatureRedeemScript
-
-	programHash, err := crypto.ToProgramHash(signatureRedeemScript)
+	store.redeemScript, err = crypto.CreateStandardRedeemScript(publicKey)
 	if err != nil {
 		return err
 	}
+
 	// Set program hash
-	store.programHash = programHash
+	store.programHash, err = crypto.ToProgramHash(store.redeemScript)
+	if err != nil {
+		return err
+	}
+
+	// Set address
+	store.address, err = store.programHash.ToAddress()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -239,6 +243,10 @@ func (store *KeystoreImpl) GetRedeemScript() []byte {
 
 func (store *KeystoreImpl) GetProgramHash() *Uint168 {
 	return store.programHash
+}
+
+func (store *KeystoreImpl) Address() string {
+	return store.address
 }
 
 func (store *KeystoreImpl) Sign(password []byte, txn *Transaction) ([]byte, error) {

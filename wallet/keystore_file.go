@@ -1,11 +1,11 @@
 package wallet
 
 import (
-	"encoding/json"
-	"errors"
-	"io/ioutil"
 	"os"
 	"sync"
+	"errors"
+	"io/ioutil"
+	"encoding/json"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
