@@ -1,14 +1,13 @@
 package sideauxpow
 
 import (
-	"fmt"
-
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 )
 
 func SubmitAuxpow(blockhash string, submitauxpow string) error {
-	fmt.Println("submitauxblock")
+	log.Info("submitauxblock")
 	params := make(map[string]string, 2)
 	params["blockhash"] = blockhash
 	params["sideauxpow"] = submitauxpow
@@ -17,6 +16,6 @@ func SubmitAuxpow(blockhash string, submitauxpow string) error {
 		return err
 	}
 
-	fmt.Println(resp)
+	log.Info(resp)
 	return nil
 }

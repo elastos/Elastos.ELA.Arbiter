@@ -52,14 +52,14 @@ func unmarshal(result interface{}, target interface{}) error {
 }
 
 func transfer_sidemining(name string, password []byte) error {
-	fmt.Println("getSideAuxpow")
+	log.Info("getSideAuxpow")
 
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), config.Parameters.SideNodeList[0].Rpc)
 	if err != nil {
 		return err
 	}
 	if resp == nil {
-		fmt.Println("resp nil ")
+		log.Info("Create auxblock, nil ")
 		return nil
 	}
 
@@ -77,8 +77,7 @@ func transfer_sidemining(name string, password []byte) error {
 	if err != nil {
 		return err
 	}
-
-	fmt.Println(sideAuxBlock)
+	// fmt.Println(sideAuxBlock)
 
 	txType := ela.SideMining
 
@@ -138,7 +137,7 @@ func transfer_sidemining(name string, password []byte) error {
 	buf := new(bytes.Buffer)
 	txn.Serialize(buf)
 	content := BytesToHexString(buf.Bytes())
-	log.Debug("Raw Sidemining transaction: ", content)
+	// log.Debug("Raw Sidemining transaction: ", content)
 
 	// send transaction
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
@@ -159,7 +158,7 @@ func SendSidemining() {
 			password := "node"
 			err := transfer_sidemining(wallet.DefaultKeystoreFile, []byte(password))
 			if err != nil {
-				fmt.Println(err)
+				log.Warn(err)
 			}
 		}
 	}

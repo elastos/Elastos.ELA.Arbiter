@@ -29,7 +29,7 @@ func (l *AuxpowListener) Rollback(height uint32) {
 }
 
 func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
-	log.Debug("Receive unconfirmed transaction hash:", tx.Hash().String())
+	log.Info("Receive sidemining transaction, hash:", tx.Hash().String())
 	err := spvService.VerifyTransaction(proof, tx)
 	if err != nil {
 		log.Error("Verify transaction error: ", err)
