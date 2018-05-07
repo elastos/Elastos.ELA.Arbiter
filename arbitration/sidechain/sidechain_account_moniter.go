@@ -5,10 +5,12 @@ import (
 	"time"
 
 	"fmt"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
 
@@ -75,6 +77,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNode
 
 		if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfSide(sideNode.GenesisBlockAddress) {
 			//add side chain mining related logic here
+			sideauxpow.StartSidechainMining(sideNode)
 		}
 
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)

@@ -10,6 +10,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
@@ -50,13 +51,6 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 }
 
 func main() {
-	log.Info("0. Init wallet.")
-	wallet, err := wallet.Open()
-	if err != nil {
-		log.Fatal("error: open wallet failed, ", err)
-		os.Exit(1)
-	}
-	sideauxpow.CurrentWallet = wallet
 
 	log.Info("1. Init configurations.")
 	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
@@ -74,34 +68,45 @@ func main() {
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
-	log.Info("3. Init arbitrator account.")
-	if err := currentArbitrator.InitAccount(); err != nil {
+	log.Info("3. Init wallet.")
+	wallet, err := wallet.Open()
+	if err != nil {
+		log.Fatal("error: open wallet failed, ", err)
+		os.Exit(1)
+	}
+	sideauxpow.CurrentWallet = wallet
+
+	log.Info("4. Init arbitrator account.")
+	passwd, err := password.GetAccountPassword()
+	if err != nil {
+		log.Fatal("Get password error.")
+		os.Exit(1)
+	}
+	sideauxpow.Passwd = passwd
+	if err := currentArbitrator.InitAccount(passwd); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
 	setSideChainAccountMonitor(currentArbitrator)
 
-	log.Info("4. Start arbitrator spv module.")
+	log.Info("5. Start arbitrator spv module.")
 	if err := currentArbitrator.StartSpvModule(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("5. Start arbitrator P2P networks.")
+	log.Info("6. Start arbitrator P2P networks.")
 	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("6. Start arbitrator group monitor.")
+	log.Info("7. Start arbitrator group monitor.")
 	go arbitrator.ArbitratorGroupSingleton.SyncLoop()
 
-	log.Info("7. Start servers.")
+	log.Info("8. Start servers.")
 	go httpjsonrpc.StartRPCServer()
-
-	log.Info("8. Start side chain mining.")
-	go sideauxpow.SendSidemining()
 
 	select {}
 }

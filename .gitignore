@@ -25,3 +25,4 @@ ArbiterLog/
 glide.lock
 config.json
 cli-config.json
+ela-cli

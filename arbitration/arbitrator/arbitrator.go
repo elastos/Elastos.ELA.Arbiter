@@ -3,12 +3,10 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
@@ -32,7 +30,7 @@ type Arbitrator interface {
 	GetArbitratorGroup() ArbitratorGroup
 	GetSideChainManager() SideChainManager
 
-	InitAccount() error
+	InitAccount(passwd []byte) error
 	StartSpvModule() error
 
 	//deposit
@@ -256,14 +254,9 @@ func (ar *ArbitratorImpl) SetSideChainManager(manager SideChainManager) {
 	ar.sideChainManagerImpl = manager
 }
 
-func (ar *ArbitratorImpl) InitAccount() error {
-	passwd, err := password.GetAccountPassword()
-	if err != nil {
-		return errors.New("Get password error.")
-	}
-
+func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
 	ar.Keystore = NewKeystore()
-	_, err = ar.Keystore.Open(string(passwd[:]))
+	_, err := ar.Keystore.Open(string(passwd[:]))
 	if err != nil {
 		return err
 	}

@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
@@ -19,6 +18,7 @@ import (
 )
 
 var CurrentWallet wallet.Wallet
+var Passwd []byte
 
 func getPassword(passwd []byte, confirmed bool) []byte {
 	var tmp []byte
@@ -51,10 +51,10 @@ func unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func transfer_sidemining(name string, password []byte) error {
+func Transfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
 	log.Info("getSideAuxpow")
 
-	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), config.Parameters.SideNodeList[0].Rpc)
+	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), sideNode.Rpc)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func transfer_sidemining(name string, password []byte) error {
 	if haveSign == needSign {
 		return errors.New("transaction was fully signed, no need more sign")
 	}
-	_, err = CurrentWallet.Sign(name, getPassword(password, false), txn)
+	_, err = CurrentWallet.Sign(name, getPassword(passwd, false), txn)
 	if err != nil {
 		return err
 	}
@@ -149,17 +149,10 @@ func transfer_sidemining(name string, password []byte) error {
 	return nil
 }
 
-func SendSidemining() {
-	for {
-		select {
-		case <-time.After(time.Second * 3):
-			log.Debug("Send sidemining ")
-
-			password := "node"
-			err := transfer_sidemining(wallet.DefaultKeystoreFile, []byte(password))
-			if err != nil {
-				log.Warn(err)
-			}
-		}
+func StartSidechainMining(sideNode *config.SideNodeConfig) {
+	log.Debug("Send sidemining ")
+	err := Transfer(wallet.DefaultKeystoreFile, Passwd, sideNode)
+	if err != nil {
+		log.Warn(err)
 	}
 }
