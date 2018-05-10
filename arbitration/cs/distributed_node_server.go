@@ -9,12 +9,9 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -79,20 +76,6 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 		Command: dns.P2pCommand,
 		Content: content,
 	})
-}
-
-func (dns *DistributedNodeServer) OnP2PReceived(peer *spvnet.Peer, msg p2p.Message) error {
-	if msg.CMD() != dns.P2pCommand {
-		return nil
-	}
-
-	signMessage, ok := msg.(*SignMessage)
-	if !ok {
-		log.Warn("Unknown p2p message content.")
-		return nil
-	}
-
-	return dns.ReceiveProposalFeedback(signMessage.Content)
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transaction) error {

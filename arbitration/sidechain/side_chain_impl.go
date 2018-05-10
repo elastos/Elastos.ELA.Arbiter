@@ -10,11 +10,14 @@ import (
 	"encoding/json"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
@@ -24,6 +27,19 @@ type SideChainImpl struct {
 	Key string
 
 	CurrentConfig *config.SideNodeConfig
+}
+
+func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+	if msg.CMD() != cs.DepositTxCacheClearCommand {
+		return nil
+	}
+
+	depositTxClearMsg, ok := msg.(*cs.TxCacheClearMessage)
+	if !ok {
+		return errors.New("Unknown deposit transaction cache clear message.")
+	}
+
+	return store.DbCache.RemoveMainChainTxs(depositTxClearMsg.RemovedTxs)
 }
 
 func (sc *SideChainImpl) GetKey() string {

@@ -20,10 +20,10 @@ var (
 )
 
 const (
-	WithdrawCommand = "withdraw"
-	ComplainCommand = "complain"
-
-	GeneralListenerCount = 4
+	WithdrawCommand             = "withdraw"
+	ComplainCommand             = "complain"
+	WithdrawTxCacheClearCommand = "withdrawTxCacheClear"
+	DepositTxCacheClearCommand  = "depositTxCacheClear"
 )
 
 type P2PClientListener interface {
@@ -107,6 +107,10 @@ func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, e
 		message = &SignMessage{Command: WithdrawCommand}
 	case ComplainCommand:
 		message = &SignMessage{Command: ComplainCommand}
+	case WithdrawTxCacheClearCommand:
+		message = &TxCacheClearMessage{Command: WithdrawTxCacheClearCommand}
+	case DepositTxCacheClearCommand:
+		message = &TxCacheClearMessage{Command: DepositTxCacheClearCommand}
 	default:
 		return nil, errors.New("Received unsupported message, CMD " + cmd)
 	}

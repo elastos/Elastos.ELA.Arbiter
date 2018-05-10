@@ -68,6 +68,11 @@ type DataStore interface {
 
 	AddSideChainTx(transactionHash, genesisBlockAddress string) error
 	HashSideChainTx(transactionHash string) (bool, error)
+	RemoveSideChainTxs(transactionHashes []string) error
+
+	AddMainChainTx(transactionHash string) error
+	HashMainChainTx(transactionHash string) (bool, error)
+	RemoveMainChainTxs(transactionHashes []string) error
 
 	ResetDataStore() error
 }
@@ -355,6 +360,22 @@ func (store *DataStoreImpl) HashSideChainTx(transactionHash string) (bool, error
 	}
 
 	return rows.Next(), nil
+}
+
+func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error {
+	return nil
+}
+
+func (store *DataStoreImpl) AddMainChainTx(transactionHash string) error {
+	return nil
+}
+
+func (store *DataStoreImpl) HashMainChainTx(transactionHash string) (bool, error) {
+	return false, nil
+}
+
+func (store *DataStoreImpl) RemoveMainChainTxs(transactionHashes []string) error {
+	return nil
 }
 
 type DbMainChainFunc struct {

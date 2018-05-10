@@ -7,11 +7,8 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -21,20 +18,6 @@ type DistributedNodeClient struct {
 
 func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
 	return item.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
-}
-
-func (client *DistributedNodeClient) OnP2PReceived(peer *spvnet.Peer, msg p2p.Message) error {
-	if msg.CMD() != client.P2pCommand {
-		return nil
-	}
-
-	signMessage, ok := msg.(*SignMessage)
-	if !ok {
-		log.Warn("Unknown p2p message content.")
-		return nil
-	}
-
-	return client.OnReceivedProposal(signMessage.Content)
 }
 
 func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {

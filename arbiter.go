@@ -45,6 +45,9 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 	if err := mainchain.InitMainChain(arbitrator); err != nil {
 		return err
 	}
+	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
+		cs.P2PClientSingleton.AddListener(side)
+	}
 
 	cs.P2PClientSingleton.Start()
 	return nil

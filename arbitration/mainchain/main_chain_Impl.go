@@ -13,8 +13,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -22,6 +24,20 @@ const WithdrawAssetLockTime uint32 = 6
 
 type MainChainImpl struct {
 	*DistributedNodeServer
+}
+
+func (dns *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+	if msg.CMD() != dns.P2pCommand || msg.CMD() != WithdrawTxCacheClearCommand {
+		return nil
+	}
+
+	switch m := msg.(type) {
+	case *SignMessage:
+		return dns.ReceiveProposalFeedback(m.Content)
+	case *TxCacheClearMessage:
+		return DbCache.RemoveSideChainTxs(m.RemovedTxs)
+	}
+	return nil
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64,
