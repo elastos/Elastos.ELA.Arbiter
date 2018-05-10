@@ -154,7 +154,7 @@ func Init() {
 		lastSyncTime:  new(uint64),
 	}
 
-	currentArbitrator := &ArbitratorImpl{}
+	currentArbitrator := &ArbitratorImpl{mux: new(sync.Mutex)}
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 
 	spvLog.Init()

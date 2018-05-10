@@ -90,6 +90,10 @@ type RegisterAssetInfo struct {
 	Controller string
 }
 
+type CoinbaseInfo struct {
+	CoinbaseData string
+}
+
 type IssueTokenInfo struct {
 	Proof string
 }

@@ -115,33 +115,24 @@ func GetBlockTransactions(resp interface{}) (*BlockTransactions, error) {
 	Unmarshal(&resp, transactions)
 
 	for _, txInfo := range transactions.Transactions {
+		var assetInfo PayloadInfo
 		switch txInfo.TxType {
 		case elaCore.RegisterAsset:
-			assetInfo := &RegisterAssetInfo{}
-			err := Unmarshal(&txInfo.Payload, assetInfo)
-			if err == nil {
-				txInfo.Payload = assetInfo
-			}
+			assetInfo = &RegisterAssetInfo{}
+		case elaCore.CoinBase:
+			assetInfo = &CoinbaseInfo{}
 		case elaCore.TransferAsset:
-			assetInfo := &TransferAssetInfo{}
-			err := Unmarshal(&txInfo.Payload, assetInfo)
-			if err == nil {
-				txInfo.Payload = assetInfo
-			}
+			assetInfo = &TransferAssetInfo{}
 		case elaCore.IssueToken:
-			assetInfo := &IssueTokenInfo{}
-			err := Unmarshal(&txInfo.Payload, assetInfo)
-			if err == nil {
-				txInfo.Payload = assetInfo
-			}
+			assetInfo = &IssueTokenInfo{}
 		case elaCore.TransferCrossChainAsset:
-			assetInfo := &TransferCrossChainAssetInfo{}
-			err := Unmarshal(&txInfo.Payload, assetInfo)
-			if err == nil {
-				txInfo.Payload = assetInfo
-			}
+			assetInfo = &TransferCrossChainAssetInfo{}
 		default:
 			return nil, errors.New("GetBlockTransactions: Unknown payload type")
+		}
+		err := Unmarshal(&txInfo.Payload, assetInfo)
+		if err == nil {
+			txInfo.Payload = assetInfo
 		}
 	}
 	return transactions, nil

@@ -3,6 +3,7 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/binary"
+	"sync"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -46,10 +47,14 @@ type Arbitrator interface {
 }
 
 type ArbitratorImpl struct {
-	mainChainImpl        MainChain
-	mainChainClientImpl  MainChainClient
-	sideChainManagerImpl SideChainManager
-	Keystore             Keystore
+	mainChainImpl          MainChain
+	mainChainClientImpl    MainChainClient
+	sideChainManagerImpl   SideChainManager
+	spvService             SPVService
+	Keystore               Keystore
+	CurrentDepositTxHashes []common.Uint256
+
+	mux *sync.Mutex
 }
 
 func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
@@ -206,8 +211,23 @@ func (ar *ArbitratorImpl) Confirmed() bool {
 
 func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+		ar.mux.Lock()
+		if len(ar.CurrentDepositTxHashes) != 0 {
+			ar.CurrentDepositTxHashes = nil
+		}
+		ar.mux.Unlock()
 		return
 	}
+
+	ar.mux.Lock()
+	for _, hash := range ar.CurrentDepositTxHashes {
+		if hash == spvtxn.Hash() {
+			ar.mux.Unlock()
+			return
+		}
+	}
+	ar.CurrentDepositTxHashes = append(ar.CurrentDepositTxHashes, spvtxn.Hash())
+	ar.mux.Unlock()
 
 	buf := new(bytes.Buffer)
 	spvtxn.Serialize(buf)
@@ -225,6 +245,8 @@ func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 
 	transactionInfoMap := ar.CreateDepositTransactions(proof, depositInfo)
 	ar.SendDepositTransactions(transactionInfoMap)
+
+	ar.spvService.SubmitTransactionReceipt(spvtxn.Hash())
 }
 
 func (ar *ArbitratorImpl) Rollback(height uint32) {

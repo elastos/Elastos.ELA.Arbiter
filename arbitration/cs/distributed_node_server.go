@@ -167,11 +167,13 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 
 	dns.mux.Lock()
 	if dns.unsolvedTransactions == nil {
+		dns.mux.Unlock()
 		return errors.New("Can not find proposal.")
 	}
 	txn, ok := dns.unsolvedTransactions[transactionItem.ItemContent.Hash()]
 	if !ok {
-		errors.New("Can not find proposal.")
+		dns.mux.Unlock()
+		return errors.New("Can not find proposal.")
 	}
 	dns.mux.Unlock()
 
@@ -211,7 +213,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			return err
 		}
 
-		dns.mux.Unlock()
+		dns.mux.Lock()
 		dns.finishedTransactions[txn.Hash()] = true
 		dns.mux.Unlock()
 

@@ -114,7 +114,7 @@ func (wallet *WalletImpl) AddStandardAccount(publicKey *crypto.PublicKey) (*Uint
 func (wallet *WalletImpl) AddMultiSignAccount(M uint, publicKeys ...*crypto.PublicKey) (*Uint168, error) {
 	redeemScript, err := crypto.CreateMultiSignRedeemScript(M, publicKeys)
 	if err != nil {
-		return nil, errors.New("[Wallet], CreateStandardRedeemScript failed")
+		return nil, errors.New("[Wallet], CreateMultiSignRedeemScript failed")
 	}
 
 	programHash, err := crypto.ToProgramHash(redeemScript)

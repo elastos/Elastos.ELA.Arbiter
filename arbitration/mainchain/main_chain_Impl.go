@@ -218,7 +218,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 			if destroyAddress, ok := mc.containGenesisBlockAddress(output.Address); ok {
 				// Create UTXO input from output
 				txHashBytes, _ := HexStringToBytes(txn.Hash)
-				txHashBytes = BytesReverse(txHashBytes)
+				//txHashBytes = BytesReverse(txHashBytes)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
 				if txn.TxType == CoinBase {

@@ -72,7 +72,7 @@ func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool, itemFu
 	}
 	// Sign transaction
 	buf := new(bytes.Buffer)
-	err = item.ItemContent.Serialize(buf)
+	err = item.ItemContent.SerializeUnsigned(buf)
 	if err != nil {
 		return err
 	}
@@ -99,15 +99,15 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 		return nil, errors.New("Invalid sign data.")
 	}
 
-	sign := item.signedData[SignatureScriptLength:][1:]
+	sign := item.signedData[SignatureScriptLength:]
 
 	buf := new(bytes.Buffer)
-	err := item.ItemContent.Serialize(buf)
+	err := item.ItemContent.SerializeUnsigned(buf)
 	if err != nil {
 		return nil, err
 	}
 
-	err = Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), sign)
+	err = Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), sign[1:])
 	if err != nil {
 		return nil, errors.New("Invalid sign data.")
 	}
@@ -282,7 +282,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		buf := new(bytes.Buffer)
-		err := item.ItemContent.Serialize(buf)
+		err := item.ItemContent.SerializeUnsigned(buf)
 		if err != nil {
 			return err
 		}

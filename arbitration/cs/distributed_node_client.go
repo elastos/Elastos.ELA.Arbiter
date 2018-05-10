@@ -44,7 +44,8 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 	}
 
 	if transactionItem.IsFeedback() {
-		client.broadcast(content)
+		//todo deal with newtwork storm
+		//client.broadcast(content)
 		return nil
 	}
 
@@ -74,7 +75,6 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 }
 
 func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
-
 	ar := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
 

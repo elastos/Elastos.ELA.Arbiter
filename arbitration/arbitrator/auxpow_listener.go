@@ -1,12 +1,12 @@
 package arbitrator
 
 import (
-	"bytes"
+	/*"bytes"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA.Utility/common"*/
 	"github.com/elastos/Elastos.ELA/bloom"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
@@ -29,7 +29,7 @@ func (l *AuxpowListener) Rollback(height uint32) {
 }
 
 func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
-	log.Info("Receive sidemining transaction, hash:", tx.Hash().String())
+	/*log.Info("Receive sidemining transaction, hash:", tx.Hash().String())
 	err := spvService.VerifyTransaction(proof, tx)
 	if err != nil {
 		log.Error("Verify transaction error: ", err)
@@ -88,5 +88,5 @@ func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
 	}
 
 	// Submit transaction receipt
-	spvService.SubmitTransactionReceipt(tx.Hash())
+	spvService.SubmitTransactionReceipt(tx.Hash())*/
 }
