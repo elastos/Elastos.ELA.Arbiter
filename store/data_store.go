@@ -69,10 +69,12 @@ type DataStore interface {
 	AddSideChainTx(transactionHash, genesisBlockAddress string) error
 	HashSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
+	GetAllSideChainTxs(genesisBlockAddress string) ([]string, error)
 
 	AddMainChainTx(transactionHash string) error
 	HashMainChainTx(transactionHash string) (bool, error)
 	RemoveMainChainTxs(transactionHashes []string) error
+	GetAllMainChainTxs() ([]string, error)
 
 	ResetDataStore() error
 }
@@ -364,6 +366,14 @@ func (store *DataStoreImpl) HashSideChainTx(transactionHash string) (bool, error
 
 func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error {
 	return nil
+}
+
+func (store *DataStoreImpl) GetAllSideChainTxs(genesisBlockAddress string) ([]string, error) {
+	return nil, nil
+}
+
+func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, error) {
+	return nil, nil
 }
 
 func (store *DataStoreImpl) AddMainChainTx(transactionHash string) error {

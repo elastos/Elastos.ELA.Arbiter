@@ -48,14 +48,15 @@ type Arbitrator interface {
 }
 
 type ArbitratorImpl struct {
+	mux           *sync.Mutex
+	mainOnDutyMux *sync.Mutex
+	isOnDuty      bool
+
 	mainChainImpl          MainChain
 	mainChainClientImpl    MainChainClient
 	sideChainManagerImpl   SideChainManager
-	spvService             SPVService
 	Keystore               Keystore
 	CurrentDepositTxHashes []common.Uint256
-
-	mux *sync.Mutex
 }
 
 func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
@@ -76,6 +77,18 @@ func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
 	return publicKey
 }
 
+func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
+	ar.mainOnDutyMux.Lock()
+	ar.isOnDuty = onDuty
+	ar.mainOnDutyMux.Unlock()
+
+	if onDuty {
+		if err := ar.mainChainImpl.SyncMainChainCachedTxs(); err != nil {
+			log.Warn(err)
+		}
+	}
+}
+
 func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
 	return nil
 }
@@ -87,11 +100,9 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
-	pk, err := PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
-	if err != nil {
-		return false
-	}
-	return crypto.Equal(pk, ar.GetPublicKey())
+	ar.mainOnDutyMux.Lock()
+	defer ar.mainOnDutyMux.Unlock()
+	return ar.isOnDuty
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfSide(sideChainKey string) bool {
@@ -247,7 +258,7 @@ func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 	transactionInfoMap := ar.CreateDepositTransactions(proof, depositInfo)
 	ar.SendDepositTransactions(transactionInfoMap)
 
-	ar.spvService.SubmitTransactionReceipt(spvtxn.Hash())
+	spvService.SubmitTransactionReceipt(spvtxn.Hash())
 }
 
 func (ar *ArbitratorImpl) Rollback(height uint32) {

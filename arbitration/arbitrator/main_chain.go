@@ -14,6 +14,8 @@ type MainChain interface {
 
 	BroadcastWithdrawProposal(txn *core.Transaction) error
 	ReceiveProposalFeedback(content []byte) error
+
+	SyncMainChainCachedTxs() error
 }
 
 type MainChainClient interface {

@@ -4,28 +4,31 @@ import (
 	"sync"
 	"time"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
+	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
 var (
 	ArbitratorGroupSingleton *ArbitratorGroupImpl
 )
 
-type ArbitratorsElection interface {
+type ArbitratorGroupListener interface {
+	GetPublicKey() *crypto.PublicKey
+	OnDutyArbitratorChanged(onDuty bool)
 }
 
 type ArbitratorGroup interface {
-	ArbitratorsElection
-
 	GetCurrentArbitrator() Arbitrator
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
 	GetOnDutyArbitratorOfMain() string
 	GetOnDutyArbitratorOfSide(sideChainKey string) string
+	SetListener(listener ArbitratorGroupListener)
 }
 
 type ArbitratorGroupImpl struct {
@@ -38,6 +41,9 @@ type ArbitratorGroupImpl struct {
 	currentHeight *uint32
 	lastSyncTime  *uint64
 	timeoutLimit  uint64 //millisecond
+
+	listener         ArbitratorGroupListener
+	isListenerOnDuty bool
 }
 
 func (group *ArbitratorGroupImpl) SyncLoop() {
@@ -95,6 +101,18 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	*group.currentHeight = height
 	group.lastSyncTime = &currentTime
 	group.mux.Unlock()
+
+	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
+	if err != nil && group.listener != nil {
+		if group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk) {
+			group.isListenerOnDuty = true
+			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
+		} else if group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk) {
+			group.isListenerOnDuty = false
+			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
+		}
+	}
+
 	return nil
 }
 
@@ -141,15 +159,22 @@ func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
 	return group.arbitrators
 }
 
+func (group *ArbitratorGroupImpl) SetListener(listener ArbitratorGroupListener) {
+	group.listener = listener
+	group.isListenerOnDuty = false
+}
+
 func Init() {
 	ArbitratorGroupSingleton = &ArbitratorGroupImpl{
-		timeoutLimit:  1000,
-		currentHeight: new(uint32),
-		lastSyncTime:  new(uint64),
+		timeoutLimit:     1000,
+		currentHeight:    new(uint32),
+		lastSyncTime:     new(uint64),
+		isListenerOnDuty: false,
 	}
 
-	currentArbitrator := &ArbitratorImpl{mux: new(sync.Mutex)}
+	currentArbitrator := &ArbitratorImpl{mux: new(sync.Mutex), mainOnDutyMux: new(sync.Mutex)}
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
+	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 
 	spvLog.Init()
 }

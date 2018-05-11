@@ -26,6 +26,19 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
+func (dns *MainChainImpl) SyncMainChainCachedTxs() error {
+	txs, err := DbCache.GetAllMainChainTxs()
+	if err != nil {
+		return err
+	}
+
+	//todo sync from rpc
+	receivedTxs := txs
+
+	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
+	P2PClientSingleton.Broadcast(msg)
+}
+
 func (dns *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 	if msg.CMD() != dns.P2pCommand || msg.CMD() != WithdrawTxCacheClearCommand {
 		return nil
