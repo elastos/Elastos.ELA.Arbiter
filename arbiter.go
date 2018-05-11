@@ -25,7 +25,7 @@ func init() {
 }
 
 func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
-	monitor := sidechain.SideChainAccountMonitorImpl{}
+	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
 
 	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
 		monitor.AddListener(side)

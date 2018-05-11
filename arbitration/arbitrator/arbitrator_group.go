@@ -104,11 +104,9 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 
 	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
 	if err != nil && group.listener != nil {
-		if group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk) {
-			group.isListenerOnDuty = true
-			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
-		} else if group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk) {
-			group.isListenerOnDuty = false
+		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
+			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
+			group.isListenerOnDuty = !group.isListenerOnDuty
 			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
 		}
 	}

@@ -37,7 +37,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return errors.New("Unknown payload type.")
 	}
 
-	if ok, err := store.DbCache.HashSideChainTx(withdrawAsset.SideChainTransactionHash); err != nil || ok {
+	if ok, err := store.DbCache.HasSideChainTx(withdrawAsset.SideChainTransactionHash); err != nil || ok {
 		return errors.New("Proposal already exit.")
 	}
 

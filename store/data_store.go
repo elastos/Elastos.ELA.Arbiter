@@ -71,7 +71,7 @@ type DataStore interface {
 	GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error)
 
 	AddSideChainTx(transactionHash, genesisBlockAddress string) error
-	HashSideChainTx(transactionHash string) (bool, error)
+	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxs(genesisBlockAddress string) ([]string, error)
 
@@ -360,7 +360,7 @@ func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress 
 	return nil
 }
 
-func (store *DataStoreImpl) HashSideChainTx(transactionHash string) (bool, error) {
+func (store *DataStoreImpl) HasSideChainTx(transactionHash string) (bool, error) {
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 

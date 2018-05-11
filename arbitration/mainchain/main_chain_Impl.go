@@ -11,6 +11,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/net"
@@ -34,6 +35,11 @@ func (dns *MainChainImpl) SyncMainChainCachedTxs() error {
 
 	//todo sync from rpc
 	receivedTxs := txs
+
+	err = DbCache.RemoveMainChainTxs(receivedTxs)
+	if err != nil {
+		log.Warn(err)
+	}
 
 	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
 	P2PClientSingleton.Broadcast(msg)

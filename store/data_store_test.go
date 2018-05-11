@@ -25,7 +25,7 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
 
-	ok, err := datastore.HashSideChainTx(txHash)
+	ok, err := datastore.HasSideChainTx(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -37,7 +37,7 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Add side chain transaction error.")
 	}
 
-	ok, err = datastore.HashSideChainTx(txHash)
+	ok, err = datastore.HasSideChainTx(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -63,10 +63,10 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 	datastore.AddSideChainTx(txHash, genesisBlockAddress)
 	datastore.AddSideChainTx(txHash2, genesisBlockAddress2)
 
-	if ok, err := datastore.HashSideChainTx(txHash); !ok || err != nil {
+	if ok, err := datastore.HasSideChainTx(txHash); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
-	if ok, err := datastore.HashSideChainTx(txHash2); !ok || err != nil {
+	if ok, err := datastore.HasSideChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
 
@@ -74,7 +74,7 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 	removedHashes = append(removedHashes, txHash)
 	datastore.RemoveSideChainTxs(removedHashes)
 
-	ok, err := datastore.HashSideChainTx(txHash)
+	ok, err := datastore.HasSideChainTx(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -82,7 +82,7 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	if ok, err := datastore.HashSideChainTx(txHash2); !ok || err != nil {
+	if ok, err := datastore.HasSideChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
 

@@ -1,10 +1,11 @@
 package: github.com/elastos/Elastos.ELA.Arbiter
 import:
 - package: github.com/elastos/Elastos.ELA.Utility
-  version: dev
+  version: alpha
 - package: github.com/elastos/Elastos.ELA
   version: alpha
 - package: github.com/elastos/Elastos.ELA.SPV
+  version: alpha
 - package: github.com/elastos/Elastos.ELA.SideChain
   version: alpha
 - package: github.com/howeyc/gopass

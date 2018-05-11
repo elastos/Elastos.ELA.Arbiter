@@ -59,10 +59,10 @@ func unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func Transfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
+func Transfer(name string, passwd []byte, rpcConfig *config.RpcConfig) error {
 	log.Info("getSideAuxpow")
 
-	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), sideNode.Rpc)
+	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), rpcConfig)
 	if err != nil {
 		return err
 	}
@@ -159,10 +159,9 @@ func Transfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error
 	return nil
 }
 
-func StartSidechainMining(sideNode *config.SideNodeConfig) {
+func StartSidechainMining(rpcConfig *config.RpcConfig) {
 	log.Debug("Send sidemining ")
-	keystoreFile := KeystoreDict[sideNode.GenesisBlock]
-	err := Transfer(keystoreFile, Passwd, sideNode)
+	err := Transfer(wallet.DefaultKeystoreFile, Passwd, rpcConfig)
 	if err != nil {
 		log.Warn(err)
 	}

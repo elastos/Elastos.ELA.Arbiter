@@ -12,8 +12,10 @@ type SideChain interface {
 	P2PClientListener
 	SideChainNode
 
+	IsOnDuty() bool
 	GetKey() string
 	GetRage() float32
+
 	CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64) (*TransactionInfo, error)
 	ParseUserWithdrawTransactionInfo(txn *core.Transaction) ([]*WithdrawInfo, error)
 }

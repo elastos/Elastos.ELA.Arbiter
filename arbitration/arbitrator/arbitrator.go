@@ -105,11 +105,12 @@ func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfSide(sideChainKey string) bool {
-	pk, err := PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(sideChainKey))
-	if err != nil {
+	chain, ok := ar.sideChainManagerImpl.GetChain(sideChainKey)
+	if !ok {
 		return false
 	}
-	return crypto.Equal(pk, ar.GetPublicKey())
+
+	return chain.IsOnDuty()
 }
 
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {

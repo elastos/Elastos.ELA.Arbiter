@@ -10,43 +10,56 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Utility/crypto"
+	"sync"
 )
 
 type SideChainAccountMonitorImpl struct {
+	mux sync.Mutex
+
+	ParentArbitrator   arbitrator.Arbitrator
 	accountListenerMap map[string]AccountListener
+	onDutyMap          map[string]bool
 }
 
-func (sync *SideChainAccountMonitorImpl) tryInit() {
-	if sync.accountListenerMap == nil {
-		sync.accountListenerMap = make(map[string]AccountListener)
+func (monitor *SideChainAccountMonitorImpl) tryInit() {
+	if monitor.accountListenerMap == nil {
+		monitor.accountListenerMap = make(map[string]AccountListener)
+	}
+	if monitor.onDutyMap == nil {
+		monitor.onDutyMap = make(map[string]bool)
 	}
 }
 
-func (sync *SideChainAccountMonitorImpl) AddListener(listener AccountListener) {
-	sync.tryInit()
-	sync.accountListenerMap[listener.GetAccountAddress()] = listener
+func (monitor *SideChainAccountMonitorImpl) AddListener(listener AccountListener) {
+	monitor.tryInit()
+	monitor.accountListenerMap[listener.GetAccountAddress()] = listener
+
+	monitor.mux.Lock()
+	monitor.onDutyMap[listener.GetAccountAddress()] = false
+	monitor.mux.Unlock()
 }
 
-func (sync *SideChainAccountMonitorImpl) RemoveListener(account string) error {
-	if sync.accountListenerMap == nil {
+func (monitor *SideChainAccountMonitorImpl) RemoveListener(account string) error {
+	if monitor.accountListenerMap == nil {
 		return nil
 	}
 
-	if _, ok := sync.accountListenerMap[account]; !ok {
+	if _, ok := monitor.accountListenerMap[account]; !ok {
 		return errors.New("Do not exist listener.")
 	}
-	delete(sync.accountListenerMap, account)
+	delete(monitor.accountListenerMap, account)
+	delete(monitor.onDutyMap, account)
 	return nil
 }
 
-func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo, genesisBlockAddress string) error {
-	if sync.accountListenerMap == nil {
+func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo, genesisBlockAddress string) error {
+	if monitor.accountListenerMap == nil {
 		return nil
 	}
 
-	item, ok := sync.accountListenerMap[genesisBlockAddress]
+	item, ok := monitor.accountListenerMap[genesisBlockAddress]
 	if !ok {
 		return errors.New("Fired unknown listener.")
 	}
@@ -54,10 +67,10 @@ func (sync *SideChainAccountMonitorImpl) fireUTXOChanged(txinfo *TransactionInfo
 	return item.OnUTXOChanged(txinfo)
 }
 
-func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
+func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
 
 	for {
-		chainHeight, currentHeight, needSync := sync.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
+		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {
 			for currentHeight < chainHeight {
@@ -65,7 +78,7 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNode
 				if err != nil {
 					break
 				}
-				sync.processTransactions(transactions)
+				monitor.processTransactions(transactions)
 
 				// Update wallet height
 				currentHeight = store.DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height+1)
@@ -75,16 +88,43 @@ func (sync *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNode
 			fmt.Print("\n")
 		}
 
-		if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfSide(sideNode.GenesisBlockAddress) {
-			//add side chain mining related logic here
-			sideauxpow.StartSidechainMining(sideNode)
-		}
+		monitor.checkOnDutyStatus(sideNode.GenesisBlockAddress)
 
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
 	}
 }
 
-func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
+func (monitor *SideChainAccountMonitorImpl) checkOnDutyStatus(genesisBlockAddress string) error {
+	if monitor.onDutyMap == nil || monitor.accountListenerMap == nil {
+		return nil
+	}
+
+	listener, ok := monitor.accountListenerMap[genesisBlockAddress]
+	monitor.mux.Lock()
+	onDuty, _ := monitor.onDutyMap[genesisBlockAddress]
+	monitor.mux.Unlock()
+	if ok {
+		return errors.New("Do not exist listener.")
+	}
+
+	pk, err := PublicKeyFromString(
+		arbitrator.ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(genesisBlockAddress))
+	if err != nil {
+		return err
+	}
+
+	if (onDuty == true && !crypto.Equal(pk, monitor.ParentArbitrator.GetPublicKey())) ||
+		(onDuty == false && crypto.Equal(pk, monitor.ParentArbitrator.GetPublicKey())) {
+		monitor.mux.Lock()
+		monitor.onDutyMap[genesisBlockAddress] = !onDuty
+		monitor.mux.Unlock()
+
+		listener.OnDutyArbitratorChanged(!onDuty)
+	}
+	return nil
+}
+
+func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
 
 	chainHeight, err := GetCurrentHeight(config)
 	if err != nil {
@@ -100,7 +140,7 @@ func (sync *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress stri
 	return chainHeight, currentHeight, true
 }
 
-func (sync *SideChainAccountMonitorImpl) containDestroyAddress(address string) (string, bool) {
+func (monitor *SideChainAccountMonitorImpl) containDestroyAddress(address string) (string, bool) {
 	for _, node := range config.Parameters.SideNodeList {
 		if node.DestroyAddress == address {
 			return node.GenesisBlockAddress, true
@@ -109,12 +149,12 @@ func (sync *SideChainAccountMonitorImpl) containDestroyAddress(address string) (
 	return "", false
 }
 
-func (sync *SideChainAccountMonitorImpl) processTransactions(transactions *BlockTransactions) {
+func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *BlockTransactions) {
 	for _, txn := range transactions.Transactions {
 		for _, output := range txn.Outputs {
-			if genesisAddress, ok := sync.containDestroyAddress(output.Address); ok {
-				if ok, err := store.DbCache.HashSideChainTx(txn.Hash); err != nil || !ok {
-					sync.fireUTXOChanged(txn, genesisAddress)
+			if genesisAddress, ok := monitor.containDestroyAddress(output.Address); ok {
+				if ok, err := store.DbCache.HasSideChainTx(txn.Hash); err != nil || !ok {
+					monitor.fireUTXOChanged(txn, genesisAddress)
 				}
 			}
 		}

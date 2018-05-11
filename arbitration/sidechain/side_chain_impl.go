@@ -12,7 +12,9 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
@@ -20,12 +22,14 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
+	"sync"
 )
 
 type SideChainImpl struct {
-	AccountListener
-	Key string
+	mux      sync.Mutex
+	isOnDuty bool
 
+	Key           string
 	CurrentConfig *config.SideNodeConfig
 }
 
@@ -56,6 +60,12 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 		}
 	}
 	return sc.CurrentConfig
+}
+
+func (sc *SideChainImpl) IsOnDuty() bool {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	return sc.isOnDuty
 }
 
 func (sc *SideChainImpl) GetRage() float32 {
@@ -106,6 +116,17 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
 
 	return nil
+}
+
+func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
+	sc.mux.Lock()
+	sc.isOnDuty = onDuty
+	sc.mux.Unlock()
+	////add side chain mining related logic here
+	//sideauxpow.StartSidechainMining(sideNode)
+	if onDuty {
+		sc.syncSideChainCachedTxs()
+	}
 }
 
 func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64) (*TransactionInfo, error) {
@@ -167,4 +188,30 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *core.Transaction)
 	}
 
 	return result, nil
+}
+
+func (sc *SideChainImpl) startSidechainMining() {
+	rpcConfig, ok := config.GetRpcConfig(sc.GetKey())
+	if ok {
+		sideauxpow.StartSidechainMining(rpcConfig)
+	}
+}
+
+func (sc *SideChainImpl) syncSideChainCachedTxs() {
+	txs, err := store.DbCache.GetAllSideChainTxs(sc.GetKey())
+	if err != nil {
+		log.Warn(err)
+		return
+	}
+
+	//todo update transactions from rpc
+	receivedTxs := txs
+
+	if err != nil {
+		store.DbCache.RemoveSideChainTxs(receivedTxs)
+	}
+
+	cs.P2PClientSingleton.Broadcast(&cs.TxCacheClearMessage{
+		Command:    cs.WithdrawTxCacheClearCommand,
+		RemovedTxs: receivedTxs})
 }
