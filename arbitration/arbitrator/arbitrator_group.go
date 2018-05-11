@@ -172,7 +172,7 @@ func Init() {
 		isListenerOnDuty: false,
 	}
 
-	currentArbitrator := &ArbitratorImpl{mux: new(sync.Mutex), mainOnDutyMux: new(sync.Mutex)}
+	currentArbitrator := &ArbitratorImpl{mainOnDutyMux: new(sync.Mutex)}
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 

@@ -44,6 +44,10 @@ const (
 				TransactionHash VARCHAR,
 				GenesisBlockAddress VARCHAR(34)
 			);`
+	CreateMainChainTxsTable = `CREATE TABLE IF NOT EXISTS MainChainTxs (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				TransactionHash VARCHAR
+			);`
 )
 
 var (
@@ -123,6 +127,11 @@ func initDB() (*sql.DB, error) {
 	}
 	// Create SideChainTxs table
 	_, err = db.Exec(CreateSideChainTxsTable)
+	if err != nil {
+		return nil, err
+	}
+	// Create MainChainTxs table
+	_, err = db.Exec(CreateMainChainTxsTable)
 	if err != nil {
 		return nil, err
 	}
@@ -352,8 +361,8 @@ func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress 
 }
 
 func (store *DataStoreImpl) HashSideChainTx(transactionHash string) (bool, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
 
 	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
 	defer rows.Close()
@@ -365,27 +374,115 @@ func (store *DataStoreImpl) HashSideChainTx(transactionHash string) (bool, error
 }
 
 func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	for _, txHash := range transactionHashes {
+		stmt, err := store.Prepare(
+			"DELETE FROM SideChainTxs WHERE TransactionHash=?")
+		if err != nil {
+			return err
+		}
+		_, err = stmt.Exec(txHash)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (store *DataStoreImpl) GetAllSideChainTxs(genesisBlockAddress string) ([]string, error) {
-	return nil, nil
-}
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
 
-func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, error) {
-	return nil, nil
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	for rows.Next() {
+		var txHash string
+		err = rows.Scan(&txHash)
+		if err != nil {
+			return nil, err
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	return txHashes, nil
 }
 
 func (store *DataStoreImpl) AddMainChainTx(transactionHash string) error {
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
+
+	// Prepare sql statement
+	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash) values(?)")
+	if err != nil {
+		return err
+	}
+	// Do insert
+	_, err = stmt.Exec(transactionHash)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
 func (store *DataStoreImpl) HashMainChainTx(transactionHash string) (bool, error) {
-	return false, nil
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=?`, transactionHash)
+	defer rows.Close()
+	if err != nil {
+		return false, err
+	}
+
+	return rows.Next(), nil
 }
 
 func (store *DataStoreImpl) RemoveMainChainTxs(transactionHashes []string) error {
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
+
+	for _, txHash := range transactionHashes {
+		stmt, err := store.Prepare(
+			"DELETE FROM MainChainTxs WHERE TransactionHash=?")
+		if err != nil {
+			return err
+		}
+		_, err = stmt.Exec(txHash)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
+}
+
+func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, error) {
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
+
+	rows, err := store.Query(`SELECT MainChainTxs.TransactionHash FROM MainChainTxs`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	for rows.Next() {
+		var txHash string
+		err = rows.Scan(&txHash)
+		if err != nil {
+			return nil, err
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	return txHashes, nil
 }
 
 type DbMainChainFunc struct {

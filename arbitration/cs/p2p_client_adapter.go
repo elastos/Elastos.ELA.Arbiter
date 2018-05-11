@@ -6,6 +6,7 @@ import (
 
 	"encoding/binary"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
@@ -26,13 +27,9 @@ const (
 	DepositTxCacheClearCommand  = "depositTxCacheClear"
 )
 
-type P2PClientListener interface {
-	OnP2PReceived(peer *spvnet.Peer, msg p2p.Message) error
-}
-
 type P2PClientAdapter struct {
 	p2pClient  spvI.P2PClient
-	listeners  []P2PClientListener
+	listeners  []base.P2PClientListener
 	arbitrator Arbitrator
 }
 
@@ -56,7 +53,7 @@ func InitP2PClient(arbitrator Arbitrator) error {
 
 func (adapter *P2PClientAdapter) tryInit() {
 	if adapter.listeners == nil {
-		adapter.listeners = make([]P2PClientListener, 0)
+		adapter.listeners = make([]base.P2PClientListener, 0)
 	}
 }
 
@@ -77,7 +74,7 @@ func (adapter *P2PClientAdapter) InitLocalPeer(peer *spvnet.Peer) {
 	peer.SetRelay(uint8(1))
 }
 
-func (adapter *P2PClientAdapter) AddListener(listener P2PClientListener) {
+func (adapter *P2PClientAdapter) AddListener(listener base.P2PClientListener) {
 	adapter.tryInit()
 	adapter.listeners = append(adapter.listeners, listener)
 }

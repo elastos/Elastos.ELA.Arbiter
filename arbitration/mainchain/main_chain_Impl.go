@@ -37,6 +37,7 @@ func (dns *MainChainImpl) SyncMainChainCachedTxs() error {
 
 	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
 	P2PClientSingleton.Broadcast(msg)
+	return nil
 }
 
 func (dns *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {

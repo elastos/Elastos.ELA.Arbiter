@@ -9,6 +9,7 @@ import (
 
 type SideChain interface {
 	AccountListener
+	P2PClientListener
 	SideChainNode
 
 	GetKey() string

@@ -10,6 +10,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
@@ -48,15 +49,13 @@ type Arbitrator interface {
 }
 
 type ArbitratorImpl struct {
-	mux           *sync.Mutex
 	mainOnDutyMux *sync.Mutex
 	isOnDuty      bool
 
-	mainChainImpl          MainChain
-	mainChainClientImpl    MainChainClient
-	sideChainManagerImpl   SideChainManager
-	Keystore               Keystore
-	CurrentDepositTxHashes []common.Uint256
+	mainChainImpl        MainChain
+	mainChainClientImpl  MainChainClient
+	sideChainManagerImpl SideChainManager
+	Keystore             Keystore
 }
 
 func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
@@ -223,23 +222,17 @@ func (ar *ArbitratorImpl) Confirmed() bool {
 
 func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-		ar.mux.Lock()
-		if len(ar.CurrentDepositTxHashes) != 0 {
-			ar.CurrentDepositTxHashes = nil
-		}
-		ar.mux.Unlock()
 		return
 	}
 
-	ar.mux.Lock()
-	for _, hash := range ar.CurrentDepositTxHashes {
-		if hash == spvtxn.Hash() {
-			ar.mux.Unlock()
-			return
-		}
+	if ok, _ := store.DbCache.HashMainChainTx(spvtxn.Hash().String()); ok {
+		return
 	}
-	ar.CurrentDepositTxHashes = append(ar.CurrentDepositTxHashes, spvtxn.Hash())
-	ar.mux.Unlock()
+
+	if err := store.DbCache.AddMainChainTx(spvtxn.Hash().String()); err != nil {
+		log.Error("AddMainChainTx error, txHash:", spvtxn.Hash().String())
+		return
+	}
 
 	buf := new(bytes.Buffer)
 	spvtxn.Serialize(buf)
