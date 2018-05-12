@@ -89,7 +89,7 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 	datastore.ResetDataStore()
 }
 
-func TestDataStoreImpl_GetAllSideChainTxs(t *testing.T) {
+func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	datastore, err := OpenDataStore()
 	if err != nil {
 		t.Error("Open database error.")
@@ -106,7 +106,7 @@ func TestDataStoreImpl_GetAllSideChainTxs(t *testing.T) {
 	datastore.AddSideChainTx(txHash2, genesisBlockAddress)
 	datastore.AddSideChainTx(txHash3, genesisBlockAddress2)
 
-	txHashes, err := datastore.GetAllSideChainTxs(genesisBlockAddress)
+	txHashes, err := datastore.GetAllSideChainTxHashes(genesisBlockAddress)
 	if err != nil {
 		t.Error("Get all side chain transactions error.")
 	}
@@ -191,7 +191,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	datastore.ResetDataStore()
 }
 
-func TestDataStoreImpl_GetAllMainChainTxs(t *testing.T) {
+func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	datastore, err := OpenDataStore()
 	if err != nil {
 		t.Error("Open database error.")
@@ -205,7 +205,7 @@ func TestDataStoreImpl_GetAllMainChainTxs(t *testing.T) {
 	datastore.AddMainChainTx(txHash2)
 	datastore.AddMainChainTx(txHash3)
 
-	txHashes, err := datastore.GetAllMainChainTxs()
+	txHashes, err := datastore.GetAllMainChainTxHashes()
 	if err != nil {
 		t.Error("Get all main chain transactions error.")
 	}

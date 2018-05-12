@@ -122,10 +122,9 @@ func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
 	sc.mux.Lock()
 	sc.isOnDuty = onDuty
 	sc.mux.Unlock()
-	////add side chain mining related logic here
-	//sideauxpow.StartSidechainMining(sideNode)
 	if onDuty {
 		sc.syncSideChainCachedTxs()
+		sc.startSidechainMining()
 	}
 }
 
@@ -198,7 +197,7 @@ func (sc *SideChainImpl) startSidechainMining() {
 }
 
 func (sc *SideChainImpl) syncSideChainCachedTxs() {
-	txs, err := store.DbCache.GetAllSideChainTxs(sc.GetKey())
+	txs, err := store.DbCache.GetAllSideChainTxHashes(sc.GetKey())
 	if err != nil {
 		log.Warn(err)
 		return

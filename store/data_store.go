@@ -12,6 +12,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -73,12 +74,13 @@ type DataStore interface {
 	AddSideChainTx(transactionHash, genesisBlockAddress string) error
 	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
-	GetAllSideChainTxs(genesisBlockAddress string) ([]string, error)
+	GetAllSideChainTxHashes(genesisBlockAddress string) ([]string, error)
 
-	AddMainChainTx(transactionHash string) error
+	AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error
 	HashMainChainTx(transactionHash string) (bool, error)
 	RemoveMainChainTxs(transactionHashes []string) error
-	GetAllMainChainTxs() ([]string, error)
+	GetAllMainChainTxHashes() ([]string, error)
+	GetMainChainTxsFromHashes(transactionHashes []string) ([]*Transaction, []*bloom.MerkleProof, error)
 
 	ResetDataStore() error
 }
@@ -392,7 +394,7 @@ func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error
 	return nil
 }
 
-func (store *DataStoreImpl) GetAllSideChainTxs(genesisBlockAddress string) ([]string, error) {
+func (store *DataStoreImpl) GetAllSideChainTxHashes(genesisBlockAddress string) ([]string, error) {
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 
@@ -414,7 +416,7 @@ func (store *DataStoreImpl) GetAllSideChainTxs(genesisBlockAddress string) ([]st
 	return txHashes, nil
 }
 
-func (store *DataStoreImpl) AddMainChainTx(transactionHash string) error {
+func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error {
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 
@@ -463,7 +465,7 @@ func (store *DataStoreImpl) RemoveMainChainTxs(transactionHashes []string) error
 	return nil
 }
 
-func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, error) {
+func (store *DataStoreImpl) GetAllMainChainTxHashes() ([]string, error) {
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 
@@ -483,6 +485,10 @@ func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, error) {
 		txHashes = append(txHashes, txHash)
 	}
 	return txHashes, nil
+}
+
+func (store *DataStoreImpl) GetMainChainTxsFromHashes(transactionHashes []string) ([]*Transaction, []*bloom.MerkleProof, error) {
+	return nil, nil, nil
 }
 
 type DbMainChainFunc struct {

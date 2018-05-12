@@ -11,13 +11,13 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
+	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -27,23 +27,29 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (dns *MainChainImpl) SyncMainChainCachedTxs() error {
-	txs, err := DbCache.GetAllMainChainTxs()
+func (dns *MainChainImpl) SyncMainChainCachedTxs() ([]*Transaction, []*bloom.MerkleProof, error) {
+	txs, err := DbCache.GetAllMainChainTxHashes()
 	if err != nil {
-		return err
+		return nil, nil, err
 	}
 
 	//todo sync from rpc
-	receivedTxs := txs
+	var receivedTxs []string
+
+	unsolvedTxs := SubstractTransactionHashes(txs, receivedTxs)
+	transactions, proofs, err := DbCache.GetMainChainTxsFromHashes(unsolvedTxs)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	err = DbCache.RemoveMainChainTxs(receivedTxs)
 	if err != nil {
-		log.Warn(err)
+		return nil, nil, err
 	}
 
 	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
 	P2PClientSingleton.Broadcast(msg)
-	return nil
+	return transactions, proofs, nil
 }
 
 func (dns *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {

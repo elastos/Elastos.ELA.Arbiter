@@ -4,6 +4,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
 
@@ -15,7 +16,7 @@ type MainChain interface {
 	BroadcastWithdrawProposal(txn *core.Transaction) error
 	ReceiveProposalFeedback(content []byte) error
 
-	SyncMainChainCachedTxs() error
+	SyncMainChainCachedTxs() ([]*core.Transaction, []*bloom.MerkleProof, error)
 }
 
 type MainChainClient interface {

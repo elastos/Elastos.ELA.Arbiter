@@ -82,8 +82,13 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 	ar.mainOnDutyMux.Unlock()
 
 	if onDuty {
-		if err := ar.mainChainImpl.SyncMainChainCachedTxs(); err != nil {
+		txs, proofs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
+		if err != nil {
 			log.Warn(err)
+		}
+
+		for i := range txs {
+			ar.createAndSendDepositTransaction(proofs[i], txs[i])
 		}
 	}
 }
@@ -222,37 +227,21 @@ func (ar *ArbitratorImpl) Confirmed() bool {
 }
 
 func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
-	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-		return
-	}
 
 	if ok, _ := store.DbCache.HashMainChainTx(spvtxn.Hash().String()); ok {
 		return
 	}
 
-	if err := store.DbCache.AddMainChainTx(spvtxn.Hash().String()); err != nil {
+	if err := store.DbCache.AddMainChainTx(spvtxn.Hash().String(), &spvtxn, &proof); err != nil {
 		log.Error("AddMainChainTx error, txHash:", spvtxn.Hash().String())
 		return
 	}
 
-	buf := new(bytes.Buffer)
-	spvtxn.Serialize(buf)
-	txBytes := buf.Bytes()
-
-	r := bytes.NewReader(txBytes)
-	txn := new(Transaction)
-	txn.Deserialize(r)
-
-	depositInfo, err := ar.ParseUserDepositTransactionInfo(txn)
-	if err != nil {
-		log.Error(err)
+	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}
 
-	transactionInfoMap := ar.CreateDepositTransactions(proof, depositInfo)
-	ar.SendDepositTransactions(transactionInfoMap)
-
-	spvService.SubmitTransactionReceipt(spvtxn.Hash())
+	ar.createAndSendDepositTransaction(&proof, &spvtxn)
 }
 
 func (ar *ArbitratorImpl) Rollback(height uint32) {
@@ -342,4 +331,17 @@ func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string,
 	}
 	content := common.BytesToHexString(buf.Bytes())
 	return content, nil
+}
+
+func (ar *ArbitratorImpl) createAndSendDepositTransaction(proof *bloom.MerkleProof, spvtxn *Transaction) {
+	depositInfo, err := ar.ParseUserDepositTransactionInfo(spvtxn)
+	if err != nil {
+		log.Error(err)
+		return
+	}
+
+	transactionInfoMap := ar.CreateDepositTransactions(*proof, depositInfo)
+	ar.SendDepositTransactions(transactionInfoMap)
+
+	spvService.SubmitTransactionReceipt(spvtxn.Hash())
 }

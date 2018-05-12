@@ -71,3 +71,23 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (
 	txn.Programs[0].Parameter = buf.Bytes()
 	return len(txn.Programs[0].Parameter) / (SignatureScriptLength - 1), nil
 }
+
+func SubstractTransactionHashes(hashSet, subSet []string) []string {
+	var result []string
+
+	for _, hash := range hashSet {
+		if !hasHash(subSet, hash) {
+			result = append(result, hash)
+		}
+	}
+	return result
+}
+
+func hasHash(hashSet []string, hash string) bool {
+	for _, item := range hashSet {
+		if item == hash {
+			return true
+		}
+	}
+	return false
+}
