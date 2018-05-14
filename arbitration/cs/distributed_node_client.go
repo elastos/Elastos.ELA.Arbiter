@@ -37,7 +37,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return errors.New("Unknown payload type.")
 	}
 
-	if ok, err := store.DbCache.HasSideChainTx(withdrawAsset.SideChainTransactionHash); err != nil || ok {
+	if ok, err := store.DbCache.HasSideChainTxReceived(withdrawAsset.SideChainTransactionHash); err != nil || ok {
 		return errors.New("Proposal already exit.")
 	}
 
@@ -49,9 +49,19 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return err
 	}
 
-	if err := store.DbCache.AddSideChainTx(
-		withdrawAsset.SideChainTransactionHash, withdrawAsset.GenesisBlockAddress); err != nil {
+	ok, err := store.DbCache.HasSideChainTx(withdrawAsset.SideChainTransactionHash)
+	if err != nil {
 		return err
+	}
+	if !ok {
+		if err := store.DbCache.AddSideChainTx(withdrawAsset.SideChainTransactionHash,
+			withdrawAsset.GenesisBlockAddress, transactionItem.ItemContent, true); err != nil {
+			return err
+		}
+	} else {
+		if err := store.DbCache.SetSideChainTxReceived(withdrawAsset.SideChainTransactionHash); err != nil {
+			return err
+		}
 	}
 
 	return nil

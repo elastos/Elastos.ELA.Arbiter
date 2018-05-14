@@ -9,7 +9,6 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -80,22 +79,12 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transaction) error {
 
-	withdrawAsset, ok := transaction.Payload.(*PayloadWithdrawAsset)
-	if !ok {
-		return errors.New("Unknown playload typed.")
-	}
-
 	proposal, err := dns.generateWithdrawProposal(transaction, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
 	}
 
 	dns.sendToArbitrator(proposal)
-
-	if err := store.DbCache.AddSideChainTx(
-		withdrawAsset.SideChainTransactionHash, withdrawAsset.GenesisBlockAddress); err != nil {
-		return err
-	}
 
 	return nil
 }

@@ -220,3 +220,7 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 
 	datastore.ResetDataStore()
 }
+
+func TestDataStoreImpl_HasSideChainTxReceived(t *testing.T) {
+	//todo received is false when HasSideChainTx() method is false
+}

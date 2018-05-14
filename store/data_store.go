@@ -71,10 +71,13 @@ type DataStore interface {
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
 	GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error)
 
-	AddSideChainTx(transactionHash, genesisBlockAddress string) error
+	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, received bool) error
 	HasSideChainTx(transactionHash string) (bool, error)
+	HasSideChainTxReceived(transactionHash string) (bool, error)
+	SetSideChainTxReceived(transactionHash string) error
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes(genesisBlockAddress string) ([]string, error)
+	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
 
 	AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error
 	HashMainChainTx(transactionHash string) (bool, error)
@@ -345,7 +348,8 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 	return inputs, nil
 }
 
-func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress string) error {
+func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress string,
+	transaction *Transaction, received bool) error {
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 
@@ -373,6 +377,14 @@ func (store *DataStoreImpl) HasSideChainTx(transactionHash string) (bool, error)
 	}
 
 	return rows.Next(), nil
+}
+
+func (store *DataStoreImpl) HasSideChainTxReceived(transactionHash string) (bool, error) {
+	return false, nil
+}
+
+func (store *DataStoreImpl) SetSideChainTxReceived(transactionHash string) error {
+	return nil
 }
 
 func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error {
@@ -414,6 +426,10 @@ func (store *DataStoreImpl) GetAllSideChainTxHashes(genesisBlockAddress string) 
 		txHashes = append(txHashes, txHash)
 	}
 	return txHashes, nil
+}
+
+func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
+	return nil, nil
 }
 
 func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error {

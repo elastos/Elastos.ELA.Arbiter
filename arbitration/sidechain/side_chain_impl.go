@@ -106,16 +106,21 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	if err != nil {
 		return err
 	}
-	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfo(txn)
-	if err != nil {
+
+	withdrawAsset, ok := txn.Payload.(*core.PayloadWithdrawAsset)
+	if !ok {
+		return errors.New("Unknown playload typed.")
+	}
+	if err := store.DbCache.AddSideChainTx(withdrawAsset.SideChainTransactionHash,
+		withdrawAsset.GenesisBlockAddress, txn, false); err != nil {
 		return err
 	}
 
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc, txinfo.Hash, &store.DbMainChainFunc{})
-	currentArbitrator.BroadcastWithdrawProposal(transactions)
+	if sc.IsOnDuty() { //only on duty arbitrator need to broadcast withdraw proposal
+		return nil
+	}
 
-	return nil
+	return sc.createAndBroadcastWithdrawProposal(txn)
 }
 
 func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
@@ -204,7 +209,19 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() {
 	}
 
 	//todo update transactions from rpc
-	receivedTxs := txs
+	var receivedTxs []string
+
+	unsolvedTxs := SubstractTransactionHashes(txs, receivedTxs)
+	transactions, err := store.DbCache.GetSideChainTxsFromHashes(unsolvedTxs)
+	if err != nil {
+		return
+	}
+
+	for _, txn := range transactions {
+		if err = sc.createAndBroadcastWithdrawProposal(txn); err != nil {
+			log.Warn(err)
+		}
+	}
 
 	if err != nil {
 		store.DbCache.RemoveSideChainTxs(receivedTxs)
@@ -213,4 +230,18 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() {
 	cs.P2PClientSingleton.Broadcast(&cs.TxCacheClearMessage{
 		Command:    cs.WithdrawTxCacheClearCommand,
 		RemovedTxs: receivedTxs})
+}
+
+func (sc *SideChainImpl) createAndBroadcastWithdrawProposal(txn *core.Transaction) error {
+	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfo(txn)
+	if err != nil {
+		return err
+	}
+
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc,
+		txn.Hash().String(), &store.DbMainChainFunc{})
+	currentArbitrator.BroadcastWithdrawProposal(transactions)
+
+	return nil
 }
