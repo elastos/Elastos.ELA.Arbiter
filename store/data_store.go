@@ -43,11 +43,15 @@ const (
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
-				GenesisBlockAddress VARCHAR(34)
+				GenesisBlockAddress VARCHAR(34),
+				TransactionData BLOB,
+				Received BOOLEAN
 			);`
 	CreateMainChainTxsTable = `CREATE TABLE IF NOT EXISTS MainChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
-				TransactionHash VARCHAR
+				TransactionHash VARCHAR,
+				TransactionData BLOB,
+				MerkleProof BLOB
 			);`
 )
 
@@ -354,12 +358,18 @@ func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress 
 	defer store.sideMux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress) values(?,?)")
+	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, Received) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
+
+	// Serialize transaction
+	buf := new(bytes.Buffer)
+	transaction.Serialize(buf)
+	transactionBytes := buf.Bytes()
+
 	// Do insert
-	_, err = stmt.Exec(transactionHash, genesisBlockAddress)
+	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionBytes, received)
 	if err != nil {
 		return err
 	}
@@ -380,10 +390,45 @@ func (store *DataStoreImpl) HasSideChainTx(transactionHash string) (bool, error)
 }
 
 func (store *DataStoreImpl) HasSideChainTxReceived(transactionHash string) (bool, error) {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	rows, err := store.Query(`SELECT GenesisBlockAddress, Received FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
+	defer rows.Close()
+	if err != nil {
+		return false, err
+	}
+
+	//return rows.Next(), nil
+	for rows.Next() {
+		var genesisBlockAddress string
+		var received bool
+		err = rows.Scan(&genesisBlockAddress, &received)
+		if err != nil {
+			return false, err
+		}
+
+		if received {
+			return true, nil
+		}
+	}
+
 	return false, nil
 }
 
 func (store *DataStoreImpl) SetSideChainTxReceived(transactionHash string) error {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	// Insert current height
+	stmt, err := store.Prepare("UPDATE SideChainTxs SET Received=? WHERE TransactionHash=?")
+	if err != nil {
+		return err
+	}
+	_, err = stmt.Exec(true, transactionHash)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -429,7 +474,33 @@ func (store *DataStoreImpl) GetAllSideChainTxHashes(genesisBlockAddress string) 
 }
 
 func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
-	return nil, nil
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	var txs []*Transaction
+	for _, txHash := range transactionHashes {
+		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=?`, txHash)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			var transactionBytes []byte
+			err = rows.Scan(&transactionBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			var tx Transaction
+			reader := bytes.NewReader(transactionBytes)
+			tx.Deserialize(reader)
+
+			txs = append(txs, &tx)
+		}
+	}
+
+	return txs, nil
 }
 
 func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error {
@@ -437,12 +508,23 @@ func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *
 	defer store.mainMux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash) values(?)")
+	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash, TransactionData, MerkleProof) values(?,?,?)")
 	if err != nil {
 		return err
 	}
+
+	// Serialize transaction
+	buf := new(bytes.Buffer)
+	transaction.Serialize(buf)
+	transactionBytes := buf.Bytes()
+
+	// Serialize merkleProof
+	buf = new(bytes.Buffer)
+	transaction.Serialize(buf)
+	merkleProofBytes := buf.Bytes()
+
 	// Do insert
-	_, err = stmt.Exec(transactionHash)
+	_, err = stmt.Exec(transactionHash, transactionBytes, merkleProofBytes)
 	if err != nil {
 		return err
 	}
@@ -504,7 +586,37 @@ func (store *DataStoreImpl) GetAllMainChainTxHashes() ([]string, error) {
 }
 
 func (store *DataStoreImpl) GetMainChainTxsFromHashes(transactionHashes []string) ([]*Transaction, []*bloom.MerkleProof, error) {
-	return nil, nil, nil
+	store.mainMux.Lock()
+	defer store.mainMux.Unlock()
+
+	rows, err := store.Query(`SELECT MainChainTxs.TransactionData FROM MainChainTxs`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var txs []*Transaction
+	var mps []*bloom.MerkleProof
+	for rows.Next() {
+		var transactionBytes []byte
+		var merkleProofBytes []byte
+		err = rows.Scan(&transactionBytes, &merkleProofBytes)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		var tx Transaction
+		reader := bytes.NewReader(transactionBytes)
+		tx.Deserialize(reader)
+
+		var mp bloom.MerkleProof
+		reader = bytes.NewReader(merkleProofBytes)
+		mp.Deserialize(reader)
+
+		txs = append(txs, &tx)
+		mps = append(mps, &mp)
+	}
+	return txs, mps, nil
 }
 
 type DbMainChainFunc struct {
