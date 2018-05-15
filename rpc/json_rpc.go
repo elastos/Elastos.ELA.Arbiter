@@ -12,6 +12,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Utility/common"
 	elaCore "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -81,6 +82,40 @@ func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool,
 	}
 
 	return true, nil
+}
+
+func GetExistWithdrawTransactions(txs []string) ([]string, error) {
+	infoBytes, err := json.Marshal(txs)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := CallAndUnmarshal("getexistwithdrawtransactions",
+		Param("txs", common.BytesToHexString(infoBytes)), config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	Unmarshal(result, removeTxs)
+	return removeTxs, nil
+}
+
+func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
+	infoBytes, err := json.Marshal(txs)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := CallAndUnmarshal("getexistdeposittransactions",
+		Param("txs", common.BytesToHexString(infoBytes)), config)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	Unmarshal(result, removeTxs)
+	return removeTxs, nil
 }
 
 func Call(method string, params map[string]string, config *config.RpcConfig) ([]byte, error) {

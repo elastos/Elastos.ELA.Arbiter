@@ -27,14 +27,16 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (dns *MainChainImpl) SyncMainChainCachedTxs() ([]*Transaction, []*bloom.MerkleProof, error) {
+func (mc *MainChainImpl) SyncMainChainCachedTxs() ([]*Transaction, []*bloom.MerkleProof, error) {
 	txs, err := DbCache.GetAllMainChainTxHashes()
 	if err != nil {
 		return nil, nil, err
 	}
 
-	//todo sync from rpc
-	var receivedTxs []string
+	receivedTxs, err := rpc.GetExistWithdrawTransactions(txs)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	unsolvedTxs := SubstractTransactionHashes(txs, receivedTxs)
 	transactions, proofs, err := DbCache.GetMainChainTxsFromHashes(unsolvedTxs)
@@ -52,14 +54,14 @@ func (dns *MainChainImpl) SyncMainChainCachedTxs() ([]*Transaction, []*bloom.Mer
 	return transactions, proofs, nil
 }
 
-func (dns *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
-	if msg.CMD() != dns.P2pCommand || msg.CMD() != WithdrawTxCacheClearCommand {
+func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+	if msg.CMD() != mc.P2pCommand || msg.CMD() != WithdrawTxCacheClearCommand {
 		return nil
 	}
 
 	switch m := msg.(type) {
 	case *SignMessage:
-		return dns.ReceiveProposalFeedback(m.Content)
+		return mc.ReceiveProposalFeedback(m.Content)
 	case *TxCacheClearMessage:
 		return DbCache.RemoveSideChainTxs(m.RemovedTxs)
 	}

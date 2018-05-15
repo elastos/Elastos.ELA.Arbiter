@@ -95,7 +95,8 @@ type CoinbaseInfo struct {
 }
 
 type IssueTokenInfo struct {
-	Proof string
+	Proof                    string
+	MainChainTransactionHash string
 }
 
 type TransferCrossChainAssetInfo struct {

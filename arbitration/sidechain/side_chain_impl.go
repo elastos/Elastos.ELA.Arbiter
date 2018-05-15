@@ -107,12 +107,8 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		return err
 	}
 
-	withdrawAsset, ok := txn.Payload.(*core.PayloadWithdrawAsset)
-	if !ok {
-		return errors.New("Unknown playload typed.")
-	}
-	if err := store.DbCache.AddSideChainTx(withdrawAsset.SideChainTransactionHash,
-		withdrawAsset.GenesisBlockAddress, txn, false); err != nil {
+	if err := store.DbCache.AddSideChainTx(txn.Hash().String(),
+		sc.GetKey(), txn, false); err != nil {
 		return err
 	}
 
@@ -128,12 +124,16 @@ func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
 	sc.isOnDuty = onDuty
 	sc.mux.Unlock()
 	if onDuty {
-		sc.syncSideChainCachedTxs()
+		err := sc.syncSideChainCachedTxs()
+		if err != nil {
+			log.Warn(err)
+		}
 		sc.startSidechainMining()
 	}
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64) (*TransactionInfo, error) {
+func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64,
+	mainChainTransactionHash string) (*TransactionInfo, error) {
 	var totalOutputAmount = amount // The total amount will be spend
 	var txOutputs []OutputInfo     // The outputs in transaction
 
@@ -155,6 +155,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.Mer
 	// Create payload
 	txPayloadInfo := new(IssueTokenInfo)
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
+	txPayloadInfo.MainChainTransactionHash = mainChainTransactionHash
 
 	// Create attributes
 	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
@@ -175,7 +176,6 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.Mer
 }
 
 func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *core.Transaction) ([]*WithdrawInfo, error) {
-
 	var result []*WithdrawInfo
 
 	switch payloadObj := txn.Payload.(type) {
@@ -201,20 +201,21 @@ func (sc *SideChainImpl) startSidechainMining() {
 	}
 }
 
-func (sc *SideChainImpl) syncSideChainCachedTxs() {
+func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 	txs, err := store.DbCache.GetAllSideChainTxHashes(sc.GetKey())
 	if err != nil {
-		log.Warn(err)
-		return
+		return err
 	}
 
-	//todo update transactions from rpc
-	var receivedTxs []string
+	receivedTxs, err := rpc.GetExistDepositTransactions(txs, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return err
+	}
 
 	unsolvedTxs := SubstractTransactionHashes(txs, receivedTxs)
 	transactions, err := store.DbCache.GetSideChainTxsFromHashes(unsolvedTxs)
 	if err != nil {
-		return
+		return err
 	}
 
 	for _, txn := range transactions {
@@ -230,6 +231,8 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() {
 	cs.P2PClientSingleton.Broadcast(&cs.TxCacheClearMessage{
 		Command:    cs.WithdrawTxCacheClearCommand,
 		RemovedTxs: receivedTxs})
+
+	return nil
 }
 
 func (sc *SideChainImpl) createAndBroadcastWithdrawProposal(txn *core.Transaction) error {

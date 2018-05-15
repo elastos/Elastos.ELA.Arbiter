@@ -38,7 +38,7 @@ type Arbitrator interface {
 
 	//deposit
 	ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error)
-	CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain
+	CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo, mainChainTransactionHash string) map[*TransactionInfo]SideChain
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
 
 	//withdraw
@@ -152,7 +152,8 @@ func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*
 	return ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
 }
 
-func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo) map[*TransactionInfo]SideChain {
+func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo,
+	mainChainTransactionHash string) map[*TransactionInfo]SideChain {
 
 	result := make(map[*TransactionInfo]SideChain, len(infoArray))
 	for _, info := range infoArray {
@@ -170,7 +171,7 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, inf
 		rateFloat := sideChain.GetRage()
 		rate := common.Fixed64(rateFloat * 10000)
 		amount := info.Amount * rate / 10000
-		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, amount)
+		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, amount, mainChainTransactionHash)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -340,7 +341,7 @@ func (ar *ArbitratorImpl) createAndSendDepositTransaction(proof *bloom.MerklePro
 		return
 	}
 
-	transactionInfoMap := ar.CreateDepositTransactions(*proof, depositInfo)
+	transactionInfoMap := ar.CreateDepositTransactions(*proof, depositInfo, spvtxn.Hash().String())
 	ar.SendDepositTransactions(transactionInfoMap)
 
 	spvService.SubmitTransactionReceipt(spvtxn.Hash())
