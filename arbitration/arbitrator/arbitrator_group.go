@@ -103,7 +103,7 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	group.mux.Unlock()
 
 	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
-	if err != nil && group.listener != nil {
+	if err == nil && group.listener != nil && group.listener.(*ArbitratorImpl).Keystore != nil {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
 			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
 			group.isListenerOnDuty = !group.isListenerOnDuty

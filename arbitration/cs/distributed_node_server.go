@@ -100,10 +100,6 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transact
 	dns.mux.Unlock()
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-	if !currentArbitrator.IsOnDutyOfMain() {
-		return nil, errors.New("Can not start a new proposal, you are not on duty.")
-	}
-
 	programHash, err := StandardAcccountPublicKeyToProgramHash(currentArbitrator.GetPublicKey())
 	if err != nil {
 		return nil, err

@@ -112,7 +112,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		return err
 	}
 
-	if sc.IsOnDuty() { //only on duty arbitrator need to broadcast withdraw proposal
+	if !sc.IsOnDuty() { //only on duty arbitrator need to broadcast withdraw proposal
 		return nil
 	}
 
@@ -228,9 +228,11 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 		store.DbCache.RemoveSideChainTxs(receivedTxs)
 	}
 
-	cs.P2PClientSingleton.Broadcast(&cs.TxCacheClearMessage{
-		Command:    cs.WithdrawTxCacheClearCommand,
-		RemovedTxs: receivedTxs})
+	if len(receivedTxs) != 0 {
+		cs.P2PClientSingleton.Broadcast(&cs.TxCacheClearMessage{
+			Command:    cs.WithdrawTxCacheClearCommand,
+			RemovedTxs: receivedTxs})
+	}
 
 	return nil
 }

@@ -12,7 +12,7 @@ type MainChainClientImpl struct {
 }
 
 func (client *MainChainClientImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
-	if msg.CMD() != client.P2pCommand || msg.CMD() != WithdrawTxCacheClearCommand {
+	if msg.CMD() != client.P2pCommand && msg.CMD() != WithdrawTxCacheClearCommand {
 		return nil
 	}
 

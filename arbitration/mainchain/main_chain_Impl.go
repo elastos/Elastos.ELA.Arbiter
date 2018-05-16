@@ -49,13 +49,16 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() ([]*Transaction, []*bloom.Merk
 		return nil, nil, err
 	}
 
-	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
-	P2PClientSingleton.Broadcast(msg)
+	if len(receivedTxs) != 0 {
+		msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
+		P2PClientSingleton.Broadcast(msg)
+	}
+
 	return transactions, proofs, nil
 }
 
 func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
-	if msg.CMD() != mc.P2pCommand || msg.CMD() != WithdrawTxCacheClearCommand {
+	if msg.CMD() != mc.P2pCommand && msg.CMD() != WithdrawTxCacheClearCommand {
 		return nil
 	}
 

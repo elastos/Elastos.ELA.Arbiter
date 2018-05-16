@@ -103,7 +103,7 @@ func (monitor *SideChainAccountMonitorImpl) checkOnDutyStatus(genesisBlockAddres
 	monitor.mux.Lock()
 	onDuty, _ := monitor.onDutyMap[genesisBlockAddress]
 	monitor.mux.Unlock()
-	if ok {
+	if !ok {
 		return errors.New("Do not exist listener.")
 	}
 
