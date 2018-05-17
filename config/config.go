@@ -50,6 +50,7 @@ type SideNodeConfig struct {
 	Rate                float32 `json:"Rate"`
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	DestroyAddress      string  `json:"DestroyAddress"`
+	GenesisBlock        string  `json:"GenesisBlock"`
 }
 
 type ConfigFile struct {

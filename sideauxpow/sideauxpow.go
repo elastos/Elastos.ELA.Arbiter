@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
@@ -17,8 +18,15 @@ import (
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
-var CurrentWallet wallet.Wallet
-var Passwd []byte
+var KeystoreDict = map[string]string{
+	"39fc8ba05b0064381e51afed65b4cf91bb8db60efebc38242e965d1b1fed0701": "keystore1.dat",
+	"e1773a0e7af0cc3272fd271be9d5026c4b636c0b25cfe82be69d8bcc44ec512e": "keystore2.dat",
+}
+
+var (
+	CurrentWallet wallet.Wallet
+	Passwd        []byte
+)
 
 func getPassword(passwd []byte, confirmed bool) []byte {
 	var tmp []byte
@@ -102,10 +110,12 @@ func Transfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error
 		return errors.New("invalid transaction fee")
 	}
 
-	from, err := SelectAddress(CurrentWallet)
+	keystore, err := wallet.OpenKeystore(name, Passwd)
 	if err != nil {
 		return err
 	}
+
+	from := keystore.Address()
 
 	to := from
 	amountStr := "0.1"
@@ -151,8 +161,21 @@ func Transfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error
 
 func StartSidechainMining(sideNode *config.SideNodeConfig) {
 	log.Debug("Send sidemining ")
-	err := Transfer(wallet.DefaultKeystoreFile, Passwd, sideNode)
+	keystoreFile := KeystoreDict[sideNode.GenesisBlock]
+	err := Transfer(keystoreFile, Passwd, sideNode)
 	if err != nil {
 		log.Warn(err)
+	}
+}
+
+func TestMultiSidechain() {
+	for {
+		select {
+		case <-time.After(time.Second * 3):
+			for _, node := range config.Parameters.SideNodeList {
+				StartSidechainMining(node)
+			}
+			println("TestMultiSidechain")
+		}
 	}
 }

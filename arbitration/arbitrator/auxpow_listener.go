@@ -77,16 +77,18 @@ func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
 	payloadData := tx.Payload.Data(ela.SideMiningPayloadVersion)
 	blockhashData := payloadData[0:32]
 	blockhashString := common.BytesToHexString(blockhashData)
+	genesishashData := payloadData[32:64]
+	genesishashString := common.BytesToHexString(genesishashData)
 
 	sideAuxpowData := sideAuxpowBuf.Bytes()
 	sideAuxpowString := common.BytesToHexString(sideAuxpowData)
 
-	err = sideauxpow.SubmitAuxpow(blockhashString, sideAuxpowString)
+	// Submit transaction receipt
+	spvService.SubmitTransactionReceipt(tx.Hash())
+
+	err = sideauxpow.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
 	if err != nil {
 		log.Error("Submit SideAuxpow error: ", err)
 		return
 	}
-
-	// Submit transaction receipt
-	spvService.SubmitTransactionReceipt(tx.Hash())
 }
