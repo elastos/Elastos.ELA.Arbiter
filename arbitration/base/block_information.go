@@ -95,12 +95,14 @@ type CoinbaseInfo struct {
 }
 
 type IssueTokenInfo struct {
-	Proof                    string
-	MainChainTransactionHash string
+	Proof                string
+	MainChainTransaction string
 }
 
 type TransferCrossChainAssetInfo struct {
-	AddressesMap map[string]uint64
+	CrossChainAddress []string
+	OutputIndex       []uint64
+	CrossChainAmount  []Fixed64
 }
 
 type TransferAssetInfo struct {

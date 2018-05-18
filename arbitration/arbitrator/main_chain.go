@@ -9,7 +9,7 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64,
+	CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64, crossChainAmount Fixed64,
 		sideChainTransactionHash string, mcFunc MainChainFunc) (*core.Transaction, error)
 	ParseUserDepositTransactionInfo(txn *core.Transaction) ([]*DepositInfo, error)
 

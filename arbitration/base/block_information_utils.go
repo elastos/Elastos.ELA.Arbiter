@@ -44,12 +44,19 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		obj.MerkleProof = proofBytes
+
+		transactionBytes, err := HexStringToBytes(object.MainChainTransaction)
+		if err != nil {
+			return nil, err
+		}
+		obj.MainChainTransaction = transactionBytes
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
 		obj := new(PayloadTransferCrossChainAsset)
-		obj.AddressesMap = object.AddressesMap
+		obj.CrossChainAddress = object.CrossChainAddress
+		obj.OutputIndex = object.OutputIndex
+		obj.CrossChainAmount = object.CrossChainAmount
 		return obj, nil
 	}
 

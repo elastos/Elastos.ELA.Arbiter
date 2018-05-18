@@ -94,9 +94,6 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
 	group.mux.Unlock()
 
-	//TODO add syncChainData [jzh]
-	//group.currentArbitrator.SyncChainData()
-
 	group.mux.Lock()
 	*group.currentHeight = height
 	group.lastSyncTime = &currentTime

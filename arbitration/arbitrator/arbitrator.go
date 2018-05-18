@@ -38,11 +38,11 @@ type Arbitrator interface {
 
 	//deposit
 	ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error)
-	CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo, mainChainTransactionHash string) map[*TransactionInfo]SideChain
+	CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction, infoArray []*DepositInfo) map[*TransactionInfo]SideChain
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
 
 	//withdraw
-	CreateWithdrawTransaction(
+	CreateWithdrawTransactions(
 		withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*Transaction
 	BroadcastWithdrawProposal(txns []*Transaction)
 	SendWithdrawTransaction(txn *Transaction) (interface{}, error)
@@ -122,8 +122,8 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(
-	withdrawInfoMap []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*Transaction {
+func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfoMap []*WithdrawInfo, sideChain SideChain,
+	sideTransactionHash string, mcFunc MainChainFunc) []*Transaction {
 
 	var result []*Transaction
 	for _, info := range withdrawInfoMap {
@@ -131,8 +131,9 @@ func (ar *ArbitratorImpl) CreateWithdrawTransaction(
 		rateFloat := sideChain.GetRage()
 		rate := common.Fixed64(rateFloat * 10000)
 		amount := info.Amount * 10000 / rate
+		crossChainAmount := info.CrossChainAmount * 10000 / rate
 		withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(
-			sideChain.GetKey(), info.TargetAddress, amount, sideTransactionHash, mcFunc)
+			sideChain.GetKey(), info.TargetAddress, amount, crossChainAmount, sideTransactionHash, mcFunc)
 		if err != nil {
 			log.Warn(err.Error())
 			continue
@@ -149,11 +150,16 @@ func (ar *ArbitratorImpl) CreateWithdrawTransaction(
 }
 
 func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error) {
-	return ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
+	depositInfo, err := ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
+	if err != nil {
+		return nil, err
+	}
+
+	return depositInfo, nil
 }
 
-func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, infoArray []*DepositInfo,
-	mainChainTransactionHash string) map[*TransactionInfo]SideChain {
+func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction,
+	infoArray []*DepositInfo) map[*TransactionInfo]SideChain {
 
 	result := make(map[*TransactionInfo]SideChain, len(infoArray))
 	for _, info := range infoArray {
@@ -170,8 +176,8 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, inf
 
 		rateFloat := sideChain.GetRage()
 		rate := common.Fixed64(rateFloat * 10000)
-		amount := info.Amount * rate / 10000
-		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, amount, mainChainTransactionHash)
+		amount := info.CrossChainAmount * rate / 10000
+		txInfo, err := sideChain.CreateDepositTransaction(info.TargetAddress, proof, mainChainTransaction, amount)
 		if err != nil {
 			log.Error(err)
 			continue
@@ -341,7 +347,7 @@ func (ar *ArbitratorImpl) createAndSendDepositTransaction(proof *bloom.MerklePro
 		return
 	}
 
-	transactionInfoMap := ar.CreateDepositTransactions(*proof, depositInfo, spvtxn.Hash().String())
+	transactionInfoMap := ar.CreateDepositTransactions(*proof, spvtxn, depositInfo)
 	ar.SendDepositTransactions(transactionInfoMap)
 
 	spvService.SubmitTransactionReceipt(spvtxn.Hash())

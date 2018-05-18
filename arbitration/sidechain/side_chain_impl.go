@@ -132,8 +132,8 @@ func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
 	}
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64,
-	mainChainTransactionHash string) (*TransactionInfo, error) {
+func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof,
+	mainChainTransaction *core.Transaction, amount common.Fixed64) (*TransactionInfo, error) {
 	var totalOutputAmount = amount // The total amount will be spend
 	var txOutputs []OutputInfo     // The outputs in transaction
 
@@ -152,10 +152,16 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.Mer
 		return nil, err
 	}
 
+	transactionInfo := new(bytes.Buffer)
+	err = mainChainTransaction.Serialize(transactionInfo)
+	if err != nil {
+		return nil, err
+	}
+
 	// Create payload
 	txPayloadInfo := new(IssueTokenInfo)
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
-	txPayloadInfo.MainChainTransactionHash = mainChainTransactionHash
+	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionInfo.Bytes())
 
 	// Create attributes
 	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
@@ -180,10 +186,11 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *core.Transaction)
 
 	switch payloadObj := txn.Payload.(type) {
 	case *core.PayloadTransferCrossChainAsset:
-		for address, index := range payloadObj.AddressesMap {
+		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
 			info := &WithdrawInfo{
-				TargetAddress: address,
-				Amount:        txn.Outputs[index].Value,
+				TargetAddress:    payloadObj.CrossChainAddress[i],
+				Amount:           txn.Outputs[payloadObj.OutputIndex[i]].Value,
+				CrossChainAmount: payloadObj.CrossChainAmount[i],
 			}
 			result = append(result, info)
 		}
@@ -244,7 +251,7 @@ func (sc *SideChainImpl) createAndBroadcastWithdrawProposal(txn *core.Transactio
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	transactions := currentArbitrator.CreateWithdrawTransaction(withdrawInfos, sc,
+	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfos, sc,
 		txn.Hash().String(), &store.DbMainChainFunc{})
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
 

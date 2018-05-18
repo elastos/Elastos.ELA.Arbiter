@@ -71,7 +71,7 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 	return nil
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64,
+func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64, crossChainAmount Fixed64,
 	sideChainTransactionHash string, mcFunc MainChainFunc) (*Transaction, error) {
 
 	mc.syncChainData()
@@ -87,7 +87,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	txOutput := &Output{
 		AssetID:     Uint256(assetID),
 		ProgramHash: *programhash,
-		Value:       amount,
+		Value:       crossChainAmount,
 		OutputLock:  uint32(WithdrawAssetLockTime),
 	}
 
@@ -166,16 +166,16 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 }
 
 func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error) {
-
 	var result []*DepositInfo
 
 	switch payloadObj := txn.Payload.(type) {
 	case *PayloadTransferCrossChainAsset:
-		for k, v := range payloadObj.AddressesMap {
+		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
 			info := &DepositInfo{
-				MainChainProgramHash: txn.Outputs[v].ProgramHash,
-				TargetAddress:        k,
-				Amount:               txn.Outputs[v].Value,
+				MainChainProgramHash: txn.Outputs[payloadObj.OutputIndex[i]].ProgramHash,
+				TargetAddress:        payloadObj.CrossChainAddress[i],
+				Amount:               txn.Outputs[payloadObj.OutputIndex[i]].Value,
+				CrossChainAmount:     payloadObj.CrossChainAmount[i],
 			}
 			result = append(result, info)
 		}

@@ -16,8 +16,8 @@ type SideChain interface {
 	GetKey() string
 	GetRage() float32
 
-	CreateDepositTransaction(target string, proof bloom.MerkleProof, amount common.Fixed64,
-		mainChainTransactionHash string) (*TransactionInfo, error)
+	CreateDepositTransaction(target string, proof bloom.MerkleProof, mainChainTransaction *core.Transaction,
+		amount common.Fixed64) (*TransactionInfo, error)
 	ParseUserWithdrawTransactionInfo(txn *core.Transaction) ([]*WithdrawInfo, error)
 }
 
