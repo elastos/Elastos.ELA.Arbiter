@@ -96,7 +96,7 @@ func (item *DistributedItem) GetSignedData() []byte {
 
 func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 	if len(item.signedData) != SignatureScriptLength*2 {
-		return nil, errors.New("Invalid sign data.")
+		return nil, errors.New("ParseFeedbackSignedData invalid sign data.")
 	}
 
 	sign := item.signedData[SignatureScriptLength:]
@@ -109,7 +109,7 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 
 	err = Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), sign[1:])
 	if err != nil {
-		return nil, errors.New("Invalid sign data.")
+		return nil, errors.New("ParseFeedbackSignedData invalid sign data.")
 	}
 
 	return sign, nil

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 
+	"ELAClient/common"
+	"bytes"
 	"encoding/binary"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
@@ -14,6 +16,7 @@ import (
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
+	"sync"
 )
 
 var (
@@ -31,6 +34,9 @@ type P2PClientAdapter struct {
 	p2pClient  spvI.P2PClient
 	listeners  []base.P2PClientListener
 	arbitrator Arbitrator
+
+	messages  []string
+	cacheLock sync.Mutex
 }
 
 func InitP2PClient(arbitrator Arbitrator) error {
@@ -79,11 +85,40 @@ func (adapter *P2PClientAdapter) AddListener(listener base.P2PClientListener) {
 	adapter.listeners = append(adapter.listeners, listener)
 }
 
+func (adapter *P2PClientAdapter) ExistMessage(msg string) bool {
+	adapter.cacheLock.Lock()
+	defer adapter.cacheLock.Unlock()
+	for _, v := range adapter.messages {
+		if v == msg {
+			return true
+		}
+	}
+	return false
+}
+
+func (adapter *P2PClientAdapter) AddMessage(msg string) bool {
+	adapter.cacheLock.Lock()
+	defer adapter.cacheLock.Unlock()
+	adapter.messages = append(adapter.messages, msg)
+	return false
+}
+
 func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 	adapter.p2pClient.PeerManager().Broadcast(msg)
 }
 
 func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
+	buf := new(bytes.Buffer)
+	msg.Serialize(buf)
+	msgStr := common.BytesToHexString(buf.Bytes())
+
+	if adapter.ExistMessage(msgStr) {
+		return nil
+	} else {
+		adapter.AddMessage(msgStr)
+		adapter.Broadcast(msg)
+	}
+
 	if adapter.listeners == nil {
 		return nil
 	}

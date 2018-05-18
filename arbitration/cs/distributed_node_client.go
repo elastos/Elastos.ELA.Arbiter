@@ -27,8 +27,6 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 	}
 
 	if transactionItem.IsFeedback() {
-		//todo deal with newtwork storm
-		//client.broadcast(content)
 		return nil
 	}
 
@@ -37,8 +35,24 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return errors.New("Unknown payload type.")
 	}
 
-	if ok, err := store.DbCache.HasSideChainTxReceived(withdrawAsset.SideChainTransactionHash); err != nil || ok {
-		return errors.New("Proposal already exit.")
+	ok, err := store.DbCache.HasSideChainTxReceived(withdrawAsset.SideChainTransactionHash)
+	if err != nil {
+		return errors.New("Get exist side chain transaction from db failed")
+	}
+	if ok {
+		transactions, err := store.DbCache.GetSideChainTxsFromHashes([]string{withdrawAsset.SideChainTransactionHash})
+		if err != nil || len(transactions) != 1 {
+			return errors.New("Get exist side chain transaction from db failed")
+		}
+
+		withdrawAsset, ok := transactions[0].Payload.(*PayloadWithdrawAsset)
+		if !ok {
+			return errors.New("Unknown payload type")
+		}
+
+		if withdrawAsset.BlockHeight >= transactions[0].Payload.(*PayloadWithdrawAsset).BlockHeight {
+			return errors.New("Proposal already exit.")
+		}
 	}
 
 	if err := client.SignProposal(transactionItem); err != nil {
@@ -49,7 +63,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return err
 	}
 
-	ok, err := store.DbCache.HasSideChainTx(withdrawAsset.SideChainTransactionHash)
+	ok, err = store.DbCache.HasSideChainTx(withdrawAsset.SideChainTransactionHash)
 	if err != nil {
 		return err
 	}
@@ -59,7 +73,12 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 			return err
 		}
 	} else {
-		if err := store.DbCache.SetSideChainTxReceived(withdrawAsset.SideChainTransactionHash); err != nil {
+		if err := store.DbCache.RemoveSideChainTxs([]string{withdrawAsset.SideChainTransactionHash}); err != nil {
+			return err
+		}
+
+		if err = store.DbCache.AddSideChainTx(withdrawAsset.SideChainTransactionHash,
+			withdrawAsset.GenesisBlockAddress, transactionItem.ItemContent, true); err != nil {
 			return err
 		}
 	}
