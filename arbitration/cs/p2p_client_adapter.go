@@ -1,12 +1,12 @@
 package cs
 
 import (
-	"errors"
-	"fmt"
-
-	"ELAClient/common"
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"fmt"
+	"sync"
+
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -14,9 +14,9 @@ import (
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
 	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
+	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
-	"sync"
 )
 
 var (

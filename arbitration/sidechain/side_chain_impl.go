@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"encoding/json"
+	"sync"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
@@ -22,7 +24,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
-	"sync"
 )
 
 type SideChainImpl struct {
@@ -132,10 +133,7 @@ func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
 }
 
 func (sc *SideChainImpl) StartSidechainMining() {
-	rpcConfig, ok := config.GetRpcConfig(sc.GetKey())
-	if ok {
-		sideauxpow.StartSidechainMining(rpcConfig)
-	}
+	sideauxpow.StartSidechainMining(sc.CurrentConfig)
 }
 
 func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof,

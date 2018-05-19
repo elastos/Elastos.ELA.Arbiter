@@ -62,7 +62,7 @@ func unmarshal(result interface{}, target interface{}) error {
 func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
 	log.Info("getSideAuxpow")
 
-	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), rpcConfig)
+	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), sideNode.Rpc)
 	if err != nil {
 		return err
 	}
@@ -159,7 +159,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	return nil
 }
 
-func StartSidechainMining(rpcConfig *config.RpcConfig) {
+func StartSidechainMining(sideNode *config.SideNodeConfig) {
 	log.Debug("Send sidemining ")
 	keystoreFile := KeystoreDict[sideNode.GenesisBlock]
 	err := sideMiningTransfer(keystoreFile, Passwd, sideNode)
@@ -173,7 +173,7 @@ func TestMultiSidechain() {
 		select {
 		case <-time.After(time.Second * 3):
 			for _, node := range config.Parameters.SideNodeList {
-				StartSidechainMining(node.Rpc)
+				StartSidechainMining(node)
 			}
 			println("TestMultiSidechain")
 		}
