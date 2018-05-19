@@ -169,14 +169,12 @@ func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.Mer
 	attributesInfo = append(attributesInfo, txAttr)
 
 	// Create program
-	program := ProgramInfo{}
 	return &TransactionInfo{
 		TxType:     core.IssueToken,
 		Payload:    txPayloadInfo,
 		Attributes: attributesInfo,
 		Inputs:     []InputInfo{},
 		Outputs:    txOutputs,
-		Programs:   []ProgramInfo{program},
 		LockTime:   uint32(0),
 	}, nil
 }

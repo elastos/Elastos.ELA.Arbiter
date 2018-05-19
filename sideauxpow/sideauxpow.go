@@ -172,7 +172,7 @@ func TestMultiSidechain() {
 		select {
 		case <-time.After(time.Second * 3):
 			for _, node := range config.Parameters.SideNodeList {
-				StartSidechainMining(node)
+				StartSidechainMining(node.Rpc)
 			}
 			println("TestMultiSidechain")
 		}
