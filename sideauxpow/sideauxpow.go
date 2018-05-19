@@ -59,7 +59,7 @@ func unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func Transfer(name string, passwd []byte, rpcConfig *config.RpcConfig) error {
+func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
 	log.Info("getSideAuxpow")
 
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), rpcConfig)
@@ -161,7 +161,8 @@ func Transfer(name string, passwd []byte, rpcConfig *config.RpcConfig) error {
 
 func StartSidechainMining(rpcConfig *config.RpcConfig) {
 	log.Debug("Send sidemining ")
-	err := Transfer(wallet.DefaultKeystoreFile, Passwd, rpcConfig)
+	keystoreFile := KeystoreDict[sideNode.GenesisBlock]
+	err := sideMiningTransfer(keystoreFile, Passwd, sideNode)
 	if err != nil {
 		log.Warn(err)
 	}

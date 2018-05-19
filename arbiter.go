@@ -111,5 +111,7 @@ func main() {
 	log.Info("8. Start servers.")
 	go httpjsonrpc.StartRPCServer()
 
+	go sideauxpow.SidechainAccountDivide(wallet)
+
 	select {}
 }
