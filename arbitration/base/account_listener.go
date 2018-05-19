@@ -4,6 +4,7 @@ type AccountListener interface {
 	GetAccountAddress() string
 	OnUTXOChanged(txinfo *TransactionInfo) error
 	OnDutyArbitratorChanged(onDuty bool)
+	StartSidechainMining()
 }
 
 type AccountMonitor interface {

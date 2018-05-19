@@ -128,7 +128,13 @@ func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
 		if err != nil {
 			log.Warn(err)
 		}
-		sc.startSidechainMining()
+	}
+}
+
+func (sc *SideChainImpl) StartSidechainMining() {
+	rpcConfig, ok := config.GetRpcConfig(sc.GetKey())
+	if ok {
+		sideauxpow.StartSidechainMining(rpcConfig)
 	}
 }
 
@@ -197,13 +203,6 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *core.Transaction)
 	}
 
 	return result, nil
-}
-
-func (sc *SideChainImpl) startSidechainMining() {
-	rpcConfig, ok := config.GetRpcConfig(sc.GetKey())
-	if ok {
-		sideauxpow.StartSidechainMining(rpcConfig)
-	}
 }
 
 func (sc *SideChainImpl) syncSideChainCachedTxs() error {
