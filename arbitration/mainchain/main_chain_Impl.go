@@ -71,27 +71,34 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 	return nil
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64, crossChainAmount Fixed64,
+func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, infoArray []*WithdrawInfo, rate float32,
 	sideChainTransactionHash string, mcFunc MainChainFunc) (*Transaction, error) {
 
 	mc.syncChainData()
 
-	// Check if from address is valid
-	assetID := spvWallet.SystemAssetId
-	programhash, err := Uint168FromAddress(target)
-	if err != nil {
-		return nil, err
-	}
+	var totalOutputAmount Fixed64
 	// Create transaction outputs
 	var txOutputs []*Output
-	txOutput := &Output{
-		AssetID:     Uint256(assetID),
-		ProgramHash: *programhash,
-		Value:       crossChainAmount,
-		OutputLock:  uint32(WithdrawAssetLockTime),
-	}
+	// Check if from address is valid
+	assetID := spvWallet.SystemAssetId
+	for _, info := range infoArray {
+		amount := info.Amount / Fixed64(rate)
+		crossChainAmount := info.CrossChainAmount / Fixed64(rate)
+		programhash, err := Uint168FromAddress(info.TargetAddress)
+		if err != nil {
+			return nil, err
+		}
 
-	txOutputs = append(txOutputs, txOutput)
+		txOutput := &Output{
+			AssetID:     Uint256(assetID),
+			ProgramHash: *programhash,
+			Value:       crossChainAmount,
+			OutputLock:  uint32(WithdrawAssetLockTime),
+		}
+
+		txOutputs = append(txOutputs, txOutput)
+		totalOutputAmount += amount
+	}
 
 	var txInputs []*Input
 	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
@@ -100,7 +107,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, target s
 	}
 
 	// Create transaction inputs
-	var totalOutputAmount = amount
 	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {

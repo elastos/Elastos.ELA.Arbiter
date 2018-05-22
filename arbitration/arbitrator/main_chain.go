@@ -3,13 +3,12 @@ package arbitrator
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, target string, amount Fixed64, crossChainAmount Fixed64,
+	CreateWithdrawTransaction(withdrawBank string, infoArray []*WithdrawInfo, rate float32,
 		sideChainTransactionHash string, mcFunc MainChainFunc) (*core.Transaction, error)
 	ParseUserDepositTransactionInfo(txn *core.Transaction) ([]*DepositInfo, error)
 

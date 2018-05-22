@@ -136,19 +136,22 @@ func (sc *SideChainImpl) StartSidechainMining() {
 	sideauxpow.StartSidechainMining(sc.CurrentConfig)
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(target string, proof bloom.MerkleProof,
-	mainChainTransaction *core.Transaction, amount common.Fixed64) (*TransactionInfo, error) {
-	var totalOutputAmount = amount // The total amount will be spend
-	var txOutputs []OutputInfo     // The outputs in transaction
+func (sc *SideChainImpl) CreateDepositTransaction(infoArray []*DepositInfo, proof bloom.MerkleProof,
+	mainChainTransaction *core.Transaction) (*TransactionInfo, error) {
+	var txOutputs []OutputInfo // The outputs in transaction
 
 	assetID := spvWallet.SystemAssetId
-	txOutput := OutputInfo{
-		AssetID:    assetID.String(),
-		Value:      totalOutputAmount.String(),
-		Address:    target,
-		OutputLock: uint32(0),
+	rateFloat := sc.GetRage()
+	for _, info := range infoArray {
+		amount := info.CrossChainAmount * common.Fixed64(rateFloat)
+		txOutput := OutputInfo{
+			AssetID:    assetID.String(),
+			Value:      amount.String(),
+			Address:    info.TargetAddress,
+			OutputLock: uint32(0),
+		}
+		txOutputs = append(txOutputs, txOutput)
 	}
-	txOutputs = append(txOutputs, txOutput)
 
 	spvInfo := new(bytes.Buffer)
 	err := proof.Serialize(spvInfo)
