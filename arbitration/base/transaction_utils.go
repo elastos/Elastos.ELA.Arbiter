@@ -10,6 +10,10 @@ import (
 	"strings"
 )
 
+const (
+	DESTROY_ADDRESS = "0000000000000000000000000000000000"
+)
+
 func PublicKeyFromString(str string) (*PublicKey, error) {
 	keyBytes, err := HexStringToBytes(strings.TrimSpace(str))
 	if err != nil {

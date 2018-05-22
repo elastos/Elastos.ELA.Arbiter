@@ -79,7 +79,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				if err != nil {
 					break
 				}
-				monitor.processTransactions(transactions)
+				monitor.processTransactions(transactions, sideNode.GenesisBlockAddress)
 
 				// Update wallet height
 				currentHeight = store.DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height+1)
@@ -150,19 +150,10 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 	return chainHeight, currentHeight, true
 }
 
-func (monitor *SideChainAccountMonitorImpl) containDestroyAddress(address string) (string, bool) {
-	for _, node := range config.Parameters.SideNodeList {
-		if node.DestroyAddress == address {
-			return node.GenesisBlockAddress, true
-		}
-	}
-	return "", false
-}
-
-func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *BlockTransactions) {
+func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *BlockTransactions, genesisAddress string) {
 	for _, txn := range transactions.Transactions {
 		for _, output := range txn.Outputs {
-			if genesisAddress, ok := monitor.containDestroyAddress(output.Address); ok {
+			if output.Address == DESTROY_ADDRESS {
 				if ok, err := store.DbCache.HasSideChainTx(txn.Hash); err != nil || !ok {
 					monitor.fireUTXOChanged(txn, genesisAddress)
 				}

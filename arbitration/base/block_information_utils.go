@@ -118,9 +118,14 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		programHash, err := Uint168FromAddress(output.Address)
-		if err != nil {
-			return nil, err
+		var programHash *Uint168
+		if output.Address == DESTROY_ADDRESS {
+			programHash = &Uint168{}
+		} else {
+			programHash, err = Uint168FromAddress(output.Address)
+			if err != nil {
+				return nil, err
+			}
 		}
 		output := &Output{
 			AssetID:     *assetId,

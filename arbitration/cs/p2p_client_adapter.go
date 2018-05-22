@@ -35,8 +35,8 @@ type P2PClientAdapter struct {
 	listeners  []base.P2PClientListener
 	arbitrator Arbitrator
 
-	messages  []string
-	cacheLock sync.Mutex
+	messageHashes []common.Uint256
+	cacheLock     sync.Mutex
 }
 
 func InitP2PClient(arbitrator Arbitrator) error {
@@ -85,21 +85,21 @@ func (adapter *P2PClientAdapter) AddListener(listener base.P2PClientListener) {
 	adapter.listeners = append(adapter.listeners, listener)
 }
 
-func (adapter *P2PClientAdapter) ExistMessage(msg string) bool {
+func (adapter *P2PClientAdapter) ExistMessageHash(msgHash common.Uint256) bool {
 	adapter.cacheLock.Lock()
 	defer adapter.cacheLock.Unlock()
-	for _, v := range adapter.messages {
-		if v == msg {
+	for _, v := range adapter.messageHashes {
+		if v == msgHash {
 			return true
 		}
 	}
 	return false
 }
 
-func (adapter *P2PClientAdapter) AddMessage(msg string) bool {
+func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
 	adapter.cacheLock.Lock()
 	defer adapter.cacheLock.Unlock()
-	adapter.messages = append(adapter.messages, msg)
+	adapter.messageHashes = append(adapter.messageHashes, msgHash)
 	return false
 }
 
@@ -110,12 +110,12 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
 	buf := new(bytes.Buffer)
 	msg.Serialize(buf)
-	msgStr := common.BytesToHexString(buf.Bytes())
+	msgHash := common.Uint256(common.Sha256D(buf.Bytes()))
 
-	if adapter.ExistMessage(msgStr) {
+	if adapter.ExistMessageHash(msgHash) {
 		return nil
 	} else {
-		adapter.AddMessage(msgStr)
+		adapter.AddMessageHash(msgHash)
 		adapter.Broadcast(msg)
 	}
 
