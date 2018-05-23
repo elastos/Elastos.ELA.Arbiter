@@ -47,7 +47,7 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (
 		param = []byte{}
 	} else {
 		// Check if singer already signed
-		publicKeys, err := ParseMultisigScript(txn.Programs[0].Code)
+		publicKeys, err := ParseCrossChainScript(txn.Programs[0].Code)
 		if err != nil {
 			return 0, err
 		}

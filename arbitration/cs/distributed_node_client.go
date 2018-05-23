@@ -50,7 +50,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 			return errors.New("Unknown payload type")
 		}
 
-		if withdrawAsset.BlockHeight >= transactions[0].Payload.(*PayloadWithdrawAsset).BlockHeight {
+		if withdrawAsset.BlockHeight > transactions[0].Payload.(*PayloadWithdrawAsset).BlockHeight {
 			return errors.New("Proposal already exit.")
 		}
 	}

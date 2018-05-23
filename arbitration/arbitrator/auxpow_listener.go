@@ -6,7 +6,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
-	common "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
 	"github.com/elastos/Elastos.ELA/bloom"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
@@ -44,15 +45,15 @@ func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
 	}
 
 	// Check if merkleroot is match
-	merkleBlock := bloom.MerkleBlock{
-		Header:       header.Header,
+	merkleBlock := msg.MerkleBlock{
+		Header:       &header.Header,
 		Transactions: proof.Transactions,
 		Hashes:       proof.Hashes,
 		Flags:        proof.Flags,
 	}
 
 	txId := tx.Hash()
-	merkleBranch, err := merkleBlock.GetTxMerkleBranch(&txId)
+	merkleBranch, err := bloom.GetTxMerkleBranch(merkleBlock, &txId)
 	if err != nil {
 		log.Error("can not get merkle branch")
 		return

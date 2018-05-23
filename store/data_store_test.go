@@ -315,5 +315,13 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 		}
 	}
 
+	proofs, _, err := datastore.GetMainChainTxsFromHashes([]string{txHash, txHash2, txHash3})
+	if err != nil {
+		t.Error("Get main chain txs from hashes error.")
+	}
+	if len(proofs) != 3 {
+		t.Error("Get main chain txs from hashes error.")
+	}
+
 	datastore.ResetDataStore()
 }

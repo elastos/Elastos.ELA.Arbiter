@@ -42,6 +42,7 @@ type RpcConfig struct {
 type MainNodeConfig struct {
 	Rpc         *RpcConfig `json:"Rpc"`
 	SpvSeedList []string   `json:SpvSeedList`
+	Magic       uint32     `json:"Magic"`
 }
 
 type SideNodeConfig struct {

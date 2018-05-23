@@ -240,7 +240,7 @@ func (wallet *WalletImpl) Sign(name string, password []byte, txn *Transaction) (
 		return nil, err
 	}
 	// Look up transaction type
-	if signType == crypto.STANDARD {
+	if signType == STANDARD {
 
 		// Sign single transaction
 		txn, err = wallet.signStandardTransaction(password, txn)
@@ -248,7 +248,7 @@ func (wallet *WalletImpl) Sign(name string, password []byte, txn *Transaction) (
 			return nil, err
 		}
 
-	} else if signType == crypto.MULTISIG {
+	} else if signType == MULTISIG {
 
 		// Sign multi sign transaction
 		txn, err = wallet.signMultiSignTransaction(password, txn)
@@ -288,7 +288,7 @@ func (wallet *WalletImpl) signMultiSignTransaction(password []byte, txn *Transac
 	param := txn.Programs[0].Parameter
 	// Check if current user is a valid signer
 	var signerIndex = -1
-	programHashes, err := crypto.GetSigners(code)
+	programHashes, err := crypto.GetCrossChainSigners(code)
 	if err != nil {
 		return nil, err
 	}

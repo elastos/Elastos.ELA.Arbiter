@@ -267,15 +267,13 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 			if !ok {
 				return errors.New("Invalid payload type.")
 			}
-			groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(withdrawPayload.BlockHeight)
-			if err != nil {
-				return err
-			}
+
 			onDutyArbitratorPk, err :=
-				base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
+				base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(withdrawPayload.GenesisBlockAddress))
 			if err != nil {
 				return err
 			}
+
 			if !Equal(targetPk, onDutyArbitratorPk) {
 				return errors.New("Can not sign without current arbitrator's signing.")
 			}

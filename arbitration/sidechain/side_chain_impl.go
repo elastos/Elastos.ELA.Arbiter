@@ -224,8 +224,17 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 	}
 
 	for _, txn := range transactions {
-		if err = sc.createAndBroadcastWithdrawProposal(txn); err != nil {
-			log.Warn(err)
+		switch txn.Payload.(type) {
+		case *core.PayloadTransferCrossChainAsset:
+			if err = sc.createAndBroadcastWithdrawProposal(txn); err != nil {
+				log.Warn(err)
+			}
+		case *core.PayloadWithdrawAsset:
+			if err = sc.broadcastWithdrawProposal(txn); err != nil {
+				log.Warn(err)
+			}
+		default:
+			log.Warn("Unknow transaction payload type in db")
 		}
 	}
 
@@ -253,5 +262,11 @@ func (sc *SideChainImpl) createAndBroadcastWithdrawProposal(txn *core.Transactio
 		txn.Hash().String(), &store.DbMainChainFunc{})
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
 
+	return nil
+}
+
+func (sc *SideChainImpl) broadcastWithdrawProposal(txn *core.Transaction) error {
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator.BroadcastWithdrawProposal([]*core.Transaction{txn})
 	return nil
 }

@@ -520,7 +520,7 @@ func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *
 
 	// Serialize merkleProof
 	buf = new(bytes.Buffer)
-	transaction.Serialize(buf)
+	proof.Serialize(buf)
 	merkleProofBytes := buf.Bytes()
 
 	// Do insert
@@ -589,33 +589,37 @@ func (store *DataStoreImpl) GetMainChainTxsFromHashes(transactionHashes []string
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 
-	rows, err := store.Query(`SELECT MainChainTxs.TransactionData FROM MainChainTxs`)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer rows.Close()
-
 	var txs []*Transaction
 	var mps []*bloom.MerkleProof
-	for rows.Next() {
-		var transactionBytes []byte
-		var merkleProofBytes []byte
-		err = rows.Scan(&transactionBytes, &merkleProofBytes)
+
+	for _, txHash := range transactionHashes {
+		rows, err := store.Query(`SELECT MainChainTxs.TransactionData, MainChainTxs.MerkleProof FROM MainChainTxs WHERE TransactionHash=?`, txHash)
 		if err != nil {
 			return nil, nil, err
 		}
+		defer rows.Close()
 
-		var tx Transaction
-		reader := bytes.NewReader(transactionBytes)
-		tx.Deserialize(reader)
+		for rows.Next() {
+			var transactionBytes []byte
+			var merkleProofBytes []byte
+			err = rows.Scan(&transactionBytes, &merkleProofBytes)
+			if err != nil {
+				return nil, nil, err
+			}
 
-		var mp bloom.MerkleProof
-		reader = bytes.NewReader(merkleProofBytes)
-		mp.Deserialize(reader)
+			var tx Transaction
+			reader := bytes.NewReader(transactionBytes)
+			tx.Deserialize(reader)
 
-		txs = append(txs, &tx)
-		mps = append(mps, &mp)
+			var mp bloom.MerkleProof
+			reader = bytes.NewReader(merkleProofBytes)
+			mp.Deserialize(reader)
+
+			txs = append(txs, &tx)
+			mps = append(mps, &mp)
+		}
 	}
+
 	return txs, mps, nil
 }
 

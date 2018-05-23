@@ -94,6 +94,7 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transact
 
 	dns.mux.Lock()
 	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
+		dns.mux.Unlock()
 		return nil, errors.New("Transaction already in process.")
 	}
 	dns.unsolvedTransactions[transaction.Hash()] = transaction
@@ -146,7 +147,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Unlock()
 
 	var signerIndex = -1
-	programHashes, err := crypto.GetSigners(txn.Programs[0].Code)
+	programHashes, err := crypto.GetCrossChainSigners(txn.Programs[0].Code)
 	if err != nil {
 		return err
 	}

@@ -73,7 +73,7 @@ func (adapter *P2PClientAdapter) InitLocalPeer(peer *spvnet.Peer) {
 	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
 	port := config.Parameters.NodePort
 
-	peer.SetVersion(uint32(1))
+	peer.SetVersion(uint32(10007))
 	peer.SetServices(uint64(4))
 	peer.SetID(clientId)
 	peer.SetPort(port)

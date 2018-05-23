@@ -91,16 +91,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	setSideChainAccountMonitor(currentArbitrator)
-
-	log.Info("5. Start arbitrator spv module.")
-	if err := currentArbitrator.StartSpvModule(); err != nil {
+	log.Info("5. Start arbitrator P2P networks.")
+	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("6. Start arbitrator P2P networks.")
-	if err := initP2P(currentArbitrator); err != nil {
+	setSideChainAccountMonitor(currentArbitrator)
+
+	log.Info("6. Start arbitrator spv module.")
+	if err := currentArbitrator.StartSpvModule(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}

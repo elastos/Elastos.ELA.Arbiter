@@ -288,7 +288,11 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		return err
 	}
 
-	spvService = NewSPVService(binary.LittleEndian.Uint64(publicKeyBytes), config.Parameters.MainNode.SpvSeedList)
+	spvService, err = NewSPVService(config.Parameters.MainNode.Magic, binary.LittleEndian.Uint64(publicKeyBytes),
+		config.Parameters.MainNode.SpvSeedList)
+	if err != nil {
+		return err
+	}
 
 	for _, sideNode := range config.Parameters.SideNodeList {
 		if err = spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
