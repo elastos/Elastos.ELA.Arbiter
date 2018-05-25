@@ -24,10 +24,15 @@ var (
 )
 
 const (
-	WithdrawCommand             = "withdraw"
-	ComplainCommand             = "complain"
-	WithdrawTxCacheClearCommand = "withdrawTxCacheClear"
-	DepositTxCacheClearCommand  = "depositTxCacheClear"
+	//len of message need to less than 12
+	WithdrawCommand                = "withdraw"
+	ComplainCommand                = "complain"
+	WithdrawTxCacheClearCommand    = "WDTxClear"
+	DepositTxCacheClearCommand     = "DPTxClear"
+	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
+	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
+
+	MaxRecordMessageNumber = 1000
 )
 
 type P2PClientAdapter struct {
@@ -85,6 +90,13 @@ func (adapter *P2PClientAdapter) AddListener(listener base.P2PClientListener) {
 	adapter.listeners = append(adapter.listeners, listener)
 }
 
+func (adapter *P2PClientAdapter) GetMessageHash(msg p2p.Message) common.Uint256 {
+	buf := new(bytes.Buffer)
+	msg.Serialize(buf)
+	msgHash := common.Sha256D(buf.Bytes())
+	return msgHash
+}
+
 func (adapter *P2PClientAdapter) ExistMessageHash(msgHash common.Uint256) bool {
 	adapter.cacheLock.Lock()
 	defer adapter.cacheLock.Unlock()
@@ -100,6 +112,13 @@ func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
 	adapter.cacheLock.Lock()
 	defer adapter.cacheLock.Unlock()
 	adapter.messageHashes = append(adapter.messageHashes, msgHash)
+	if len(adapter.messageHashes) > MaxRecordMessageNumber {
+		var newMessageHashes []common.Uint256
+		for i := int(MaxRecordMessageNumber / 2); i < len(adapter.messageHashes); i++ {
+			newMessageHashes = append(newMessageHashes, adapter.messageHashes[i])
+		}
+		adapter.messageHashes = newMessageHashes
+	}
 	return false
 }
 
@@ -108,14 +127,14 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 }
 
 func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
-	buf := new(bytes.Buffer)
-	msg.Serialize(buf)
-	msgHash := common.Uint256(common.Sha256D(buf.Bytes()))
-
+	msgHash := adapter.GetMessageHash(msg)
 	if adapter.ExistMessageHash(msgHash) {
 		return nil
 	} else {
 		adapter.AddMessageHash(msgHash)
+		log.Info("*****")
+		log.Info(msg.CMD())
+		log.Info("*****")
 		adapter.Broadcast(msg)
 	}
 
@@ -143,6 +162,10 @@ func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, e
 		message = &TxCacheClearMessage{Command: WithdrawTxCacheClearCommand}
 	case DepositTxCacheClearCommand:
 		message = &TxCacheClearMessage{Command: DepositTxCacheClearCommand}
+	case GetLastArbiterUsedUtxoCommand:
+		message = &GetLastArbiterUsedUTXOMessage{Command: GetLastArbiterUsedUtxoCommand}
+	case SendLastArbiterUsedUtxoCommand:
+		message = &SendLastArbiterUsedUTXOMessage{Command: SendLastArbiterUsedUtxoCommand}
 	default:
 		return nil, errors.New("Received unsupported message, CMD " + cmd)
 	}

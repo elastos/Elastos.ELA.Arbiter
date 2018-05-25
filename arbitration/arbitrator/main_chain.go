@@ -3,19 +3,18 @@ package arbitrator
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(withdrawBank string, infoArray []*WithdrawInfo, rate float32,
-		sideChainTransactionHash string, mcFunc MainChainFunc) (*core.Transaction, error)
+	CreateWithdrawTransaction(sideChain SideChain, infoArray []*WithdrawInfo,
+		sideChainTransactionHash []string, mcFunc MainChainFunc) (*core.Transaction, error)
 	ParseUserDepositTransactionInfo(txn *core.Transaction) ([]*DepositInfo, error)
 
 	BroadcastWithdrawProposal(txn *core.Transaction) error
 	ReceiveProposalFeedback(content []byte) error
 
-	SyncMainChainCachedTxs() ([]*core.Transaction, []*bloom.MerkleProof, error)
+	SyncMainChainCachedTxs() (map[SideChain][]string, error)
 }
 
 type MainChainClient interface {

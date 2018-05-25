@@ -97,7 +97,7 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	}
 
 	var removeTxs []string
-	Unmarshal(result, removeTxs)
+	Unmarshal(&result, &removeTxs)
 	return removeTxs, nil
 }
 
@@ -114,7 +114,7 @@ func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]stri
 	}
 
 	var removeTxs []string
-	Unmarshal(result, removeTxs)
+	Unmarshal(&result, &removeTxs)
 	return removeTxs, nil
 }
 

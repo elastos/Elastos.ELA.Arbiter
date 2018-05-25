@@ -11,13 +11,14 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA/bloom"
+	"github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -27,34 +28,84 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (mc *MainChainImpl) SyncMainChainCachedTxs() ([]*Transaction, []*bloom.MerkleProof, error) {
-	txs, err := DbCache.GetAllMainChainTxHashes()
+func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
+	txHases, err := DbCache.GetAllMainChainTxHashes()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	receivedTxs, err := rpc.GetExistWithdrawTransactions(txs)
+	transactions, _, err := DbCache.GetMainChainTxsFromHashes(txHases)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	unsolvedTxs := SubstractTransactionHashes(txs, receivedTxs)
-	transactions, proofs, err := DbCache.GetMainChainTxsFromHashes(unsolvedTxs)
-	if err != nil {
-		return nil, nil, err
+	if len(txHases) != len(transactions) {
+		return nil, errors.New("Invalid transactios in main chain txs db")
 	}
 
+	allSideChainTxHashes := make(map[SideChain][]string, 0)
+	for i := 0; i < len(transactions); i++ {
+		depositInfo, err := mc.ParseUserDepositTransactionInfo(transactions[i])
+		if err != nil || len(depositInfo) == 0 {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+
+		addr, err := depositInfo[0].MainChainProgramHash.ToAddress()
+		if err != nil {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(addr)
+		if !ok {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+
+		hasSideChainInMap := false
+		for k, _ := range allSideChainTxHashes {
+			if k == sc {
+				hasSideChainInMap = true
+			}
+		}
+		if hasSideChainInMap {
+			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], txHases[i])
+		} else {
+			allSideChainTxHashes[sc] = []string{txHases[i]}
+		}
+	}
+
+	result := make(map[SideChain][]string, 0)
+	var receivedTxs []string
+	for k, v := range allSideChainTxHashes {
+		recTxs, err := k.GetExistDepositTransactions(v)
+		if err != nil {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+		unsolvedTxs := SubstractTransactionHashes(v, recTxs)
+		result[k] = unsolvedTxs
+
+		for _, recTx := range recTxs {
+			receivedTxs = append(receivedTxs, recTx)
+		}
+	}
 	err = DbCache.RemoveMainChainTxs(receivedTxs)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	if len(receivedTxs) != 0 {
-		msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
-		P2PClientSingleton.Broadcast(msg)
+		mc.SendTxCacheClearMessage(receivedTxs)
 	}
 
-	return transactions, proofs, nil
+	return result, err
+}
+
+func (mc *MainChainImpl) SendTxCacheClearMessage(receivedTxs []string) {
+	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
+	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
+	P2PClientSingleton.Broadcast(msg)
 }
 
 func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
@@ -71,10 +122,13 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 	return nil
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, infoArray []*WithdrawInfo, rate float32,
-	sideChainTransactionHash string, mcFunc MainChainFunc) (*Transaction, error) {
+func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, infoArray []*WithdrawInfo,
+	sideChainTransactionHash []string, mcFunc MainChainFunc) (*Transaction, error) {
 
 	mc.syncChainData()
+
+	withdrawBank := sideChain.GetKey()
+	rate := sideChain.GetRage()
 
 	var totalOutputAmount Fixed64
 	// Create transaction outputs
@@ -106,8 +160,24 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, infoArra
 		return nil, err
 	}
 
-	// Create transaction inputs
+	//get real available utxos
+	ops := sideChain.GetLastUsedOutPoints()
+
+	var realAvailableUtxos []*AddressUTXO
 	for _, utxo := range availableUTXOs {
+		isUsed := false
+		for _, ops := range ops {
+			if ops.IsEqual(utxo.Input.Previous) {
+				isUsed = true
+			}
+		}
+		if !isUsed {
+			realAvailableUtxos = append(realAvailableUtxos, utxo)
+		}
+	}
+
+	// Create transaction inputs
+	for _, utxo := range realAvailableUtxos {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
 			totalOutputAmount -= *utxo.Amount
@@ -130,6 +200,12 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(withdrawBank string, infoArra
 			break
 		}
 	}
+
+	var newUsedUtxos []core.OutPoint
+	for _, input := range txInputs {
+		newUsedUtxos = append(newUsedUtxos, input.Previous)
+	}
+	sideChain.SetLastUsedOutPoints(newUsedUtxos)
 
 	if totalOutputAmount > 0 {
 		return nil, errors.New("Available token is not enough")

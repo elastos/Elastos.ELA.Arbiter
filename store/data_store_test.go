@@ -35,41 +35,12 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	ok, err = datastore.HasSideChainTxReceived(txHash)
-	if err != nil {
-		t.Error("Get side chain transaction error.")
-	}
-	if ok {
-		t.Error("Should not have specified transaction.")
-	}
-
 	tx := &Transaction{Payload: new(PayloadWithdrawAsset)}
-	if err := datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, false); err != nil {
+	if err := datastore.AddSideChainTx(txHash, genesisBlockAddress, tx); err != nil {
 		t.Error("Add side chain transaction error.")
 	}
 
 	ok, err = datastore.HasSideChainTx(txHash)
-	if err != nil {
-		t.Error("Get side chain transaction error.")
-	}
-	if !ok {
-		t.Error("Should have specified transaction.")
-	}
-
-	ok, err = datastore.HasSideChainTxReceived(txHash)
-	if err != nil {
-		t.Error("Get side chain transaction error.")
-	}
-	if ok {
-		t.Error("Should have specified transaction.")
-	}
-
-	err = datastore.SetSideChainTxReceived(txHash)
-	if err != nil {
-		t.Error("Get side chain transaction error.")
-	}
-
-	ok, err = datastore.HasSideChainTxReceived(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -94,8 +65,8 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 	txHash2 := "testHash2"
 	tx2 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
 
-	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, false)
-	datastore.AddSideChainTx(txHash2, genesisBlockAddress2, tx2, false)
+	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx)
+	datastore.AddSideChainTx(txHash2, genesisBlockAddress2, tx2)
 
 	if ok, err := datastore.HasSideChainTx(txHash); !ok || err != nil {
 		t.Error("Should have specified transaction.")
@@ -137,9 +108,9 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	txHash3 := "testHash3"
 
 	tx := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
-	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, false)
-	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx, false)
-	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx, false)
+	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx)
+	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx)
+	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx)
 
 	txHashes, err := datastore.GetAllSideChainTxHashes(genesisBlockAddress)
 	if err != nil {
@@ -178,9 +149,9 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 	tx2.LockTime = 2
 	tx3.LockTime = 3
 
-	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx1, false)
-	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx2, false)
-	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx3, false)
+	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx1)
+	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx2)
+	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx3)
 
 	var txHashes []string
 	txHashes = append(txHashes, txHash)

@@ -43,7 +43,7 @@ type Arbitrator interface {
 
 	//withdraw
 	CreateWithdrawTransactions(
-		infoArray []*WithdrawInfo, sideChain SideChain, sideTransactionHash string, mcFunc MainChainFunc) []*Transaction
+		infoArray []*WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction
 	BroadcastWithdrawProposal(txns []*Transaction)
 	SendWithdrawTransaction(txn *Transaction) (interface{}, error)
 }
@@ -82,13 +82,12 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 	ar.mainOnDutyMux.Unlock()
 
 	if onDuty {
-		txs, proofs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
+		depositTxs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
 		if err != nil {
-			log.Warn(err)
+			return
 		}
-
-		for i := range txs {
-			ar.createAndSendDepositTransaction(proofs[i], txs[i])
+		for sideChain, txHashes := range depositTxs {
+			ar.createAndSendDepositTransactions(sideChain, txHashes)
 		}
 	}
 }
@@ -123,11 +122,10 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransactions(infoArray []*WithdrawInfo, sideChain SideChain,
-	sideTransactionHash string, mcFunc MainChainFunc) []*Transaction {
+	sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction {
 	var result []*Transaction
 
-	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain.GetKey(), infoArray,
-		sideChain.GetRage(), sideTransactionHash, mcFunc)
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, infoArray, sideTransactionHash, mcFunc)
 	if err != nil {
 		log.Warn(err.Error())
 	}
@@ -344,4 +342,27 @@ func (ar *ArbitratorImpl) createAndSendDepositTransaction(proof *bloom.MerklePro
 	ar.SendDepositTransactions(transactionInfoMap)
 
 	spvService.SubmitTransactionReceipt(spvtxn.Hash())
+}
+
+func (ar *ArbitratorImpl) createAndSendDepositTransactions(sideChain SideChain, txHashes []string) {
+	txs, proofs, err := store.DbCache.GetMainChainTxsFromHashes(txHashes)
+	if err != nil {
+		return
+	}
+
+	transactionInfoMap := make(map[*TransactionInfo]SideChain, 0)
+	for i := 0; i < len(txs); i++ {
+		depositInfo, err := ar.ParseUserDepositTransactionInfo(txs[i])
+		if err != nil {
+			log.Error(err)
+			return
+		}
+
+		txinfo, err := sideChain.CreateDepositTransaction(depositInfo, *proofs[i], txs[i])
+		if err != nil {
+			return
+		}
+		transactionInfoMap[txinfo] = sideChain
+	}
+	ar.SendDepositTransactions(transactionInfoMap)
 }

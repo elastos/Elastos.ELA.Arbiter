@@ -20,7 +20,14 @@ func (client *MainChainClientImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message
 	case *SignMessage:
 		return client.OnReceivedProposal(m.Content)
 	case *TxCacheClearMessage:
-		DbCache.RemoveSideChainTxs(m.RemovedTxs)
+		err1 := DbCache.RemoveSideChainTxs(m.RemovedTxs)
+		err2 := DbCache.RemoveSideChainTxsProposal(m.RemovedTxs)
+		if err1 != nil {
+			return err1
+		}
+		if err2 != nil {
+			return err2
+		}
 	}
 	return nil
 }

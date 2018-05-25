@@ -71,10 +71,12 @@ func getTransactionAgreementArbitratorsCount() int {
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
-	P2PClientSingleton.Broadcast(&SignMessage{
+	msg := &SignMessage{
 		Command: dns.P2pCommand,
 		Content: content,
-	})
+	}
+	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
+	P2PClientSingleton.Broadcast(msg)
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transaction) error {
@@ -91,14 +93,6 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transac
 
 func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transaction, itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
-
-	dns.mux.Lock()
-	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
-		dns.mux.Unlock()
-		return nil, errors.New("Transaction already in process.")
-	}
-	dns.unsolvedTransactions[transaction.Hash()] = transaction
-	dns.mux.Unlock()
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	programHash, err := StandardAcccountPublicKeyToProgramHash(currentArbitrator.GetPublicKey())
@@ -120,6 +114,14 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transact
 	}
 
 	transaction.Programs[0].Parameter = transactionItem.GetSignedData()
+
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
+
+	if _, ok := dns.unsolvedTransactions[transaction.Hash()]; ok {
+		return nil, errors.New("Transaction already in process.")
+	}
+	dns.unsolvedTransactions[transaction.Hash()] = transaction
 
 	return buf.Bytes(), nil
 }

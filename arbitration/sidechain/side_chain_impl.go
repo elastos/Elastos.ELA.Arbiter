@@ -32,26 +32,95 @@ type SideChainImpl struct {
 
 	Key           string
 	CurrentConfig *config.SideNodeConfig
+
+	LastUsedUtxoHeight uint32
+	LastUsedOutPoints  []core.OutPoint
+	ToSendTransaction  []*core.Transaction
+	Ready              bool
 }
 
 func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
-	if msg.CMD() != cs.DepositTxCacheClearCommand {
+	if msg.CMD() != cs.DepositTxCacheClearCommand && msg.CMD() != cs.GetLastArbiterUsedUtxoCommand &&
+		msg.CMD() != cs.SendLastArbiterUsedUtxoCommand {
 		return nil
 	}
 
-	depositTxClearMsg, ok := msg.(*cs.TxCacheClearMessage)
-	if !ok {
-		return errors.New("Unknown deposit transaction cache clear message.")
+	switch m := msg.(type) {
+	case *cs.TxCacheClearMessage:
+		return store.DbCache.RemoveMainChainTxs(m.RemovedTxs)
+	case *cs.GetLastArbiterUsedUTXOMessage:
+		return client.ReceiveGetLastArbiterUsedUtxos(m.Height, m.GenesisAddress)
+	case *cs.SendLastArbiterUsedUTXOMessage:
+		return client.ReceiveSendLastArbiterUsedUtxos(m.Height, m.GenesisAddress, m.OutPoints)
 	}
 
-	return store.DbCache.RemoveMainChainTxs(depositTxClearMsg.RemovedTxs)
+	return nil
+}
+
+func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	if sc.GetKey() == genesisAddress && sc.LastUsedUtxoHeight < height {
+		sc.LastUsedOutPoints = outPoints
+		sc.LastUsedUtxoHeight = height
+		if !sc.Ready {
+			err := sc.CreateAndBroadcastWithdrawProposal(sc.ToSendTransaction)
+			if err != nil {
+				return err
+			}
+			sc.ToSendTransaction = make([]*core.Transaction, 0)
+		}
+	}
+	return nil
+}
+
+func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAddress string) error {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	if sc.GetKey() == genesisAddress {
+		if sc.LastUsedUtxoHeight == height {
+			msg := &cs.SendLastArbiterUsedUTXOMessage{
+				Command:        cs.SendLastArbiterUsedUtxoCommand,
+				GenesisAddress: genesisAddress,
+				Height:         sc.LastUsedUtxoHeight,
+				OutPoints:      sc.LastUsedOutPoints}
+			msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
+			cs.P2PClientSingleton.AddMessageHash(msgHash)
+			cs.P2PClientSingleton.Broadcast(msg)
+			return nil
+		} else {
+			return errors.New("I have no needed outpoints at requested height")
+		}
+	}
+
+	return nil
 }
 
 func (sc *SideChainImpl) GetKey() string {
 	return sc.Key
 }
 
+func (sc *SideChainImpl) GetLastUsedUtxoHeight() uint32 {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	return sc.LastUsedUtxoHeight
+}
+
+func (sc *SideChainImpl) GetLastUsedOutPoints() []core.OutPoint {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	return sc.LastUsedOutPoints
+}
+
+func (sc *SideChainImpl) SetLastUsedOutPoints(ops []core.OutPoint) {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	sc.LastUsedOutPoints = ops
+}
+
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
 	if sc.CurrentConfig == nil {
 		for _, sideConfig := range config.Parameters.SideNodeList {
 			if sc.GetKey() == sideConfig.GenesisBlockAddress {
@@ -109,15 +178,16 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 	}
 
 	if err := store.DbCache.AddSideChainTx(txn.Hash().String(),
-		sc.GetKey(), txn, false); err != nil {
+		sc.GetKey(), txn); err != nil {
 		return err
 	}
 
-	if !sc.IsOnDuty() { //only on duty arbitrator need to broadcast withdraw proposal
+	/*if !sc.IsOnDuty() { //only on duty arbitrator need to broadcast withdraw proposal
 		return nil
 	}
 
-	return sc.createAndBroadcastWithdrawProposal(txn)
+	return sc.createAndBroadcastWithdrawProposal(txn)*/
+	return nil
 }
 
 func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
@@ -134,6 +204,14 @@ func (sc *SideChainImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 func (sc *SideChainImpl) StartSidechainMining() {
 	sideauxpow.StartSidechainMining(sc.CurrentConfig)
+}
+
+func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, error) {
+	receivedTxs, err := rpc.GetExistDepositTransactions(txs, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return nil, err
+	}
+	return receivedTxs, nil
 }
 
 func (sc *SideChainImpl) CreateDepositTransaction(infoArray []*DepositInfo, proof bloom.MerkleProof,
@@ -206,13 +284,35 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn *core.Transaction)
 	return result, nil
 }
 
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfos(txn []*core.Transaction) ([]*WithdrawInfo, error) {
+	var result []*WithdrawInfo
+
+	for _, tx := range txn {
+		switch payloadObj := tx.Payload.(type) {
+		case *core.PayloadTransferCrossChainAsset:
+			for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
+				info := &WithdrawInfo{
+					TargetAddress:    payloadObj.CrossChainAddress[i],
+					Amount:           tx.Outputs[payloadObj.OutputIndex[i]].Value,
+					CrossChainAmount: payloadObj.CrossChainAmount[i],
+				}
+				result = append(result, info)
+			}
+		default:
+			return nil, errors.New("Invalid payload")
+		}
+	}
+
+	return result, nil
+}
+
 func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 	txs, err := store.DbCache.GetAllSideChainTxHashes(sc.GetKey())
 	if err != nil {
 		return err
 	}
 
-	receivedTxs, err := rpc.GetExistDepositTransactions(txs, sc.CurrentConfig.Rpc)
+	receivedTxs, err := rpc.GetExistWithdrawTransactions(txs)
 	if err != nil {
 		return err
 	}
@@ -223,50 +323,64 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 		return err
 	}
 
-	for _, txn := range transactions {
-		switch txn.Payload.(type) {
-		case *core.PayloadTransferCrossChainAsset:
-			if err = sc.createAndBroadcastWithdrawProposal(txn); err != nil {
-				log.Warn(err)
-			}
-		case *core.PayloadWithdrawAsset:
-			if err = sc.broadcastWithdrawProposal(txn); err != nil {
-				log.Warn(err)
-			}
-		default:
-			log.Warn("Unknow transaction payload type in db")
-		}
+	if len(transactions) == 0 {
+		log.Info("No withdraw transaction to deal with")
+		return nil
 	}
 
-	if err != nil {
-		store.DbCache.RemoveSideChainTxs(receivedTxs)
-	}
-
-	if len(receivedTxs) != 0 {
-		cs.P2PClientSingleton.Broadcast(&cs.TxCacheClearMessage{
-			Command:    cs.WithdrawTxCacheClearCommand,
-			RemovedTxs: receivedTxs})
-	}
-
-	return nil
-}
-
-func (sc *SideChainImpl) createAndBroadcastWithdrawProposal(txn *core.Transaction) error {
-	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfo(txn)
+	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
 	}
 
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfos, sc,
-		txn.Hash().String(), &store.DbMainChainFunc{})
-	currentArbitrator.BroadcastWithdrawProposal(transactions)
+	if sc.LastUsedUtxoHeight == chainHeight-1 || sc.LastUsedUtxoHeight == 0 {
+		err := sc.CreateAndBroadcastWithdrawProposal(transactions)
+		if err != nil {
+			return err
+		}
+		sc.LastUsedUtxoHeight = chainHeight
+	} else {
+		sc.ToSendTransaction = transactions
+		sc.Ready = false
+		msg := &cs.GetLastArbiterUsedUTXOMessage{
+			Command:        cs.GetLastArbiterUsedUtxoCommand,
+			GenesisAddress: sc.GetKey(),
+			Height:         chainHeight - 1}
+		msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
+		cs.P2PClientSingleton.AddMessageHash(msgHash)
+		cs.P2PClientSingleton.Broadcast(msg)
+	}
+
+	err = store.DbCache.RemoveSideChainTxs(receivedTxs)
+	if err != nil {
+		return err
+	}
+
+	if len(receivedTxs) != 0 {
+		msg := &cs.TxCacheClearMessage{
+			Command:    cs.WithdrawTxCacheClearCommand,
+			RemovedTxs: receivedTxs}
+		cs.P2PClientSingleton.AddMessageHash(cs.P2PClientSingleton.GetMessageHash(msg))
+		cs.P2PClientSingleton.Broadcast(msg)
+	}
 
 	return nil
 }
 
-func (sc *SideChainImpl) broadcastWithdrawProposal(txn *core.Transaction) error {
+func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txns []*core.Transaction) error {
+	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfos(txns)
+	if err != nil {
+		return err
+	}
+
+	var txHashes []string
+	for _, txn := range txns {
+		txHashes = append(txHashes, txn.Hash().String())
+	}
+
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	currentArbitrator.BroadcastWithdrawProposal([]*core.Transaction{txn})
+	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfos, sc, txHashes, &store.DbMainChainFunc{})
+	currentArbitrator.BroadcastWithdrawProposal(transactions)
+
 	return nil
 }

@@ -6,8 +6,6 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
-	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	. "github.com/elastos/Elastos.ELA/core"
 )
@@ -35,24 +33,46 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return errors.New("Unknown payload type.")
 	}
 
-	ok, err := store.DbCache.HasSideChainTxReceived(withdrawAsset.SideChainTransactionHash)
-	if err != nil {
-		return errors.New("Get exist side chain transaction from db failed")
+	//if has one transaction not received before, then we need to sign it.
+	hasSigned := true
+	for _, txHash := range withdrawAsset.SideChainTransactionHash {
+		ok, err := store.DbCache.HasSideChainTxProposal(txHash)
+		if err != nil {
+			return errors.New("Get exist side chain transaction from db failed")
+		}
+		if !ok {
+			hasSigned = false
+		}
 	}
-	if ok {
-		transactions, err := store.DbCache.GetSideChainTxsFromHashes([]string{withdrawAsset.SideChainTransactionHash})
-		if err != nil || len(transactions) != 1 {
+
+	if hasSigned {
+		transactions, err := store.DbCache.GetSideChainTxsProposalFromHashes(withdrawAsset.SideChainTransactionHash)
+		if err != nil {
 			return errors.New("Get exist side chain transaction from db failed")
 		}
 
-		withdrawAsset, ok := transactions[0].Payload.(*PayloadWithdrawAsset)
-		if !ok {
-			return errors.New("Unknown payload type")
+		for _, txn := range transactions {
+			switch txn.Payload.(type) {
+			case *PayloadWithdrawAsset:
+				if withdrawAsset.BlockHeight > txn.Payload.(*PayloadWithdrawAsset).BlockHeight {
+					return errors.New("Proposal already exist.")
+				}
+			}
 		}
+	}
 
-		if withdrawAsset.BlockHeight > transactions[0].Payload.(*PayloadWithdrawAsset).BlockHeight {
-			return errors.New("Proposal already exit.")
+	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	sc, ok := currentArbitrator.GetSideChainManager().GetChain(withdrawAsset.GenesisBlockAddress)
+	if !ok {
+		return errors.New("Get side chain from GenesisBlockAddress failed")
+	}
+
+	if withdrawAsset.BlockHeight > sc.GetLastUsedUtxoHeight() {
+		var outPoints []OutPoint
+		for _, input := range transactionItem.ItemContent.Inputs {
+			outPoints = append(outPoints, input.Previous)
 		}
+		sc.SetLastUsedOutPoints(outPoints)
 	}
 
 	if err := client.SignProposal(transactionItem); err != nil {
@@ -63,22 +83,9 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return err
 	}
 
-	ok, err = store.DbCache.HasSideChainTx(withdrawAsset.SideChainTransactionHash)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		if err := store.DbCache.AddSideChainTx(withdrawAsset.SideChainTransactionHash,
-			withdrawAsset.GenesisBlockAddress, transactionItem.ItemContent, true); err != nil {
-			return err
-		}
-	} else {
-		if err := store.DbCache.RemoveSideChainTxs([]string{withdrawAsset.SideChainTransactionHash}); err != nil {
-			return err
-		}
-
-		if err = store.DbCache.AddSideChainTx(withdrawAsset.SideChainTransactionHash,
-			withdrawAsset.GenesisBlockAddress, transactionItem.ItemContent, true); err != nil {
+	for _, txHash := range withdrawAsset.SideChainTransactionHash {
+		if err := store.DbCache.AddSideChainTxProposal(txHash, withdrawAsset.GenesisBlockAddress,
+			transactionItem.ItemContent); err != nil {
 			return err
 		}
 	}
@@ -106,27 +113,11 @@ func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
 	return nil
 }
 
-func (client *DistributedNodeClient) Verify(withdrawAsset *PayloadWithdrawAsset) error {
-	rpcConfig, ok := config.GetRpcConfig(withdrawAsset.GenesisBlockAddress)
-	if !ok {
-		return errors.New("Unknown side chain.")
-	}
-
-	ok, err := rpc.IsTransactionExist(withdrawAsset.SideChainTransactionHash, rpcConfig)
-	if err != nil {
-		return err
-	}
-
-	if !ok {
-		return errors.New("Unknown transaction.")
-	}
-
-	return nil
-}
-
 func (client *DistributedNodeClient) broadcast(message []byte) {
-	P2PClientSingleton.Broadcast(&SignMessage{
+	msg := &SignMessage{
 		Command: client.P2pCommand,
 		Content: message,
-	})
+	}
+	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
+	P2PClientSingleton.Broadcast(msg)
 }
