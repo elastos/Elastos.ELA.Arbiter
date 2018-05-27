@@ -37,8 +37,7 @@ const (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				UTXOInput BLOB UNIQUE,
 				Amount VARCHAR,
-				GenesisBlockAddress VARCHAR(34),
-				DestroyAddress VARCHAR(34)
+				GenesisBlockAddress VARCHAR(34)
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
@@ -68,7 +67,6 @@ type AddressUTXO struct {
 	Input               *Input
 	Amount              *Fixed64
 	GenesisBlockAddress string
-	DestroyAddress      string
 }
 
 type DataStore interface {
@@ -78,7 +76,6 @@ type DataStore interface {
 	AddAddressUTXO(utxo *AddressUTXO) error
 	DeleteUTXO(input *Input) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
-	GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error)
 
 	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction) error
 	HasSideChainTx(transactionHash string) (bool, error)
@@ -257,7 +254,7 @@ func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 	defer store.mainMux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress, DestroyAddress) values(?,?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress) values(?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -270,7 +267,7 @@ func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 	utxo.Amount.Serialize(buf)
 	amountBytes := buf.Bytes()
 	// Do insert
-	_, err = stmt.Exec(inputBytes, amountBytes, utxo.GenesisBlockAddress, utxo.DestroyAddress)
+	_, err = stmt.Exec(inputBytes, amountBytes, utxo.GenesisBlockAddress)
 	if err != nil {
 		return err
 	}
@@ -298,44 +295,11 @@ func (store *DataStoreImpl) DeleteUTXO(input *Input) error {
 	return nil
 }
 
-func (store *DataStoreImpl) GetAddressUTXOsFromDestroyAddress(destroyAddress string) ([]*AddressUTXO, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
-
-	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount, UTXOs.GenesisBlockAddress FROM UTXOs WHERE DestroyAddress=?`, destroyAddress)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var inputs []*AddressUTXO
-	for rows.Next() {
-		var outputBytes []byte
-		var amountBytes []byte
-		var genesisBlockAddress string
-		err = rows.Scan(&outputBytes, &amountBytes, &genesisBlockAddress)
-		if err != nil {
-			return nil, err
-		}
-
-		var input Input
-		reader := bytes.NewReader(outputBytes)
-		input.Deserialize(reader)
-
-		var amount Fixed64
-		reader = bytes.NewReader(amountBytes)
-		amount.Deserialize(reader)
-
-		inputs = append(inputs, &AddressUTXO{&input, &amount, genesisBlockAddress, destroyAddress})
-	}
-	return inputs, nil
-}
-
 func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error) {
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 
-	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount, UTXOs.DestroyAddress FROM UTXOs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount FROM UTXOs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -345,8 +309,7 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 	for rows.Next() {
 		var outputBytes []byte
 		var amountBytes []byte
-		var destroyAddress string
-		err = rows.Scan(&outputBytes, &amountBytes, &destroyAddress)
+		err = rows.Scan(&outputBytes, &amountBytes)
 		if err != nil {
 			return nil, err
 		}
@@ -359,7 +322,7 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 		reader = bytes.NewReader(amountBytes)
 		amount.Deserialize(reader)
 
-		inputs = append(inputs, &AddressUTXO{&input, &amount, genesisBlockAddress, destroyAddress})
+		inputs = append(inputs, &AddressUTXO{&input, &amount, genesisBlockAddress})
 	}
 	return inputs, nil
 }

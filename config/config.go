@@ -32,6 +32,8 @@ type Configuration struct {
 	MaxLogSize   int64         `json:"MaxLogSize"`
 
 	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
+	MainChainMonitorScanInterval time.Duration `json:"MainChainMonitorScanInterval"`
+	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
 }
 
 type RpcConfig struct {

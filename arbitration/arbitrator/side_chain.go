@@ -15,9 +15,11 @@ type SideChain interface {
 	GetKey() string
 	GetRage() float32
 
+	SetLastUsedUtxoHeight(height uint32)
 	GetLastUsedUtxoHeight() uint32
 	GetLastUsedOutPoints() []core.OutPoint
-	SetLastUsedOutPoints(ops []core.OutPoint)
+	AddLastUsedOutPoints(ops []core.OutPoint)
+	RemoveLastUsedOutPoints(ops []core.OutPoint)
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
 	CreateDepositTransaction(infoArray []*DepositInfo, proof bloom.MerkleProof,

@@ -9,6 +9,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
@@ -160,4 +161,13 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *Bl
 			}
 		}
 	}
+}
+
+func (monitor *SideChainAccountMonitorImpl) syncUsedUtxo(height uint32, genesisAddress string) {
+	sc, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+	if !ok {
+		log.Warn("[syncUsedUtxo] Get side chain from genesis address failed")
+		return
+	}
+	sc.SetLastUsedUtxoHeight(height)
 }

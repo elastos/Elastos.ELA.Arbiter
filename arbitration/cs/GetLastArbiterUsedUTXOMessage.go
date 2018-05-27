@@ -11,6 +11,7 @@ type GetLastArbiterUsedUTXOMessage struct {
 	Command        string
 	GenesisAddress string
 	Height         uint32
+	Nonce          string
 }
 
 func (msg *GetLastArbiterUsedUTXOMessage) CMD() string {
@@ -23,6 +24,10 @@ func (msg *GetLastArbiterUsedUTXOMessage) Serialize(w io.Writer) error {
 		return err
 	}
 	err = common.WriteUint32(w, msg.Height)
+	if err != nil {
+		return err
+	}
+	err = common.WriteVarString(w, msg.Nonce)
 	if err != nil {
 		return err
 	}
@@ -40,6 +45,11 @@ func (msg *GetLastArbiterUsedUTXOMessage) Deserialize(r io.Reader) error {
 		return err
 	}
 	msg.Height = height
+	nonce, err := common.ReadVarString(r)
+	if err != nil {
+		return err
+	}
+	msg.Nonce = nonce
 	return nil
 }
 

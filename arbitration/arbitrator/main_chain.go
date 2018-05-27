@@ -15,6 +15,8 @@ type MainChain interface {
 	ReceiveProposalFeedback(content []byte) error
 
 	SyncMainChainCachedTxs() (map[SideChain][]string, error)
+	SyncChainData()
+	SyncMainChainData()
 }
 
 type MainChainClient interface {

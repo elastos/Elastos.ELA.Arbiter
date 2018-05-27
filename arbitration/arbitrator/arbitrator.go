@@ -32,6 +32,7 @@ type Arbitrator interface {
 	IsOnDutyOfSide(sideChainKey string) bool
 	GetArbitratorGroup() ArbitratorGroup
 	GetSideChainManager() SideChainManager
+	GetMainChain() MainChain
 
 	InitAccount(passwd []byte) error
 	StartSpvModule() error
@@ -236,6 +237,7 @@ func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 	}
 
 	ar.createAndSendDepositTransaction(&proof, &spvtxn)
+	log.Info("Notify tx and createAndSendDepositTransaction ")
 }
 
 func (ar *ArbitratorImpl) Rollback(height uint32) {
@@ -255,6 +257,10 @@ func (ar *ArbitratorImpl) GetAllChains() []SideChain {
 
 func (ar *ArbitratorImpl) SetMainChain(chain MainChain) {
 	ar.mainChainImpl = chain
+}
+
+func (ar *ArbitratorImpl) GetMainChain() MainChain {
+	return ar.mainChainImpl
 }
 
 func (ar *ArbitratorImpl) SetMainChainClient(client MainChainClient) {

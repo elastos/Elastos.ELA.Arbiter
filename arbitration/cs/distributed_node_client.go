@@ -72,7 +72,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		for _, input := range transactionItem.ItemContent.Inputs {
 			outPoints = append(outPoints, input.Previous)
 		}
-		sc.SetLastUsedOutPoints(outPoints)
+		sc.AddLastUsedOutPoints(outPoints)
 	}
 
 	if err := client.SignProposal(transactionItem); err != nil {

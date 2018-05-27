@@ -2,7 +2,6 @@ package mainchain
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
@@ -20,6 +19,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA/core"
+	"time"
 )
 
 const WithdrawAssetLockTime uint32 = 6
@@ -125,7 +125,7 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, infoArray []*WithdrawInfo,
 	sideChainTransactionHash []string, mcFunc MainChainFunc) (*Transaction, error) {
 
-	mc.syncChainData()
+	mc.SyncChainData()
 
 	withdrawBank := sideChain.GetKey()
 	rate := sideChain.GetRage()
@@ -205,7 +205,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, infoArra
 	for _, input := range txInputs {
 		newUsedUtxos = append(newUsedUtxos, input.Previous)
 	}
-	sideChain.SetLastUsedOutPoints(newUsedUtxos)
+	sideChain.AddLastUsedOutPoints(newUsedUtxos)
 
 	if totalOutputAmount > 0 {
 		return nil, errors.New("Available token is not enough")
@@ -268,7 +268,7 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*D
 	return result, nil
 }
 
-func (mc *MainChainImpl) syncChainData() {
+func (mc *MainChainImpl) SyncChainData() {
 	var chainHeight uint32
 	var currentHeight uint32
 	var needSync bool
@@ -284,16 +284,21 @@ func (mc *MainChainImpl) syncChainData() {
 			if err != nil {
 				break
 			}
-			mc.processBlock(block)
+			mc.processBlock(block, currentHeight)
 
 			// Update wallet height
 			currentHeight = DbCache.CurrentHeight(block.Height + 1)
 
-			fmt.Print(">")
+			log.Info("[arbitrator] Main chain height: ", currentHeight)
 		}
 	}
+}
 
-	fmt.Print("\n")
+func (mc *MainChainImpl) SyncMainChainData() {
+	for {
+		mc.SyncChainData()
+		time.Sleep(time.Millisecond * config.Parameters.MainChainMonitorScanInterval)
+	}
 }
 
 func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
@@ -336,7 +341,7 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 	return false
 }
 
-func (mc *MainChainImpl) processBlock(block *BlockInfo) {
+func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 	// Add UTXO to wallet address from transaction outputs
 	for _, txnInfo := range block.Tx {
 		var txn TransactionInfo
@@ -344,20 +349,22 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 
 		// Add UTXOs to wallet address from transaction outputs
 		for index, output := range txn.Outputs {
+			// Create UTXO input from output
+			txHashBytes, _ := HexStringToBytes(txn.Hash)
+			//txHashBytes = BytesReverse(txHashBytes)
+			referTxHash, _ := Uint256FromBytes(txHashBytes)
+			outPoint := OutPoint{
+				TxID:  *referTxHash,
+				Index: uint16(index),
+			}
+
 			if ok := mc.containGenesisBlockAddress(output.Address); ok {
-				// Create UTXO input from output
-				txHashBytes, _ := HexStringToBytes(txn.Hash)
-				//txHashBytes = BytesReverse(txHashBytes)
-				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
 				if txn.TxType == CoinBase {
 					sequence = block.Height + 100
 				}
 				input := &Input{
-					Previous: OutPoint{
-						TxID:  *referTxHash,
-						Index: uint16(index),
-					},
+					Previous: outPoint,
 					Sequence: sequence,
 				}
 				amount, _ := StringToFixed64(output.Value)
@@ -366,7 +373,6 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 					Input:               input,
 					Amount:              amount,
 					GenesisBlockAddress: output.Address,
-					DestroyAddress:      DESTROY_ADDRESS,
 				}
 				DbCache.AddAddressUTXO(addressUTXO)
 			}
@@ -377,14 +383,28 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo) {
 			txHashBytes, _ := HexStringToBytes(input.TxID)
 			txHashBytes = BytesReverse(txHashBytes)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
+			outPoint := OutPoint{
+				TxID:  *referTxID,
+				Index: input.VOut,
+			}
 			txInput := &Input{
-				Previous: OutPoint{
-					TxID:  *referTxID,
-					Index: input.VOut,
-				},
+				Previous: outPoint,
 				Sequence: input.Sequence,
 			}
 			DbCache.DeleteUTXO(txInput)
+
+			for _, sc := range ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains() {
+				var containedOps []OutPoint
+				for _, op := range sc.GetLastUsedOutPoints() {
+					if op.IsEqual(outPoint) {
+						containedOps = append(containedOps, op)
+					}
+				}
+				if len(containedOps) != 0 {
+					sc.RemoveLastUsedOutPoints(containedOps)
+				}
+				sc.SetLastUsedUtxoHeight(height)
+			}
 		}
 	}
 }

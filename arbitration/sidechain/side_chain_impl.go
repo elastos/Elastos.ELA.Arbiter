@@ -33,10 +33,11 @@ type SideChainImpl struct {
 	Key           string
 	CurrentConfig *config.SideNodeConfig
 
-	LastUsedUtxoHeight uint32
-	LastUsedOutPoints  []core.OutPoint
-	ToSendTransaction  []*core.Transaction
-	Ready              bool
+	LastUsedUtxoHeight        uint32
+	LastUsedOutPoints         []core.OutPoint
+	ToSendTransaction         []*core.Transaction
+	Ready                     bool
+	ReceivedUsedUtxoMsgNumber uint32
 }
 
 func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
@@ -59,16 +60,22 @@ func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) erro
 
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
 	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	if sc.GetKey() == genesisAddress && sc.LastUsedUtxoHeight < height {
-		sc.LastUsedOutPoints = outPoints
-		sc.LastUsedUtxoHeight = height
-		if !sc.Ready {
+	log.Info("ReceiveSendLastArbiterUsedUtxos receive mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
+	if sc.GetKey() == genesisAddress && sc.LastUsedUtxoHeight <= height {
+		sc.ReceivedUsedUtxoMsgNumber++
+		sc.mux.Unlock()
+		sc.AddLastUsedOutPoints(outPoints)
+		sc.SetLastUsedUtxoHeight(height)
+		if !sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
 			err := sc.CreateAndBroadcastWithdrawProposal(sc.ToSendTransaction)
 			if err != nil {
-				return err
+				log.Error("CreateAndBroadcastWithdrawProposal failed")
 			}
+			sc.mux.Lock()
+			sc.Ready = true
 			sc.ToSendTransaction = make([]*core.Transaction, 0)
+			sc.mux.Unlock()
+			log.Info("ReceiveSendLastArbiterUsedUtxos CreateAndBroadcastWithdrawProposal transactions")
 		}
 	}
 	return nil
@@ -78,7 +85,20 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	if sc.GetKey() == genesisAddress {
-		if sc.LastUsedUtxoHeight == height {
+		/*utxos, err := store.DbCache.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
+		if err != nil {
+			return err
+		}
+		var outPoints []core.OutPoint
+		for _, op := range sc.LastUsedOutPoints {
+			for _, utxo := range utxos {
+				if op.IsEqual(utxo.Input.Previous) {
+					outPoints = append(outPoints, op)
+				}
+			}
+		}*/
+		log.Info("ReceiveGetLastArbiterUsedUtxos receive mssage, need height:", height, "my height:", sc.LastUsedUtxoHeight)
+		if sc.LastUsedUtxoHeight >= height {
 			msg := &cs.SendLastArbiterUsedUTXOMessage{
 				Command:        cs.SendLastArbiterUsedUtxoCommand,
 				GenesisAddress: genesisAddress,
@@ -106,16 +126,50 @@ func (sc *SideChainImpl) GetLastUsedUtxoHeight() uint32 {
 	return sc.LastUsedUtxoHeight
 }
 
+func (sc *SideChainImpl) SetLastUsedUtxoHeight(height uint32) {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	sc.LastUsedUtxoHeight = height
+}
+
 func (sc *SideChainImpl) GetLastUsedOutPoints() []core.OutPoint {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	return sc.LastUsedOutPoints
 }
 
-func (sc *SideChainImpl) SetLastUsedOutPoints(ops []core.OutPoint) {
+func (sc *SideChainImpl) AddLastUsedOutPoints(ops []core.OutPoint) {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
-	sc.LastUsedOutPoints = ops
+	for _, op := range ops {
+		isContained := false
+		for _, outPoint := range sc.LastUsedOutPoints {
+			if op.IsEqual(outPoint) {
+				isContained = true
+			}
+		}
+		if !isContained {
+			sc.LastUsedOutPoints = append(sc.LastUsedOutPoints, op)
+		}
+	}
+}
+
+func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []core.OutPoint) {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	var newOutPoints []core.OutPoint
+	for _, outPoint := range sc.LastUsedOutPoints {
+		isContained := false
+		for _, op := range ops {
+			if outPoint.IsEqual(op) {
+				isContained = true
+			}
+		}
+		if !isContained {
+			newOutPoints = append(newOutPoints, outPoint)
+		}
+	}
+	sc.LastUsedOutPoints = newOutPoints
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
@@ -181,6 +235,8 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfo *TransactionInfo) error {
 		sc.GetKey(), txn); err != nil {
 		return err
 	}
+
+	log.Info("OnUTXOChanged find withdraw transaction, add into dbcache")
 
 	/*if !sc.IsOnDuty() { //only on duty arbitrator need to broadcast withdraw proposal
 		return nil
@@ -333,22 +389,25 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 		return err
 	}
 
-	if sc.LastUsedUtxoHeight == chainHeight-1 || sc.LastUsedUtxoHeight == 0 {
+	/*if sc.LastUsedUtxoHeight == chainHeight-1 || sc.LastUsedUtxoHeight == 0 {
 		err := sc.CreateAndBroadcastWithdrawProposal(transactions)
 		if err != nil {
 			return err
 		}
 		sc.LastUsedUtxoHeight = chainHeight
-	} else {
+	} else*/{
 		sc.ToSendTransaction = transactions
 		sc.Ready = false
+		sc.ReceivedUsedUtxoMsgNumber = 0
 		msg := &cs.GetLastArbiterUsedUTXOMessage{
 			Command:        cs.GetLastArbiterUsedUtxoCommand,
 			GenesisAddress: sc.GetKey(),
-			Height:         chainHeight - 1}
+			Height:         chainHeight - 1,
+			Nonce:          strconv.FormatInt(rand.Int63(), 10)}
 		msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
 		cs.P2PClientSingleton.AddMessageHash(msgHash)
 		cs.P2PClientSingleton.Broadcast(msg)
+		log.Info("syncSideChainCachedTxs find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
 	}
 
 	err = store.DbCache.RemoveSideChainTxs(receivedTxs)
