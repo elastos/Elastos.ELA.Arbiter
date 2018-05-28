@@ -16,7 +16,6 @@ type MainChain interface {
 
 	SyncMainChainCachedTxs() (map[SideChain][]string, error)
 	SyncChainData()
-	SyncMainChainData()
 }
 
 type MainChainClient interface {

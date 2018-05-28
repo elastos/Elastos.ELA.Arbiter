@@ -38,6 +38,9 @@
       }
     ],
     "SyncInterval": 10000,
-    "SideChainMonitorScanInterval": 1000
+    "SideChainMonitorScanInterval": 1000,
+    "MinReceivedUsedUtxoMsgNumber": 1,
+    "MinOutbound": 3,
+    "MaxConnections": 8
   }
 }

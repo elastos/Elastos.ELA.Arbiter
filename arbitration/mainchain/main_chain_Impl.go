@@ -19,7 +19,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA/core"
-	"time"
 )
 
 const WithdrawAssetLockTime uint32 = 6
@@ -291,13 +290,6 @@ func (mc *MainChainImpl) SyncChainData() {
 
 			log.Info("[arbitrator] Main chain height: ", currentHeight)
 		}
-	}
-}
-
-func (mc *MainChainImpl) SyncMainChainData() {
-	for {
-		mc.SyncChainData()
-		time.Sleep(time.Millisecond * config.Parameters.MainChainMonitorScanInterval)
 	}
 }
 

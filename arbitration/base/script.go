@@ -3,7 +3,6 @@ package base
 import (
 	"bytes"
 	"errors"
-	"sort"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	. "github.com/elastos/Elastos.ELA.Utility/crypto"
@@ -22,7 +21,7 @@ func createMultiSignRedeemScriptInner(M int, publicKeys []*PublicKey, scriptType
 	buf.WriteByte(byte(opCode))
 
 	//sort pubkey
-	sort.Sort(PubKeySlice(publicKeys))
+	SortPublicKeys(publicKeys)
 
 	// Write public keys
 	for _, pubkey := range publicKeys {

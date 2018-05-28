@@ -26,14 +26,16 @@ type Configuration struct {
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
 
-	SyncInterval time.Duration `json:"SyncInterval"`
-	HttpJsonPort int           `json:"HttpJsonPort"`
-	PrintLevel   int           `json:"PrintLevel"`
-	MaxLogSize   int64         `json:"MaxLogSize"`
+	SyncInterval  time.Duration `json:"SyncInterval"`
+	HttpJsonPort  int           `json:"HttpJsonPort"`
+	PrintLevel    int           `json:"PrintLevel"`
+	SpvPrintLevel uint8         `json:"SpvPrintLevel"`
+	MaxLogSize    int64         `json:"MaxLogSize"`
 
 	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
-	MainChainMonitorScanInterval time.Duration `json:"MainChainMonitorScanInterval"`
 	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
+	MinOutbound                  int           `json:"MinOutbound"`
+	MaxConnections               int           `json:"MaxConnections"`
 }
 
 type RpcConfig struct {
@@ -42,9 +44,11 @@ type RpcConfig struct {
 }
 
 type MainNodeConfig struct {
-	Rpc         *RpcConfig `json:"Rpc"`
-	SpvSeedList []string   `json:SpvSeedList`
-	Magic       uint32     `json:"Magic"`
+	Rpc            *RpcConfig `json:"Rpc"`
+	SpvSeedList    []string   `json:SpvSeedList`
+	Magic          uint32     `json:"Magic"`
+	MinOutbound    int        `json:"MinOutbound"`
+	MaxConnections int        `json:"MaxConnections"`
 }
 
 type SideNodeConfig struct {

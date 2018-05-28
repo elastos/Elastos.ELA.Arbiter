@@ -24,10 +24,6 @@ func init() {
 	sidechain.Init()
 }
 
-func setMainChainAccountMonitor(arb arbitrator.Arbitrator) {
-	go arb.GetMainChain().SyncMainChainData()
-}
-
 func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
 
@@ -102,7 +98,6 @@ func main() {
 	}
 
 	setSideChainAccountMonitor(currentArbitrator)
-	setMainChainAccountMonitor(currentArbitrator)
 
 	log.Info("6. Start arbitrator spv module.")
 	if err := currentArbitrator.StartSpvModule(); err != nil {

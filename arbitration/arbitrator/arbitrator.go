@@ -293,7 +293,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	}
 
 	spvService, err = NewSPVService(config.Parameters.MainNode.Magic, binary.LittleEndian.Uint64(publicKeyBytes),
-		config.Parameters.MainNode.SpvSeedList)
+		config.Parameters.MainNode.SpvSeedList, config.Parameters.MainNode.MinOutbound, config.Parameters.MainNode.MaxConnections)
 	if err != nil {
 		return err
 	}

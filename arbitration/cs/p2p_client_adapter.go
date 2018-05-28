@@ -49,7 +49,7 @@ func InitP2PClient(arbitrator Arbitrator) error {
 	magic := config.Parameters.Magic
 	seedList := config.Parameters.SeedList
 
-	client := spvI.NewP2PClient(magic, seedList)
+	client := spvI.NewP2PClient(magic, seedList, config.Parameters.MinOutbound, config.Parameters.MaxConnections)
 	P2PClientSingleton = &P2PClientAdapter{
 		p2pClient:  client,
 		arbitrator: arbitrator,

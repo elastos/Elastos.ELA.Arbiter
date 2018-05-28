@@ -73,6 +73,12 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	if group.lastSyncTime != nil && currentTime*uint64(time.Millisecond) < group.timeoutLimit {
 		return nil
 	}
+
+	mc := group.GetCurrentArbitrator().GetMainChain()
+	if mc != nil {
+		mc.SyncChainData()
+	}
+
 	height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
@@ -112,23 +118,18 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 }
 
 func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
-	group.syncFromMainNode()
-
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return len(group.arbitrators)
 }
 
 func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() string {
-	group.syncFromMainNode()
-
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.arbitrators[group.onDutyArbitratorIndex]
 }
 
 func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfSide(sideChainKey string) string {
-
 	height := store.DbCache.CurrentSideHeight(sideChainKey, store.QueryHeightCode)
 
 	group.mux.Lock()
@@ -139,16 +140,12 @@ func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfSide(sideChainKey string)
 }
 
 func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {
-	group.syncFromMainNode()
-
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.currentArbitrator
 }
 
 func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
-	group.syncFromMainNode()
-
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.arbitrators
@@ -171,5 +168,5 @@ func Init() {
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 
-	spvLog.Init()
+	spvLog.Init(config.Parameters.SpvPrintLevel)
 }
