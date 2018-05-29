@@ -341,24 +341,23 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 
 		// Add UTXOs to wallet address from transaction outputs
 		for index, output := range txn.Outputs {
-			// Create UTXO input from output
-			txHashBytes, _ := HexStringToBytes(txn.Hash)
-			//txHashBytes = BytesReverse(txHashBytes)
-			referTxHash, _ := Uint256FromBytes(txHashBytes)
-			outPoint := OutPoint{
-				TxID:  *referTxHash,
-				Index: uint16(index),
-			}
-
 			if ok := mc.containGenesisBlockAddress(output.Address); ok {
+				// Create UTXO input from output
+				txHashBytes, _ := HexStringToBytes(txn.Hash)
+				//txHashBytes = BytesReverse(txHashBytes)
+				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
+				input := &Input{
+					Previous: OutPoint{
+						TxID:  *referTxHash,
+						Index: uint16(index),
+					},
+					Sequence: sequence,
+				}
 				if txn.TxType == CoinBase {
 					sequence = block.Height + 100
 				}
-				input := &Input{
-					Previous: outPoint,
-					Sequence: sequence,
-				}
+
 				amount, _ := StringToFixed64(output.Value)
 				// Save UTXO input to data store
 				addressUTXO := &AddressUTXO{

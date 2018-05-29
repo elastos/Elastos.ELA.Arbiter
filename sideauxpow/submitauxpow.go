@@ -29,6 +29,10 @@ func SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) err
 		return err
 	}
 
-	log.Info(resp)
+	if resp != nil {
+		log.Info(resp)
+	} else {
+		log.Warn("submitauxblock but resp is nil, sideNode.Rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort)
+	}
 	return nil
 }

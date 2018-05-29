@@ -74,11 +74,6 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 		return nil
 	}
 
-	mc := group.GetCurrentArbitrator().GetMainChain()
-	if mc != nil {
-		mc.SyncChainData()
-	}
-
 	height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
@@ -105,6 +100,11 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	group.lastSyncTime = &currentTime
 	group.mux.Unlock()
 
+	mc := group.GetCurrentArbitrator().GetMainChain()
+	if mc != nil {
+		mc.SyncChainData()
+	}
+
 	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
 	if err == nil && group.listener != nil && group.listener.(*ArbitratorImpl).Keystore != nil {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
@@ -115,6 +115,12 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	}
 
 	return nil
+}
+
+func (group *ArbitratorGroupImpl) GetCurrentHeight() *uint32 {
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	return group.currentHeight
 }
 
 func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {

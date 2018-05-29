@@ -32,7 +32,7 @@ const (
 	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
 	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
 
-	MaxRecordMessageNumber = 1000
+	MessageStoreHeight = 5
 )
 
 type P2PClientAdapter struct {
@@ -40,7 +40,7 @@ type P2PClientAdapter struct {
 	listeners  []base.P2PClientListener
 	arbitrator Arbitrator
 
-	messageHashes []common.Uint256
+	messageHashes map[common.Uint256]uint32
 	cacheLock     sync.Mutex
 }
 
@@ -51,8 +51,9 @@ func InitP2PClient(arbitrator Arbitrator) error {
 
 	client := spvI.NewP2PClient(magic, seedList, config.Parameters.MinOutbound, config.Parameters.MaxConnections)
 	P2PClientSingleton = &P2PClientAdapter{
-		p2pClient:  client,
-		arbitrator: arbitrator,
+		p2pClient:     client,
+		arbitrator:    arbitrator,
+		messageHashes: make(map[common.Uint256]uint32, 0),
 	}
 
 	client.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
@@ -100,8 +101,8 @@ func (adapter *P2PClientAdapter) GetMessageHash(msg p2p.Message) common.Uint256 
 func (adapter *P2PClientAdapter) ExistMessageHash(msgHash common.Uint256) bool {
 	adapter.cacheLock.Lock()
 	defer adapter.cacheLock.Unlock()
-	for _, v := range adapter.messageHashes {
-		if v == msgHash {
+	for k, _ := range adapter.messageHashes {
+		if k == msgHash {
 			return true
 		}
 	}
@@ -111,14 +112,20 @@ func (adapter *P2PClientAdapter) ExistMessageHash(msgHash common.Uint256) bool {
 func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
 	adapter.cacheLock.Lock()
 	defer adapter.cacheLock.Unlock()
-	adapter.messageHashes = append(adapter.messageHashes, msgHash)
-	if len(adapter.messageHashes) > MaxRecordMessageNumber {
-		var newMessageHashes []common.Uint256
-		for i := int(MaxRecordMessageNumber / 2); i < len(adapter.messageHashes); i++ {
-			newMessageHashes = append(newMessageHashes, adapter.messageHashes[i])
+	currentMainChainHeight := *ArbitratorGroupSingleton.GetCurrentHeight()
+	adapter.messageHashes[msgHash] = currentMainChainHeight
+
+	//delete message height 5 less than current main chain height
+	var needToDeleteMessages []common.Uint256
+	for k, v := range adapter.messageHashes {
+		if v < currentMainChainHeight-MessageStoreHeight {
+			needToDeleteMessages = append(needToDeleteMessages, k)
 		}
-		adapter.messageHashes = newMessageHashes
 	}
+	for _, msg := range needToDeleteMessages {
+		delete(adapter.messageHashes, msg)
+	}
+
 	return false
 }
 
