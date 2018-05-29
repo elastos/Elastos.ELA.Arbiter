@@ -129,9 +129,11 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactions(infoArray []*WithdrawInfo, 
 	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, infoArray, sideTransactionHash, mcFunc)
 	if err != nil {
 		log.Warn(err.Error())
+		return nil
 	}
 	if withdrawTransaction == nil {
 		log.Warn("Created an empty withdraw transaction.")
+		return nil
 	}
 	result = append(result, withdrawTransaction)
 
@@ -201,7 +203,7 @@ func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *Transaction) (interface{}
 	}
 
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction",
-		rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
+		rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}

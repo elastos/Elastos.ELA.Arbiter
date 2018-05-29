@@ -150,7 +150,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	// log.Debug("Raw Sidemining transaction: ", content)
 
 	// send transaction
-	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
+	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
 	}

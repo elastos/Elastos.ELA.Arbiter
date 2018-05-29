@@ -33,9 +33,11 @@ type SideChainImpl struct {
 	Key           string
 	CurrentConfig *config.SideNodeConfig
 
+	tick int
+
 	LastUsedUtxoHeight        uint32
 	LastUsedOutPoints         []core.OutPoint
-	ToSendTransaction         []*core.Transaction
+	ToSendTransactions        []*core.Transaction
 	Ready                     bool
 	ReceivedUsedUtxoMsgNumber uint32
 }
@@ -67,13 +69,13 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
 		if !sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
-			err := sc.CreateAndBroadcastWithdrawProposal(sc.ToSendTransaction)
+			err := sc.CreateAndBroadcastWithdrawProposal(sc.ToSendTransactions)
 			if err != nil {
 				log.Error("CreateAndBroadcastWithdrawProposal failed")
 			}
 			sc.mux.Lock()
 			sc.Ready = true
-			sc.ToSendTransaction = make([]*core.Transaction, 0)
+			sc.ToSendTransactions = make([]*core.Transaction, 0)
 			sc.mux.Unlock()
 			log.Info("ReceiveSendLastArbiterUsedUtxos CreateAndBroadcastWithdrawProposal transactions")
 		}
@@ -85,18 +87,6 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	if sc.GetKey() == genesisAddress {
-		/*utxos, err := store.DbCache.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
-		if err != nil {
-			return err
-		}
-		var outPoints []core.OutPoint
-		for _, op := range sc.LastUsedOutPoints {
-			for _, utxo := range utxos {
-				if op.IsEqual(utxo.Input.Previous) {
-					outPoints = append(outPoints, op)
-				}
-			}
-		}*/
 		log.Info("ReceiveGetLastArbiterUsedUtxos receive mssage, need height:", height, "my height:", sc.LastUsedUtxoHeight)
 		if sc.LastUsedUtxoHeight >= height {
 			msg := &cs.SendLastArbiterUsedUTXOMessage{
@@ -107,7 +97,24 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 			msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
 			cs.P2PClientSingleton.AddMessageHash(msgHash)
 			cs.P2PClientSingleton.Broadcast(msg)
-			return nil
+
+			utxos, err := store.DbCache.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
+			if err != nil {
+				return err
+			}
+			var newOutPoints []core.OutPoint
+			for _, op := range sc.LastUsedOutPoints {
+				isContained := false
+				for _, utxo := range utxos {
+					if op.IsEqual(utxo.Input.Previous) {
+						isContained = true
+					}
+				}
+				if !isContained {
+					newOutPoints = append(newOutPoints, op)
+				}
+			}
+			sc.LastUsedOutPoints = newOutPoints
 		} else {
 			return errors.New("I have no needed outpoints at requested height")
 		}
@@ -194,6 +201,18 @@ func (sc *SideChainImpl) IsOnDuty() bool {
 
 func (sc *SideChainImpl) GetRage() float32 {
 	return sc.getCurrentConfig().Rate
+}
+
+func (sc *SideChainImpl) GetTick() int {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	return sc.tick
+}
+
+func (sc *SideChainImpl) SetTick(tick int) {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+	sc.tick = tick
 }
 
 func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
@@ -396,7 +415,7 @@ func (sc *SideChainImpl) syncSideChainCachedTxs() error {
 		}
 		sc.LastUsedUtxoHeight = chainHeight
 	} else*/{
-		sc.ToSendTransaction = transactions
+		sc.ToSendTransactions = transactions
 		sc.Ready = false
 		sc.ReceivedUsedUtxoMsgNumber = 0
 		msg := &cs.GetLastArbiterUsedUTXOMessage{

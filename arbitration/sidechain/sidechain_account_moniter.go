@@ -22,7 +22,6 @@ type SideChainAccountMonitorImpl struct {
 	ParentArbitrator   arbitrator.Arbitrator
 	accountListenerMap map[string]AccountListener
 	onDutyMap          map[string]bool
-	tick               int
 }
 
 func (monitor *SideChainAccountMonitorImpl) tryInit() {
@@ -32,7 +31,6 @@ func (monitor *SideChainAccountMonitorImpl) tryInit() {
 	if monitor.onDutyMap == nil {
 		monitor.onDutyMap = make(map[string]bool)
 	}
-	monitor.tick = 0
 }
 
 func (monitor *SideChainAccountMonitorImpl) AddListener(listener AccountListener) {
@@ -90,7 +88,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 			fmt.Print("\n")
 		}
 
-		monitor.tick++
 		monitor.checkOnDutyStatus(sideNode.GenesisBlockAddress)
 
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
@@ -105,14 +102,12 @@ func (monitor *SideChainAccountMonitorImpl) checkOnDutyStatus(genesisBlockAddres
 	listener, ok := monitor.accountListenerMap[genesisBlockAddress]
 	monitor.mux.Lock()
 	onDuty, _ := monitor.onDutyMap[genesisBlockAddress]
-	tick := monitor.tick
 	monitor.mux.Unlock()
 	if !ok {
 		return errors.New("Do not exist listener.")
 	}
 
-	pk, err := PublicKeyFromString(
-		arbitrator.ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(genesisBlockAddress))
+	pk, err := PublicKeyFromString(arbitrator.ArbitratorGroupSingleton.GetOnDutyArbitratorOfSide(genesisBlockAddress))
 	if err != nil {
 		return err
 	}
@@ -126,11 +121,15 @@ func (monitor *SideChainAccountMonitorImpl) checkOnDutyStatus(genesisBlockAddres
 		listener.OnDutyArbitratorChanged(!onDuty)
 	}
 
-	if onDuty && tick == 5 {
-		monitor.mux.Lock()
-		monitor.tick = 0
-		monitor.mux.Unlock()
+	sc, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisBlockAddress)
+	if ok {
+		sc.SetTick(sc.GetTick() + 1)
+	}
+
+	if onDuty && sc.GetTick() >= 5 {
+		sc.SetTick(0)
 		listener.StartSidechainMining()
+		log.Info("Start side chain mining")
 	}
 	return nil
 }
