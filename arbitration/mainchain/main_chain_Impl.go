@@ -45,12 +45,12 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
 	for i := 0; i < len(transactions); i++ {
 		depositInfo, err := mc.ParseUserDepositTransactionInfo(transactions[i])
-		if err != nil || len(depositInfo) == 0 {
+		if err != nil {
 			log.Warn("Invalid deposit address.")
 			continue
 		}
 
-		addr, err := depositInfo[0].MainChainProgramHash.ToAddress()
+		addr, err := depositInfo.MainChainProgramHash.ToAddress()
 		if err != nil {
 			log.Warn("Invalid deposit address.")
 			continue
@@ -65,6 +65,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		for k, _ := range allSideChainTxHashes {
 			if k == sc {
 				hasSideChainInMap = true
+				break
 			}
 		}
 		if hasSideChainInMap {
@@ -121,7 +122,7 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 	return nil
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, infoArray []*WithdrawInfo,
+func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdrawInfo *WithdrawInfo,
 	sideChainTransactionHash []string, mcFunc MainChainFunc) (*Transaction, error) {
 
 	mc.SyncChainData()
@@ -134,10 +135,10 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, infoArra
 	var txOutputs []*Output
 	// Check if from address is valid
 	assetID := spvWallet.SystemAssetId
-	for _, info := range infoArray {
-		amount := info.Amount / Fixed64(rate)
-		crossChainAmount := info.CrossChainAmount / Fixed64(rate)
-		programhash, err := Uint168FromAddress(info.TargetAddress)
+	for i := 0; i < len(withdrawInfo.TargetAddress); i++ {
+		amount := withdrawInfo.Amount[i] / Fixed64(rate)
+		crossChainAmount := withdrawInfo.CrossChainAmount[i] / Fixed64(rate)
+		programhash, err := Uint168FromAddress(withdrawInfo.TargetAddress[i])
 		if err != nil {
 			return nil, err
 		}
@@ -246,20 +247,19 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, infoArra
 	}, nil
 }
 
-func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error) {
-	var result []*DepositInfo
-
+func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error) {
+	result := new(DepositInfo)
 	switch payloadObj := txn.Payload.(type) {
 	case *PayloadTransferCrossChainAsset:
-		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
-			info := &DepositInfo{
-				MainChainProgramHash: txn.Outputs[payloadObj.OutputIndex[i]].ProgramHash,
-				TargetAddress:        payloadObj.CrossChainAddress[i],
-				Amount:               txn.Outputs[payloadObj.OutputIndex[i]].Value,
-				CrossChainAmount:     payloadObj.CrossChainAmount[i],
-			}
-			result = append(result, info)
+		if len(txn.Outputs) == 0 {
+			return nil, errors.New("Invalid payload")
 		}
+		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
+			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddress[i])
+			result.Amount = append(result.Amount, txn.Outputs[payloadObj.OutputIndex[i]].Value)
+			result.CrossChainAmount = append(result.CrossChainAmount, payloadObj.CrossChainAmount[i])
+		}
+		result.MainChainProgramHash = txn.Outputs[payloadObj.OutputIndex[0]].ProgramHash
 	default:
 		return nil, errors.New("Invalid payload")
 	}
@@ -279,16 +279,15 @@ func (mc *MainChainImpl) SyncChainData() {
 		}
 
 		for currentHeight < chainHeight {
-			block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+			block, err := rpc.GetBlockByHeight(currentHeight+1, config.Parameters.MainNode.Rpc)
 			if err != nil {
 				break
 			}
-			mc.processBlock(block, currentHeight)
+			mc.processBlock(block, currentHeight+1)
 
 			// Update wallet height
-			currentHeight = DbCache.CurrentHeight(block.Height + 1)
-
-			log.Info("[arbitrator] Main chain height: ", currentHeight)
+			currentHeight = DbCache.CurrentHeight(block.Height)
+			log.Info("[arbitrator] Main chain height: ", block.Height)
 		}
 	}
 }
@@ -334,6 +333,7 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 }
 
 func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
+	sideChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
 	// Add UTXO to wallet address from transaction outputs
 	for _, txnInfo := range block.Tx {
 		var txn TransactionInfo
@@ -344,7 +344,6 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 			if ok := mc.containGenesisBlockAddress(output.Address); ok {
 				// Create UTXO input from output
 				txHashBytes, _ := HexStringToBytes(txn.Hash)
-				//txHashBytes = BytesReverse(txHashBytes)
 				referTxHash, _ := Uint256FromBytes(txHashBytes)
 				sequence := output.OutputLock
 				input := &Input{
@@ -372,7 +371,6 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 		// Delete UTXOs from wallet by transaction inputs
 		for _, input := range txn.Inputs {
 			txHashBytes, _ := HexStringToBytes(input.TxID)
-			txHashBytes = BytesReverse(txHashBytes)
 			referTxID, _ := Uint256FromBytes(txHashBytes)
 			outPoint := OutPoint{
 				TxID:  *referTxID,
@@ -384,7 +382,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 			}
 			DbCache.DeleteUTXO(txInput)
 
-			for _, sc := range ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains() {
+			for _, sc := range sideChains {
 				var containedOps []OutPoint
 				for _, op := range sc.GetLastUsedOutPoints() {
 					if op.IsEqual(outPoint) {
@@ -394,9 +392,13 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 				if len(containedOps) != 0 {
 					sc.RemoveLastUsedOutPoints(containedOps)
 				}
-				sc.SetLastUsedUtxoHeight(height)
 			}
 		}
+	}
+
+	for _, sc := range sideChains {
+		sc.SetLastUsedUtxoHeight(height)
+		log.Info("Side chain [", sc.GetKey(), "] SetLastUsedUtxoHeight ", height)
 	}
 }
 

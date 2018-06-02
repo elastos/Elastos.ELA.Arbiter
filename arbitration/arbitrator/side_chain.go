@@ -11,7 +11,6 @@ type SideChain interface {
 	P2PClientListener
 	SideChainNode
 
-	IsOnDuty() bool
 	GetKey() string
 	GetRage() float32
 
@@ -25,9 +24,8 @@ type SideChain interface {
 	RemoveLastUsedOutPoints(ops []core.OutPoint)
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
-	CreateDepositTransaction(infoArray []*DepositInfo, proof bloom.MerkleProof,
+	CreateDepositTransaction(depositInfo *DepositInfo, proof bloom.MerkleProof,
 		mainChainTransaction *core.Transaction) (*TransactionInfo, error)
-	ParseUserWithdrawTransactionInfo(txn *core.Transaction) ([]*WithdrawInfo, error)
 }
 
 type SideChainManager interface {

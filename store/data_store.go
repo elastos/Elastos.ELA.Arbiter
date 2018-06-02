@@ -43,7 +43,8 @@ const (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
 				GenesisBlockAddress VARCHAR(34),
-				TransactionData BLOB
+				TransactionData BLOB,
+				BlockHeight INTEGER 
 			);`
 	CreateMainChainTxsTable = `CREATE TABLE IF NOT EXISTS MainChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
@@ -77,16 +78,12 @@ type DataStore interface {
 	DeleteUTXO(input *Input) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
 
-	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction) error
+	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, blockHeight uint32) error
+	AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error
 	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
-	GetAllSideChainTxHashes(genesisBlockAddress string) ([]string, error)
+	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
-
-	AddSideChainTxProposal(transactionHash, genesisBlockAddress string, transaction *Transaction) error
-	HasSideChainTxProposal(transactionHash string) (bool, error)
-	RemoveSideChainTxsProposal(transactionHashes []string) error
-	GetSideChainTxsProposalFromHashes(transactionHashes []string) ([]*Transaction, error)
 
 	AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error
 	HashMainChainTx(transactionHash string) (bool, error)
@@ -327,13 +324,39 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 	return inputs, nil
 }
 
+func (store *DataStoreImpl) AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	if err != nil {
+		return err
+	}
+
+	// Do insert
+	for i := 0; i < len(transactionHashes); i++ {
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionsBytes[i], blockHeights[i])
+		if err != nil {
+			return err
+		}
+	}
+	tx.Commit()
+	return nil
+}
+
 func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress string,
-	transaction *Transaction) error {
+	transaction *Transaction, blockHeight uint32) error {
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData) values(?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -344,7 +367,7 @@ func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress 
 	transactionBytes := buf.Bytes()
 
 	// Do insert
-	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionBytes)
+	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionBytes, blockHeight)
 	if err != nil {
 		return err
 	}
@@ -380,26 +403,29 @@ func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error
 	return nil
 }
 
-func (store *DataStoreImpl) GetAllSideChainTxHashes(genesisBlockAddress string) ([]string, error) {
+func (store *DataStoreImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error) {
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 
 	var txHashes []string
+	var blockHeights []uint32
 	for rows.Next() {
 		var txHash string
-		err = rows.Scan(&txHash)
+		var blockHeight uint32
+		err = rows.Scan(&txHash, &blockHeight)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		txHashes = append(txHashes, txHash)
+		blockHeights = append(blockHeights, blockHeight)
 	}
-	return txHashes, nil
+	return txHashes, blockHeights, nil
 }
 
 func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
@@ -409,89 +435,6 @@ func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string
 	var txs []*Transaction
 	for _, txHash := range transactionHashes {
 		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=?`, txHash)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		for rows.Next() {
-			var transactionBytes []byte
-			err = rows.Scan(&transactionBytes)
-			if err != nil {
-				return nil, err
-			}
-
-			var tx Transaction
-			reader := bytes.NewReader(transactionBytes)
-			tx.Deserialize(reader)
-
-			txs = append(txs, &tx)
-		}
-	}
-
-	return txs, nil
-}
-
-func (store *DataStoreImpl) AddSideChainTxProposal(transactionHash, genesisBlockAddress string,
-	transaction *Transaction) error {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
-
-	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTxsProposal(TransactionHash, GenesisBlockAddress, TransactionData) values(?,?,?)")
-	if err != nil {
-		return err
-	}
-
-	// Serialize transaction
-	buf := new(bytes.Buffer)
-	transaction.Serialize(buf)
-	transactionBytes := buf.Bytes()
-
-	// Do insert
-	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionBytes)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (store *DataStoreImpl) HasSideChainTxProposal(transactionHash string) (bool, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
-
-	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxsProposal WHERE TransactionHash=?`, transactionHash)
-	defer rows.Close()
-	if err != nil {
-		return false, err
-	}
-
-	return rows.Next(), nil
-}
-
-func (store *DataStoreImpl) RemoveSideChainTxsProposal(transactionHashes []string) error {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
-
-	for _, txHash := range transactionHashes {
-		stmt, err := store.Prepare(
-			"DELETE FROM SideChainTxsProposal WHERE TransactionHash=?")
-		if err != nil {
-			return err
-		}
-		stmt.Exec(txHash)
-	}
-
-	return nil
-}
-
-func (store *DataStoreImpl) GetSideChainTxsProposalFromHashes(transactionHashes []string) ([]*Transaction, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
-
-	var txs []*Transaction
-	for _, txHash := range transactionHashes {
-		rows, err := store.Query(`SELECT SideChainTxsProposal.TransactionData FROM SideChainTxsProposal WHERE TransactionHash=?`, txHash)
 		if err != nil {
 			return nil, err
 		}

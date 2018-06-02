@@ -34,7 +34,6 @@ func Init() {
 		side := &SideChainImpl{
 			Key:           sideConfig.GenesisBlockAddress,
 			CurrentConfig: sideConfig,
-			isOnDuty:      false,
 		}
 
 		sideChainManager.AddChain(sideConfig.GenesisBlockAddress, side)

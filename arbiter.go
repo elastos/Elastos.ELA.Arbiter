@@ -98,6 +98,7 @@ func main() {
 	}
 
 	setSideChainAccountMonitor(currentArbitrator)
+	currentArbitrator.GetMainChain().SyncChainData()
 
 	log.Info("6. Start arbitrator spv module.")
 	if err := currentArbitrator.StartSpvModule(); err != nil {

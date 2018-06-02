@@ -24,6 +24,8 @@ func SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) err
 	params := make(map[string]string, 2)
 	params["blockhash"] = blockhash
 	params["sideauxpow"] = submitauxpow
+
+	log.Info("[SubmitAuxpow] Submit auxblock sideNode.Rpc：", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort)
 	resp, err := rpc.CallAndUnmarshal("submitauxblock", params, sideNode.Rpc)
 	if err != nil {
 		return err

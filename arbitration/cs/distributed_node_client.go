@@ -6,7 +6,6 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -33,34 +32,6 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return errors.New("Unknown payload type.")
 	}
 
-	//if has one transaction not received before, then we need to sign it.
-	hasSigned := true
-	for _, txHash := range withdrawAsset.SideChainTransactionHash {
-		ok, err := store.DbCache.HasSideChainTxProposal(txHash)
-		if err != nil {
-			return errors.New("Get exist side chain transaction from db failed")
-		}
-		if !ok {
-			hasSigned = false
-		}
-	}
-
-	if hasSigned {
-		transactions, err := store.DbCache.GetSideChainTxsProposalFromHashes(withdrawAsset.SideChainTransactionHash)
-		if err != nil {
-			return errors.New("Get exist side chain transaction from db failed")
-		}
-
-		for _, txn := range transactions {
-			switch txn.Payload.(type) {
-			case *PayloadWithdrawAsset:
-				if withdrawAsset.BlockHeight > txn.Payload.(*PayloadWithdrawAsset).BlockHeight {
-					return errors.New("Proposal already exist.")
-				}
-			}
-		}
-	}
-
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 	sc, ok := currentArbitrator.GetSideChainManager().GetChain(withdrawAsset.GenesisBlockAddress)
 	if !ok {
@@ -81,13 +52,6 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 
 	if err := client.Feedback(transactionItem); err != nil {
 		return err
-	}
-
-	for _, txHash := range withdrawAsset.SideChainTransactionHash {
-		if err := store.DbCache.AddSideChainTxProposal(txHash, withdrawAsset.GenesisBlockAddress,
-			transactionItem.ItemContent); err != nil {
-			return err
-		}
 	}
 
 	return nil

@@ -29,7 +29,6 @@ type Arbitrator interface {
 	Sign(content []byte) ([]byte, error)
 
 	IsOnDutyOfMain() bool
-	IsOnDutyOfSide(sideChainKey string) bool
 	GetArbitratorGroup() ArbitratorGroup
 	GetSideChainManager() SideChainManager
 	GetMainChain() MainChain
@@ -38,13 +37,13 @@ type Arbitrator interface {
 	StartSpvModule() error
 
 	//deposit
-	ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error)
-	CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction, infoArray []*DepositInfo) map[*TransactionInfo]SideChain
+	ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error)
+	CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction, depositInfo *DepositInfo) map[*TransactionInfo]SideChain
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
 
 	//withdraw
 	CreateWithdrawTransactions(
-		infoArray []*WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction
+		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction
 	BroadcastWithdrawProposal(txns []*Transaction)
 	SendWithdrawTransaction(txn *Transaction) (interface{}, error)
 }
@@ -83,6 +82,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 	ar.mainOnDutyMux.Unlock()
 
 	if onDuty {
+		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
 		depositTxs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
 		if err != nil {
 			return
@@ -90,6 +90,8 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 		for sideChain, txHashes := range depositTxs {
 			ar.createAndSendDepositTransactions(sideChain, txHashes)
 		}
+	} else {
+		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
 	}
 }
 
@@ -109,24 +111,15 @@ func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 	return ar.isOnDuty
 }
 
-func (ar *ArbitratorImpl) IsOnDutyOfSide(sideChainKey string) bool {
-	chain, ok := ar.sideChainManagerImpl.GetChain(sideChainKey)
-	if !ok {
-		return false
-	}
-
-	return chain.IsOnDuty()
-}
-
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransactions(infoArray []*WithdrawInfo, sideChain SideChain,
+func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfo *WithdrawInfo, sideChain SideChain,
 	sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction {
 	var result []*Transaction
 
-	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, infoArray, sideTransactionHash, mcFunc)
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, withdrawInfo, sideTransactionHash, mcFunc)
 	if err != nil {
 		log.Warn(err.Error())
 		return nil
@@ -140,7 +133,7 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactions(infoArray []*WithdrawInfo, 
 	return result
 }
 
-func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*DepositInfo, error) {
+func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error) {
 	depositInfo, err := ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
 	if err != nil {
 		return nil, err
@@ -150,14 +143,10 @@ func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) ([]*
 }
 
 func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction,
-	infoArray []*DepositInfo) map[*TransactionInfo]SideChain {
-	result := make(map[*TransactionInfo]SideChain, len(infoArray))
+	depositInfo *DepositInfo) map[*TransactionInfo]SideChain {
+	result := make(map[*TransactionInfo]SideChain, 0)
 
-	if len(infoArray) == 0 {
-		return nil
-	}
-
-	addr, err := infoArray[0].MainChainProgramHash.ToAddress()
+	addr, err := depositInfo.MainChainProgramHash.ToAddress()
 	if err != nil {
 		log.Warn("Invalid deposit address.")
 		return nil
@@ -168,7 +157,7 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, mai
 		return nil
 	}
 
-	txInfo, err := sideChain.CreateDepositTransaction(infoArray, proof, mainChainTransaction)
+	txInfo, err := sideChain.CreateDepositTransaction(depositInfo, proof, mainChainTransaction)
 	if err != nil {
 		log.Warn("Create deposit transaction failed")
 		return nil
@@ -202,6 +191,7 @@ func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *Transaction) (interface{}
 		return nil, err
 	}
 
+	log.Info("[Rpc-sendrawtransaction] Withdraw transaction to main chain：", config.Parameters.MainNode.Rpc.IpAddress, ":", config.Parameters.MainNode.Rpc.HttpJsonPort)
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction",
 		rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
@@ -234,12 +224,14 @@ func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
 		return
 	}
 
+	spvService.SubmitTransactionReceipt(spvtxn.Hash())
+
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return
 	}
 
+	log.Info("[Notify] find deposit transaction and createAndSendDepositTransaction")
 	ar.createAndSendDepositTransaction(&proof, &spvtxn)
-	log.Info("Notify tx and createAndSendDepositTransaction ")
 }
 
 func (ar *ArbitratorImpl) Rollback(height uint32) {
@@ -304,6 +296,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		if err = spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
 			return err
 		}
+		log.Info("[StartSpvModule] Register succeed: ", sideNode.GenesisBlockAddress)
 
 		keystoreFile := sideauxpow.KeystoreDict[sideNode.GenesisBlock]
 		keystore, err := wallet.OpenKeystore(keystoreFile, sideauxpow.Passwd)
@@ -315,6 +308,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		if err = spvService.RegisterAccount(account); err != nil {
 			return err
 		}
+		log.Info("[StartSpvModule] Register succeed: ", account)
 	}
 
 	spvService.RegisterTransactionListener(ar)
@@ -348,8 +342,6 @@ func (ar *ArbitratorImpl) createAndSendDepositTransaction(proof *bloom.MerklePro
 
 	transactionInfoMap := ar.CreateDepositTransactions(*proof, spvtxn, depositInfo)
 	ar.SendDepositTransactions(transactionInfoMap)
-
-	spvService.SubmitTransactionReceipt(spvtxn.Hash())
 }
 
 func (ar *ArbitratorImpl) createAndSendDepositTransactions(sideChain SideChain, txHashes []string) {

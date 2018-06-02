@@ -2,9 +2,9 @@ package base
 
 type AccountListener interface {
 	GetAccountAddress() string
-	OnUTXOChanged(txinfo *TransactionInfo) error
-	OnDutyArbitratorChanged(onDuty bool)
+	OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error
 	StartSidechainMining()
+	SyncSideChainCachedTxs() error
 }
 
 type AccountMonitor interface {

@@ -8,7 +8,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
@@ -27,7 +26,6 @@ type ArbitratorGroup interface {
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
 	GetOnDutyArbitratorOfMain() string
-	GetOnDutyArbitratorOfSide(sideChainKey string) string
 	SetListener(listener ArbitratorGroupListener)
 }
 
@@ -80,37 +78,50 @@ func (group *ArbitratorGroupImpl) syncFromMainNode() error {
 	}
 
 	group.mux.Lock()
-	if group.currentHeight != nil && height == *group.currentHeight {
+	if group.currentHeight == nil || height != *group.currentHeight {
 		group.mux.Unlock()
-		return nil
+
+		groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
+		if err != nil {
+			return err
+		}
+
+		group.mux.Lock()
+		group.arbitrators = groupInfo.Arbitrators
+		group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
+		group.mux.Unlock()
+
+		group.mux.Lock()
+		*group.currentHeight = height
+		group.lastSyncTime = &currentTime
+		group.mux.Unlock()
+
+		mc := group.GetCurrentArbitrator().GetMainChain()
+		if mc != nil {
+			mc.SyncChainData()
+		}
+
+		pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
+		if err == nil && group.listener != nil && group.listener.(*ArbitratorImpl).Keystore != nil {
+			if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
+				(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
+				group.isListenerOnDuty = !group.isListenerOnDuty
+				group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
+			}
+		}
+	} else {
+		group.mux.Unlock()
 	}
-	group.mux.Unlock()
 
-	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
-	if err != nil {
-		return err
-	}
-	group.mux.Lock()
-	group.arbitrators = groupInfo.Arbitrators
-	group.onDutyArbitratorIndex = groupInfo.OnDutyArbitratorIndex
-	group.mux.Unlock()
-
-	group.mux.Lock()
-	*group.currentHeight = height
-	group.lastSyncTime = &currentTime
-	group.mux.Unlock()
-
-	mc := group.GetCurrentArbitrator().GetMainChain()
-	if mc != nil {
-		mc.SyncChainData()
-	}
-
-	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
-	if err == nil && group.listener != nil && group.listener.(*ArbitratorImpl).Keystore != nil {
-		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
-			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
-			group.isListenerOnDuty = !group.isListenerOnDuty
-			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
+	for _, sc := range ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains() {
+		sc.SetTick(sc.GetTick() + 1)
+		if group.listener != nil && group.isListenerOnDuty == true {
+			sc.SyncSideChainCachedTxs()
+			if sc.GetTick() >= 5 {
+				sc.SetTick(0)
+				sc.StartSidechainMining()
+			}
+			log.Info("Start side chain mining : side chain genesis block hash [", sc.GetKey(), "]")
 		}
 	}
 
@@ -133,16 +144,6 @@ func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() string {
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.arbitrators[group.onDutyArbitratorIndex]
-}
-
-func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfSide(sideChainKey string) string {
-	height := store.DbCache.CurrentSideHeight(sideChainKey, store.QueryHeightCode)
-
-	group.mux.Lock()
-	defer group.mux.Unlock()
-	index := int(height)
-	index = index % len(group.arbitrators)
-	return group.arbitrators[index]
 }
 
 func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {

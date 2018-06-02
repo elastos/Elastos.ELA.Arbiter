@@ -76,6 +76,29 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (
 	return len(txn.Programs[0].Parameter) / (SignatureScriptLength - 1), nil
 }
 
+func GetHeightTransactionsMap(txs []*Transaction, blockHeights []uint32) map[uint32][]*Transaction {
+	var differentHeights []uint32
+	for _, height := range blockHeights {
+		isContained := false
+		for _, h := range differentHeights {
+			if height == h {
+				isContained = true
+			}
+		}
+		if !isContained {
+			differentHeights = append(differentHeights, height)
+		}
+	}
+	heightTxsMap := make(map[uint32][]*Transaction, 0)
+	for _, height := range differentHeights {
+		heightTxsMap[height] = make([]*Transaction, 0)
+	}
+	for i := 0; i < len(blockHeights); i++ {
+		heightTxsMap[blockHeights[i]] = append(heightTxsMap[blockHeights[i]], txs[i])
+	}
+	return heightTxsMap
+}
+
 func SubstractTransactionHashes(hashSet, subSet []string) []string {
 	var result []string
 
@@ -85,6 +108,18 @@ func SubstractTransactionHashes(hashSet, subSet []string) []string {
 		}
 	}
 	return result
+}
+
+func SubstractTransactionHashesAndBlockHeights(hashSet []string, blockHeights []uint32, subSet []string) ([]string, []uint32) {
+	var resultTxHashes []string
+	var resultBlockHeights []uint32
+	for i := 0; i < len(hashSet); i++ {
+		if !hasHash(subSet, hashSet[i]) {
+			resultTxHashes = append(resultTxHashes, hashSet[i])
+			resultBlockHeights = append(resultBlockHeights, blockHeights[i])
+		}
+	}
+	return resultTxHashes, resultBlockHeights
 }
 
 func hasHash(hashSet []string, hash string) bool {

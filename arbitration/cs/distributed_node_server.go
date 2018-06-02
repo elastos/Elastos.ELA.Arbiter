@@ -9,6 +9,7 @@ import (
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -77,6 +78,7 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	}
 	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
 	P2PClientSingleton.Broadcast(msg)
+	log.Info("[sendToArbitrator] Send withdraw transaction to arbtiers for multi sign")
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transaction) error {

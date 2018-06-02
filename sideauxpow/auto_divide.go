@@ -101,7 +101,7 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 	content := BytesToHexString(buf.Bytes())
 
 	// send transaction
-	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("Data", content), config.Parameters.MainNode.Rpc)
+	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
 	}
