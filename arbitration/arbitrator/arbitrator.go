@@ -269,8 +269,8 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		}
 
 		spvService.RegisterTransactionListener(&DepositListener{ListenAddress: sideNode.GenesisBlockAddress})
-		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: sideNode.GenesisBlockAddress})
 		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
+		//spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: sideNode.GenesisBlockAddress})
 	}
 
 	go func() {

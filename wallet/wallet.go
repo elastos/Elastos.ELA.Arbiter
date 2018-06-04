@@ -33,6 +33,7 @@ type Wallet interface {
 	AddMultiSignAccount(M uint, publicKey ...*crypto.PublicKey) (*Uint168, error)
 
 	CreateTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64) (*Transaction, error)
+	CreateAuxpowTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress, genesisAddress string, amount, fee *Fixed64) (*Transaction, error)
 	CreateLockedTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, lockedUntil uint32) (*Transaction, error)
 	CreateMultiOutputTransaction(fromAddress string, fee *Fixed64, output ...*Transfer) (*Transaction, error)
 	CreateLockedMultiOutputTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, lockedUntil uint32, output ...*Transfer) (*Transaction, error)
@@ -132,6 +133,12 @@ func (wallet *WalletImpl) AddMultiSignAccount(M uint, publicKeys ...*crypto.Publ
 
 func (wallet *WalletImpl) CreateTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64) (*Transaction, error) {
 	return wallet.CreateLockedTransaction(txType, txPayload, fromAddress, toAddress, amount, fee, uint32(0))
+}
+
+func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress, genesisAddress string, amount, fee *Fixed64) (*Transaction, error) {
+	emptyAmount := Fixed64(0)
+	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, uint32(0),
+		[]*Transfer{&Transfer{toAddress, amount}, &Transfer{genesisAddress, &emptyAmount}}...)
 }
 
 func (wallet *WalletImpl) CreateLockedTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, lockedUntil uint32) (*Transaction, error) {

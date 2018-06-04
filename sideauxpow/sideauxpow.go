@@ -124,8 +124,13 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 		return errors.New("invalid transaction amount")
 	}
 
+	genesisAddress, err := calculateGenesisAddress(sideAuxBlock.GenesisHash)
+	if err != nil {
+		return err
+	}
+
 	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateTransaction(txType, txPayload, from, to, amount, fee)
+	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, to, genesisAddress, amount, fee)
 	if err != nil {
 		return errors.New("create transaction failed: " + err.Error())
 	}
@@ -166,6 +171,30 @@ func StartSidechainMining(sideNode *config.SideNodeConfig) {
 	if err != nil {
 		log.Warn(err)
 	}
+}
+
+func calculateGenesisAddress(genesisBlockHash string) (string, error) {
+	genesisBlockBytes, err := HexStringToBytes(genesisBlockHash)
+	if err != nil {
+		return "", errors.New("genesis block hash to bytes failed")
+	}
+
+	buf := new(bytes.Buffer)
+	buf.WriteByte(byte(len(genesisBlockBytes)))
+	buf.Write(genesisBlockBytes)
+	buf.WriteByte(byte(CROSSCHAIN))
+
+	genesisProgramHash, err := crypto.ToProgramHash(buf.Bytes())
+	if err != nil {
+		return "", errors.New("genesis block bytes to program hash faild")
+	}
+
+	genesisAddress, err := genesisProgramHash.ToAddress()
+	if err != nil {
+		return "", errors.New("genesis block hash to genesis address failed")
+	}
+
+	return genesisAddress, nil
 }
 
 func TestMultiSidechain() {
