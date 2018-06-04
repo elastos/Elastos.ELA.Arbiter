@@ -5,6 +5,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
+	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
@@ -12,17 +13,20 @@ import (
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
-var auxpowListener AuxpowListener
-
 type AuxpowListener struct {
+	ListenAddress string
+}
+
+func (l *AuxpowListener) Address() string {
+	return l.ListenAddress
 }
 
 func (l *AuxpowListener) Type() ela.TransactionType {
 	return ela.SideMining
 }
 
-func (l *AuxpowListener) Confirmed() bool {
-	return false
+func (l *AuxpowListener) Flags() uint64 {
+	return FlagNotifyInSyncing
 }
 
 func (l *AuxpowListener) Rollback(height uint32) {

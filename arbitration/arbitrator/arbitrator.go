@@ -40,6 +40,7 @@ type Arbitrator interface {
 	ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error)
 	CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction, depositInfo *DepositInfo) map[*TransactionInfo]SideChain
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
+	CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction)
 
 	//withdraw
 	CreateWithdrawTransactions(
@@ -88,7 +89,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 			return
 		}
 		for sideChain, txHashes := range depositTxs {
-			ar.createAndSendDepositTransactions(sideChain, txHashes)
+			ar.CreateAndSendDepositTransactions(sideChain, txHashes)
 		}
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
@@ -205,38 +206,6 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
-func (ar *ArbitratorImpl) Type() TransactionType {
-	return TransferCrossChainAsset
-}
-
-func (ar *ArbitratorImpl) Confirmed() bool {
-	return true
-}
-
-func (ar *ArbitratorImpl) Notify(proof bloom.MerkleProof, spvtxn Transaction) {
-
-	if ok, _ := store.DbCache.HashMainChainTx(spvtxn.Hash().String()); ok {
-		return
-	}
-
-	if err := store.DbCache.AddMainChainTx(spvtxn.Hash().String(), &spvtxn, &proof); err != nil {
-		log.Error("AddMainChainTx error, txHash:", spvtxn.Hash().String())
-		return
-	}
-
-	spvService.SubmitTransactionReceipt(spvtxn.Hash())
-
-	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-		return
-	}
-
-	log.Info("[Notify] find deposit transaction and createAndSendDepositTransaction")
-	ar.createAndSendDepositTransaction(&proof, &spvtxn)
-}
-
-func (ar *ArbitratorImpl) Rollback(height uint32) {
-}
-
 func (ar *ArbitratorImpl) OnReceivedProposal(content []byte) error {
 	return ar.mainChainClientImpl.OnReceivedProposal(content)
 }
@@ -293,26 +262,16 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	}
 
 	for _, sideNode := range config.Parameters.SideNodeList {
-		if err = spvService.RegisterAccount(sideNode.GenesisBlockAddress); err != nil {
-			return err
-		}
-		log.Info("[StartSpvModule] Register succeed: ", sideNode.GenesisBlockAddress)
-
 		keystoreFile := sideauxpow.KeystoreDict[sideNode.GenesisBlock]
 		keystore, err := wallet.OpenKeystore(keystoreFile, sideauxpow.Passwd)
 		if err != nil {
 			return err
 		}
 
-		account := keystore.Address()
-		if err = spvService.RegisterAccount(account); err != nil {
-			return err
-		}
-		log.Info("[StartSpvModule] Register succeed: ", account)
+		spvService.RegisterTransactionListener(&DepositListener{ListenAddress: sideNode.GenesisBlockAddress})
+		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: sideNode.GenesisBlockAddress})
+		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
 	}
-
-	spvService.RegisterTransactionListener(ar)
-	spvService.RegisterTransactionListener(&auxpowListener)
 
 	go func() {
 		if err = spvService.Start(); err != nil {
@@ -333,18 +292,18 @@ func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string,
 	return content, nil
 }
 
-func (ar *ArbitratorImpl) createAndSendDepositTransaction(proof *bloom.MerkleProof, spvtxn *Transaction) {
-	depositInfo, err := ar.ParseUserDepositTransactionInfo(spvtxn)
+func (ar *ArbitratorImpl) CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction) {
+	depositInfo, err := ar.ParseUserDepositTransactionInfo(tx)
 	if err != nil {
 		log.Error(err)
 		return
 	}
 
-	transactionInfoMap := ar.CreateDepositTransactions(*proof, spvtxn, depositInfo)
+	transactionInfoMap := ar.CreateDepositTransactions(*proof, tx, depositInfo)
 	ar.SendDepositTransactions(transactionInfoMap)
 }
 
-func (ar *ArbitratorImpl) createAndSendDepositTransactions(sideChain SideChain, txHashes []string) {
+func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(sideChain SideChain, txHashes []string) {
 	txs, proofs, err := store.DbCache.GetMainChainTxsFromHashes(txHashes)
 	if err != nil {
 		return
