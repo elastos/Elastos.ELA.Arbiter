@@ -62,6 +62,18 @@ func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, erro
 	return block, nil
 }
 
+func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*BlockInfo, error) {
+	resp, err := CallAndUnmarshal("getblock",
+		Param("blockhash", hash.String()).Add("verbosity", 2), config)
+	if err != nil {
+		return nil, err
+	}
+	block := &BlockInfo{}
+	Unmarshal(&resp, block)
+
+	return block, nil
+}
+
 func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*BlockTransactions, error) {
 	resp, err := CallAndUnmarshal("getdestroyedtransactions", Param("height", height), config)
 	if err != nil {

@@ -52,12 +52,6 @@ const (
 				TransactionData BLOB,
 				MerkleProof BLOB
 			);`
-	CreateSideChainTxsProposalTable = `CREATE TABLE IF NOT EXISTS SideChainTxsProposal (
-				Id INTEGER NOT NULL PRIMARY KEY,
-				TransactionHash VARCHAR,
-				GenesisBlockAddress VARCHAR(34),
-				TransactionData BLOB
-			);`
 )
 
 var (
@@ -86,7 +80,7 @@ type DataStore interface {
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
 
 	AddMainChainTx(transactionHash string, transaction *Transaction, proof *bloom.MerkleProof) error
-	HashMainChainTx(transactionHash string) (bool, error)
+	HasMainChainTx(transactionHash string) (bool, error)
 	RemoveMainChainTxs(transactionHashes []string) error
 	GetAllMainChainTxHashes() ([]string, error)
 	GetMainChainTxsFromHashes(transactionHashes []string) ([]*Transaction, []*bloom.MerkleProof, error)
@@ -143,11 +137,6 @@ func initDB() (*sql.DB, error) {
 	}
 	// Create MainChainTxs table
 	_, err = db.Exec(CreateMainChainTxsTable)
-	if err != nil {
-		return nil, err
-	}
-	// Create SideChainTxsProposal Table
-	_, err = db.Exec(CreateSideChainTxsProposalTable)
 	if err != nil {
 		return nil, err
 	}
@@ -486,7 +475,7 @@ func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *
 	return nil
 }
 
-func (store *DataStoreImpl) HashMainChainTx(transactionHash string) (bool, error) {
+func (store *DataStoreImpl) HasMainChainTx(transactionHash string) (bool, error) {
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 

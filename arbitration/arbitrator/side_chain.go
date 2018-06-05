@@ -14,9 +14,6 @@ type SideChain interface {
 	GetKey() string
 	GetRage() float32
 
-	GetTick() int
-	SetTick(int)
-
 	SetLastUsedUtxoHeight(height uint32)
 	GetLastUsedUtxoHeight() uint32
 	GetLastUsedOutPoints() []core.OutPoint
@@ -31,4 +28,5 @@ type SideChain interface {
 type SideChainManager interface {
 	GetChain(key string) (SideChain, bool)
 	GetAllChains() []SideChain
+	StartSideChainMining()
 }

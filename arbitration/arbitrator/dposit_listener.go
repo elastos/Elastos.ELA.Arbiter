@@ -5,6 +5,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 	ela "github.com/elastos/Elastos.ELA/core"
@@ -26,8 +27,8 @@ func (l *DepositListener) Flags() uint64 {
 	return FlagNotifyConfirmed | FlagNotifyInSyncing
 }
 
-func (l *DepositListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
-	if ok, _ := store.DbCache.HashMainChainTx(tx.Hash().String()); ok {
+func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
+	if ok, _ := store.DbCache.HasMainChainTx(tx.Hash().String()); ok {
 		return
 	}
 
@@ -36,7 +37,7 @@ func (l *DepositListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
 		return
 	}
 
-	spvService.SubmitTransactionReceipt(tx.Hash())
+	spvService.SubmitTransactionReceipt(id, tx.Hash())
 
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 		return

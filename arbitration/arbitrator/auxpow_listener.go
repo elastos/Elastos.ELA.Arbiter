@@ -3,9 +3,9 @@ package arbitrator
 import (
 	"bytes"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
-	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
@@ -26,14 +26,17 @@ func (l *AuxpowListener) Type() ela.TransactionType {
 }
 
 func (l *AuxpowListener) Flags() uint64 {
-	return FlagNotifyInSyncing
+	return 0
 }
 
 func (l *AuxpowListener) Rollback(height uint32) {
 
 }
 
-func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
+func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
+	// Submit transaction receipt
+	spvService.SubmitTransactionReceipt(id, tx.Hash())
+
 	log.Info("[Notify] Receive sidemining transaction, hash:", tx.Hash().String())
 	err := spvService.VerifyTransaction(proof, tx)
 	if err != nil {
@@ -79,21 +82,51 @@ func (l *AuxpowListener) Notify(proof bloom.MerkleProof, tx ela.Transaction) {
 	}
 
 	// send submit block
-	payloadData := tx.Payload.Data(ela.SideMiningPayloadVersion)
-	blockhashData := payloadData[0:32]
-	blockhashString := common.BytesToHexString(blockhashData)
-	genesishashData := payloadData[32:64]
-	genesishashString := common.BytesToHexString(genesishashData)
+	payload, ok := tx.Payload.(*ela.PayloadSideMining)
+	if !ok {
+		log.Error("Invalid payload type.")
+		return
+	}
+	blockhashString := payload.SideBlockHash.String()
+	genesishashString := payload.SideGenesisHash.String()
+	blockHeight := payload.BlockHeight
 
 	sideAuxpowData := sideAuxpowBuf.Bytes()
 	sideAuxpowString := common.BytesToHexString(sideAuxpowData)
 
-	// Submit transaction receipt
-	spvService.SubmitTransactionReceipt(tx.Hash())
+	var sideChain SideChain
+	for _, sideNode := range config.Parameters.SideNodeList {
+		if sideNode.GenesisBlock == genesishashString {
+			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
+			if ok {
+				currentHeight, err := sc.GetCurrentHeight()
+				if err != nil {
+					log.Error("Side chain GetCurrentHeight failed")
+					return
+				}
+				if uint64(currentHeight) == blockHeight {
+					sideChain = sc
+				} else {
+					log.Warn("No need to submit auxpow, current side chain height:", currentHeight, " block height:", blockHeight)
+					return
+				}
+			}
+		}
+	}
+
+	if sideChain == nil {
+		log.Error("Can not faind side chain from genesis block hash: [", genesishashString, "]")
+		return
+	}
 
 	err = sideauxpow.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
 	if err != nil {
 		log.Error("Submit SideAuxpow error: ", err)
 		return
+	}
+
+	ArbitratorGroupSingleton.SyncFromMainNode()
+	if ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+		sideChain.StartSideChainMining()
 	}
 }

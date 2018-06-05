@@ -9,9 +9,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
@@ -84,13 +82,20 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 	if onDuty {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
+		//send deposit transaction
 		depositTxs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
 		if err != nil {
-			return
+			log.Warn(err)
 		}
 		for sideChain, txHashes := range depositTxs {
 			ar.CreateAndSendDepositTransactions(sideChain, txHashes)
 		}
+		//send withdraw transaction
+		for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+			sc.SendCachedWithdrawTxs()
+		}
+		//send side mining transaction
+		ar.sideChainManagerImpl.StartSideChainMining()
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
 	}
@@ -262,15 +267,8 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	}
 
 	for _, sideNode := range config.Parameters.SideNodeList {
-		keystoreFile := sideauxpow.KeystoreDict[sideNode.GenesisBlock]
-		keystore, err := wallet.OpenKeystore(keystoreFile, sideauxpow.Passwd)
-		if err != nil {
-			return err
-		}
-
 		spvService.RegisterTransactionListener(&DepositListener{ListenAddress: sideNode.GenesisBlockAddress})
-		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
-		//spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: sideNode.GenesisBlockAddress})
+		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: sideNode.GenesisBlockAddress})
 	}
 
 	go func() {

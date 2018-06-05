@@ -187,7 +187,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 
 	txHash := "testHash"
 
-	ok, err := datastore.HashMainChainTx(txHash)
+	ok, err := datastore.HasMainChainTx(txHash)
 	if err != nil {
 		t.Error("Get main chain transaction error.")
 	}
@@ -201,7 +201,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 		t.Error("Add main chain transaction error.")
 	}
 
-	ok, err = datastore.HashMainChainTx(txHash)
+	ok, err = datastore.HasMainChainTx(txHash)
 	if err != nil {
 		t.Error("Get main chain transaction error.")
 	}
@@ -230,10 +230,10 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	datastore.AddMainChainTx(txHash, tx, mp)
 	datastore.AddMainChainTx(txHash2, tx2, mp2)
 
-	if ok, err := datastore.HashMainChainTx(txHash); !ok || err != nil {
+	if ok, err := datastore.HasMainChainTx(txHash); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
-	if ok, err := datastore.HashMainChainTx(txHash2); !ok || err != nil {
+	if ok, err := datastore.HasMainChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
 
@@ -241,7 +241,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	removedHashes = append(removedHashes, txHash)
 	datastore.RemoveMainChainTxs(removedHashes)
 
-	ok, err := datastore.HashMainChainTx(txHash)
+	ok, err := datastore.HasMainChainTx(txHash)
 	if err != nil {
 		t.Error("Get main chain transaction error.")
 	}
@@ -249,7 +249,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	if ok, err := datastore.HashMainChainTx(txHash2); !ok || err != nil {
+	if ok, err := datastore.HasMainChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
 

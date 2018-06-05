@@ -26,6 +26,12 @@ func (sideManager *SideChainManagerImpl) GetAllChains() []arbitrator.SideChain {
 	return chains
 }
 
+func (sideManager *SideChainManagerImpl) StartSideChainMining() {
+	for _, sc := range sideManager.SideChains {
+		sc.StartSideChainMining()
+	}
+}
+
 func Init() {
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().(*arbitrator.ArbitratorImpl)
 

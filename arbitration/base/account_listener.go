@@ -3,8 +3,9 @@ package base
 type AccountListener interface {
 	GetAccountAddress() string
 	OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error
-	StartSidechainMining()
-	SyncSideChainCachedTxs() error
+
+	StartSideChainMining()
+	SendCachedWithdrawTxs() error
 }
 
 type AccountMonitor interface {

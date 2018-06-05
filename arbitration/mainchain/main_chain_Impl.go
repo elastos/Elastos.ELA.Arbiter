@@ -364,7 +364,9 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 					Amount:              amount,
 					GenesisBlockAddress: output.Address,
 				}
-				DbCache.AddAddressUTXO(addressUTXO)
+				if *amount > Fixed64(0) {
+					DbCache.AddAddressUTXO(addressUTXO)
+				}
 			}
 		}
 

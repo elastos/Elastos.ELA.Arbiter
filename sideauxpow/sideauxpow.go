@@ -13,6 +13,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
@@ -98,6 +99,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	fmt.Println(sideGenesisHash, sideBlockHash)
 	// Create payload
 	txPayload := &ela.PayloadSideMining{
+		BlockHeight:     sideAuxBlock.Height,
 		SideBlockHash:   *sideBlockHash,
 		SideGenesisHash: *sideGenesisHash,
 	}
@@ -164,8 +166,8 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	return nil
 }
 
-func StartSidechainMining(sideNode *config.SideNodeConfig) {
-	log.Debug("Send sidemining ")
+func StartSideChainMining(sideNode *config.SideNodeConfig) {
+	log.Info("[StartSideChainMining]Send side mining ")
 	keystoreFile := KeystoreDict[sideNode.GenesisBlock]
 	err := sideMiningTransfer(keystoreFile, Passwd, sideNode)
 	if err != nil {
@@ -202,7 +204,7 @@ func TestMultiSidechain() {
 		select {
 		case <-time.After(time.Second * 3):
 			for _, node := range config.Parameters.SideNodeList {
-				StartSidechainMining(node)
+				StartSideChainMining(node)
 			}
 			println("TestMultiSidechain")
 		}

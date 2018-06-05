@@ -31,8 +31,6 @@ type SideChainImpl struct {
 	Key           string
 	CurrentConfig *config.SideNodeConfig
 
-	tick int
-
 	LastUsedUtxoHeight        uint32
 	LastUsedOutPoints         []core.OutPoint
 	ToSendTransactions        map[uint32][]*core.Transaction
@@ -199,18 +197,6 @@ func (sc *SideChainImpl) GetRage() float32 {
 	return sc.getCurrentConfig().Rate
 }
 
-func (sc *SideChainImpl) GetTick() int {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	return sc.tick
-}
-
-func (sc *SideChainImpl) SetTick(tick int) {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	sc.tick = tick
-}
-
 func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
 	return rpc.GetCurrentHeight(sc.getCurrentConfig().Rpc)
 }
@@ -268,8 +254,8 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight u
 	return nil
 }
 
-func (sc *SideChainImpl) StartSidechainMining() {
-	sideauxpow.StartSidechainMining(sc.CurrentConfig)
+func (sc *SideChainImpl) StartSideChainMining() {
+	sideauxpow.StartSideChainMining(sc.CurrentConfig)
 }
 
 func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, error) {
@@ -348,7 +334,7 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfos(txn []*core.Transacti
 	return result, nil
 }
 
-func (sc *SideChainImpl) SyncSideChainCachedTxs() error {
+func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	txHashes, blockHeights, err := store.DbCache.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 	if err != nil {
 		return err
@@ -387,7 +373,7 @@ func (sc *SideChainImpl) SyncSideChainCachedTxs() error {
 	msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
 	cs.P2PClientSingleton.AddMessageHash(msgHash)
 	cs.P2PClientSingleton.Broadcast(msg)
-	log.Info("[SyncSideChainCachedTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
+	log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
 
 	err = store.DbCache.RemoveSideChainTxs(receivedTxs)
 	if err != nil {
