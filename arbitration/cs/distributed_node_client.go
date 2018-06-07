@@ -27,18 +27,18 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return nil
 	}
 
-	withdrawAsset, ok := transactionItem.ItemContent.Payload.(*PayloadWithdrawAsset)
+	withdraw, ok := transactionItem.ItemContent.Payload.(*PayloadWithdrawFromSideChain)
 	if !ok {
 		return errors.New("Unknown payload type.")
 	}
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-	sc, ok := currentArbitrator.GetSideChainManager().GetChain(withdrawAsset.GenesisBlockAddress)
+	sc, ok := currentArbitrator.GetSideChainManager().GetChain(withdraw.GenesisBlockAddress)
 	if !ok {
 		return errors.New("Get side chain from GenesisBlockAddress failed")
 	}
 
-	if withdrawAsset.BlockHeight > sc.GetLastUsedUtxoHeight() {
+	if withdraw.BlockHeight > sc.GetLastUsedUtxoHeight() {
 		var outPoints []OutPoint
 		for _, input := range transactionItem.ItemContent.Inputs {
 			outPoints = append(outPoints, input.Previous)

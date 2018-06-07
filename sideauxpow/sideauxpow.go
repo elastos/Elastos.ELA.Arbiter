@@ -19,11 +19,6 @@ import (
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
-var KeystoreDict = map[string]string{
-	"39fc8ba05b0064381e51afed65b4cf91bb8db60efebc38242e965d1b1fed0701": "keystore1.dat",
-	"e1773a0e7af0cc3272fd271be9d5026c4b636c0b25cfe82be69d8bcc44ec512e": "keystore2.dat",
-}
-
 var (
 	CurrentWallet wallet.Wallet
 	Passwd        []byte
@@ -161,15 +156,13 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	if err != nil {
 		return err
 	}
-	log.Debug("Send Sidemining transaction: ", result)
+	log.Info("[SendSideChainMining] End send Sidemining transaction:  genesis address [", sideNode.GenesisBlockAddress, "], result: ", result)
 
 	return nil
 }
 
 func StartSideChainMining(sideNode *config.SideNodeConfig) {
-	log.Info("[StartSideChainMining]Send side mining ")
-	keystoreFile := KeystoreDict[sideNode.GenesisBlock]
-	err := sideMiningTransfer(keystoreFile, Passwd, sideNode)
+	err := sideMiningTransfer(sideNode.KeystoreFile, Passwd, sideNode)
 	if err != nil {
 		log.Warn(err)
 	}

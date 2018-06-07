@@ -9,7 +9,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
+
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
@@ -267,8 +270,12 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	}
 
 	for _, sideNode := range config.Parameters.SideNodeList {
+		keystore, err := wallet.OpenKeystore(sideNode.KeystoreFile, sideauxpow.Passwd)
+		if err != nil {
+			return err
+		}
+		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
 		spvService.RegisterTransactionListener(&DepositListener{ListenAddress: sideNode.GenesisBlockAddress})
-		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: sideNode.GenesisBlockAddress})
 	}
 
 	go func() {

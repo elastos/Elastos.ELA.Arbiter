@@ -43,7 +43,7 @@ func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx 
 		return
 	}
 
-	log.Info("[Notify] find deposit transaction and createAndSendDepositTransaction")
+	log.Info("[Notify-Deposit] find deposit transaction and createAndSendDepositTransaction")
 	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransaction(&proof, &tx)
 }
 

@@ -8,6 +8,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+
 	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
@@ -112,7 +113,8 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 
 func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
 	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
-	if err == nil && group.listener != nil && group.listener.(*ArbitratorImpl).Keystore != nil {
+	arbitratorImpl, ok := group.listener.(*ArbitratorImpl)
+	if ok && err == nil && group.listener != nil && arbitratorImpl.Keystore != nil {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
 			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
 			group.isListenerOnDuty = !group.isListenerOnDuty

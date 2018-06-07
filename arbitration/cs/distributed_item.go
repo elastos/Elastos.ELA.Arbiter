@@ -263,7 +263,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		targetPk := item.TargetArbitratorPublicKey
 
 		if !item.isForComplain() {
-			withdrawPayload, ok := item.ItemContent.Payload.(*PayloadWithdrawAsset)
+			withdrawPayload, ok := item.ItemContent.Payload.(*PayloadWithdrawFromSideChain)
 			if !ok {
 				return errors.New("Invalid payload type.")
 			}

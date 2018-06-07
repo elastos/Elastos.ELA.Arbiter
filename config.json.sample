@@ -1,5 +1,4 @@
 ﻿{
-  "PrintLevel": 4,
   "Configuration": {
     "Magic": 7630402,
     "Version": 0,
@@ -8,6 +7,7 @@
     ],
     "NodePort": 10338,
     "PrintLevel": 1,
+    "SpvPrintLevel": 4,
     "HttpJsonPort": 10010,
     "MainNode": {
       "Rpc": {
@@ -17,7 +17,9 @@
     "SpvSeedList": [
       "127.0.0.1:20866"
     ],
-    "Magic": 7630401
+    "Magic": 7630401,
+    "MinOutbound": 1,
+    "MaxConnections": 3
     },
     "SideNodeList": [
       {
@@ -35,6 +37,7 @@
         },
         "Rate": 1.0,
         "GenesisBlockAddress": "XH6gHwZC1yKaRRx62tzvWu5oxa3hekEgXp",
+        "KeystoreFile":"keystore.dat"
       }
     ],
     "SyncInterval": 10000,

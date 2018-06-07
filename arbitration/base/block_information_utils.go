@@ -38,8 +38,8 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		return obj, nil
 	case *TransferAssetInfo:
 		return new(PayloadTransferAsset), nil
-	case *IssueTokenInfo:
-		obj := new(PayloadIssueToken)
+	case *RechargeToSideChainInfo:
+		obj := new(PayloadRechargeToSideChain)
 		proofBytes, err := HexStringToBytes(object.Proof)
 		if err != nil {
 			return nil, err

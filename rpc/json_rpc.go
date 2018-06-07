@@ -170,8 +170,8 @@ func GetBlockTransactions(resp interface{}) (*BlockTransactions, error) {
 			assetInfo = &CoinbaseInfo{}
 		case elaCore.TransferAsset:
 			assetInfo = &TransferAssetInfo{}
-		case elaCore.IssueToken:
-			assetInfo = &IssueTokenInfo{}
+		case elaCore.RechargeToSideChain:
+			assetInfo = &RechargeToSideChainInfo{}
 		case elaCore.TransferCrossChainAsset:
 			assetInfo = &TransferCrossChainAssetInfo{}
 		default:

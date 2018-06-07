@@ -35,7 +35,7 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &Transaction{Payload: new(PayloadWithdrawAsset)}
+	tx := &Transaction{Payload: new(PayloadWithdrawFromSideChain)}
 	if err := datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, 10); err != nil {
 		t.Error("Add side chain transaction error.")
 	}
@@ -59,11 +59,11 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 
 	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
-	tx := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 
 	genesisBlockAddress2 := "testAddress2"
 	txHash2 := "testHash2"
-	tx2 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 
 	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash2, genesisBlockAddress2, tx2, 10)
@@ -107,7 +107,7 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	genesisBlockAddress2 := "testAddress2"
 	txHash3 := "testHash3"
 
-	tx := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx, 11)
@@ -146,9 +146,9 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 	genesisBlockAddress2 := "testAddress2"
 	txHash3 := "testHash3"
 
-	tx1 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
-	tx2 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
-	tx3 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx1 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	tx3 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 
 	tx1.LockTime = 1
 	tx2.LockTime = 2
@@ -195,7 +195,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 	mp := new(bloom.MerkleProof)
 	if err := datastore.AddMainChainTx(txHash, tx, mp); err != nil {
 		t.Error("Add main chain transaction error.")
@@ -221,8 +221,8 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	txHash := "testHash"
 	txHash2 := "testHash2"
 
-	tx := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
-	tx2 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 
 	mp := new(bloom.MerkleProof)
 	mp2 := new(bloom.MerkleProof)
@@ -266,9 +266,9 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
 
-	tx := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
-	tx2 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
-	tx3 := &Transaction{TxType: WithdrawAsset, Payload: new(PayloadWithdrawAsset)}
+	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	tx3 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 
 	mp := new(bloom.MerkleProof)
 	mp2 := new(bloom.MerkleProof)

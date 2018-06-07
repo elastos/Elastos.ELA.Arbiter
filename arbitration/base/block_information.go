@@ -94,7 +94,7 @@ type CoinbaseInfo struct {
 	CoinbaseData string
 }
 
-type IssueTokenInfo struct {
+type RechargeToSideChainInfo struct {
 	Proof                string
 	MainChainTransaction string
 }

@@ -17,6 +17,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+
 	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	"github.com/elastos/Elastos.ELA.Utility/common"
@@ -227,6 +228,10 @@ func (sc *SideChainImpl) GetAccountAddress() string {
 }
 
 func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error {
+	if len(txinfos) == 0 {
+		return errors.New("OnUTXOChanged received txinfos, but size is 0")
+	}
+
 	var txHashes []string
 	var genesises []string
 	var txsBytes [][]byte
@@ -296,7 +301,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	}
 
 	// Create payload
-	txPayloadInfo := new(IssueTokenInfo)
+	txPayloadInfo := new(RechargeToSideChainInfo)
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
 	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionInfo.Bytes())
 
@@ -307,7 +312,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 
 	// Create program
 	return &TransactionInfo{
-		TxType:     core.IssueToken,
+		TxType:     core.RechargeToSideChain,
 		Payload:    txPayloadInfo,
 		Attributes: attributesInfo,
 		Inputs:     []InputInfo{},

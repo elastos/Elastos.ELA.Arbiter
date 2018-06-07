@@ -6,6 +6,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
+
+	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
@@ -26,7 +28,7 @@ func (l *AuxpowListener) Type() ela.TransactionType {
 }
 
 func (l *AuxpowListener) Flags() uint64 {
-	return 0
+	return spv.FlagNotifyInSyncing
 }
 
 func (l *AuxpowListener) Rollback(height uint32) {
@@ -35,9 +37,9 @@ func (l *AuxpowListener) Rollback(height uint32) {
 
 func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
 	// Submit transaction receipt
-	spvService.SubmitTransactionReceipt(id, tx.Hash())
+	defer spvService.SubmitTransactionReceipt(id, tx.Hash())
 
-	log.Info("[Notify] Receive sidemining transaction, hash:", tx.Hash().String())
+	log.Info("[Notify-Auxpow] Receive side mining transaction, hash:", tx.Hash().String())
 	err := spvService.VerifyTransaction(proof, tx)
 	if err != nil {
 		log.Error("Verify transaction error: ", err)
@@ -121,12 +123,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 
 	err = sideauxpow.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
 	if err != nil {
-		log.Error("Submit SideAuxpow error: ", err)
+		log.Error("[Notify-Auxpow] Submit SideAuxpow error: ", err)
 		return
-	}
-
-	ArbitratorGroupSingleton.SyncFromMainNode()
-	if ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-		sideChain.StartSideChainMining()
 	}
 }

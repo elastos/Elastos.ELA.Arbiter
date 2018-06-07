@@ -3,6 +3,7 @@ package sidechain
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 )
 
 type SideChainManagerImpl struct {
@@ -28,12 +29,16 @@ func (sideManager *SideChainManagerImpl) GetAllChains() []arbitrator.SideChain {
 
 func (sideManager *SideChainManagerImpl) StartSideChainMining() {
 	for _, sc := range sideManager.SideChains {
+		log.Info("[OnDutyChanged] Start side chain mining: genesis address [", sc.GetKey(), "]")
 		sc.StartSideChainMining()
 	}
 }
 
 func Init() {
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().(*arbitrator.ArbitratorImpl)
+	currentArbitrator, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().(*arbitrator.ArbitratorImpl)
+	if !ok {
+		return
+	}
 
 	sideChainManager := &SideChainManagerImpl{SideChains: make(map[string]arbitrator.SideChain)}
 	for _, sideConfig := range config.Parameters.SideNodeList {

@@ -41,21 +41,21 @@ func (sync *DataSyncImpl) SyncChainData() {
 			break
 		}
 		// bar := pb.StartNew(int(chainHeight - currentHeight + 1))
-		for currentHeight < chainHeight {
-			hash, err := GetBlockHash(currentHeight + 1)
+		for currentHeight <= chainHeight {
+			hash, err := GetBlockHash(currentHeight)
 			if err != nil {
-				log.Error("Get block hash failed at height:", currentHeight+1, "error:", err)
+				log.Error("Get block hash failed at height:", currentHeight, "error:", err)
 				os.Exit(1)
 			}
 			block, err := GetBlock(hash)
 			if err != nil {
-				log.Error("Get block failed at height:", currentHeight+1, "error:", err)
+				log.Error("Get block failed at height:", currentHeight, "error:", err)
 				os.Exit(1)
 			}
 			sync.processBlock(block)
 
 			// Update wallet height
-			currentHeight = sync.CurrentHeight(block.Height)
+			currentHeight = sync.CurrentHeight(block.Height + 1)
 			// bar.Increment()
 		}
 		// bar.Finish()
@@ -71,7 +71,7 @@ func (sync *DataSyncImpl) needSyncBlocks() (uint32, uint32, bool) {
 
 	currentHeight := sync.CurrentHeight(QueryHeightCode)
 
-	if currentHeight >= chainHeight {
+	if currentHeight >= chainHeight+1 {
 		return chainHeight, currentHeight, false
 	}
 

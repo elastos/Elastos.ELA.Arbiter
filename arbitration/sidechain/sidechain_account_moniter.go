@@ -2,9 +2,8 @@ package sidechain
 
 import (
 	"errors"
+	"sync"
 	"time"
-
-	"fmt"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
@@ -12,7 +11,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"sync"
 )
 
 type SideChainAccountMonitorImpl struct {
@@ -69,13 +67,20 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					break
 				}
 				monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1)
-
 				// Update wallet height
 				currentHeight = store.DbCache.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height)
-
 				log.Info(" [arbitrator] Side chain [", sideNode.GenesisBlockAddress, "] height: ", transactions.Height)
+				if currentHeight == chainHeight {
+					arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
+					if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+						sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
+						if ok {
+							sideChain.StartSideChainMining()
+							log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
+						}
+					}
+				}
 			}
-			fmt.Print("\n")
 		}
 
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
@@ -113,13 +118,4 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *Bl
 	if len(txInfos) != 0 {
 		monitor.fireUTXOChanged(txInfos, genesisAddress, blockHeight)
 	}
-}
-
-func (monitor *SideChainAccountMonitorImpl) syncUsedUtxo(height uint32, genesisAddress string) {
-	sc, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
-	if !ok {
-		log.Warn("[syncUsedUtxo] Get side chain from genesis address failed")
-		return
-	}
-	sc.SetLastUsedUtxoHeight(height)
 }
