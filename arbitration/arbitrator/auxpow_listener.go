@@ -106,7 +106,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 					log.Error("Side chain GetCurrentHeight failed")
 					return
 				}
-				if uint64(currentHeight) == blockHeight {
+				if currentHeight == blockHeight {
 					sideChain = sc
 				} else {
 					log.Warn("No need to submit auxpow, current side chain height:", currentHeight, " block height:", blockHeight)

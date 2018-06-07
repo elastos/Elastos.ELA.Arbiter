@@ -69,7 +69,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 
 	type SideAuxBlock struct {
 		GenesisHash       string `json:"genesishash"`
-		Height            uint64 `json:"height"`
+		Height            uint32 `json:"height"`
 		Bits              string `json:"bits"`
 		Hash              string `json:"hash"`
 		PreviousBlockHash string `json:"previousblockhash"`
