@@ -69,7 +69,7 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 		return errors.New("invalid transaction fee")
 	}
 
-	keystore, err := walt.OpenKeystore(name, Passwd)
+	keystore, err := walt.OpenKeystore(name, getMainAccountPassword())
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func SidechainAccountDivide(wallet walt.Wallet) {
 						Amount:  &amount,
 					})
 				}
-				divideTransfer(walt.DefaultKeystoreFile, Passwd, outputs)
+				divideTransfer(walt.DefaultKeystoreFile, getMainAccountPassword(), outputs)
 			}
 		}
 	}

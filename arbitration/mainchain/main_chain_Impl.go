@@ -123,7 +123,7 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdrawInfo *WithdrawInfo,
-	sideChainTransactionHash []string, mcFunc MainChainFunc) (*Transaction, error) {
+	sideChainTransactionHashes []string, mcFunc MainChainFunc) (*Transaction, error) {
 
 	mc.SyncChainData()
 
@@ -226,9 +226,9 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	}
 
 	txPayload := &PayloadWithdrawFromSideChain{
-		BlockHeight:              chainHeight,
-		GenesisBlockAddress:      withdrawBank,
-		SideChainTransactionHash: sideChainTransactionHash}
+		BlockHeight:                chainHeight,
+		GenesisBlockAddress:        withdrawBank,
+		SideChainTransactionHashes: sideChainTransactionHashes}
 	program := &Program{redeemScript, nil}
 
 	// Create attributes

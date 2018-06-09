@@ -5,6 +5,8 @@ type AccountListener interface {
 	OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error
 
 	StartSideChainMining()
+	SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error
+
 	SendCachedWithdrawTxs() error
 }
 

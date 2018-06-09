@@ -14,15 +14,24 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
 var (
-	CurrentWallet wallet.Wallet
-	Passwd        []byte
+	CurrentWallet       wallet.Wallet
+	mainAccountPassword []byte
 )
+
+func getMainAccountPassword() []byte {
+	return mainAccountPassword
+}
+
+func SetMainAccountPassword(passwd []byte) {
+	mainAccountPassword = passwd
+}
 
 func getPassword(passwd []byte, confirmed bool) []byte {
 	var tmp []byte
@@ -99,6 +108,13 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 		SideGenesisHash: *sideGenesisHash,
 	}
 
+	buf := new(bytes.Buffer)
+	txPayload.Serialize(buf, ela.SideMiningPayloadVersion)
+	txPayload.SignedData, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
+	if err != nil {
+		return err
+	}
+
 	// create transaction
 	feeStr := "0.001"
 
@@ -107,7 +123,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 		return errors.New("invalid transaction fee")
 	}
 
-	keystore, err := wallet.OpenKeystore(name, Passwd)
+	keystore, err := wallet.OpenKeystore(name, passwd)
 	if err != nil {
 		return err
 	}
@@ -146,9 +162,9 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	haveSign, needSign, _ = crypto.GetSignStatus(program.Code, program.Parameter)
 	log.Debug("Transaction successfully signed: ", haveSign, needSign)
 
-	buf := new(bytes.Buffer)
-	txn.Serialize(buf)
-	content := BytesToHexString(buf.Bytes())
+	sideMiningBuf := new(bytes.Buffer)
+	txn.Serialize(sideMiningBuf)
+	content := BytesToHexString(sideMiningBuf.Bytes())
 	// log.Debug("Raw Sidemining transaction: ", content)
 
 	// send transaction
@@ -162,7 +178,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 }
 
 func StartSideChainMining(sideNode *config.SideNodeConfig) {
-	err := sideMiningTransfer(sideNode.KeystoreFile, Passwd, sideNode)
+	err := sideMiningTransfer(sideNode.KeystoreFile, getMainAccountPassword(), sideNode)
 	if err != nil {
 		log.Warn(err)
 	}

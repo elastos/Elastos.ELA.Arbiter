@@ -5,7 +5,6 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
@@ -117,11 +116,11 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	}
 
 	if sideChain == nil {
-		log.Error("Can not faind side chain from genesis block hash: [", genesishashString, "]")
+		log.Error("Can not find side chain from genesis block hash: [", genesishashString, "]")
 		return
 	}
 
-	err = sideauxpow.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
+	err = sideChain.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
 	if err != nil {
 		log.Error("[Notify-Auxpow] Submit SideAuxpow error: ", err)
 		return

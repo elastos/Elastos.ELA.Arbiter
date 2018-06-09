@@ -9,7 +9,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
@@ -35,7 +34,7 @@ type Arbitrator interface {
 	GetMainChain() MainChain
 
 	InitAccount(passwd []byte) error
-	StartSpvModule() error
+	StartSpvModule(passwd []byte) error
 
 	//deposit
 	ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error)
@@ -256,7 +255,7 @@ func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
 	return nil
 }
 
-func (ar *ArbitratorImpl) StartSpvModule() error {
+func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 	publicKey := ar.Keystore.MainAccount().PublicKey()
 	publicKeyBytes, err := publicKey.EncodePoint(true)
 	if err != nil {
@@ -270,7 +269,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	}
 
 	for _, sideNode := range config.Parameters.SideNodeList {
-		keystore, err := wallet.OpenKeystore(sideNode.KeystoreFile, sideauxpow.Passwd)
+		keystore, err := wallet.OpenKeystore(sideNode.KeystoreFile, passwd)
 		if err != nil {
 			return err
 		}

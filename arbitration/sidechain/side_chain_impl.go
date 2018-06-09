@@ -263,6 +263,10 @@ func (sc *SideChainImpl) StartSideChainMining() {
 	sideauxpow.StartSideChainMining(sc.CurrentConfig)
 }
 
+func (sc *SideChainImpl) SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error {
+	return sideauxpow.SubmitAuxpow(genesishash, blockhash, submitauxpow)
+}
+
 func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, error) {
 	receivedTxs, err := rpc.GetExistDepositTransactions(txs, sc.CurrentConfig.Rpc)
 	if err != nil {

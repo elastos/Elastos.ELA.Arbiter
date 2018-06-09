@@ -85,7 +85,7 @@ func main() {
 		log.Fatal("Get password error.")
 		os.Exit(1)
 	}
-	sideauxpow.Passwd = passwd
+	sideauxpow.SetMainAccountPassword(passwd)
 	if err := currentArbitrator.InitAccount(passwd); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
@@ -102,7 +102,7 @@ func main() {
 	currentArbitrator.GetArbitratorGroup().CheckOnDutyStatus()
 
 	log.Info("6. Start arbitrator spv module.")
-	if err := currentArbitrator.StartSpvModule(); err != nil {
+	if err := currentArbitrator.StartSpvModule(passwd); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
