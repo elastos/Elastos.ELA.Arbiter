@@ -13,6 +13,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
+
 	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
@@ -95,29 +96,17 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		return nil, err
 	}
 
-	if len(receivedTxs) != 0 {
-		mc.SendTxCacheClearMessage(receivedTxs)
-	}
-
 	return result, err
 }
 
-func (mc *MainChainImpl) SendTxCacheClearMessage(receivedTxs []string) {
-	msg := &TxCacheClearMessage{Command: DepositTxCacheClearCommand, RemovedTxs: receivedTxs}
-	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
-	P2PClientSingleton.Broadcast(msg)
-}
-
 func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
-	if msg.CMD() != mc.P2pCommand && msg.CMD() != WithdrawTxCacheClearCommand {
+	if msg.CMD() != mc.P2pCommand {
 		return nil
 	}
 
 	switch m := msg.(type) {
 	case *SignMessage:
 		return mc.ReceiveProposalFeedback(m.Content)
-	case *TxCacheClearMessage:
-		return DbCache.RemoveSideChainTxs(m.RemovedTxs)
 	}
 	return nil
 }
@@ -402,6 +391,73 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 		sc.SetLastUsedUtxoHeight(height)
 		log.Info("Side chain [", sc.GetKey(), "] SetLastUsedUtxoHeight ", height)
 	}
+}
+
+func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
+	//remove deposit transactions if exist on side chain
+	txHases, err := DbCache.GetAllMainChainTxHashes()
+	if err != nil {
+		return err
+	}
+
+	transactions, _, err := DbCache.GetMainChainTxsFromHashes(txHases)
+	if err != nil {
+		return err
+	}
+
+	if len(txHases) != len(transactions) {
+		return errors.New("Invalid transactios in main chain txs db")
+	}
+
+	allSideChainTxHashes := make(map[SideChain][]string, 0)
+	for i := 0; i < len(transactions); i++ {
+		depositInfo, err := mc.ParseUserDepositTransactionInfo(transactions[i])
+		if err != nil {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+
+		addr, err := depositInfo.MainChainProgramHash.ToAddress()
+		if err != nil {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(addr)
+		if !ok {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+
+		hasSideChainInMap := false
+		for k, _ := range allSideChainTxHashes {
+			if k == sc {
+				hasSideChainInMap = true
+				break
+			}
+		}
+		if hasSideChainInMap {
+			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], txHases[i])
+		} else {
+			allSideChainTxHashes[sc] = []string{txHases[i]}
+		}
+	}
+
+	var receivedTxs []string
+	for k, v := range allSideChainTxHashes {
+		recTxs, err := k.GetExistDepositTransactions(v)
+		if err != nil {
+			log.Warn("Invalid deposit address.")
+			continue
+		}
+		for _, recTx := range recTxs {
+			receivedTxs = append(receivedTxs, recTx)
+		}
+	}
+	err = DbCache.RemoveMainChainTxs(receivedTxs)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func InitMainChain(arbitrator Arbitrator) error {

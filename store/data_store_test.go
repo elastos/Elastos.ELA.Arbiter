@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+
 	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 )
@@ -111,6 +112,14 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx, 11)
+
+	txHashes, err := datastore.GetAllSideChainTxHashes()
+	if err != nil {
+		t.Error("Get all side chain transactions error.")
+	}
+	if len(txHashes) != 3 {
+		t.Error("Get all side chain transactions error.")
+	}
 
 	txHashes, heights, err := datastore.GetAllSideChainTxHashesAndHeights(genesisBlockAddress)
 	if err != nil {

@@ -11,6 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+
 	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
 	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.SPV/sdk"
@@ -27,8 +28,6 @@ const (
 	//len of message need to less than 12
 	WithdrawCommand                = "withdraw"
 	ComplainCommand                = "complain"
-	WithdrawTxCacheClearCommand    = "WDTxClear"
-	DepositTxCacheClearCommand     = "DPTxClear"
 	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
 	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
 
@@ -165,10 +164,6 @@ func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, e
 		message = &SignMessage{Command: WithdrawCommand}
 	case ComplainCommand:
 		message = &SignMessage{Command: ComplainCommand}
-	case WithdrawTxCacheClearCommand:
-		message = &TxCacheClearMessage{Command: WithdrawTxCacheClearCommand}
-	case DepositTxCacheClearCommand:
-		message = &TxCacheClearMessage{Command: DepositTxCacheClearCommand}
 	case GetLastArbiterUsedUtxoCommand:
 		message = &GetLastArbiterUsedUTXOMessage{Command: GetLastArbiterUsedUtxoCommand}
 	case SendLastArbiterUsedUtxoCommand:

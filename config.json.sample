@@ -40,8 +40,9 @@
         "KeystoreFile":"keystore.dat"
       }
     ],
-    "SyncInterval": 10000,
+    "SyncInterval": 1000,
     "SideChainMonitorScanInterval": 1000,
+    "ClearTransactionInterval": 60000,
     "MinReceivedUsedUtxoMsgNumber": 1,
     "MinOutbound": 3,
     "MaxConnections": 8

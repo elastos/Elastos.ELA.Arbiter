@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"sync"
+	"time"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -47,6 +48,8 @@ type Arbitrator interface {
 		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction
 	BroadcastWithdrawProposal(txns []*Transaction)
 	SendWithdrawTransaction(txn *Transaction) (interface{}, error)
+
+	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
 
 type ArbitratorImpl struct {
@@ -328,4 +331,19 @@ func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(sideChain SideChain, 
 		transactionInfoMap[txinfo] = sideChain
 	}
 	ar.SendDepositTransactions(transactionInfoMap)
+}
+
+func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {
+	for {
+		err := ar.mainChainImpl.CheckAndRemoveDepositTransactionsFromDB()
+		if err != nil {
+			log.Warn("Check and remove deposit transactions from db error:", err)
+		}
+		err = ar.GetSideChainManager().CheckAndRemoveWithdrawTransactionsFromDB()
+		if err != nil {
+			log.Warn("Check and remove withdraw transactions from db error:", err)
+		}
+		log.Info("Check and remove cross chain transactions from dbcache finished")
+		time.Sleep(time.Millisecond * config.Parameters.ClearTransactionInterval)
+	}
 }

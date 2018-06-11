@@ -2,6 +2,7 @@ package arbitrator
 
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+
 	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
@@ -29,4 +30,5 @@ type SideChainManager interface {
 	GetChain(key string) (SideChain, bool)
 	GetAllChains() []SideChain
 	StartSideChainMining()
+	CheckAndRemoveWithdrawTransactionsFromDB() error
 }

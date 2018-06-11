@@ -11,6 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -76,6 +77,7 @@ type DataStore interface {
 	AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error
 	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
+	GetAllSideChainTxHashes() ([]string, error)
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
 
@@ -390,6 +392,28 @@ func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error
 	}
 
 	return nil
+}
+
+func (store *DataStoreImpl) GetAllSideChainTxHashes() ([]string, error) {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	for rows.Next() {
+		var txHash string
+		err = rows.Scan(&txHash)
+		if err != nil {
+			return nil, err
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	return txHashes, nil
 }
 
 func (store *DataStoreImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error) {

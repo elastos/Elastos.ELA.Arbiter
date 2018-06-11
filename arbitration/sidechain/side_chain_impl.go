@@ -2,11 +2,10 @@ package sidechain
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"math/rand"
 	"strconv"
-
-	"encoding/json"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -41,14 +40,11 @@ type SideChainImpl struct {
 }
 
 func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
-	if msg.CMD() != cs.DepositTxCacheClearCommand && msg.CMD() != cs.GetLastArbiterUsedUtxoCommand &&
-		msg.CMD() != cs.SendLastArbiterUsedUtxoCommand {
+	if msg.CMD() != cs.GetLastArbiterUsedUtxoCommand && msg.CMD() != cs.SendLastArbiterUsedUtxoCommand {
 		return nil
 	}
 
 	switch m := msg.(type) {
-	case *cs.TxCacheClearMessage:
-		return store.DbCache.RemoveMainChainTxs(m.RemovedTxs)
 	case *cs.GetLastArbiterUsedUTXOMessage:
 		return client.ReceiveGetLastArbiterUsedUtxos(m.Height, m.GenesisAddress)
 	case *cs.SendLastArbiterUsedUTXOMessage:
@@ -389,13 +385,13 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 		return err
 	}
 
-	if len(receivedTxs) != 0 {
+	/*if len(receivedTxs) != 0 {
 		msg := &cs.TxCacheClearMessage{
 			Command:    cs.WithdrawTxCacheClearCommand,
 			RemovedTxs: receivedTxs}
 		cs.P2PClientSingleton.AddMessageHash(cs.P2PClientSingleton.GetMessageHash(msg))
 		cs.P2PClientSingleton.Broadcast(msg)
-	}
+	}*/
 
 	return nil
 }

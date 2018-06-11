@@ -33,6 +33,7 @@ type Configuration struct {
 	MaxLogSize    int64         `json:"MaxLogSize"`
 
 	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
 	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
 	MinOutbound                  int           `json:"MinOutbound"`
 	MaxConnections               int           `json:"MaxConnections"`

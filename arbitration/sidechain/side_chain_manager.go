@@ -4,6 +4,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
 
 type SideChainManagerImpl struct {
@@ -32,6 +34,24 @@ func (sideManager *SideChainManagerImpl) StartSideChainMining() {
 		log.Info("[OnDutyChanged] Start side chain mining: genesis address [", sc.GetKey(), "]")
 		sc.StartSideChainMining()
 	}
+}
+
+func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromDB() error {
+	txHashes, err := store.DbCache.GetAllSideChainTxHashes()
+	if err != nil {
+		return err
+	}
+	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
+	if err != nil {
+		return err
+	}
+
+	err = store.DbCache.RemoveSideChainTxs(receivedTxs)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func Init() {

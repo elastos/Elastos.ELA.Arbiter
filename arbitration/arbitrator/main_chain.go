@@ -3,6 +3,7 @@ package arbitrator
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
+
 	"github.com/elastos/Elastos.ELA/core"
 )
 
@@ -15,6 +16,7 @@ type MainChain interface {
 	ReceiveProposalFeedback(content []byte) error
 
 	SyncMainChainCachedTxs() (map[SideChain][]string, error)
+	CheckAndRemoveDepositTransactionsFromDB() error
 	SyncChainData()
 }
 
