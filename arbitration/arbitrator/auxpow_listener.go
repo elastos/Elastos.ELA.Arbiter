@@ -23,7 +23,7 @@ func (l *AuxpowListener) Address() string {
 }
 
 func (l *AuxpowListener) Type() ela.TransactionType {
-	return ela.SideMining
+	return ela.SideChainPow
 }
 
 func (l *AuxpowListener) Flags() uint64 {
@@ -38,7 +38,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	// Submit transaction receipt
 	defer spvService.SubmitTransactionReceipt(id, tx.Hash())
 
-	log.Info("[Notify-Auxpow] Receive side mining transaction, hash:", tx.Hash().String())
+	log.Info("[Notify-Auxpow] Receive side chain pow transaction, hash:", tx.Hash().String())
 	err := spvService.VerifyTransaction(proof, tx)
 	if err != nil {
 		log.Error("Verify transaction error: ", err)
@@ -83,7 +83,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	}
 
 	// send submit block
-	payload, ok := tx.Payload.(*ela.PayloadSideMining)
+	payload, ok := tx.Payload.(*ela.PayloadSideChainPow)
 	if !ok {
 		log.Error("Invalid payload type.")
 		return

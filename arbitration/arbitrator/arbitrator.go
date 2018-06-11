@@ -96,7 +96,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 		for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
 			sc.SendCachedWithdrawTxs()
 		}
-		//send side mining transaction
+		//send side chain pow transaction
 		ar.sideChainManagerImpl.StartSideChainMining()
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")

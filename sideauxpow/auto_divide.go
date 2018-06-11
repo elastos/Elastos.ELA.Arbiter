@@ -14,13 +14,13 @@ import (
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
-type SideMiningAccount struct {
+type SideChainPowAccount struct {
 	Address          string
 	availableBalance Fixed64
 }
 
-func checkSideMiningAccounts(addrs []*walt.Address, minThreshold int, wallet walt.Wallet) ([]*SideMiningAccount, error) {
-	var warnAddresses []*SideMiningAccount
+func checkSideChainPowAccounts(addrs []*walt.Address, minThreshold int, wallet walt.Wallet) ([]*SideChainPowAccount, error) {
+	var warnAddresses []*SideChainPowAccount
 	currentHeight := wallet.CurrentHeight(walt.QueryHeightCode)
 	for _, addr := range addrs {
 		available := Fixed64(0)
@@ -38,7 +38,7 @@ func checkSideMiningAccounts(addrs []*walt.Address, minThreshold int, wallet wal
 		}
 
 		if available < Fixed64(minThreshold*100000000) {
-			warnAddresses = append(warnAddresses, &SideMiningAccount{
+			warnAddresses = append(warnAddresses, &SideChainPowAccount{
 				Address:          addr.Address,
 				availableBalance: available,
 			})
@@ -47,10 +47,10 @@ func checkSideMiningAccounts(addrs []*walt.Address, minThreshold int, wallet wal
 
 	if len(warnAddresses) > 0 {
 		var warningStr string
-		for _, sideMiningAccount := range warnAddresses {
-			warningStr += sideMiningAccount.Address
+		for _, sideChainPowAccount := range warnAddresses {
+			warningStr += sideChainPowAccount.Address
 			warningStr += ": "
-			warningStr += sideMiningAccount.availableBalance.String()
+			warningStr += sideChainPowAccount.availableBalance.String()
 			warningStr += " "
 		}
 
@@ -119,9 +119,9 @@ func SidechainAccountDivide(wallet walt.Wallet) {
 			if err != nil {
 				log.Error("Get addresses error:", err)
 			}
-			warningAccounts, err := checkSideMiningAccounts(addresses, 10, wallet)
+			warningAccounts, err := checkSideChainPowAccounts(addresses, 10, wallet)
 			if err != nil {
-				log.Error("Check side mining err", err)
+				log.Error("Check side chain pow err", err)
 			}
 			if len(warningAccounts) > 0 {
 				var outputs []*walt.Transfer

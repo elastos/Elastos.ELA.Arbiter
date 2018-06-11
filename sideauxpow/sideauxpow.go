@@ -64,7 +64,7 @@ func unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
+func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
 	log.Info("getSideAuxpow")
 
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), sideNode.Rpc)
@@ -92,7 +92,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	}
 	// fmt.Println(sideAuxBlock)
 
-	txType := ela.SideMining
+	txType := ela.SideChainPow
 
 	sideGenesisHashData, _ := HexStringToBytes(sideAuxBlock.GenesisHash)
 	sideBlockHashData, _ := HexStringToBytes(sideAuxBlock.Hash)
@@ -102,14 +102,14 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 
 	fmt.Println(sideGenesisHash, sideBlockHash)
 	// Create payload
-	txPayload := &ela.PayloadSideMining{
+	txPayload := &ela.PayloadSideChainPow{
 		BlockHeight:     sideAuxBlock.Height,
 		SideBlockHash:   *sideBlockHash,
 		SideGenesisHash: *sideGenesisHash,
 	}
 
 	buf := new(bytes.Buffer)
-	txPayload.Serialize(buf, ela.SideMiningPayloadVersion)
+	txPayload.Serialize(buf, ela.SideChainPowPayloadVersion)
 	txPayload.SignedData, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
 	if err != nil {
 		return err
@@ -162,9 +162,9 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 	haveSign, needSign, _ = crypto.GetSignStatus(program.Code, program.Parameter)
 	log.Debug("Transaction successfully signed: ", haveSign, needSign)
 
-	sideMiningBuf := new(bytes.Buffer)
-	txn.Serialize(sideMiningBuf)
-	content := BytesToHexString(sideMiningBuf.Bytes())
+	sideChainPowBuf := new(bytes.Buffer)
+	txn.Serialize(sideChainPowBuf)
+	content := BytesToHexString(sideChainPowBuf.Bytes())
 	// log.Debug("Raw Sidemining transaction: ", content)
 
 	// send transaction
@@ -178,7 +178,7 @@ func sideMiningTransfer(name string, passwd []byte, sideNode *config.SideNodeCon
 }
 
 func StartSideChainMining(sideNode *config.SideNodeConfig) {
-	err := sideMiningTransfer(sideNode.KeystoreFile, getMainAccountPassword(), sideNode)
+	err := sideChainPowTransfer(sideNode.KeystoreFile, getMainAccountPassword(), sideNode)
 	if err != nil {
 		log.Warn(err)
 	}

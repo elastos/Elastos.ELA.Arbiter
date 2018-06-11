@@ -1,10 +1,11 @@
 package base
 
 import (
-	"errors"
-
 	"bytes"
 	"encoding/json"
+	"errors"
+
+	sc "github.com/elastos/Elastos.ELA.SideChain/core"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/auxpow"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -39,7 +40,7 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 	case *TransferAssetInfo:
 		return new(PayloadTransferAsset), nil
 	case *RechargeToSideChainInfo:
-		obj := new(PayloadRechargeToSideChain)
+		obj := new(sc.PayloadRechargeToSideChain)
 		proofBytes, err := HexStringToBytes(object.Proof)
 		if err != nil {
 			return nil, err
