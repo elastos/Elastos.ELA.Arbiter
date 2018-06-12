@@ -51,6 +51,11 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromD
 		return err
 	}
 
+	err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(receivedTxs)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

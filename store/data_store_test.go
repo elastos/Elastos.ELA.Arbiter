@@ -112,6 +112,7 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	datastore.AddSideChainTx(txHash, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash2, genesisBlockAddress, tx, 10)
 	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx, 11)
+	datastore.AddSideChainTx(txHash3, genesisBlockAddress2, tx, 11)
 
 	txHashes, err := datastore.GetAllSideChainTxHashes()
 	if err != nil {
@@ -285,6 +286,7 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 
 	datastore.AddMainChainTx(txHash, tx, mp)
 	datastore.AddMainChainTx(txHash2, tx2, mp2)
+	datastore.AddMainChainTx(txHash3, tx3, mp3)
 	datastore.AddMainChainTx(txHash3, tx3, mp3)
 
 	txHashes, err := datastore.GetAllMainChainTxHashes()

@@ -10,6 +10,9 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	scError "github.com/elastos/Elastos.ELA.SideChain/errors"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -23,7 +26,6 @@ type DistributedNodeServer struct {
 	mux                  *sync.Mutex
 	P2pCommand           string
 	unsolvedTransactions map[common.Uint256]*Transaction
-	finishedTransactions map[common.Uint256]bool
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -33,21 +35,12 @@ func (dns *DistributedNodeServer) tryInit() {
 	if dns.unsolvedTransactions == nil {
 		dns.unsolvedTransactions = make(map[common.Uint256]*Transaction)
 	}
-	if dns.finishedTransactions == nil {
-		dns.finishedTransactions = make(map[common.Uint256]bool)
-	}
 }
 
 func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*Transaction {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 	return dns.unsolvedTransactions
-}
-
-func (dns *DistributedNodeServer) FinishedTransactions() map[common.Uint256]bool {
-	dns.mux.Lock()
-	defer dns.mux.Unlock()
-	return dns.finishedTransactions
 }
 
 func CreateRedeemScript() ([]byte, error) {
@@ -176,21 +169,54 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		delete(dns.unsolvedTransactions, txn.Hash())
 		dns.mux.Unlock()
 
-		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-		result, err := currentArbitrator.SendWithdrawTransaction(txn)
-
-		if err != nil {
-			dns.mux.Lock()
-			dns.finishedTransactions[txn.Hash()] = false
-			dns.mux.Unlock()
-			return err
+		withdrawPayload, ok := txn.Payload.(*PayloadWithdrawFromSideChain)
+		if !ok {
+			return errors.New("Received proposal feed back but withdraw transaction has invalid payload")
 		}
 
-		dns.mux.Lock()
-		dns.finishedTransactions[txn.Hash()] = true
-		dns.mux.Unlock()
+		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+		resp, err := currentArbitrator.SendWithdrawTransaction(txn)
 
-		fmt.Println(result)
+		if err != nil || scError.ErrCode(resp.Code) != scError.ErrDoubleSpend &&
+			scError.ErrCode(resp.Code) != scError.Success {
+			log.Warn("Send withdraw transaction failed, txHash:", txn.Hash().String())
+
+			buf := new(bytes.Buffer)
+			err := txn.Serialize(buf)
+			if err != nil {
+				return errors.New("Send withdraw transaction faild, invalid transaction")
+			}
+
+			err = store.DbCache.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
+			if err != nil {
+				return errors.New("Remove failed withdraw transaction from db failed")
+			}
+			err = store.FinishedTxsDbCache.AddWithdrawTx(withdrawPayload.SideChainTransactionHashes, buf.Bytes(), false)
+			if err != nil {
+				return errors.New("Add failed withdraw transaction into finished db failed")
+			}
+		} else if scError.ErrCode(resp.Code) != scError.Success {
+			log.Info("Send withdraw transaction succeed, txHash:", txn.Hash().String())
+
+			buf := new(bytes.Buffer)
+			err := txn.Serialize(buf)
+			if err != nil {
+				return errors.New("Send withdraw transaction succed, but transaction is invalided")
+			}
+
+			err = store.DbCache.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
+			if err != nil {
+				return errors.New("Remove succeed withdraw transaction from db failed")
+			}
+			err = store.FinishedTxsDbCache.AddWithdrawTx(withdrawPayload.SideChainTransactionHashes, buf.Bytes(), true)
+			if err != nil {
+				return errors.New("Add succeed withdraw transaction into finished db failed")
+			}
+		} else {
+			log.Warn("Send withdraw transaction failed, need to resend")
+		}
+
+		fmt.Println(resp.Result)
 	}
 	return nil
 }

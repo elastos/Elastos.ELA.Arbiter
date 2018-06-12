@@ -50,6 +50,7 @@ const (
 	CreateMainChainTxsTable = `CREATE TABLE IF NOT EXISTS MainChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
+				GenesisBlockAddress VARCHAR(34),
 				TransactionData BLOB,
 				MerkleProof BLOB
 			);`
@@ -398,7 +399,7 @@ func (store *DataStoreImpl) GetAllSideChainTxHashes() ([]string, error) {
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs`)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs GROUP BY TransactionHash`)
 	if err != nil {
 		return nil, err
 	}
@@ -420,7 +421,7 @@ func (store *DataStoreImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddres
 	store.sideMux.Lock()
 	defer store.sideMux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=? GROUP BY TransactionHash`, genesisBlockAddress)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -476,7 +477,7 @@ func (store *DataStoreImpl) AddMainChainTx(transactionHash string, transaction *
 	defer store.mainMux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash, TransactionData, MerkleProof) values(?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -535,7 +536,7 @@ func (store *DataStoreImpl) GetAllMainChainTxHashes() ([]string, error) {
 	store.mainMux.Lock()
 	defer store.mainMux.Unlock()
 
-	rows, err := store.Query(`SELECT MainChainTxs.TransactionHash FROM MainChainTxs`)
+	rows, err := store.Query(`SELECT MainChainTxs.TransactionHash FROM MainChainTxs GROUP BY TransactionHash`)
 	if err != nil {
 		return nil, err
 	}
@@ -561,7 +562,7 @@ func (store *DataStoreImpl) GetMainChainTxsFromHashes(transactionHashes []string
 	var mps []*bloom.MerkleProof
 
 	for _, txHash := range transactionHashes {
-		rows, err := store.Query(`SELECT MainChainTxs.TransactionData, MainChainTxs.MerkleProof FROM MainChainTxs WHERE TransactionHash=?`, txHash)
+		rows, err := store.Query(`SELECT MainChainTxs.TransactionData, MainChainTxs.MerkleProof FROM MainChainTxs WHERE TransactionHash=? LIMIT 1`, txHash)
 		if err != nil {
 			return nil, nil, err
 		}

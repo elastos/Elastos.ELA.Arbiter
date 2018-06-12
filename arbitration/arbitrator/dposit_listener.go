@@ -32,6 +32,7 @@ func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx 
 		return
 	}
 
+	log.Info("[Notify-Deposit] find deposit transaction and add into db, transaction hash:", tx.Hash().String())
 	if err := store.DbCache.AddMainChainTx(tx.Hash().String(), &tx, &proof); err != nil {
 		log.Error("AddMainChainTx error, txHash:", tx.Hash().String())
 		return
@@ -43,7 +44,7 @@ func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx 
 		return
 	}
 
-	log.Info("[Notify-Deposit] find deposit transaction and createAndSendDepositTransaction")
+	log.Info("[Notify-Deposit] find deposit transaction, create and send deposit transaction")
 	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransaction(&proof, &tx)
 }
 

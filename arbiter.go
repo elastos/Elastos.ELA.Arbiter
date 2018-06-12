@@ -69,9 +69,17 @@ func main() {
 	}
 	store.DbCache = dataStore
 
+	log.Info("3. Init finished transaction cache.")
+	finishedDataStore, err := store.OpenFinishedTxsDataStore()
+	if err != nil {
+		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
+		os.Exit(1)
+	}
+	store.FinishedTxsDbCache = finishedDataStore
+
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
-	log.Info("3. Init wallet.")
+	log.Info("4. Init wallet.")
 	wallet, err := wallet.Open()
 	if err != nil {
 		log.Fatal("error: open wallet failed, ", err)
@@ -79,7 +87,7 @@ func main() {
 	}
 	sideauxpow.CurrentWallet = wallet
 
-	log.Info("4. Init arbitrator account.")
+	log.Info("5. Init arbitrator account.")
 	passwd, err := password.GetAccountPassword()
 	if err != nil {
 		log.Fatal("Get password error.")
@@ -91,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Info("5. Start arbitrator P2P networks.")
+	log.Info("6. Start arbitrator P2P networks.")
 	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
@@ -101,22 +109,22 @@ func main() {
 	currentArbitrator.GetMainChain().SyncChainData()
 	currentArbitrator.GetArbitratorGroup().CheckOnDutyStatus()
 
-	log.Info("6. Start arbitrator spv module.")
+	log.Info("7. Start arbitrator spv module.")
 	if err := currentArbitrator.StartSpvModule(passwd); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("7. Start arbitrator group monitor.")
+	log.Info("8. Start arbitrator group monitor.")
 	go arbitrator.ArbitratorGroupSingleton.SyncLoop()
 
-	log.Info("8. Start servers.")
+	log.Info("9. Start servers.")
 	go httpjsonrpc.StartRPCServer()
 
-	log.Info("9. Start check and remove cross chain transactions from db.")
+	log.Info("10. Start check and remove cross chain transactions from db.")
 	go currentArbitrator.CheckAndRemoveCrossChainTransactionsFromDBLoop()
 
-	//log.Info("10. Start side chain account divide.")
+	//log.Info("11. Start side chain account divide.")
 	//go sideauxpow.SidechainAccountDivide(wallet)
 
 	select {}

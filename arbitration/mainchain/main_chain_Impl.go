@@ -89,8 +89,13 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 
 		for _, recTx := range recTxs {
 			receivedTxs = append(receivedTxs, recTx)
+			err = FinishedTxsDbCache.AddSucceedDepositTx(recTx, k.GetKey())
+			if err != nil {
+				log.Error("Add succeed deposit transactions into finished db failed")
+			}
 		}
 	}
+
 	err = DbCache.RemoveMainChainTxs(receivedTxs)
 	if err != nil {
 		return nil, err
@@ -451,12 +456,17 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 		}
 		for _, recTx := range recTxs {
 			receivedTxs = append(receivedTxs, recTx)
+			err = FinishedTxsDbCache.AddSucceedDepositTx(recTx, k.GetKey())
+			if err != nil {
+				log.Error("Add succeed deposit transactions into finished db failed")
+			}
 		}
 	}
 	err = DbCache.RemoveMainChainTxs(receivedTxs)
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 

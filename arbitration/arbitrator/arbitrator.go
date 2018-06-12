@@ -3,6 +3,7 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
+	scError "github.com/elastos/Elastos.ELA.SideChain/errors"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	"github.com/elastos/Elastos.ELA/bloom"
@@ -40,14 +42,14 @@ type Arbitrator interface {
 	//deposit
 	ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error)
 	CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction, depositInfo *DepositInfo) map[*TransactionInfo]SideChain
-	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain)
+	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain, txHash string)
 	CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction)
 
 	//withdraw
 	CreateWithdrawTransactions(
 		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction
 	BroadcastWithdrawProposal(txns []*Transaction)
-	SendWithdrawTransaction(txn *Transaction) (interface{}, error)
+	SendWithdrawTransaction(txn *Transaction) (rpc.Response, error)
 
 	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
@@ -93,7 +95,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 			log.Warn(err)
 		}
 		for sideChain, txHashes := range depositTxs {
-			ar.CreateAndSendDepositTransactions(sideChain, txHashes)
+			ar.CreateAndSendDepositTransactionsInDB(sideChain, txHashes)
 		}
 		//send withdraw transaction
 		for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
@@ -178,11 +180,37 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, mai
 	return result
 }
 
-func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain) {
+func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain, txHash string) {
 	for info, sideChain := range transactionInfoMap {
-		err := sideChain.SendTransaction(info)
+		depositTxBytes, err := json.Marshal(info)
 		if err != nil {
-			log.Warn(err.Error())
+			log.Error("Deposit transactionInfo to bytes failed")
+			continue
+		}
+
+		resp, err := sideChain.SendTransaction(info)
+		if err != nil || scError.ErrCode(resp.Code) != scError.ErrDoubleSpend && scError.ErrCode(resp.Code) != scError.Success {
+			log.Warn("Send deposit transaction failed, txHash:", txHash)
+
+			err = store.DbCache.RemoveMainChainTxs([]string{txHash})
+			if err != nil {
+				log.Warn("Remove faild transaction from db failed")
+			}
+			err = store.FinishedTxsDbCache.AddDepositTx(txHash, sideChain.GetKey(), depositTxBytes, false)
+			if err != nil {
+				log.Warn("Add faild transaction to finished db failed")
+			}
+		} else if scError.ErrCode(resp.Code) == scError.Success {
+			log.Info("Send deposit transaction succeed, txHash:", txHash)
+
+			store.DbCache.RemoveMainChainTxs([]string{txHash})
+			if err != nil {
+				log.Warn("Remove succeed deposit transaction from db failed")
+			}
+			store.FinishedTxsDbCache.AddDepositTx(txHash, sideChain.GetKey(), depositTxBytes, true)
+			if err != nil {
+				log.Warn("Add succeed deposit transaction to finished db failed")
+			}
 		}
 	}
 }
@@ -196,20 +224,20 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*Transaction) {
 	}
 }
 
-func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *Transaction) (interface{}, error) {
+func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *Transaction) (rpc.Response, error) {
 	content, err := ar.convertToTransactionContent(txn)
 	if err != nil {
-		return nil, err
+		return rpc.Response{}, err
 	}
 
 	log.Info("[Rpc-sendrawtransaction] Withdraw transaction to main chain：", config.Parameters.MainNode.Rpc.IpAddress, ":", config.Parameters.MainNode.Rpc.HttpJsonPort)
-	result, err := rpc.CallAndUnmarshal("sendrawtransaction",
+	resp, err := rpc.CallAndUnmarshalResponse("sendrawtransaction",
 		rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
-		return nil, err
+		return rpc.Response{}, err
 	}
 
-	return result, nil
+	return resp, nil
 }
 
 func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
@@ -307,30 +335,18 @@ func (ar *ArbitratorImpl) CreateAndSendDepositTransaction(proof *bloom.MerklePro
 	}
 
 	transactionInfoMap := ar.CreateDepositTransactions(*proof, tx, depositInfo)
-	ar.SendDepositTransactions(transactionInfoMap)
+	ar.SendDepositTransactions(transactionInfoMap, tx.Hash().String())
 }
 
-func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(sideChain SideChain, txHashes []string) {
+func (ar *ArbitratorImpl) CreateAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
 	txs, proofs, err := store.DbCache.GetMainChainTxsFromHashes(txHashes)
 	if err != nil {
 		return
 	}
 
-	transactionInfoMap := make(map[*TransactionInfo]SideChain, 0)
 	for i := 0; i < len(txs); i++ {
-		depositInfo, err := ar.ParseUserDepositTransactionInfo(txs[i])
-		if err != nil {
-			log.Error(err)
-			return
-		}
-
-		txinfo, err := sideChain.CreateDepositTransaction(depositInfo, *proofs[i], txs[i])
-		if err != nil {
-			return
-		}
-		transactionInfoMap[txinfo] = sideChain
+		ar.CreateAndSendDepositTransaction(proofs[i], txs[i])
 	}
-	ar.SendDepositTransactions(transactionInfoMap)
 }
 
 func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {

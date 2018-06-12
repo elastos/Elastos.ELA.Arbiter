@@ -1,8 +1,10 @@
 package complain
 
 import (
+	"bytes"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/core"
 )
@@ -22,11 +24,11 @@ type ComplainSolvingImpl struct {
 	*DistributedNodeServer
 }
 
-func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash string, transaction common.Uint256) error {
+func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash string, transactionHash common.Uint256) ([]byte, error) {
 	item := &ComplainItem{
 		UserAddress:      userAddress,
 		GenesisBlockHash: genesisBlockHash,
-		TransactionHash:  transaction,
+		TransactionHash:  transactionHash,
 		IsFromMainBlock:  false}
 	if len(genesisBlockHash) == 0 {
 		item.IsFromMainBlock = true
@@ -34,27 +36,51 @@ func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash st
 
 	trans, err := comp.CreateComplainTransaction(item)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return comp.BroadcastWithdrawProposal(trans)
+	//return comp.BroadcastWithdrawProposal(trans)
+
+	buf := new(bytes.Buffer)
+	trans.Serialize(buf)
+	return buf.Bytes(), err
+}
+
+func (comp *ComplainSolvingImpl) BroadcastComplainSolving([]byte) error {
+	return nil
 }
 
 func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint256) uint {
-	_, ok := comp.UnsolvedTransactions()[transactionHash]
-	if !ok {
-		success, ok := comp.FinishedTransactions()[transactionHash]
-		if !ok {
-			return None
+	txs, err := store.DbCache.GetSideChainTxsFromHashes([]string{transactionHash.String()})
+	if err == nil && len(txs) != 0 {
+		return Solving
+	}
+
+	txs, _, err = store.DbCache.GetMainChainTxsFromHashes([]string{transactionHash.String()})
+	if err == nil && len(txs) != 0 {
+		return Solving
+	}
+
+	succeedList, _, err := store.FinishedTxsDbCache.GetDepositTxByHash(transactionHash.String())
+	if err == nil && len(succeedList) != 0 {
+		for _, succeed := range succeedList {
+			if succeed {
+				return Done
+			}
 		}
-		if success {
+		return Rejected
+	}
+
+	succeed, _, err := store.FinishedTxsDbCache.GetWithdrawTxByHash(transactionHash.String())
+	if err == nil {
+		if succeed {
 			return Done
 		} else {
 			return Rejected
 		}
-	} else {
-		return Solving
 	}
+
+	return None
 }
 
 func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*core.Transaction, error) {

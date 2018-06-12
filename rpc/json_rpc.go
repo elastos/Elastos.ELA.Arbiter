@@ -204,6 +204,21 @@ func CallAndUnmarshal(method string, params map[string]string, config *config.Rp
 	return resp.Result, nil
 }
 
+func CallAndUnmarshalResponse(method string, params map[string]string, config *config.RpcConfig) (Response, error) {
+	body, err := Call(method, params, config)
+	if err != nil {
+		return Response{}, err
+	}
+
+	resp := Response{}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return Response{}, err
+	}
+
+	return resp, nil
+}
+
 func Unmarshal(result interface{}, target interface{}) error {
 	data, err := json.Marshal(result)
 	if err != nil {

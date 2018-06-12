@@ -202,21 +202,21 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 	return rpc.GetBlockByHeight(height, sc.getCurrentConfig().Rpc)
 }
 
-func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) error {
+func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, error) {
 	infoBytes, err := json.Marshal(info)
 	if err != nil {
-		return err
+		return rpc.Response{}, err
 	}
 
 	log.Info("[Rpc-sendtransactioninfo] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	result, err := rpc.CallAndUnmarshal("sendtransactioninfo",
+	response, err := rpc.CallAndUnmarshalResponse("sendtransactioninfo",
 		rpc.Param("Info", common.BytesToHexString(infoBytes)), sc.CurrentConfig.Rpc)
 	if err != nil {
-		return err
+		return rpc.Response{}, err
 	}
 
-	log.Info("result:", result)
-	return nil
+	log.Info("response:", response)
+	return response, nil
 }
 
 func (sc *SideChainImpl) GetAccountAddress() string {
@@ -294,8 +294,8 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 		return nil, err
 	}
 
-	transactionInfo := new(bytes.Buffer)
-	err = mainChainTransaction.Serialize(transactionInfo)
+	transactionBuf := new(bytes.Buffer)
+	err = mainChainTransaction.Serialize(transactionBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +303,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	// Create payload
 	txPayloadInfo := new(RechargeToSideChainInfo)
 	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
-	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionInfo.Bytes())
+	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionBuf.Bytes())
 
 	// Create attributes
 	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
@@ -385,13 +385,10 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 		return err
 	}
 
-	/*if len(receivedTxs) != 0 {
-		msg := &cs.TxCacheClearMessage{
-			Command:    cs.WithdrawTxCacheClearCommand,
-			RemovedTxs: receivedTxs}
-		cs.P2PClientSingleton.AddMessageHash(cs.P2PClientSingleton.GetMessageHash(msg))
-		cs.P2PClientSingleton.Broadcast(msg)
-	}*/
+	err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(receivedTxs)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

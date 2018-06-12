@@ -46,7 +46,6 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 			return nil, err
 		}
 		obj.MerkleProof = proofBytes
-
 		transactionBytes, err := HexStringToBytes(object.MainChainTransaction)
 		if err != nil {
 			return nil, err
