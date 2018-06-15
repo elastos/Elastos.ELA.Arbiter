@@ -40,10 +40,10 @@ type Arbitrator interface {
 	StartSpvModule(passwd []byte) error
 
 	//deposit
-	ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error)
+	ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error)
 	CreateDepositTransactions(proof bloom.MerkleProof, mainChainTransaction *Transaction, depositInfo *DepositInfo) map[*TransactionInfo]SideChain
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]SideChain, txHash string)
-	CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction)
+	CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction, genesisAddress string)
 
 	//withdraw
 	CreateWithdrawTransactions(
@@ -146,8 +146,8 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfo *WithdrawInfo,
 	return result
 }
 
-func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error) {
-	depositInfo, err := ar.mainChainImpl.ParseUserDepositTransactionInfo(txn)
+func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error) {
+	depositInfo, err := ar.mainChainImpl.ParseUserDepositTransactionInfo(txn, genesisAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +192,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 		if err != nil || scError.ErrCode(resp.Code) != scError.ErrDoubleSpend && scError.ErrCode(resp.Code) != scError.Success {
 			log.Warn("Send deposit transaction failed, txHash:", txHash)
 
-			err = store.DbCache.RemoveMainChainTxs([]string{txHash})
+			err = store.DbCache.RemoveMainChainTx(txHash, sideChain.GetKey())
 			if err != nil {
 				log.Warn("Remove faild transaction from db failed")
 			}
@@ -203,11 +203,11 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 		} else if scError.ErrCode(resp.Code) == scError.Success {
 			log.Info("Send deposit transaction succeed, txHash:", txHash)
 
-			store.DbCache.RemoveMainChainTxs([]string{txHash})
+			store.DbCache.RemoveMainChainTx(txHash, sideChain.GetKey())
 			if err != nil {
 				log.Warn("Remove succeed deposit transaction from db failed")
 			}
-			store.FinishedTxsDbCache.AddDepositTx(txHash, sideChain.GetKey(), depositTxBytes, true)
+			store.FinishedTxsDbCache.AddSucceedDepositTx(txHash, sideChain.GetKey())
 			if err != nil {
 				log.Warn("Add succeed deposit transaction to finished db failed")
 			}
@@ -327,8 +327,8 @@ func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string,
 	return content, nil
 }
 
-func (ar *ArbitratorImpl) CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction) {
-	depositInfo, err := ar.ParseUserDepositTransactionInfo(tx)
+func (ar *ArbitratorImpl) CreateAndSendDepositTransaction(proof *bloom.MerkleProof, tx *Transaction, genesisAddress string) {
+	depositInfo, err := ar.ParseUserDepositTransactionInfo(tx, genesisAddress)
 	if err != nil {
 		log.Error(err)
 		return
@@ -339,13 +339,13 @@ func (ar *ArbitratorImpl) CreateAndSendDepositTransaction(proof *bloom.MerklePro
 }
 
 func (ar *ArbitratorImpl) CreateAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
-	txs, proofs, err := store.DbCache.GetMainChainTxsFromHashes(txHashes)
+	txs, proofs, err := store.DbCache.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
 	if err != nil {
 		return
 	}
 
 	for i := 0; i < len(txs); i++ {
-		ar.CreateAndSendDepositTransaction(proofs[i], txs[i])
+		ar.CreateAndSendDepositTransaction(proofs[i], txs[i], sideChain.GetKey())
 	}
 }
 

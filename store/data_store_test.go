@@ -196,6 +196,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 	}
 
 	txHash := "testHash"
+	genesisAddress := "genesis"
 
 	ok, err := datastore.HasMainChainTx(txHash)
 	if err != nil {
@@ -207,7 +208,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 
 	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 	mp := new(bloom.MerkleProof)
-	if err := datastore.AddMainChainTx(txHash, tx, mp); err != nil {
+	if err := datastore.AddMainChainTx(txHash, genesisAddress, tx, mp); err != nil {
 		t.Error("Add main chain transaction error.")
 	}
 
@@ -230,6 +231,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 
 	txHash := "testHash"
 	txHash2 := "testHash2"
+	genesisAddress := "genesis"
 
 	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
@@ -237,8 +239,8 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	mp := new(bloom.MerkleProof)
 	mp2 := new(bloom.MerkleProof)
 
-	datastore.AddMainChainTx(txHash, tx, mp)
-	datastore.AddMainChainTx(txHash2, tx2, mp2)
+	datastore.AddMainChainTx(txHash, genesisAddress, tx, mp)
+	datastore.AddMainChainTx(txHash2, genesisAddress, tx2, mp2)
 
 	if ok, err := datastore.HasMainChainTx(txHash); !ok || err != nil {
 		t.Error("Should have specified transaction.")
@@ -247,9 +249,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 		t.Error("Should have specified transaction.")
 	}
 
-	var removedHashes []string
-	removedHashes = append(removedHashes, txHash)
-	datastore.RemoveMainChainTxs(removedHashes)
+	datastore.RemoveMainChainTxs([]string{txHash}, []string{genesisAddress})
 
 	ok, err := datastore.HasMainChainTx(txHash)
 	if err != nil {
@@ -261,6 +261,19 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 
 	if ok, err := datastore.HasMainChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
+	}
+
+	err = datastore.RemoveMainChainTx(txHash2, genesisAddress)
+	if err != nil {
+		t.Error("Remove main chain tx failed")
+	}
+
+	ok, err = datastore.HasMainChainTx(txHash2)
+	if err != nil {
+		t.Error("Remove main chain tx error.")
+	}
+	if ok {
+		t.Error("Remove main chain tx error.")
 	}
 
 	datastore.ResetDataStore()
@@ -275,6 +288,7 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	txHash := "testHash"
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
+	genesisAddress := "genesis"
 
 	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
@@ -284,16 +298,16 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	mp2 := new(bloom.MerkleProof)
 	mp3 := new(bloom.MerkleProof)
 
-	datastore.AddMainChainTx(txHash, tx, mp)
-	datastore.AddMainChainTx(txHash2, tx2, mp2)
-	datastore.AddMainChainTx(txHash3, tx3, mp3)
-	datastore.AddMainChainTx(txHash3, tx3, mp3)
+	datastore.AddMainChainTx(txHash, genesisAddress, tx, mp)
+	datastore.AddMainChainTx(txHash2, genesisAddress, tx2, mp2)
+	datastore.AddMainChainTx(txHash3, genesisAddress, tx3, mp3)
+	datastore.AddMainChainTx(txHash3, genesisAddress, tx3, mp3)
 
-	txHashes, err := datastore.GetAllMainChainTxHashes()
+	txHashes, genesisAddresses, err := datastore.GetAllMainChainTxHashes()
 	if err != nil {
 		t.Error("Get all main chain transactions error.")
 	}
-	if len(txHashes) != 3 {
+	if len(txHashes) != 3 || len(genesisAddresses) != 3 {
 		t.Error("Get all main chain transactions error.")
 	}
 	for _, hash := range txHashes {
@@ -302,11 +316,24 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 		}
 	}
 
-	proofs, _, err := datastore.GetMainChainTxsFromHashes([]string{txHash, txHash2, txHash3})
+	txHashes, genesisAddresses, txs, proofs, err := datastore.GetAllMainChainTxs()
+	if err != nil {
+		t.Error("Get all main chain transactions error.")
+	}
+	if len(txHashes) != 3 || len(genesisAddresses) != 3 || len(txs) != 3 || len(proofs) != 3 {
+		t.Error("Get all main chain transactions error.")
+	}
+	for _, hash := range txHashes {
+		if hash != txHash && hash != txHash2 && hash != txHash3 {
+			t.Error("Get all main chain transactions error.")
+		}
+	}
+
+	txs, proofs, err = datastore.GetMainChainTxsFromHashes([]string{txHash, txHash2, txHash3}, genesisAddress)
 	if err != nil {
 		t.Error("Get main chain txs from hashes error.")
 	}
-	if len(proofs) != 3 {
+	if len(txs) != 3 || len(proofs) != 3 {
 		t.Error("Get main chain txs from hashes error.")
 	}
 

@@ -29,12 +29,7 @@ type MainChainImpl struct {
 }
 
 func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
-	txHases, err := DbCache.GetAllMainChainTxHashes()
-	if err != nil {
-		return nil, err
-	}
-
-	transactions, _, err := DbCache.GetMainChainTxsFromHashes(txHases)
+	txHases, genesisAddresses, transactions, _, err := DbCache.GetAllMainChainTxs()
 	if err != nil {
 		return nil, err
 	}
@@ -45,18 +40,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
 	for i := 0; i < len(transactions); i++ {
-		depositInfo, err := mc.ParseUserDepositTransactionInfo(transactions[i])
-		if err != nil {
-			log.Warn("Invalid deposit address.")
-			continue
-		}
-
-		addr, err := depositInfo.MainChainProgramHash.ToAddress()
-		if err != nil {
-			log.Warn("Invalid deposit address.")
-			continue
-		}
-		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(addr)
+		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddresses[i])
 		if !ok {
 			log.Warn("Invalid deposit address.")
 			continue
@@ -77,28 +61,25 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 	}
 
 	result := make(map[SideChain][]string, 0)
-	var receivedTxs []string
 	for k, v := range allSideChainTxHashes {
-		recTxs, err := k.GetExistDepositTransactions(v)
+		receivedTxs, err := k.GetExistDepositTransactions(v)
 		if err != nil {
 			log.Warn("Invalid deposit address.")
 			continue
 		}
-		unsolvedTxs := SubstractTransactionHashes(v, recTxs)
+		unsolvedTxs := SubstractTransactionHashes(v, receivedTxs)
 		result[k] = unsolvedTxs
 
-		for _, recTx := range recTxs {
-			receivedTxs = append(receivedTxs, recTx)
+		for _, recTx := range receivedTxs {
+			err = DbCache.RemoveMainChainTx(recTx, k.GetKey())
+			if err != nil {
+				return nil, err
+			}
 			err = FinishedTxsDbCache.AddSucceedDepositTx(recTx, k.GetKey())
 			if err != nil {
 				log.Error("Add succeed deposit transactions into finished db failed")
 			}
 		}
-	}
-
-	err = DbCache.RemoveMainChainTxs(receivedTxs)
-	if err != nil {
-		return nil, err
 	}
 
 	return result, err
@@ -241,21 +222,26 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	}, nil
 }
 
-func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction) (*DepositInfo, error) {
+func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error) {
 	result := new(DepositInfo)
-	switch payloadObj := txn.Payload.(type) {
-	case *PayloadTransferCrossChainAsset:
-		if len(txn.Outputs) == 0 {
-			return nil, errors.New("Invalid payload")
-		}
-		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
+	payloadObj, ok := txn.Payload.(*PayloadTransferCrossChainAsset)
+	if !ok {
+		return nil, errors.New("Invalid payload")
+	}
+	if len(txn.Outputs) == 0 {
+		return nil, errors.New("Invalid TransferCrossChainAsset payload, outputs is null")
+	}
+	programHash, err := Uint168FromAddress(genesisAddress)
+	if err != nil {
+		return nil, errors.New("Invalid genesis address")
+	}
+	result.MainChainProgramHash = *programHash
+	for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
+		if result.MainChainProgramHash == *programHash {
 			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddress[i])
 			result.Amount = append(result.Amount, txn.Outputs[payloadObj.OutputIndex[i]].Value)
 			result.CrossChainAmount = append(result.CrossChainAmount, payloadObj.CrossChainAmount[i])
 		}
-		result.MainChainProgramHash = txn.Outputs[payloadObj.OutputIndex[0]].ProgramHash
-	default:
-		return nil, errors.New("Invalid payload")
 	}
 
 	return result, nil
@@ -400,12 +386,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 
 func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	//remove deposit transactions if exist on side chain
-	txHases, err := DbCache.GetAllMainChainTxHashes()
-	if err != nil {
-		return err
-	}
-
-	transactions, _, err := DbCache.GetMainChainTxsFromHashes(txHases)
+	txHases, genesisAddresses, transactions, _, err := DbCache.GetAllMainChainTxs()
 	if err != nil {
 		return err
 	}
@@ -416,18 +397,7 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
 	for i := 0; i < len(transactions); i++ {
-		depositInfo, err := mc.ParseUserDepositTransactionInfo(transactions[i])
-		if err != nil {
-			log.Warn("Invalid deposit address.")
-			continue
-		}
-
-		addr, err := depositInfo.MainChainProgramHash.ToAddress()
-		if err != nil {
-			log.Warn("Invalid deposit address.")
-			continue
-		}
-		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(addr)
+		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddresses[i])
 		if !ok {
 			log.Warn("Invalid deposit address.")
 			continue
@@ -447,24 +417,22 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 		}
 	}
 
-	var receivedTxs []string
 	for k, v := range allSideChainTxHashes {
-		recTxs, err := k.GetExistDepositTransactions(v)
+		receivedTxs, err := k.GetExistDepositTransactions(v)
 		if err != nil {
 			log.Warn("Invalid deposit address.")
 			continue
 		}
-		for _, recTx := range recTxs {
-			receivedTxs = append(receivedTxs, recTx)
+		for _, recTx := range receivedTxs {
+			err = DbCache.RemoveMainChainTx(recTx, k.GetKey())
+			if err != nil {
+				return err
+			}
 			err = FinishedTxsDbCache.AddSucceedDepositTx(recTx, k.GetKey())
 			if err != nil {
 				log.Error("Add succeed deposit transactions into finished db failed")
 			}
 		}
-	}
-	err = DbCache.RemoveMainChainTxs(receivedTxs)
-	if err != nil {
-		return err
 	}
 
 	return nil

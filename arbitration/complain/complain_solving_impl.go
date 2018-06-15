@@ -56,10 +56,10 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 		return Solving
 	}
 
-	txs, _, err = store.DbCache.GetMainChainTxsFromHashes([]string{transactionHash.String()})
+	/*txs, _, err = store.DbCache.GetMainChainTxsFromHashes([]string{transactionHash.String()})
 	if err == nil && len(txs) != 0 {
 		return Solving
-	}
+	}*/
 
 	succeedList, _, err := store.FinishedTxsDbCache.GetDepositTxByHash(transactionHash.String())
 	if err == nil && len(succeedList) != 0 {

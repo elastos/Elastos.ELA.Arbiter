@@ -10,7 +10,7 @@ import (
 type MainChain interface {
 	CreateWithdrawTransaction(sideChain SideChain, withdrawInfo *WithdrawInfo,
 		sideChainTransactionHashes []string, mcFunc MainChainFunc) (*core.Transaction, error)
-	ParseUserDepositTransactionInfo(txn *core.Transaction) (*DepositInfo, error)
+	ParseUserDepositTransactionInfo(txn *core.Transaction, genesisAddress string) (*DepositInfo, error)
 
 	BroadcastWithdrawProposal(txn *core.Transaction) error
 	ReceiveProposalFeedback(content []byte) error
