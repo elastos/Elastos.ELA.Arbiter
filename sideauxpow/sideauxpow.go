@@ -18,6 +18,9 @@ import (
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
+	"crypto/sha256"
+	"Elastos.ELA/common"
+	"github.com/golang/crypto/ripemd160"
 )
 
 var (
@@ -195,7 +198,14 @@ func calculateGenesisAddress(genesisBlockHash string) (string, error) {
 	buf.Write(genesisBlockBytes)
 	buf.WriteByte(byte(CROSSCHAIN))
 
-	genesisProgramHash, err := crypto.ToProgramHash(buf.Bytes())
+	sum168 := func(prefix byte, code []byte) []byte {
+		hash := sha256.Sum256(code)
+		md160 := ripemd160.New()
+		md160.Write(hash[:])
+		return md160.Sum([]byte{prefix})
+	}
+
+	genesisProgramHash, err := common.Uint168FromBytes(sum168(PrefixCrossChain, buf.Bytes()))
 	if err != nil {
 		return "", errors.New("genesis block bytes to program hash faild")
 	}

@@ -44,11 +44,11 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 }
 
 func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
-	result, err := CallAndUnmarshal("getcurrentheight", nil, config)
+	result, err := CallAndUnmarshal("getblockcount", nil, config)
 	if err != nil {
 		return 0, err
 	}
-	return uint32(result.(float64)), nil
+	return uint32(result.(float64))-1, nil
 }
 
 func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, error) {

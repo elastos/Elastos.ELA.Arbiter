@@ -333,7 +333,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 			if ok := mc.containGenesisBlockAddress(output.Address); ok {
 				// Create UTXO input from output
 				txHashBytes, _ := HexStringToBytes(txn.Hash)
-				referTxHash, _ := Uint256FromBytes(txHashBytes)
+				referTxHash, _ := Uint256FromBytes(BytesReverse(txHashBytes))
 				sequence := output.OutputLock
 				input := &Input{
 					Previous: OutPoint{
@@ -362,7 +362,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 		// Delete UTXOs from wallet by transaction inputs
 		for _, input := range txn.Inputs {
 			txHashBytes, _ := HexStringToBytes(input.TxID)
-			referTxID, _ := Uint256FromBytes(txHashBytes)
+			referTxID, _ := Uint256FromBytes(BytesReverse(txHashBytes))
 			outPoint := OutPoint{
 				TxID:  *referTxID,
 				Index: input.VOut,

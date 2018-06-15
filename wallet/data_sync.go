@@ -106,7 +106,7 @@ func (sync *DataSyncImpl) processBlock(block *BlockInfo) {
 			if addr, ok := sync.containAddress(output.Address); ok {
 				// Create UTXO input from output
 				txHashBytes, _ := HexStringToBytes(tx.Hash)
-				referTxHash, _ := Uint256FromBytes(txHashBytes)
+				referTxHash, _ := Uint256FromBytes(BytesReverse(txHashBytes))
 				lockTime := output.OutputLock
 				if tx.TxType == CoinBase {
 					lockTime = block.Height + 100
@@ -125,7 +125,7 @@ func (sync *DataSyncImpl) processBlock(block *BlockInfo) {
 		// Delete UTXOs from wallet by transaction inputs
 		for _, input := range tx.Inputs {
 			txHashBytes, _ := HexStringToBytes(input.TxID)
-			referTxID, _ := Uint256FromBytes(txHashBytes)
+			referTxID, _ := Uint256FromBytes(BytesReverse(txHashBytes))
 			sync.DeleteUTXO(NewOutPoint(*referTxID, input.VOut))
 		}
 	}
