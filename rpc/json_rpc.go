@@ -48,7 +48,7 @@ func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return uint32(result.(float64))-1, nil
+	return uint32(result.(float64)) - 1, nil
 }
 
 func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, error) {
@@ -63,8 +63,15 @@ func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, erro
 }
 
 func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*BlockInfo, error) {
+	hashBytes, err := common.HexStringToBytes(hash.String())
+	if err != nil {
+		return nil, err
+	}
+	reversedHashBytes := common.BytesReverse(hashBytes)
+	reversedHashStr := common.BytesToHexString(reversedHashBytes)
+
 	resp, err := CallAndUnmarshal("getblock",
-		Param("blockhash", hash.String()).Add("verbosity", 2), config)
+		Param("blockhash", reversedHashStr).Add("verbosity", 2), config)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +104,14 @@ func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool,
 }
 
 func GetTransactionByHash(transactionHash string, config *config.RpcConfig) ([]byte, error) {
-	result, err := CallAndUnmarshal("getrawtransaction", Param("hash", transactionHash), config)
+	hashBytes, err := common.HexStringToBytes(transactionHash)
+	if err != nil {
+		return nil, err
+	}
+	reversedHashBytes := common.BytesReverse(hashBytes)
+	reversedHashStr := common.BytesToHexString(reversedHashBytes)
+
+	result, err := CallAndUnmarshal("getrawtransaction", Param("hash", reversedHashStr), config)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +128,18 @@ func GetTransactionByHash(transactionHash string, config *config.RpcConfig) ([]b
 }
 
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
-	infoBytes, err := json.Marshal(txs)
+	var reversedTxs []string
+	for _, txHash := range txs {
+		hashBytes, err := common.HexStringToBytes(txHash)
+		if err != nil {
+			return nil, err
+		}
+		reversedHashBytes := common.BytesReverse(hashBytes)
+		reversedTxHash := common.BytesToHexString(reversedHashBytes)
+		reversedTxs = append(reversedTxs, reversedTxHash)
+	}
+
+	infoBytes, err := json.Marshal(reversedTxs)
 	if err != nil {
 		return nil, err
 	}
@@ -131,7 +156,18 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 }
 
 func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
-	infoBytes, err := json.Marshal(txs)
+	var reversedTxs []string
+	for _, txHash := range txs {
+		hashBytes, err := common.HexStringToBytes(txHash)
+		if err != nil {
+			return nil, err
+		}
+		reversedHashBytes := common.BytesReverse(hashBytes)
+		reversedTxHash := common.BytesToHexString(reversedHashBytes)
+		reversedTxs = append(reversedTxs, reversedTxHash)
+	}
+
+	infoBytes, err := json.Marshal(reversedTxs)
 	if err != nil {
 		return nil, err
 	}

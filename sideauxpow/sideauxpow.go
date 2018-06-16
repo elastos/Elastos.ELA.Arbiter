@@ -2,6 +2,7 @@ package sideauxpow
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,8 +19,6 @@ import (
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
-	"crypto/sha256"
-	"Elastos.ELA/common"
 	"github.com/golang/crypto/ripemd160"
 )
 
@@ -205,7 +204,7 @@ func calculateGenesisAddress(genesisBlockHash string) (string, error) {
 		return md160.Sum([]byte{prefix})
 	}
 
-	genesisProgramHash, err := common.Uint168FromBytes(sum168(PrefixCrossChain, buf.Bytes()))
+	genesisProgramHash, err := Uint168FromBytes(sum168(PrefixCrossChain, buf.Bytes()))
 	if err != nil {
 		return "", errors.New("genesis block bytes to program hash faild")
 	}
