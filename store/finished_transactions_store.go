@@ -51,6 +51,7 @@ type FinishedTransactionsDataStore interface {
 	AddSucceedDepositTx(transactionHash, genesisBlockAddress string) error
 	HasDepositTx(transactionHash string) (bool, error)
 	GetDepositTxByHash(transactionHash string) ([]bool, []string, error)
+	GetDepositTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error)
 
 	AddWithdrawTx(transactionHashes []string, transactionByte []byte, succeed bool) error
 	AddSucceedWIthdrawTx(transactionHashes []string) error
@@ -204,6 +205,27 @@ func (store *FinishedTxsDataStoreImpl) GetDepositTxByHash(transactionHash string
 		addresses = append(addresses, genesisBlockAddress)
 	}
 	return succeed, addresses, nil
+}
+
+func (store *FinishedTxsDataStoreImpl) GetDepositTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT Succeed FROM DepositTransactions WHERE TransactionHash=? AND GenesisBlockAddress=? GROUP BY TransactionHash, GenesisBlockAddress`, transactionHash, genesisAddress)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	var suc bool
+	if rows.Next() {
+		err = rows.Scan(&suc)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return suc, nil
 }
 
 func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string, transactionByte []byte, succeed bool) error {

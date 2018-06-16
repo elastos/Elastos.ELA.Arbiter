@@ -103,7 +103,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	mc.SyncChainData()
 
 	withdrawBank := sideChain.GetKey()
-	rate := sideChain.GetRage()
+	rate := sideChain.GetExchangeRate()
 
 	var totalOutputAmount Fixed64
 	// Create transaction outputs
@@ -237,7 +237,7 @@ func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction, genes
 	}
 	result.MainChainProgramHash = *programHash
 	for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
-		if result.MainChainProgramHash == *programHash {
+		if txn.Outputs[payloadObj.OutputIndex[i]].ProgramHash == result.MainChainProgramHash {
 			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddress[i])
 			result.Amount = append(result.Amount, txn.Outputs[payloadObj.OutputIndex[i]].Value)
 			result.CrossChainAmount = append(result.CrossChainAmount, payloadObj.CrossChainAmount[i])

@@ -200,7 +200,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			if err != nil {
 				log.Warn("Add faild transaction to finished db failed")
 			}
-		} else if scError.ErrCode(resp.Code) == scError.Success {
+		} else if resp.Result != nil && scError.ErrCode(resp.Code) == scError.Success {
 			log.Info("Send deposit transaction succeed, txHash:", txHash)
 
 			store.DbCache.RemoveMainChainTx(txHash, sideChain.GetKey())
@@ -211,6 +211,8 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			if err != nil {
 				log.Warn("Add succeed deposit transaction to finished db failed")
 			}
+		} else {
+			log.Warn("Send deposit transaction failed, need to resend")
 		}
 	}
 }

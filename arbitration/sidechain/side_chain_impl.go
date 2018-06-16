@@ -2,9 +2,10 @@ package sidechain
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"math/rand"
 	"strconv"
 	"sync"
 
@@ -26,7 +27,8 @@ import (
 )
 
 type SideChainImpl struct {
-	mux sync.Mutex
+	mux         sync.Mutex
+	withdrawMux sync.Mutex
 
 	Key           string
 	CurrentConfig *config.SideNodeConfig
@@ -55,6 +57,9 @@ func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) erro
 }
 
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
+	sc.withdrawMux.Lock()
+	defer sc.withdrawMux.Unlock()
+
 	sc.mux.Lock()
 	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
 	if sc.GetKey() == genesisAddress && sc.ToSendTransactionsHeight <= height {
@@ -62,7 +67,7 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 		sc.mux.Unlock()
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
-		if !sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
+		if sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
 			for _, v := range sc.ToSendTransactions {
 				err := sc.CreateAndBroadcastWithdrawProposal(v)
 				if err != nil {
@@ -70,7 +75,7 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 				}
 			}
 			sc.mux.Lock()
-			sc.Ready = true
+			sc.Ready = false
 			sc.ToSendTransactions = make(map[uint32][]*core.Transaction, 0)
 			sc.ToSendTransactionsHeight = 0
 			sc.mux.Unlock()
@@ -86,11 +91,18 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 	if sc.GetKey() == genesisAddress {
 		log.Info("[ReceiveGetLastArbiterUsedUtxos] Received mssage, need height:", height, "my height:", sc.LastUsedUtxoHeight)
 		if sc.LastUsedUtxoHeight >= height {
+			var number = make([]byte, 8)
+			var nonce int64
+			rand.Read(number)
+			binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
+
 			msg := &cs.SendLastArbiterUsedUTXOMessage{
 				Command:        cs.SendLastArbiterUsedUtxoCommand,
 				GenesisAddress: genesisAddress,
 				Height:         sc.LastUsedUtxoHeight,
-				OutPoints:      sc.LastUsedOutPoints}
+				OutPoints:      sc.LastUsedOutPoints,
+				Nonce:          strconv.FormatInt(nonce, 10),
+			}
 			msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
 			cs.P2PClientSingleton.AddMessageHash(msgHash)
 			cs.P2PClientSingleton.Broadcast(msg)
@@ -190,7 +202,7 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	return sc.CurrentConfig
 }
 
-func (sc *SideChainImpl) GetRage() float32 {
+func (sc *SideChainImpl) GetExchangeRate() float32 {
 	return sc.getCurrentConfig().Rate
 }
 
@@ -271,12 +283,25 @@ func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, er
 	return receivedTxs, nil
 }
 
+func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction, error) {
+	txBytes, err := rpc.GetTransactionByHash(txHash, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := new(core.Transaction)
+	reader := bytes.NewReader(txBytes)
+	tx.Deserialize(reader)
+
+	return tx, nil
+}
+
 func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proof bloom.MerkleProof,
 	mainChainTransaction *core.Transaction) (*TransactionInfo, error) {
 	var txOutputs []OutputInfo // The outputs in transaction
 
 	assetID := spvWallet.SystemAssetId
-	rateFloat := sc.GetRage()
+	rateFloat := sc.GetExchangeRate()
 	for i := 0; i < len(depositInfo.TargetAddress); i++ {
 		amount := depositInfo.CrossChainAmount[i] * common.Fixed64(rateFloat)
 		txOutput := OutputInfo{
@@ -306,7 +331,12 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionBuf.Bytes())
 
 	// Create attributes
-	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(rand.Int63(), 10)}
+	var number = make([]byte, 8)
+	var nonce int64
+	rand.Read(number)
+	binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
+
+	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(nonce, 10)}
 	attributesInfo := make([]AttributeInfo, 0)
 	attributesInfo = append(attributesInfo, txAttr)
 
@@ -324,18 +354,16 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 func (sc *SideChainImpl) ParseUserWithdrawTransactionInfos(txn []*core.Transaction) (*WithdrawInfo, error) {
 	result := new(WithdrawInfo)
 	for _, tx := range txn {
-		switch payloadObj := tx.Payload.(type) {
-		case *core.PayloadTransferCrossChainAsset:
-			for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
-				result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddress[i])
-				result.Amount = append(result.Amount, tx.Outputs[payloadObj.OutputIndex[i]].Value)
-				result.CrossChainAmount = append(result.CrossChainAmount, payloadObj.CrossChainAmount[i])
-			}
-		default:
+		payloadObj, ok := tx.Payload.(*core.PayloadTransferCrossChainAsset)
+		if !ok {
 			return nil, errors.New("Invalid payload")
 		}
+		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
+			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddress[i])
+			result.Amount = append(result.Amount, tx.Outputs[payloadObj.OutputIndex[i]].Value)
+			result.CrossChainAmount = append(result.CrossChainAmount, payloadObj.CrossChainAmount[i])
+		}
 	}
-
 	return result, nil
 }
 
@@ -368,13 +396,19 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 
 	sc.ToSendTransactions = heightTxsMap
 	sc.ToSendTransactionsHeight = chainHeight - 1
-	sc.Ready = false
+	sc.Ready = true
 	sc.ReceivedUsedUtxoMsgNumber = 0
+
+	var number = make([]byte, 8)
+	var nonce int64
+	rand.Read(number)
+	binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
+
 	msg := &cs.GetLastArbiterUsedUTXOMessage{
 		Command:        cs.GetLastArbiterUsedUtxoCommand,
 		GenesisAddress: sc.GetKey(),
 		Height:         chainHeight - 1,
-		Nonce:          strconv.FormatInt(rand.Int63(), 10)}
+		Nonce:          strconv.FormatInt(nonce, 10)}
 	msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
 	cs.P2PClientSingleton.AddMessageHash(msgHash)
 	cs.P2PClientSingleton.Broadcast(msg)

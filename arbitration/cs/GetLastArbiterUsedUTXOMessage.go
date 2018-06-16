@@ -58,6 +58,7 @@ type SendLastArbiterUsedUTXOMessage struct {
 	GenesisAddress string
 	Height         uint32
 	OutPoints      []core.OutPoint
+	Nonce          string
 }
 
 func (msg *SendLastArbiterUsedUTXOMessage) CMD() string {
@@ -83,7 +84,10 @@ func (msg *SendLastArbiterUsedUTXOMessage) Serialize(w io.Writer) error {
 			return err
 		}
 	}
-
+	err = common.WriteVarString(w, msg.Nonce)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -113,6 +117,10 @@ func (msg *SendLastArbiterUsedUTXOMessage) Deserialize(r io.Reader) error {
 		outPoints = append(outPoints, outPoint)
 	}
 	msg.OutPoints = outPoints
-
+	nonce, err := common.ReadVarString(r)
+	if err != nil {
+		return err
+	}
+	msg.Nonce = nonce
 	return nil
 }

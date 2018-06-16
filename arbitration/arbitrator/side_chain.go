@@ -13,7 +13,7 @@ type SideChain interface {
 	SideChainNode
 
 	GetKey() string
-	GetRage() float32
+	GetExchangeRate() float32
 
 	SetLastUsedUtxoHeight(height uint32)
 	GetLastUsedUtxoHeight() uint32
@@ -24,11 +24,14 @@ type SideChain interface {
 	GetExistDepositTransactions(txs []string) ([]string, error)
 	CreateDepositTransaction(depositInfo *DepositInfo, proof bloom.MerkleProof,
 		mainChainTransaction *core.Transaction) (*TransactionInfo, error)
+
+	GetTransactionByHash(txHash string) (*core.Transaction, error)
 }
 
 type SideChainManager interface {
 	GetChain(key string) (SideChain, bool)
 	GetAllChains() []SideChain
+
 	StartSideChainMining()
 	CheckAndRemoveWithdrawTransactionsFromDB() error
 }

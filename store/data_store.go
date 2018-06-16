@@ -81,6 +81,7 @@ type DataStore interface {
 	GetAllSideChainTxHashes() ([]string, error)
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
+	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error)
 
 	AddMainChainTx(transactionHash string, genesisBlockAddress string, transaction *Transaction, proof *bloom.MerkleProof) error
 	HasMainChainTx(transactionHash string) (bool, error)
@@ -465,6 +466,36 @@ func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string
 	var txs []*Transaction
 	for _, txHash := range transactionHashes {
 		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=?`, txHash)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var transactionBytes []byte
+			err = rows.Scan(&transactionBytes)
+			if err != nil {
+				return nil, err
+			}
+
+			var tx Transaction
+			reader := bytes.NewReader(transactionBytes)
+			tx.Deserialize(reader)
+
+			txs = append(txs, &tx)
+		}
+		rows.Close()
+	}
+
+	return txs, nil
+}
+
+func (store *DataStoreImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error) {
+	store.sideMux.Lock()
+	defer store.sideMux.Unlock()
+
+	var txs []*Transaction
+	for _, txHash := range transactionHashes {
+		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=? GROUP BY TransactionHash, GenesisBlockAddress`, txHash, genesisBlockAddress)
 		if err != nil {
 			return nil, err
 		}

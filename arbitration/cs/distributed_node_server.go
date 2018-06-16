@@ -195,7 +195,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			if err != nil {
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
-		} else if scError.ErrCode(resp.Code) == scError.Success {
+		} else if resp.Result != nil && scError.ErrCode(resp.Code) == scError.Success {
 			log.Info("Send withdraw transaction succeed, txHash:", txn.Hash().String())
 
 			err = store.DbCache.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)

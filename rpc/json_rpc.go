@@ -96,6 +96,23 @@ func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool,
 	return true, nil
 }
 
+func GetTransactionByHash(transactionHash string, config *config.RpcConfig) ([]byte, error) {
+	result, err := CallAndUnmarshal("getrawtransaction", Param("hash", transactionHash), config)
+	if err != nil {
+		return nil, err
+	}
+
+	var tx string
+	Unmarshal(&result, &tx)
+
+	txBytes, err := common.HexStringToBytes(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return txBytes, nil
+}
+
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	infoBytes, err := json.Marshal(txs)
 	if err != nil {
