@@ -280,7 +280,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	for i := 0; i < len(depositInfo.TargetAddress); i++ {
 		amount := depositInfo.CrossChainAmount[i] * common.Fixed64(rateFloat)
 		txOutput := OutputInfo{
-			AssetID:    assetID.String(),
+			AssetID:    common.BytesToHexString(common.BytesReverse(assetID.Bytes())),
 			Value:      amount.String(),
 			Address:    depositInfo.TargetAddress[i],
 			OutputLock: uint32(0),
