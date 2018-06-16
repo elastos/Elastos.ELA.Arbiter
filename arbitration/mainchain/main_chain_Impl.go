@@ -22,8 +22,6 @@ import (
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
-const WithdrawFromSideChainLockTime uint32 = 6
-
 type MainChainImpl struct {
 	*DistributedNodeServer
 }
@@ -122,7 +120,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 			AssetID:     Uint256(assetID),
 			ProgramHash: *programhash,
 			Value:       crossChainAmount,
-			OutputLock:  uint32(WithdrawFromSideChainLockTime),
+			OutputLock:  0,
 		}
 
 		txOutputs = append(txOutputs, txOutput)
