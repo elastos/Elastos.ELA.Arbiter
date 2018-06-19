@@ -67,7 +67,7 @@ func main() {
 		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
 		os.Exit(1)
 	}
-	store.DbCache = dataStore
+	store.DbCache = *dataStore
 
 	log.Info("3. Init finished transaction cache.")
 	finishedDataStore, err := store.OpenFinishedTxsDataStore()

@@ -29,7 +29,7 @@ type MainChainImpl struct {
 }
 
 func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
-	txHases, genesisAddresses, transactions, _, err := DbCache.GetAllMainChainTxs()
+	txHases, genesisAddresses, transactions, _, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +71,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		result[k] = unsolvedTxs
 
 		for _, recTx := range receivedTxs {
-			err = DbCache.RemoveMainChainTx(recTx, k.GetKey())
+			err = DbCache.MainChainStore.RemoveMainChainTx(recTx, k.GetKey())
 			if err != nil {
 				return nil, err
 			}
@@ -266,7 +266,7 @@ func (mc *MainChainImpl) SyncChainData() {
 			mc.processBlock(block, currentHeight)
 
 			// Update wallet height
-			currentHeight = DbCache.CurrentHeight(block.Height + 1)
+			currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height + 1)
 			sideauxpow.CurrentWallet.(*wallet.WalletImpl).DataStore.CurrentHeight(block.Height + 1)
 			log.Info("[arbitrator] Main chain height: ", block.Height)
 		}
@@ -280,7 +280,7 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 		return 0, 0, false
 	}
 
-	currentHeight := DbCache.CurrentHeight(QueryHeightCode)
+	currentHeight := DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
 
 	if currentHeight >= chainHeight+1 {
 		return chainHeight, currentHeight, false
@@ -291,7 +291,7 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 
 func (mc *MainChainImpl) getAvailableUTXOs(utxos []*AddressUTXO) []*AddressUTXO {
 	var availableUTXOs []*AddressUTXO
-	var currentHeight = DbCache.CurrentHeight(QueryHeightCode)
+	var currentHeight = DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
 	for _, utxo := range utxos {
 		if utxo.Input.Sequence > 0 {
 			if utxo.Input.Sequence >= currentHeight {
@@ -347,7 +347,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 					GenesisBlockAddress: output.Address,
 				}
 				if *amount > Fixed64(0) {
-					DbCache.AddAddressUTXO(addressUTXO)
+					DbCache.UTXOStore.AddAddressUTXO(addressUTXO)
 				}
 			}
 
@@ -383,7 +383,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 				Previous: outPoint,
 				Sequence: input.Sequence,
 			}
-			DbCache.DeleteUTXO(txInput)
+			DbCache.UTXOStore.DeleteUTXO(txInput)
 			dataStore.DeleteUTXO(&outPoint)
 
 			for _, sc := range sideChains {
@@ -408,13 +408,17 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 
 func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	//remove deposit transactions if exist on side chain
-	txHases, genesisAddresses, transactions, _, err := DbCache.GetAllMainChainTxs()
+	txHases, genesisAddresses, transactions, _, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return err
 	}
 
 	if len(txHases) != len(transactions) {
 		return errors.New("Invalid transactios in main chain txs db")
+	}
+
+	if len(txHases) == 0 {
+		return nil
 	}
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
@@ -446,7 +450,7 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 			continue
 		}
 		for _, recTx := range receivedTxs {
-			err = DbCache.RemoveMainChainTx(recTx, k.GetKey())
+			err = DbCache.MainChainStore.RemoveMainChainTx(recTx, k.GetKey())
 			if err != nil {
 				return err
 			}

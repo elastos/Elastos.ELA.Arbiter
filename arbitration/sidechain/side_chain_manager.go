@@ -37,16 +37,19 @@ func (sideManager *SideChainManagerImpl) StartSideChainMining() {
 }
 
 func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromDB() error {
-	txHashes, err := store.DbCache.GetAllSideChainTxHashes()
+	txHashes, err := store.DbCache.SideChainStore.GetAllSideChainTxHashes()
 	if err != nil {
 		return err
+	}
+	if len(txHashes) == 0 {
+		return nil
 	}
 	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
 	if err != nil {
 		return err
 	}
 
-	err = store.DbCache.RemoveSideChainTxs(receivedTxs)
+	err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
 	if err != nil {
 		return err
 	}

@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	FinishedTxsDBName = "./finishedTxs.db"
+	FinishedTxsDBName = "./DBCache/finishedTxs.db"
 )
 
 const (
@@ -84,6 +84,11 @@ func OpenFinishedTxsDataStore() (FinishedTransactionsDataStore, error) {
 }
 
 func initFinishedTxsDB() (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
 	db, err := sql.Open(DriverName, FinishedTxsDBName)
 	if err != nil {
 		log.Error("Open data db error:", err)

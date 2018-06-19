@@ -20,7 +20,10 @@ import (
 
 const (
 	DriverName      = "sqlite3"
-	DBName          = "./chainUTXOCache.db"
+	DBDocumentNAME  = "./DBCache"
+	DBNameUTXO      = "./DBCache/chainUTXOCache.db"
+	DBNameMainChain = "./DBCache/mainChainCache.db"
+	DBNameSideChain = "./DBCache/sideChainCache.db"
 	QueryHeightCode = 0
 	ResetHeightCode = math.MaxUint32
 )
@@ -57,7 +60,7 @@ const (
 )
 
 var (
-	DbCache DataStore
+	DbCache DataStoreImpl
 )
 
 type AddressUTXO struct {
@@ -67,21 +70,21 @@ type AddressUTXO struct {
 }
 
 type DataStore interface {
-	CurrentHeight(height uint32) uint32
-	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
+	ResetDataStore() error
+	catchSystemSignals()
+}
 
+type DataStoreUTXO interface {
+	DataStore
+
+	CurrentHeight(height uint32) uint32
 	AddAddressUTXO(utxo *AddressUTXO) error
 	DeleteUTXO(input *Input) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
+}
 
-	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, blockHeight uint32) error
-	AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error
-	HasSideChainTx(transactionHash string) (bool, error)
-	RemoveSideChainTxs(transactionHashes []string) error
-	GetAllSideChainTxHashes() ([]string, error)
-	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
-	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
-	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error)
+type DataStoreMainChain interface {
+	DataStore
 
 	AddMainChainTx(transactionHash string, genesisBlockAddress string, transaction *Transaction, proof *bloom.MerkleProof) error
 	HasMainChainTx(transactionHash string) (bool, error)
@@ -90,24 +93,78 @@ type DataStore interface {
 	GetAllMainChainTxHashes() ([]string, []string, error)
 	GetAllMainChainTxs() ([]string, []string, []*Transaction, []*bloom.MerkleProof, error)
 	GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*Transaction, []*bloom.MerkleProof, error)
+}
 
-	ResetDataStore() error
+type DataStoreSideChain interface {
+	DataStore
+
+	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
+	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, blockHeight uint32) error
+	AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error
+	HasSideChainTx(transactionHash string) (bool, error)
+	RemoveSideChainTxs(transactionHashes []string) error
+	GetAllSideChainTxHashes() ([]string, error)
+	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
+	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
+	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error)
 }
 
 type DataStoreImpl struct {
-	mainMux   *sync.Mutex
-	sideMux   *sync.Mutex
-	miningMux *sync.Mutex
+	UTXOStore      DataStoreUTXOImpl
+	MainChainStore DataStoreMainChainImpl
+	SideChainStore DataStoreSideChainImpl
+}
+
+type DataStoreUTXOImpl struct {
+	mux *sync.Mutex
 
 	*sql.DB
 }
 
-func OpenDataStore() (DataStore, error) {
-	db, err := initDB()
+type DataStoreMainChainImpl struct {
+	mux *sync.Mutex
+
+	*sql.DB
+}
+
+type DataStoreSideChainImpl struct {
+	mux *sync.Mutex
+
+	*sql.DB
+}
+
+func OpenDataStore() (*DataStoreImpl, error) {
+	dbUTXO, err := initUTXODB()
 	if err != nil {
 		return nil, err
 	}
-	dataStore := &DataStoreImpl{DB: db, mainMux: new(sync.Mutex), sideMux: new(sync.Mutex), miningMux: new(sync.Mutex)}
+	dbMainChain, err := initMainChainDB()
+	if err != nil {
+		return nil, err
+	}
+	dbSideChain, err := initSideChainDB()
+	if err != nil {
+		return nil, err
+	}
+	dataStore := &DataStoreImpl{
+		UTXOStore:      DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO},
+		MainChainStore: DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
+		SideChainStore: DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
+
+	// Handle system interrupt signals
+	dataStore.UTXOStore.catchSystemSignals()
+	dataStore.MainChainStore.catchSystemSignals()
+	dataStore.SideChainStore.catchSystemSignals()
+
+	return dataStore, nil
+}
+
+func OpenUTXODataStore() (*DataStoreUTXOImpl, error) {
+	dbUTXO, err := initUTXODB()
+	if err != nil {
+		return nil, err
+	}
+	dataStore := &DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO}
 
 	// Handle system interrupt signals
 	dataStore.catchSystemSignals()
@@ -115,8 +172,39 @@ func OpenDataStore() (DataStore, error) {
 	return dataStore, nil
 }
 
-func initDB() (*sql.DB, error) {
-	db, err := sql.Open(DriverName, DBName)
+func OpenMainChainDataStore() (*DataStoreMainChainImpl, error) {
+	dbMainChain, err := initMainChainDB()
+	if err != nil {
+		return nil, err
+	}
+	dataStore := &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain}
+
+	// Handle system interrupt signals
+	dataStore.catchSystemSignals()
+
+	return dataStore, nil
+}
+
+func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
+	dbSideChain, err := initSideChainDB()
+	if err != nil {
+		return nil, err
+	}
+	dataStore := &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}
+
+	// Handle system interrupt signals
+	dataStore.catchSystemSignals()
+
+	return dataStore, nil
+}
+
+func initUTXODB() (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+	db, err := sql.Open(DriverName, DBNameUTXO)
 	if err != nil {
 		log.Error("Open data db error:", err)
 		return nil, err
@@ -136,9 +224,23 @@ func initDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Create SideChainTxs table
-	_, err = db.Exec(CreateSideChainTxsTable)
+	stmt, err := db.Prepare("INSERT INTO Info(Name, Value) values(?,?)")
 	if err != nil {
+		return nil, err
+	}
+	stmt.Exec("Height", uint32(0))
+	return db, nil
+}
+
+func initMainChainDB() (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+	db, err := sql.Open(DriverName, DBNameMainChain)
+	if err != nil {
+		log.Error("Open data db error:", err)
 		return nil, err
 	}
 	// Create MainChainTxs table
@@ -146,11 +248,30 @@ func initDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	stmt, err := db.Prepare("INSERT INTO Info(Name, Value) values(?,?)")
+	return db, nil
+}
+
+func initSideChainDB() (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+	db, err := sql.Open(DriverName, DBNameSideChain)
+	if err != nil {
+		log.Error("Open data db error:", err)
+		return nil, err
+	}
+	// Create SideHeightInfo table
+	_, err = db.Exec(CreateHeightInfoTable)
 	if err != nil {
 		return nil, err
 	}
-	stmt.Exec("Height", uint32(0))
+	// Create SideChainTxs table
+	_, err = db.Exec(CreateSideChainTxsTable)
+	if err != nil {
+		return nil, err
+	}
 
 	for _, node := range config.Parameters.SideNodeList {
 		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
@@ -163,23 +284,12 @@ func initDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func (store *DataStoreImpl) catchSystemSignals() {
-	HandleSignal(func() {
-		store.mainMux.Lock()
-		store.sideMux.Lock()
-		store.miningMux.Lock()
-		store.Close()
-		os.Exit(-1)
-	})
-}
-
-func (store *DataStoreImpl) ResetDataStore() error {
-
+func (store *DataStoreUTXOImpl) ResetDataStore() error {
 	store.DB.Close()
-	os.Remove(DBName)
+	os.Remove(DBNameUTXO)
 
 	var err error
-	store.DB, err = initDB()
+	store.DB, err = initUTXODB()
 	if err != nil {
 		return err
 	}
@@ -187,9 +297,17 @@ func (store *DataStoreImpl) ResetDataStore() error {
 	return nil
 }
 
-func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreUTXOImpl) catchSystemSignals() {
+	HandleSignal(func() {
+		store.mux.Lock()
+		store.DB.Close()
+		os.Exit(-1)
+	})
+}
+
+func (store *DataStoreUTXOImpl) CurrentHeight(height uint32) uint32 {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
 	var storedHeight uint32
@@ -214,36 +332,9 @@ func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
 	return storedHeight
 }
 
-func (store *DataStoreImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
-
-	row := store.QueryRow("SELECT Height FROM SideHeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
-	var storedHeight uint32
-	row.Scan(&storedHeight)
-
-	if height > storedHeight {
-		// Received reset height code
-		if height == ResetHeightCode {
-			height = 0
-		}
-		// Insert current height
-		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=? WHERE GenesisBlockAddress=?")
-		if err != nil {
-			return uint32(0)
-		}
-		_, err = stmt.Exec(height, genesisBlockAddress)
-		if err != nil {
-			return uint32(0)
-		}
-		return height
-	}
-	return storedHeight
-}
-
-func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreUTXOImpl) AddAddressUTXO(utxo *AddressUTXO) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress) values(?,?,?)")
@@ -268,9 +359,9 @@ func (store *DataStoreImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 	return nil
 }
 
-func (store *DataStoreImpl) DeleteUTXO(input *Input) error {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreUTXOImpl) DeleteUTXO(input *Input) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("DELETE FROM UTXOs WHERE UTXOInput=?")
@@ -291,9 +382,9 @@ func (store *DataStoreImpl) DeleteUTXO(input *Input) error {
 	return nil
 }
 
-func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreUTXOImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount FROM UTXOs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
 	if err != nil {
@@ -323,9 +414,57 @@ func (store *DataStoreImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockA
 	return inputs, nil
 }
 
-func (store *DataStoreImpl) AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) ResetDataStore() error {
+	store.DB.Close()
+	os.Remove(DBNameSideChain)
+
+	var err error
+	store.DB, err = initSideChainDB()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) catchSystemSignals() {
+	HandleSignal(func() {
+		store.mux.Lock()
+		store.DB.Close()
+		os.Exit(-1)
+	})
+}
+
+func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	row := store.QueryRow("SELECT Height FROM SideHeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
+	var storedHeight uint32
+	row.Scan(&storedHeight)
+
+	if height > storedHeight {
+		// Received reset height code
+		if height == ResetHeightCode {
+			height = 0
+		}
+		// Insert current height
+		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=? WHERE GenesisBlockAddress=?")
+		if err != nil {
+			return uint32(0)
+		}
+		_, err = stmt.Exec(height, genesisBlockAddress)
+		if err != nil {
+			return uint32(0)
+		}
+		return height
+	}
+	return storedHeight
+}
+
+func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	tx, err := store.Begin()
 	if err != nil {
@@ -351,10 +490,10 @@ func (store *DataStoreImpl) AddSideChainTxs(transactionHashes, genesisBlockAddre
 	return nil
 }
 
-func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress string,
+func (store *DataStoreSideChainImpl) AddSideChainTx(transactionHash, genesisBlockAddress string,
 	transaction *Transaction, blockHeight uint32) error {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
@@ -376,9 +515,9 @@ func (store *DataStoreImpl) AddSideChainTx(transactionHash, genesisBlockAddress 
 	return nil
 }
 
-func (store *DataStoreImpl) HasSideChainTx(transactionHash string) (bool, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) HasSideChainTx(transactionHash string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
 	if err != nil {
@@ -389,9 +528,9 @@ func (store *DataStoreImpl) HasSideChainTx(transactionHash string) (bool, error)
 	return rows.Next(), nil
 }
 
-func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) RemoveSideChainTxs(transactionHashes []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	tx, err := store.Begin()
 	if err != nil {
@@ -412,9 +551,9 @@ func (store *DataStoreImpl) RemoveSideChainTxs(transactionHashes []string) error
 	return nil
 }
 
-func (store *DataStoreImpl) GetAllSideChainTxHashes() ([]string, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) GetAllSideChainTxHashes() ([]string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs GROUP BY TransactionHash`)
 	if err != nil {
@@ -434,9 +573,9 @@ func (store *DataStoreImpl) GetAllSideChainTxHashes() ([]string, error) {
 	return txHashes, nil
 }
 
-func (store *DataStoreImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=? GROUP BY TransactionHash`, genesisBlockAddress)
 	if err != nil {
@@ -459,9 +598,9 @@ func (store *DataStoreImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddres
 	return txHashes, blockHeights, nil
 }
 
-func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	var txs []*Transaction
 	for _, txHash := range transactionHashes {
@@ -489,9 +628,9 @@ func (store *DataStoreImpl) GetSideChainTxsFromHashes(transactionHashes []string
 	return txs, nil
 }
 
-func (store *DataStoreImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error) {
-	store.sideMux.Lock()
-	defer store.sideMux.Unlock()
+func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	var txs []*Transaction
 	for _, txHash := range transactionHashes {
@@ -519,9 +658,30 @@ func (store *DataStoreImpl) GetSideChainTxsFromHashesAndGenesisAddress(transacti
 	return txs, nil
 }
 
-func (store *DataStoreImpl) AddMainChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, proof *bloom.MerkleProof) error {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) ResetDataStore() error {
+	store.DB.Close()
+	os.Remove(DBNameMainChain)
+
+	var err error
+	store.DB, err = initMainChainDB()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (store *DataStoreMainChainImpl) catchSystemSignals() {
+	HandleSignal(func() {
+		store.mux.Lock()
+		store.DB.Close()
+		os.Exit(-1)
+	})
+}
+
+func (store *DataStoreMainChainImpl) AddMainChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, proof *bloom.MerkleProof) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
@@ -548,9 +708,9 @@ func (store *DataStoreImpl) AddMainChainTx(transactionHash, genesisBlockAddress 
 	return nil
 }
 
-func (store *DataStoreImpl) HasMainChainTx(transactionHash string) (bool, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) HasMainChainTx(transactionHash string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=?`, transactionHash)
 	if err != nil {
@@ -561,9 +721,9 @@ func (store *DataStoreImpl) HasMainChainTx(transactionHash string) (bool, error)
 	return rows.Next(), nil
 }
 
-func (store *DataStoreImpl) RemoveMainChainTx(transactionHash, genesisBlockAddress string) error {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) RemoveMainChainTx(transactionHash, genesisBlockAddress string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	stmt, err := store.Prepare("DELETE FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?")
 	if err != nil {
@@ -579,9 +739,9 @@ func (store *DataStoreImpl) RemoveMainChainTx(transactionHash, genesisBlockAddre
 	return nil
 }
 
-func (store *DataStoreImpl) RemoveMainChainTxs(transactionHashes, genesisBlockAddress []string) error {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) RemoveMainChainTxs(transactionHashes, genesisBlockAddress []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	tx, err := store.Begin()
 	if err != nil {
@@ -605,9 +765,9 @@ func (store *DataStoreImpl) RemoveMainChainTxs(transactionHashes, genesisBlockAd
 	return nil
 }
 
-func (store *DataStoreImpl) GetAllMainChainTxHashes() ([]string, []string, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) GetAllMainChainTxHashes() ([]string, []string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress FROM MainChainTxs GROUP BY TransactionHash, GenesisBlockAddress`)
 	if err != nil {
@@ -630,9 +790,9 @@ func (store *DataStoreImpl) GetAllMainChainTxHashes() ([]string, []string, error
 	return txHashes, genesisAddresses, nil
 }
 
-func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, []string, []*Transaction, []*bloom.MerkleProof, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]string, []string, []*Transaction, []*bloom.MerkleProof, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof FROM MainChainTxs GROUP BY TransactionHash, GenesisBlockAddress`)
 	if err != nil {
@@ -670,9 +830,9 @@ func (store *DataStoreImpl) GetAllMainChainTxs() ([]string, []string, []*Transac
 	return txHashes, genesisAddresses, txs, mps, nil
 }
 
-func (store *DataStoreImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*Transaction, []*bloom.MerkleProof, error) {
-	store.mainMux.Lock()
-	defer store.mainMux.Unlock()
+func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*Transaction, []*bloom.MerkleProof, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
 
 	var txs []*Transaction
 	var mps []*bloom.MerkleProof
@@ -712,12 +872,12 @@ type DbMainChainFunc struct {
 }
 
 func (dbFunc *DbMainChainFunc) GetAvailableUtxos(withdrawBank string) ([]*AddressUTXO, error) {
-	utxos, err := DbCache.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
+	utxos, err := DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
 	if err != nil {
 		return nil, errors.New("Get spender's UTXOs failed.")
 	}
 	var availableUTXOs []*AddressUTXO
-	var currentHeight = DbCache.CurrentHeight(QueryHeightCode)
+	var currentHeight = DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
 	for _, utxo := range utxos {
 		if utxo.Input.Sequence > 0 {
 			if utxo.Input.Sequence >= currentHeight {
@@ -738,4 +898,30 @@ func (dbFunc *DbMainChainFunc) GetMainNodeCurrentHeight() (uint32, error) {
 		return 0, err
 	}
 	return chainHeight, nil
+}
+
+func CheckAndCreateDocument(path string) error {
+	exist, err := PathExists(path)
+	if err != nil {
+		return err
+	}
+
+	if !exist {
+		err := os.Mkdir(path, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
 }

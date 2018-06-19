@@ -20,7 +20,7 @@ func setup() {
 }
 
 func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenSideChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
@@ -53,7 +53,7 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 }
 
 func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenSideChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
@@ -96,7 +96,7 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 }
 
 func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenSideChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
@@ -144,7 +144,7 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 }
 
 func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenSideChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
@@ -190,7 +190,7 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 }
 
 func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenMainChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
@@ -224,7 +224,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 }
 
 func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenMainChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
@@ -280,7 +280,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 }
 
 func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
-	datastore, err := OpenDataStore()
+	datastore, err := OpenMainChainDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}

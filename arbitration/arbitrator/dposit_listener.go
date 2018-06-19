@@ -28,12 +28,12 @@ func (l *DepositListener) Flags() uint64 {
 }
 
 func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
-	if ok, _ := store.DbCache.HasMainChainTx(tx.Hash().String()); ok {
+	if ok, _ := store.DbCache.MainChainStore.HasMainChainTx(tx.Hash().String()); ok {
 		return
 	}
 
 	log.Info("[Notify-Deposit] find deposit transaction and add into db, transaction hash:", tx.Hash().String())
-	if err := store.DbCache.AddMainChainTx(tx.Hash().String(), l.ListenAddress, &tx, &proof); err != nil {
+	if err := store.DbCache.MainChainStore.AddMainChainTx(tx.Hash().String(), l.ListenAddress, &tx, &proof); err != nil {
 		log.Error("AddMainChainTx error, txHash:", tx.Hash().String())
 		return
 	}

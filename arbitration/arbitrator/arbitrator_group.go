@@ -1,6 +1,7 @@
 package arbitrator
 
 import (
+	"errors"
 	"sync"
 	"time"
 
@@ -26,7 +27,7 @@ type ArbitratorGroup interface {
 	GetCurrentArbitrator() Arbitrator
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
-	GetOnDutyArbitratorOfMain() string
+	GetOnDutyArbitratorOfMain() (string, error)
 	CheckOnDutyStatus()
 	SetListener(listener ArbitratorGroupListener)
 }
@@ -112,7 +113,11 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 }
 
 func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
-	pk, err := base.PublicKeyFromString(ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain())
+	onDutyArbiter, err := ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain()
+	if err != nil {
+		return
+	}
+	pk, err := base.PublicKeyFromString(onDutyArbiter)
 	arbitratorImpl, ok := group.listener.(*ArbitratorImpl)
 	if ok && err == nil && group.listener != nil && arbitratorImpl.Keystore != nil {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
@@ -135,10 +140,15 @@ func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {
 	return len(group.arbitrators)
 }
 
-func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() string {
+func (group *ArbitratorGroupImpl) GetOnDutyArbitratorOfMain() (string, error) {
 	group.mux.Lock()
 	defer group.mux.Unlock()
-	return group.arbitrators[group.onDutyArbitratorIndex]
+
+	if len(group.arbitrators) == 0 || len(group.arbitrators) <= group.onDutyArbitratorIndex {
+		return "", errors.New("Get arbitrators from main chain failed")
+	}
+
+	return group.arbitrators[group.onDutyArbitratorIndex], nil
 }
 
 func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {

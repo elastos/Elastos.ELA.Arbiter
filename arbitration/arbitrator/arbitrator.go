@@ -192,7 +192,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 		if err != nil || scError.ErrCode(resp.Code) != scError.ErrDoubleSpend && scError.ErrCode(resp.Code) != scError.Success {
 			log.Warn("Send deposit transaction failed, txHash:", txHash)
 
-			err = store.DbCache.RemoveMainChainTx(txHash, sideChain.GetKey())
+			err = store.DbCache.MainChainStore.RemoveMainChainTx(txHash, sideChain.GetKey())
 			if err != nil {
 				log.Warn("Remove faild transaction from db failed")
 			}
@@ -203,7 +203,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 		} else if resp.Result != nil && scError.ErrCode(resp.Code) == scError.Success {
 			log.Info("Send deposit transaction succeed, txHash:", txHash)
 
-			store.DbCache.RemoveMainChainTx(txHash, sideChain.GetKey())
+			store.DbCache.MainChainStore.RemoveMainChainTx(txHash, sideChain.GetKey())
 			if err != nil {
 				log.Warn("Remove succeed deposit transaction from db failed")
 			}
@@ -341,7 +341,7 @@ func (ar *ArbitratorImpl) CreateAndSendDepositTransaction(proof *bloom.MerklePro
 }
 
 func (ar *ArbitratorImpl) CreateAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
-	txs, proofs, err := store.DbCache.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
+	txs, proofs, err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
 	if err != nil {
 		return
 	}

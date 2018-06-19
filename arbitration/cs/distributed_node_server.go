@@ -187,7 +187,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 				return errors.New("Send withdraw transaction faild, invalid transaction")
 			}
 
-			err = store.DbCache.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
+			err = store.DbCache.SideChainStore.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
 			if err != nil {
 				return errors.New("Remove failed withdraw transaction from db failed")
 			}
@@ -198,7 +198,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		} else if resp.Result != nil && scError.ErrCode(resp.Code) == scError.Success {
 			log.Info("Send withdraw transaction succeed, txHash:", txn.Hash().String())
 
-			err = store.DbCache.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
+			err = store.DbCache.SideChainStore.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
 			if err != nil {
 				return errors.New("Remove succeed withdraw transaction from db failed")
 			}

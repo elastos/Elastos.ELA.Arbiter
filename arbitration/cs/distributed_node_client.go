@@ -108,7 +108,7 @@ func checkWithdrawTransaction(tx *ela.Transaction) error {
 
 	//check genesis address
 	var txs []*ela.Transaction
-	sideChainTxs, err := store.DbCache.GetSideChainTxsFromHashesAndGenesisAddress(
+	sideChainTxs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashesAndGenesisAddress(
 		payloadWithdraw.SideChainTransactionHashes, payloadWithdraw.GenesisBlockAddress)
 	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
 		log.Info("Check withdraw transaction, need to get side chain transaction from rpc")
@@ -123,7 +123,7 @@ func checkWithdrawTransaction(tx *ela.Transaction) error {
 		txs = sideChainTxs
 	}
 
-	utxos, err := store.DbCache.GetAddressUTXOsFromGenesisBlockAddress(payloadWithdraw.GenesisBlockAddress)
+	utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(payloadWithdraw.GenesisBlockAddress)
 	if err != nil {
 		return errors.New("Get spender's UTXOs failed.")
 	}

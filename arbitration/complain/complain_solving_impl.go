@@ -51,7 +51,7 @@ func (comp *ComplainSolvingImpl) BroadcastComplainSolving([]byte) error {
 }
 
 func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint256) uint {
-	txs, err := store.DbCache.GetSideChainTxsFromHashes([]string{transactionHash.String()})
+	txs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes([]string{transactionHash.String()})
 	if err == nil && len(txs) != 0 {
 		return Solving
 	}

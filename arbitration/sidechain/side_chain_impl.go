@@ -107,7 +107,7 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 			cs.P2PClientSingleton.AddMessageHash(msgHash)
 			cs.P2PClientSingleton.Broadcast(msg)
 
-			utxos, err := store.DbCache.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
+			utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
 			if err != nil {
 				return err
 			}
@@ -259,7 +259,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight u
 		blockHeights = append(blockHeights, blockHeight)
 	}
 
-	if err := store.DbCache.AddSideChainTxs(txHashes, genesises, txsBytes, blockHeights); err != nil {
+	if err := store.DbCache.SideChainStore.AddSideChainTxs(txHashes, genesises, txsBytes, blockHeights); err != nil {
 		return err
 	}
 
@@ -368,7 +368,7 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfos(txn []*core.Transacti
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
-	txHashes, blockHeights, err := store.DbCache.GetAllSideChainTxHashesAndHeights(sc.GetKey())
+	txHashes, blockHeights, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 	if err != nil {
 		return err
 	}
@@ -378,7 +378,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	}
 
 	unsolvedTxs, unsolvedBlockHeights := SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
-	unsolvedTransactions, err := store.DbCache.GetSideChainTxsFromHashes(unsolvedTxs)
+	unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(unsolvedTxs)
 	if err != nil {
 		return err
 	}
@@ -414,7 +414,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	cs.P2PClientSingleton.Broadcast(msg)
 	log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
 
-	err = store.DbCache.RemoveSideChainTxs(receivedTxs)
+	err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
 	if err != nil {
 		return err
 	}
