@@ -1,13 +1,13 @@
 package: github.com/elastos/Elastos.ELA.Arbiter
 import:
 - package: github.com/elastos/Elastos.ELA.Utility
-  version: alpha
+  version: dev
 - package: github.com/elastos/Elastos.ELA
-  version: alpha
+  version: dev
 - package: github.com/elastos/Elastos.ELA.SPV
-  version: alpha
+  version: dev
 - package: github.com/elastos/Elastos.ELA.SideChain
-  version: alpha
+  version: dev
 - package: github.com/howeyc/gopass
 - package: github.com/itchyny/base58-go
 - package: github.com/mattn/go-sqlite3
@@ -16,5 +16,4 @@ import:
   - ripemd160
   - ssh/terminal
 ignore:
-  - golang.org/x/sys/unix
   - golang.org/x/crypto/ssh/terminal
