@@ -114,7 +114,6 @@ func SidechainAccountDivide(wallet walt.Wallet) {
 	for {
 		select {
 		case <-time.After(time.Second * 3):
-			wallet.SyncChainData()
 			addresses, err := wallet.GetAddresses()
 			if err != nil {
 				log.Error("Get addresses error:", err)

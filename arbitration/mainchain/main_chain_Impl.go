@@ -12,7 +12,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	"github.com/elastos/Elastos.ELA.SPV/net"
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
@@ -256,15 +258,16 @@ func (mc *MainChainImpl) SyncChainData() {
 			break
 		}
 
-		for currentHeight < chainHeight {
-			block, err := rpc.GetBlockByHeight(currentHeight+1, config.Parameters.MainNode.Rpc)
+		for currentHeight <= chainHeight {
+			block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
 			if err != nil {
 				break
 			}
-			mc.processBlock(block, currentHeight+1)
+			mc.processBlock(block, currentHeight)
 
 			// Update wallet height
-			currentHeight = DbCache.CurrentHeight(block.Height)
+			currentHeight = DbCache.CurrentHeight(block.Height + 1)
+			sideauxpow.CurrentWallet.(*wallet.WalletImpl).DataStore.CurrentHeight(block.Height + 1)
 			log.Info("[arbitrator] Main chain height: ", block.Height)
 		}
 	}
@@ -279,7 +282,7 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 
 	currentHeight := DbCache.CurrentHeight(QueryHeightCode)
 
-	if currentHeight >= chainHeight {
+	if currentHeight >= chainHeight+1 {
 		return chainHeight, currentHeight, false
 	}
 
@@ -312,6 +315,7 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 
 func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 	sideChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
+	dataStore := sideauxpow.CurrentWallet.(*wallet.WalletImpl).DataStore
 	// Add UTXO to wallet address from transaction outputs
 	for _, txnInfo := range block.Tx {
 		var txn TransactionInfo
@@ -346,6 +350,25 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 					DbCache.AddAddressUTXO(addressUTXO)
 				}
 			}
+
+			if addr, ok := dataStore.ContainAddress(output.Address); ok {
+				// Create UTXO input from output
+				txHashBytes, _ := HexStringToBytes(txn.Hash)
+				referTxHash, _ := Uint256FromBytes(BytesReverse(txHashBytes))
+				lockTime := output.OutputLock
+				if txn.TxType == CoinBase {
+					lockTime = block.Height + 100
+				}
+				amount, _ := StringToFixed64(output.Value)
+				// Save UTXO input to data store
+				addressUTXO := &wallet.UTXO{
+					Op:       NewOutPoint(*referTxHash, uint16(index)),
+					Amount:   amount,
+					LockTime: lockTime,
+				}
+				dataStore.AddAddressUTXO(addr.ProgramHash, addressUTXO)
+			}
+
 		}
 
 		// Delete UTXOs from wallet by transaction inputs
@@ -361,6 +384,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 				Sequence: input.Sequence,
 			}
 			DbCache.DeleteUTXO(txInput)
+			dataStore.DeleteUTXO(&outPoint)
 
 			for _, sc := range sideChains {
 				var containedOps []OutPoint

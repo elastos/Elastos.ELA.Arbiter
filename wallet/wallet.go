@@ -8,7 +8,8 @@ import (
 	"math/rand"
 	"strconv"
 
-	"github.com/elastos/Elastos.ELA.Client/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -46,6 +47,8 @@ type Wallet interface {
 type WalletImpl struct {
 	DataStore
 	Keystore
+
+	Addresses []*Address
 }
 
 func Create(name string, password []byte) (Wallet, error) {
@@ -63,9 +66,15 @@ func Create(name string, password []byte) (Wallet, error) {
 
 	dataStore.AddAddress(keyStore.GetProgramHash(), keyStore.GetRedeemScript(), TypeMaster)
 
+	addresses, err := dataStore.GetAddresses()
+	if err != nil {
+		return nil, err
+	}
+
 	wallet = &WalletImpl{
 		DataStore: dataStore,
 		Keystore:  keyStore,
+		Addresses: addresses,
 	}
 	return wallet, nil
 }
@@ -77,9 +86,16 @@ func Open() (Wallet, error) {
 			return nil, err
 		}
 
+		addresses, err := dataStore.GetAddresses()
+		if err != nil {
+			return nil, err
+		}
+
 		wallet = &WalletImpl{
 			DataStore: dataStore,
+			Addresses: addresses,
 		}
+
 	}
 	return wallet, nil
 }
@@ -160,8 +176,6 @@ func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Pa
 	if outputs == nil || len(outputs) == 0 {
 		return nil, errors.New("[Wallet], Invalid transaction target")
 	}
-	// Sync chain block data before create transaction
-	wallet.SyncChainData()
 
 	// Check if from address is valid
 	spender, err := Uint168FromAddress(fromAddress)

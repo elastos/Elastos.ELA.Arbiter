@@ -1,15 +1,15 @@
 package wallet
 
 import (
-	"math"
-	"sync"
 	"bytes"
 	"database/sql"
+	"math"
+	"sync"
 
-	"github.com/elastos/Elastos.ELA.Client/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	. "github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA/core"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -48,7 +48,6 @@ type UTXO struct {
 
 type DataStore interface {
 	sync.Locker
-	DataSync
 
 	CurrentHeight(height uint32) uint32
 
@@ -56,6 +55,7 @@ type DataStore interface {
 	DeleteAddress(programHash *Uint168) error
 	GetAddressInfo(programHash *Uint168) (*Address, error)
 	GetAddresses() ([]*Address, error)
+	ContainAddress(address string) (*Address, bool)
 
 	AddAddressUTXO(programHash *Uint168, utxo *UTXO) error
 	DeleteUTXO(input *OutPoint) error
@@ -66,7 +66,6 @@ type DataStore interface {
 
 type DataStoreImpl struct {
 	sync.Mutex
-	DataSync
 
 	*sql.DB
 }
@@ -77,8 +76,6 @@ func OpenDataStore() (DataStore, error) {
 		return nil, err
 	}
 	dataStore := &DataStoreImpl{DB: db}
-
-	dataStore.DataSync = GetDataSync(dataStore)
 
 	// Handle system interrupt signals
 	dataStore.catchSystemSignals()
@@ -155,6 +152,19 @@ func (store *DataStoreImpl) CurrentHeight(height uint32) uint32 {
 		return height
 	}
 	return storedHeight
+}
+
+func (store *DataStoreImpl) ContainAddress(address string) (*Address, bool) {
+	addresses, err := store.GetAddresses()
+	if err != nil {
+		return nil, false
+	}
+	for _, addr := range addresses {
+		if addr.Address == address {
+			return addr, true
+		}
+	}
+	return nil, false
 }
 
 func (store *DataStoreImpl) AddAddress(programHash *Uint168, redeemScript []byte, addrType int) error {
