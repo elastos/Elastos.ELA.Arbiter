@@ -2,24 +2,23 @@ package sideauxpow
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"time"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.SideChain/common"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
-	"github.com/golang/crypto/ripemd160"
 )
 
 var (
@@ -189,27 +188,14 @@ func StartSideChainMining(sideNode *config.SideNodeConfig) {
 func calculateGenesisAddress(genesisBlockHash string) (string, error) {
 	genesisBlockBytes, err := HexStringToBytes(genesisBlockHash)
 	if err != nil {
-		return "", errors.New("genesis block hash to bytes failed")
+		return "", errors.New("genesis block hash string to bytes failed")
 	}
-
-	buf := new(bytes.Buffer)
-	buf.WriteByte(byte(len(genesisBlockBytes)))
-	buf.Write(genesisBlockBytes)
-	buf.WriteByte(byte(CROSSCHAIN))
-
-	sum168 := func(prefix byte, code []byte) []byte {
-		hash := sha256.Sum256(code)
-		md160 := ripemd160.New()
-		md160.Write(hash[:])
-		return md160.Sum([]byte{prefix})
-	}
-
-	genesisProgramHash, err := Uint168FromBytes(sum168(PrefixCrossChain, buf.Bytes()))
+	genesisHash, err := Uint256FromBytes(genesisBlockBytes)
 	if err != nil {
-		return "", errors.New("genesis block bytes to program hash faild")
+		return "", errors.New("genesis block hash bytes to hash failed")
 	}
 
-	genesisAddress, err := genesisProgramHash.ToAddress()
+	genesisAddress, err := common.GetGenesisAddress(*genesisHash)
 	if err != nil {
 		return "", errors.New("genesis block hash to genesis address failed")
 	}

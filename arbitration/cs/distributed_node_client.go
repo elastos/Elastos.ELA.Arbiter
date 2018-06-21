@@ -145,7 +145,7 @@ func checkWithdrawTransaction(tx *ela.Transaction) error {
 	}
 
 	//check outputs and fee
-	rate := common.Fixed64(sideChain.GetExchangeRate())
+	rate := common.Fixed64(sideChain.GetExchangeRate() * 100000000)
 
 	var outputTotalAmount common.Fixed64
 	for _, output := range tx.Outputs {
@@ -160,10 +160,10 @@ func checkWithdrawTransaction(tx *ela.Transaction) error {
 			return errors.New("Check withdraw transaction failed, invalid side chain transaction payload")
 		}
 		for _, amount := range payloadObj.CrossChainAmount {
-			oriOutputAmount += amount / rate
+			oriOutputAmount += 100000000 * amount / rate
 		}
 		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
-			totalFee += (tx.Outputs[payloadObj.OutputIndex[i]].Value - payloadObj.CrossChainAmount[i]) / rate
+			totalFee += 100000000 * (tx.Outputs[payloadObj.OutputIndex[i]].Value - payloadObj.CrossChainAmount[i]) / rate
 		}
 	}
 

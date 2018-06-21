@@ -103,7 +103,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	mc.SyncChainData()
 
 	withdrawBank := sideChain.GetKey()
-	rate := sideChain.GetExchangeRate()
+	rate := Fixed64(sideChain.GetExchangeRate() * 100000000)
 
 	var totalOutputAmount Fixed64
 	// Create transaction outputs
@@ -111,8 +111,8 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	// Check if from address is valid
 	assetID := spvWallet.SystemAssetId
 	for i := 0; i < len(withdrawInfo.TargetAddress); i++ {
-		amount := withdrawInfo.Amount[i] / Fixed64(rate)
-		crossChainAmount := withdrawInfo.CrossChainAmount[i] / Fixed64(rate)
+		amount := 100000000 * withdrawInfo.Amount[i] / rate
+		crossChainAmount := 100000000 * withdrawInfo.CrossChainAmount[i] / rate
 		programhash, err := Uint168FromAddress(withdrawInfo.TargetAddress[i])
 		if err != nil {
 			return nil, err

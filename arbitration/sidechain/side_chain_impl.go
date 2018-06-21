@@ -301,9 +301,9 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	var txOutputs []OutputInfo // The outputs in transaction
 
 	assetID := spvWallet.SystemAssetId
-	rateFloat := sc.GetExchangeRate()
+	rate := common.Fixed64(sc.GetExchangeRate() * 100000000)
 	for i := 0; i < len(depositInfo.TargetAddress); i++ {
-		amount := depositInfo.CrossChainAmount[i] * common.Fixed64(rateFloat)
+		amount := depositInfo.CrossChainAmount[i] * rate / 100000000
 		txOutput := OutputInfo{
 			AssetID:    common.BytesToHexString(common.BytesReverse(assetID.Bytes())),
 			Value:      amount.String(),
