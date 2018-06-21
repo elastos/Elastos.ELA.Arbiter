@@ -189,7 +189,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 		}
 
 		resp, err := sideChain.SendTransaction(info)
-		if err != nil || scError.ErrCode(resp.Code) != scError.ErrDoubleSpend && scError.ErrCode(resp.Code) != scError.Success {
+		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
 			log.Warn("Send deposit transaction failed, txHash:", txHash)
 
 			err = store.DbCache.MainChainStore.RemoveMainChainTx(txHash, sideChain.GetKey())
@@ -200,8 +200,12 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			if err != nil {
 				log.Warn("Add faild transaction to finished db failed")
 			}
-		} else if resp.Result != nil && scError.ErrCode(resp.Code) == scError.Success {
-			log.Info("Send deposit transaction succeed, txHash:", txHash)
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrDoubleSpend {
+			if resp.Error != nil {
+				log.Info("Send deposit found transaction has been processed, txHash:", txHash)
+			} else {
+				log.Info("Send deposit transaction succeed, *txHash:", txHash)
+			}
 
 			store.DbCache.MainChainStore.RemoveMainChainTx(txHash, sideChain.GetKey())
 			if err != nil {

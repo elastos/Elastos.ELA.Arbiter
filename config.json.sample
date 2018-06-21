@@ -8,36 +8,29 @@
     "NodePort": 10338,
     "PrintLevel": 1,
     "SpvPrintLevel": 4,
-    "HttpJsonPort": 10010,
+    "HttpJsonPort": 10336,
     "MainNode": {
       "Rpc": {
-        "IpAddress": "localhost",
-        "HttpJsonPort": 10038
+        "IpAddress": "127.0.0.1",
+        "HttpJsonPort": 11336
       },
-    "SpvSeedList": [
-      "127.0.0.1:20866"
+     "SpvSeedList": [
+       "127.0.0.1:20866"
     ],
-    "Magic": 7630401,
-    "MinOutbound": 1,
-    "MaxConnections": 3
+     "Magic": 7630401,
+     "MinOutbound": 1,
+     "MaxConnections": 3
     },
     "SideNodeList": [
       {
         "Rpc": {
-          "IpAddress": "localhost",
-          "HttpJsonPort": 20038
+          "IpAddress": "127.0.0.1",
+          "HttpJsonPort": 13336
         },
-        "Rate": 1.0,
-        "GenesisBlockAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB",
-      },
-      {
-        "Rpc": {
-          "IpAddress": "localhost",
-          "HttpJsonPort": 30038
-        },
-        "Rate": 1.0,
-        "GenesisBlockAddress": "XH6gHwZC1yKaRRx62tzvWu5oxa3hekEgXp",
-        "KeystoreFile":"keystore.dat"
+		"Rate": 1.0,
+        "GenesisBlockAddress": "XQd1DCi6H62NQdWZQhJCRnrPn7sF9CTjaU",
+        "GenesisBlock": "168db7dedf19f584cd9acfc6062bb04a92ad1b7d34aed69905d4361728761a7c",
+        "KeystoreFile": "keystore.dat"
       }
     ],
     "SyncInterval": 1000,

@@ -3,7 +3,6 @@ package cs
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"math"
 	"sync"
 
@@ -177,8 +176,8 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 		resp, err := currentArbitrator.SendWithdrawTransaction(txn)
 
-		if err != nil || scError.ErrCode(resp.Code) != scError.ErrDoubleSpend &&
-			scError.ErrCode(resp.Code) != scError.Success {
+		//todo deal with ErrDuplicateMainchainTx ErrDuplicateSidechainTx and ErrDoubleSpend
+		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
 			log.Warn("Send withdraw transaction failed, txHash:", txn.Hash().String())
 
 			buf := new(bytes.Buffer)
@@ -195,7 +194,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			if err != nil {
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
-		} else if resp.Result != nil && scError.ErrCode(resp.Code) == scError.Success {
+		} else if resp.Error == nil && resp.Result != nil {
 			log.Info("Send withdraw transaction succeed, txHash:", txn.Hash().String())
 
 			err = store.DbCache.SideChainStore.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
@@ -209,8 +208,6 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		} else {
 			log.Warn("Send withdraw transaction failed, need to resend")
 		}
-
-		fmt.Println(resp.Result)
 	}
 	return nil
 }

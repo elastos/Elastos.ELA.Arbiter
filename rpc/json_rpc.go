@@ -17,8 +17,16 @@ import (
 )
 
 type Response struct {
-	Code   int         `json:"code""`
-	Result interface{} `json:"result""`
+	ID      int64       `json:"id"`
+	Version string      `json:"jsonrpc"`
+	Result  interface{} `json:"result"`
+	*Error  `json:"error"`
+}
+
+type Error struct {
+	ID      int64  `json:"id"`
+	Code    int64  `json:"code"`
+	Message string `json:"message"`
 }
 
 type ArbitratorGroupInfo struct {
@@ -250,7 +258,7 @@ func CallAndUnmarshal(method string, params map[string]string, config *config.Rp
 		return string(body), nil
 	}
 
-	if resp.Code != 0 {
+	if resp.Error != nil {
 		return nil, errors.New(fmt.Sprint(resp.Result))
 	}
 
