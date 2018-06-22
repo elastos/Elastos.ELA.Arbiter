@@ -182,6 +182,11 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 		resp, err := currentArbitrator.SendWithdrawTransaction(txn)
 
+		var transactionHashes []string
+		for _, hash := range withdrawPayload.SideChainTransactionHashes {
+			transactionHashes = append(transactionHashes, hash.String())
+		}
+
 		//todo deal with ErrDuplicateMainchainTx ErrDuplicateSidechainTx and ErrDoubleSpend
 		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
 			log.Warn("Send withdraw transaction failed, move to finished db, txHash:", txn.Hash().String())
@@ -192,22 +197,22 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 				return errors.New("Send withdraw transaction faild, invalid transaction")
 			}
 
-			err = store.DbCache.SideChainStore.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
+			err = store.DbCache.SideChainStore.RemoveSideChainTxs(transactionHashes)
 			if err != nil {
 				return errors.New("Remove failed withdraw transaction from db failed")
 			}
-			err = store.FinishedTxsDbCache.AddWithdrawTx(withdrawPayload.SideChainTransactionHashes, buf.Bytes(), false)
+			err = store.FinishedTxsDbCache.AddWithdrawTx(transactionHashes, buf.Bytes(), false)
 			if err != nil {
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
 		} else if resp.Error == nil && resp.Result != nil {
 			log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
 
-			err = store.DbCache.SideChainStore.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
+			err = store.DbCache.SideChainStore.RemoveSideChainTxs(transactionHashes)
 			if err != nil {
 				return errors.New("Remove succeed withdraw transaction from db failed")
 			}
-			err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(withdrawPayload.SideChainTransactionHashes)
+			err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(transactionHashes)
 			if err != nil {
 				return errors.New("Add succeed withdraw transaction into finished db failed")
 			}

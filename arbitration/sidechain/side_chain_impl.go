@@ -303,7 +303,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	assetID := spvWallet.SystemAssetId
 	rate := common.Fixed64(sc.GetExchangeRate() * 100000000)
 	for i := 0; i < len(depositInfo.TargetAddress); i++ {
-		amount := depositInfo.CrossChainAmount[i] * rate / 100000000
+		amount := depositInfo.CrossChainAmounts[i] * rate / 100000000
 		txOutput := OutputInfo{
 			AssetID:    common.BytesToHexString(common.BytesReverse(assetID.Bytes())),
 			Value:      amount.String(),
@@ -358,10 +358,10 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfos(txn []*core.Transacti
 		if !ok {
 			return nil, errors.New("Invalid payload")
 		}
-		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
-			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddress[i])
-			result.Amount = append(result.Amount, tx.Outputs[payloadObj.OutputIndex[i]].Value)
-			result.CrossChainAmount = append(result.CrossChainAmount, payloadObj.CrossChainAmount[i])
+		for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
+			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddresses[i])
+			result.Amount = append(result.Amount, tx.Outputs[payloadObj.OutputIndexes[i]].Value)
+			result.CrossChainAmounts = append(result.CrossChainAmounts, payloadObj.CrossChainAmounts[i])
 		}
 	}
 	return result, nil
@@ -372,6 +372,12 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	if err != nil {
 		return err
 	}
+
+	if len(txHashes) == 0 {
+		log.Info("No cached withdraw transaction need to send")
+		return nil
+	}
+
 	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
 	if err != nil {
 		return err
@@ -384,40 +390,40 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 		return err
 	}
 
-	if len(unsolvedTxs) == 0 {
-		return nil
+	if len(unsolvedTxs) != 0 {
+		heightTxsMap := GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
+
+		sc.ToSendTransactionHashes = heightTxsMap
+		sc.ToSendTransactionsHeight = chainHeight - 1
+		sc.Ready = true
+		sc.ReceivedUsedUtxoMsgNumber = 0
+
+		var number = make([]byte, 8)
+		var nonce int64
+		rand.Read(number)
+		binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
+
+		msg := &cs.GetLastArbiterUsedUTXOMessage{
+			Command:        cs.GetLastArbiterUsedUtxoCommand,
+			GenesisAddress: sc.GetKey(),
+			Height:         chainHeight - 1,
+			Nonce:          strconv.FormatInt(nonce, 10)}
+		msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
+		cs.P2PClientSingleton.AddMessageHash(msgHash)
+		cs.P2PClientSingleton.Broadcast(msg)
+		log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
 	}
 
-	heightTxsMap := GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
+	if len(receivedTxs) != 0 {
+		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
+		if err != nil {
+			return err
+		}
 
-	sc.ToSendTransactionHashes = heightTxsMap
-	sc.ToSendTransactionsHeight = chainHeight - 1
-	sc.Ready = true
-	sc.ReceivedUsedUtxoMsgNumber = 0
-
-	var number = make([]byte, 8)
-	var nonce int64
-	rand.Read(number)
-	binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
-
-	msg := &cs.GetLastArbiterUsedUTXOMessage{
-		Command:        cs.GetLastArbiterUsedUtxoCommand,
-		GenesisAddress: sc.GetKey(),
-		Height:         chainHeight - 1,
-		Nonce:          strconv.FormatInt(nonce, 10)}
-	msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
-	cs.P2PClientSingleton.AddMessageHash(msgHash)
-	cs.P2PClientSingleton.Broadcast(msg)
-	log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
-
-	err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
-	if err != nil {
-		return err
-	}
-
-	err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(receivedTxs)
-	if err != nil {
-		return err
+		err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(receivedTxs)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -54,9 +54,9 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
 		obj := new(PayloadTransferCrossChainAsset)
-		obj.CrossChainAddress = object.CrossChainAddress
-		obj.OutputIndex = object.OutputIndex
-		obj.CrossChainAmount = object.CrossChainAmount
+		obj.CrossChainAddresses = object.CrossChainAddresses
+		obj.OutputIndexes = object.OutputIndexes
+		obj.CrossChainAmounts = object.CrossChainAmounts
 		return obj, nil
 	}
 

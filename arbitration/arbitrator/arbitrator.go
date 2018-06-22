@@ -161,12 +161,12 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proof bloom.MerkleProof, mai
 
 	addr, err := depositInfo.MainChainProgramHash.ToAddress()
 	if err != nil {
-		log.Warn("Invalid deposit address.")
+		log.Warn("Invalid deposit program hash")
 		return nil
 	}
 	sideChain, ok := ar.GetChain(addr)
 	if !ok {
-		log.Warn("Invalid deposit address.")
+		log.Warn("Invalid deposit address")
 		return nil
 	}
 

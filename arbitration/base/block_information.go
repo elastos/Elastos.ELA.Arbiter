@@ -100,9 +100,9 @@ type RechargeToSideChainInfo struct {
 }
 
 type TransferCrossChainAssetInfo struct {
-	CrossChainAddress []string
-	OutputIndex       []uint64
-	CrossChainAmount  []Fixed64
+	CrossChainAddresses []string
+	OutputIndexes       []uint64
+	CrossChainAmounts   []Fixed64
 }
 
 type TransferAssetInfo struct {

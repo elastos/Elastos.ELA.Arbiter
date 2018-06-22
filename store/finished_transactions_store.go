@@ -26,19 +26,19 @@ const (
 				GenesisBlockAddress VARCHAR(34),
 				TransactionData BLOB,
 				Succeed BOOLEAN,
-				RecordTime TEXT 
+				RecordTime TEXT
 			);`
 	CreateWithdrawTransactionsTable = `CREATE TABLE IF NOT EXISTS WithdrawTransactions (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
 				SideChainTransactionId INTEGER,
 				Succeed BOOLEAN,
-				RecordTime TEXT 
+				RecordTime TEXT
 			);`
 	CreateSideChainTransactionsTable = `CREATE TABLE IF NOT EXISTS SideChainTransactions (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionData BLOB,
-				RecordTime TEXT 
+				RecordTime TEXT
 			);`
 )
 

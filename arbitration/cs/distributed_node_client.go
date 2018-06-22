@@ -107,13 +107,18 @@ func checkWithdrawTransaction(tx *ela.Transaction) error {
 	}
 
 	//check genesis address
+	var transactionHashes []string
+	for _, hash := range payloadWithdraw.SideChainTransactionHashes {
+		transactionHashes = append(transactionHashes, hash.String())
+	}
+
 	var txs []*ela.Transaction
 	sideChainTxs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashesAndGenesisAddress(
-		payloadWithdraw.SideChainTransactionHashes, payloadWithdraw.GenesisBlockAddress)
+		transactionHashes, payloadWithdraw.GenesisBlockAddress)
 	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
 		log.Info("Check withdraw transaction, need to get side chain transaction from rpc")
 		for _, txHash := range payloadWithdraw.SideChainTransactionHashes {
-			tx, err := sideChain.GetTransactionByHash(txHash)
+			tx, err := sideChain.GetTransactionByHash(txHash.String())
 			if err != nil {
 				return errors.New("Check withdraw transaction failed, unknown side chain transachtions")
 			}
@@ -159,11 +164,11 @@ func checkWithdrawTransaction(tx *ela.Transaction) error {
 		if !ok {
 			return errors.New("Check withdraw transaction failed, invalid side chain transaction payload")
 		}
-		for _, amount := range payloadObj.CrossChainAmount {
+		for _, amount := range payloadObj.CrossChainAmounts {
 			oriOutputAmount += 100000000 * amount / rate
 		}
-		for i := 0; i < len(payloadObj.CrossChainAddress); i++ {
-			totalFee += 100000000 * (tx.Outputs[payloadObj.OutputIndex[i]].Value - payloadObj.CrossChainAmount[i]) / rate
+		for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
+			totalFee += 100000000 * (tx.Outputs[payloadObj.OutputIndexes[i]].Value - payloadObj.CrossChainAmounts[i]) / rate
 		}
 	}
 
