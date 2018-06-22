@@ -23,6 +23,7 @@ const (
 
 type DistributedNodeServer struct {
 	mux                  *sync.Mutex
+	withdrawMux          *sync.Mutex
 	P2pCommand           string
 	unsolvedTransactions map[common.Uint256]*Transaction
 }
@@ -30,6 +31,9 @@ type DistributedNodeServer struct {
 func (dns *DistributedNodeServer) tryInit() {
 	if dns.mux == nil {
 		dns.mux = new(sync.Mutex)
+	}
+	if dns.withdrawMux == nil {
+		dns.withdrawMux = new(sync.Mutex)
 	}
 	if dns.unsolvedTransactions == nil {
 		dns.unsolvedTransactions = make(map[common.Uint256]*Transaction)
@@ -122,6 +126,8 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transact
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {
 	dns.tryInit()
+	dns.withdrawMux.Lock()
+	defer dns.withdrawMux.Unlock()
 
 	transactionItem := DistributedItem{}
 	transactionItem.Deserialize(bytes.NewReader(content))
@@ -178,7 +184,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 
 		//todo deal with ErrDuplicateMainchainTx ErrDuplicateSidechainTx and ErrDoubleSpend
 		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
-			log.Warn("Send withdraw transaction failed, txHash:", txn.Hash().String())
+			log.Warn("Send withdraw transaction failed, move to finished db, txHash:", txn.Hash().String())
 
 			buf := new(bytes.Buffer)
 			err := txn.Serialize(buf)
@@ -195,7 +201,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
 		} else if resp.Error == nil && resp.Result != nil {
-			log.Info("Send withdraw transaction succeed, txHash:", txn.Hash().String())
+			log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
 
 			err = store.DbCache.SideChainStore.RemoveSideChainTxs(withdrawPayload.SideChainTransactionHashes)
 			if err != nil {

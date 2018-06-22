@@ -76,22 +76,16 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (
 	return len(txn.Programs[0].Parameter) / (SignatureScriptLength - 1), nil
 }
 
-func GetHeightTransactionsMap(txs []*Transaction, blockHeights []uint32) map[uint32][]*Transaction {
-	var differentHeights []uint32
+func GetHeightTransactionHashesMap(txs []string, blockHeights []uint32) map[uint32][]string {
+	differentHeights := make(map[uint32]struct{})
 	for _, height := range blockHeights {
-		isContained := false
-		for _, h := range differentHeights {
-			if height == h {
-				isContained = true
-			}
-		}
-		if !isContained {
-			differentHeights = append(differentHeights, height)
+		if _, exist := differentHeights[height]; !exist {
+			differentHeights[height] = struct{}{}
 		}
 	}
-	heightTxsMap := make(map[uint32][]*Transaction, 0)
-	for _, height := range differentHeights {
-		heightTxsMap[height] = make([]*Transaction, 0)
+	heightTxsMap := make(map[uint32][]string)
+	for k, _ := range differentHeights {
+		heightTxsMap[k] = make([]string, 0)
 	}
 	for i := 0; i < len(blockHeights); i++ {
 		heightTxsMap[blockHeights[i]] = append(heightTxsMap[blockHeights[i]], txs[i])

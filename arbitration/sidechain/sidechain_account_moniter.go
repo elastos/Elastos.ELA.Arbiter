@@ -11,6 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 type SideChainAccountMonitorImpl struct {
@@ -108,6 +109,14 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *Bl
 	for _, txn := range transactions.Transactions {
 		for _, output := range txn.Outputs {
 			if output.Address == DESTROY_ADDRESS {
+				txnBytes, err := common.HexStringToBytes(txn.Hash)
+				if err != nil {
+					log.Warn("Find output to destroy address, but transaction hash to transaction bytes failed")
+					continue
+				}
+				reversedTxnBytes := common.BytesReverse(txnBytes)
+				reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
+				txn.Hash = reversedTxnHash
 				if ok, err := store.DbCache.SideChainStore.HasSideChainTx(txn.Hash); err != nil || !ok {
 					txInfos = append(txInfos, txn)
 					break

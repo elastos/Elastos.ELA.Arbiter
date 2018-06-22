@@ -35,7 +35,7 @@ type SideChainImpl struct {
 
 	LastUsedUtxoHeight        uint32
 	LastUsedOutPoints         []core.OutPoint
-	ToSendTransactions        map[uint32][]*core.Transaction
+	ToSendTransactionHashes   map[uint32][]string
 	ToSendTransactionsHeight  uint32
 	Ready                     bool
 	ReceivedUsedUtxoMsgNumber uint32
@@ -68,7 +68,7 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
 		if sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
-			for _, v := range sc.ToSendTransactions {
+			for _, v := range sc.ToSendTransactionHashes {
 				err := sc.CreateAndBroadcastWithdrawProposal(v)
 				if err != nil {
 					log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
@@ -76,7 +76,7 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 			}
 			sc.mux.Lock()
 			sc.Ready = false
-			sc.ToSendTransactions = make(map[uint32][]*core.Transaction, 0)
+			sc.ToSendTransactionHashes = make(map[uint32][]string, 0)
 			sc.ToSendTransactionsHeight = 0
 			sc.mux.Unlock()
 			log.Info("[ReceiveSendLastArbiterUsedUtxos] Send transactions for multi sign")
@@ -249,7 +249,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight u
 		if err != nil {
 			return err
 		}
-		txHashes = append(txHashes, txn.Hash().String())
+		txHashes = append(txHashes, txinfo.Hash)
 		genesises = append(genesises, sc.GetKey())
 		// Serialize transaction
 		buf := new(bytes.Buffer)
@@ -378,23 +378,19 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	}
 
 	unsolvedTxs, unsolvedBlockHeights := SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
-	unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(unsolvedTxs)
-	if err != nil {
-		return err
-	}
-
-	if len(unsolvedTransactions) == 0 {
-		return nil
-	}
 
 	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return err
 	}
 
-	heightTxsMap := GetHeightTransactionsMap(unsolvedTransactions, unsolvedBlockHeights)
+	if len(unsolvedTxs) == 0 {
+		return nil
+	}
 
-	sc.ToSendTransactions = heightTxsMap
+	heightTxsMap := GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
+
+	sc.ToSendTransactionHashes = heightTxsMap
 	sc.ToSendTransactionsHeight = chainHeight - 1
 	sc.Ready = true
 	sc.ReceivedUsedUtxoMsgNumber = 0
@@ -427,19 +423,23 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	return nil
 }
 
-func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txns []*core.Transaction) error {
-	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfos(txns)
+func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) error {
+	unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(txnHashes)
 	if err != nil {
 		return err
 	}
 
-	var txHashes []string
-	for _, txn := range txns {
-		txHashes = append(txHashes, txn.Hash().String())
+	if len(unsolvedTransactions) == 0 {
+		return nil
+	}
+
+	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfos(unsolvedTransactions)
+	if err != nil {
+		return err
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfos, sc, txHashes, &store.DbMainChainFunc{})
+	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfos, sc, txnHashes, &store.DbMainChainFunc{})
 
 	log.Info("[CreateAndBroadcastWithdrawProposal] Transactions count: ", len(transactions))
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
