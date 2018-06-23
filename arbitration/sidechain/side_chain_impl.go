@@ -203,7 +203,7 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 }
 
 func (sc *SideChainImpl) GetExchangeRate() float32 {
-	return sc.getCurrentConfig().Rate
+	return sc.getCurrentConfig().ExchangeRate
 }
 
 func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
