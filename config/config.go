@@ -46,7 +46,7 @@ type RpcConfig struct {
 
 type MainNodeConfig struct {
 	Rpc            *RpcConfig `json:"Rpc"`
-	SpvSeedList    []string   `json:SpvSeedList`
+	SpvSeedList    []string   `json:"SpvSeedList""`
 	Magic          uint32     `json:"Magic"`
 	MinOutbound    int        `json:"MinOutbound"`
 	MaxConnections int        `json:"MaxConnections"`
@@ -55,7 +55,7 @@ type MainNodeConfig struct {
 type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
-	ExchangeRate        float32 `json:"Rate"`
+	ExchangeRate        float32 `json:"ExchangeRate"`
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
