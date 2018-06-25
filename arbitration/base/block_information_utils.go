@@ -72,9 +72,14 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 
 	var txAttribute []*Attribute
 	for _, att := range txInfo.Attributes {
-		attData, err := HexStringToBytes(att.Data)
-		if err != nil {
-			return nil, err
+		var attData []byte
+		if att.Usage == Nonce {
+			attData = []byte(att.Data)
+		} else {
+			attData, err = HexStringToBytes(att.Data)
+			if err != nil {
+				return nil, err
+			}
 		}
 		txAttr := &Attribute{
 			Usage: att.Usage,
@@ -90,7 +95,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		referID, err := Uint256FromBytes(txID)
+		referID, err := Uint256FromBytes(BytesReverse(txID))
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +115,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		assetId, err := Uint256FromBytes(assetIdBytes)
+		assetId, err := Uint256FromBytes(BytesReverse(assetIdBytes))
 		if err != nil {
 			return nil, err
 		}
@@ -118,14 +123,9 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		var programHash *Uint168
-		if output.Address == DESTROY_ADDRESS {
-			programHash = &Uint168{}
-		} else {
-			programHash, err = Uint168FromAddress(output.Address)
-			if err != nil {
-				return nil, err
-			}
+		programHash, err := Uint168FromAddress(output.Address)
+		if err != nil {
+			return nil, err
 		}
 		output := &Output{
 			AssetID:     *assetId,
