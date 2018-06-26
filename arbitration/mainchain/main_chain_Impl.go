@@ -103,7 +103,11 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	mc.SyncChainData()
 
 	withdrawBank := sideChain.GetKey()
-	rate := Fixed64(sideChain.GetExchangeRate() * 100000000)
+	exchangeRate, err := sideChain.GetExchangeRate()
+	if err != nil {
+		return nil, err
+	}
+	rate := Fixed64(exchangeRate * 100000000)
 
 	var totalOutputAmount Fixed64
 	// Create transaction outputs

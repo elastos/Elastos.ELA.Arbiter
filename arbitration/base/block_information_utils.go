@@ -11,14 +11,6 @@ import (
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
-func (txInfo *TransactionInfo) ConvertFrom(tx *Transaction) error {
-	return nil
-}
-
-func (txInfo *TransactionInfo) ConvertTo() (*Transaction, error) {
-	return nil, nil
-}
-
 func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 
 	switch object := plInfo.(type) {
@@ -123,9 +115,14 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		programHash, err := Uint168FromAddress(output.Address)
-		if err != nil {
-			return nil, err
+		var programHash *Uint168
+		if output.Address == DESTROY_ADDRESS {
+			programHash = &Uint168{}
+		} else {
+			programHash, err = Uint168FromAddress(output.Address)
+			if err != nil {
+				return nil, err
+			}
 		}
 		output := &Output{
 			AssetID:     *assetId,

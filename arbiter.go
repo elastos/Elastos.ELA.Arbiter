@@ -64,7 +64,7 @@ func main() {
 	log.Info("2. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
-		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
+		log.Fatalf("Data store open failed error: [s%]", err.Error())
 		os.Exit(1)
 	}
 	store.DbCache = *dataStore

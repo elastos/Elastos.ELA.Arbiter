@@ -202,8 +202,12 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	return sc.CurrentConfig
 }
 
-func (sc *SideChainImpl) GetExchangeRate() float32 {
-	return sc.getCurrentConfig().ExchangeRate
+func (sc *SideChainImpl) GetExchangeRate() (float32, error) {
+	config := sc.getCurrentConfig()
+	if config == nil {
+		return 0, errors.New("Get exchange rate failed, side chain has no config.")
+	}
+	return sc.getCurrentConfig().ExchangeRate, nil
 }
 
 func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
@@ -301,7 +305,11 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	var txOutputs []OutputInfo // The outputs in transaction
 
 	assetID := spvWallet.SystemAssetId
-	rate := common.Fixed64(sc.GetExchangeRate() * 100000000)
+	exchangeRate, err := sc.GetExchangeRate()
+	if err != nil {
+		return nil, err
+	}
+	rate := common.Fixed64(exchangeRate * 100000000)
 	for i := 0; i < len(depositInfo.TargetAddress); i++ {
 		amount := depositInfo.CrossChainAmounts[i] * rate / 100000000
 		txOutput := OutputInfo{
@@ -314,7 +322,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	}
 
 	spvInfo := new(bytes.Buffer)
-	err := proof.Serialize(spvInfo)
+	err = proof.Serialize(spvInfo)
 	if err != nil {
 		return nil, err
 	}

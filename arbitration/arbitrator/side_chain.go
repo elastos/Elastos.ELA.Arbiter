@@ -13,7 +13,7 @@ type SideChain interface {
 	SideChainNode
 
 	GetKey() string
-	GetExchangeRate() float32
+	GetExchangeRate() (float32, error)
 
 	SetLastUsedUtxoHeight(height uint32)
 	GetLastUsedUtxoHeight() uint32
