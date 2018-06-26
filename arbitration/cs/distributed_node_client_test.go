@@ -40,24 +40,24 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	txId1 := common.Uint256{11}
 	txId2 := common.Uint256{21}
 	assetId := common.Uint256{12}
-	amount1, _ := common.StringToFixed64("0.0001")
-	amount2, _ := common.StringToFixed64("0.00009")
-	amount3, _ := common.StringToFixed64("-0.00009")
-	amount4, _ := common.StringToFixed64("0.0002")
-	amount5, _ := common.StringToFixed64("0")
-	amount6, _ := common.StringToFixed64("0.0009")
+	amount1 := common.Fixed64(10000)
+	amount2 := common.Fixed64(9000)
+	amount3 := common.Fixed64(-9000)
+	amount4 := common.Fixed64(20000)
+	amount5 := common.Fixed64(0)
+	amount6 := common.Fixed64(90000)
 
 	programHash1, _ := common.Uint168FromAddress(address1)
 
 	input1 := Input{Previous: OutPoint{TxID: txId1, Index: 0}, Sequence: 0}
-	output1 := Output{AssetID: assetId, Value: *amount1, OutputLock: 0, ProgramHash: common.Uint168{}}
+	output1 := Output{AssetID: assetId, Value: amount1, OutputLock: 0, ProgramHash: common.Uint168{}}
 	input2 := Input{Previous: OutPoint{TxID: txId2, Index: 0}, Sequence: 0}
-	output2 := Output{AssetID: assetId, Value: *amount2, OutputLock: 0, ProgramHash: *programHash1}
-	output3 := Output{AssetID: assetId, Value: *amount5, OutputLock: 0, ProgramHash: *programHash1}
+	output2 := Output{AssetID: assetId, Value: amount2, OutputLock: 0, ProgramHash: *programHash1}
+	output3 := Output{AssetID: assetId, Value: amount5, OutputLock: 0, ProgramHash: *programHash1}
 	input4 := Input{Previous: OutPoint{TxID: txId2, Index: 0}, Sequence: 0}
-	output4 := Output{AssetID: assetId, Value: *amount6, OutputLock: 0, ProgramHash: *programHash1}
+	output4 := Output{AssetID: assetId, Value: amount6, OutputLock: 0, ProgramHash: *programHash1}
 
-	addressUtxo1 := &store.AddressUTXO{Input: &input2, Amount: amount1, GenesisBlockAddress: genesisAddress}
+	addressUtxo1 := &store.AddressUTXO{Input: &input2, Amount: &amount1, GenesisBlockAddress: genesisAddress}
 	store.DbCache.UTXOStore.AddAddressUTXO(addressUtxo1)
 
 	//create transfer cross chain asset transaction
@@ -67,7 +67,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Payload: &PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
-			CrossChainAmounts:   []common.Fixed64{*amount2},
+			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
 		Inputs:     []*Input{&input1},
@@ -108,7 +108,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Payload: &PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
-			CrossChainAmounts:   []common.Fixed64{*amount2},
+			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
 		Inputs:     []*Input{&input1},
@@ -151,7 +151,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Payload: &PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
-			CrossChainAmounts:   []common.Fixed64{*amount3},
+			CrossChainAmounts:   []common.Fixed64{amount3},
 		},
 		Attributes: nil,
 		Inputs:     []*Input{&input1},
@@ -192,7 +192,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Payload: &PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
-			CrossChainAmounts:   []common.Fixed64{*amount4},
+			CrossChainAmounts:   []common.Fixed64{amount4},
 		},
 		Attributes: nil,
 		Inputs:     []*Input{&input1},
@@ -233,7 +233,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Payload: &PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
-			CrossChainAmounts:   []common.Fixed64{*amount2},
+			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
 		Inputs:     []*Input{&input1},
@@ -274,7 +274,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Payload: &PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
-			CrossChainAmounts:   []common.Fixed64{*amount2},
+			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
 		Inputs:     []*Input{&input1},

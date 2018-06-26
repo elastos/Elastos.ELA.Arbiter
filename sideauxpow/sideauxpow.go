@@ -117,12 +117,10 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	}
 
 	// create transaction
-	feeStr := "0.001"
-
-	fee, err := StringToFixed64(feeStr)
-	if err != nil {
-		return errors.New("invalid transaction fee")
+	if config.Parameters.SideAuxPowFee <= 0 {
+		return errors.New("Invalid side aux pow fee")
 	}
+	fee := Fixed64(config.Parameters.SideAuxPowFee)
 
 	keystore, err := wallet.OpenKeystore(name, passwd)
 	if err != nil {
@@ -131,20 +129,8 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 
 	from := keystore.Address()
 
-	to := from
-	amountStr := "0.1"
-	amount, err := StringToFixed64(amountStr)
-	if err != nil {
-		return errors.New("invalid transaction amount")
-	}
-
-	genesisAddress, err := calculateGenesisAddress(sideAuxBlock.GenesisHash)
-	if err != nil {
-		return err
-	}
-
 	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, to, genesisAddress, amount, fee)
+	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, &fee)
 	if err != nil {
 		return errors.New("create transaction failed: " + err.Error())
 	}

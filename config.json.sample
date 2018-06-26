@@ -38,6 +38,7 @@
     "ClearTransactionInterval": 60000,
     "MinReceivedUsedUtxoMsgNumber": 1,
     "MinOutbound": 3,
-    "MaxConnections": 8
+    "MaxConnections": 8,
+    "SideAuxPowFee": 50000
   }
 }

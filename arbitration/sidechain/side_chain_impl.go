@@ -205,8 +205,12 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 func (sc *SideChainImpl) GetExchangeRate() (float32, error) {
 	config := sc.getCurrentConfig()
 	if config == nil {
-		return 0, errors.New("Get exchange rate failed, side chain has no config.")
+		return 0, errors.New("Get exchange rate failed, side chain has no config")
 	}
+	if sc.getCurrentConfig().ExchangeRate == 0 {
+		return 0, errors.New("Get exchange rate failed, invalid exchange rate")
+	}
+
 	return sc.getCurrentConfig().ExchangeRate, nil
 }
 

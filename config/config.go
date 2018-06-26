@@ -37,6 +37,7 @@ type Configuration struct {
 	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
 	MinOutbound                  int           `json:"MinOutbound"`
 	MaxConnections               int           `json:"MaxConnections"`
+	SideAuxPowFee                int           `json:"SideAuxPowFee"`
 }
 
 type RpcConfig struct {

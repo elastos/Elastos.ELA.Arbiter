@@ -64,11 +64,7 @@ func checkSideChainPowAccounts(addrs []*walt.Address, minThreshold int, wallet w
 
 func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error {
 	// create transaction
-	fee, err := StringToFixed64("0.001")
-	if err != nil {
-		return errors.New("invalid transaction fee")
-	}
-
+	fee := Fixed64(100000)
 	keystore, err := walt.OpenKeystore(name, getMainAccountPassword())
 	if err != nil {
 		return err
@@ -77,7 +73,7 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 	from := keystore.Address()
 
 	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, fee, outputs...)
+	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, outputs...)
 	if err != nil {
 		return errors.New("create divide transaction failed: " + err.Error())
 	}

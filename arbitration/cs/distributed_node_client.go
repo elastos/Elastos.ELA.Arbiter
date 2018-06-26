@@ -27,7 +27,7 @@ func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress 
 		return nil, 0, errors.New("Get side chain from genesis address failed.")
 	}
 	rate, err := sideChain.GetExchangeRate()
-	if err != nil || rate == 0 {
+	if err != nil {
 		return nil, 0, err
 	}
 	return sideChain, rate, nil
