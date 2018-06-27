@@ -14,6 +14,7 @@ const (
 )
 
 var (
+	Version    string
 	Parameters configParams
 )
 

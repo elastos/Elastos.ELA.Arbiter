@@ -54,7 +54,7 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 }
 
 func main() {
-
+	log.Info("Arbiter version: ", config.Version)
 	log.Info("1. Init configurations.")
 	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
 		log.Fatal(err)

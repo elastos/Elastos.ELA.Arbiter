@@ -120,7 +120,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	}
 	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
 
-	//create withdraw transaction
+	//create withdraw transaction with utxo is not from genesis address account
 	tx2 = &Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
@@ -245,7 +245,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	}
 	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
 
-	//create withdraw transaction with more output than input
+	//create withdraw transaction with cross chain count not equal withdraw output count
 	tx2 = &Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
@@ -286,7 +286,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	}
 	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
 
-	//create withdraw transaction with more output than input
+	//create withdraw transaction with input amount not equal output amount
 	tx2 = &Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
