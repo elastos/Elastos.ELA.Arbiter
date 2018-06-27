@@ -3,7 +3,6 @@ package rpc
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -259,7 +258,7 @@ func CallAndUnmarshal(method string, params map[string]string, config *config.Rp
 	}
 
 	if resp.Error != nil {
-		return nil, errors.New(fmt.Sprint(resp.Result))
+		return nil, errors.New(resp.Error.Message)
 	}
 
 	return resp.Result, nil
