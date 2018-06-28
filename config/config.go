@@ -57,7 +57,7 @@ type MainNodeConfig struct {
 type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
-	ExchangeRate        float32 `json:"ExchangeRate"`
+	ExchangeRate        float64 `json:"ExchangeRate"`
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`

@@ -17,7 +17,7 @@ import (
 type ClientTestFunc struct {
 }
 
-func (client *ClientTestFunc) GetSideChainAndExchangeRate(genesisAddress string) (arbitrator.SideChain, float32, error) {
+func (client *ClientTestFunc) GetSideChainAndExchangeRate(genesisAddress string) (arbitrator.SideChain, float64, error) {
 	return nil, 1.0, nil
 }
 

@@ -18,10 +18,10 @@ type DistributedNodeClient struct {
 }
 
 type DistributedNodeClientFunc interface {
-	GetSideChainAndExchangeRate(genesisAddress string) (SideChain, float32, error)
+	GetSideChainAndExchangeRate(genesisAddress string) (SideChain, float64, error)
 }
 
-func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress string) (SideChain, float32, error) {
+func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress string) (SideChain, float64, error) {
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok || sideChain == nil {
 		return nil, 0, errors.New("Get side chain from genesis address failed.")

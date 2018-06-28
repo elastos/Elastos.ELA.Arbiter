@@ -202,12 +202,12 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	return sc.CurrentConfig
 }
 
-func (sc *SideChainImpl) GetExchangeRate() (float32, error) {
+func (sc *SideChainImpl) GetExchangeRate() (float64, error) {
 	config := sc.getCurrentConfig()
 	if config == nil {
 		return 0, errors.New("Get exchange rate failed, side chain has no config")
 	}
-	if sc.getCurrentConfig().ExchangeRate == 0 {
+	if sc.getCurrentConfig().ExchangeRate <= 0 {
 		return 0, errors.New("Get exchange rate failed, invalid exchange rate")
 	}
 
@@ -313,12 +313,10 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	if err != nil {
 		return nil, err
 	}
-	rate := common.Fixed64(exchangeRate * 100000000)
 	for i := 0; i < len(depositInfo.TargetAddress); i++ {
-		amount := depositInfo.CrossChainAmounts[i] * rate / 100000000
 		txOutput := OutputInfo{
 			AssetID:    common.BytesToHexString(common.BytesReverse(assetID.Bytes())),
-			Value:      amount.String(),
+			Value:      common.Fixed64(float64(depositInfo.CrossChainAmounts[i]) * exchangeRate).String(),
 			Address:    depositInfo.TargetAddress[i],
 			OutputLock: uint32(0),
 		}
