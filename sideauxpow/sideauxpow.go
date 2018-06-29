@@ -69,7 +69,7 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	log.Info("getSideAuxpow")
 	depositAddress := sideNode.PayToAddr
 	if depositAddress == "" {
-		depositAddress = "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"
+		return errors.New("Has no side aux pow paytoaddr")
 	}
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", depositAddress), sideNode.Rpc)
 	if err != nil {
