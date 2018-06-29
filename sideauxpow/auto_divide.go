@@ -37,7 +37,7 @@ func checkSideChainPowAccounts(addrs []*walt.Address, minThreshold int, wallet w
 			}
 		}
 
-		if available < Fixed64(minThreshold*100000000) {
+		if available < Fixed64(minThreshold) {
 			warnAddresses = append(warnAddresses, &SideChainPowAccount{
 				Address:          addr.Address,
 				availableBalance: available,
@@ -109,18 +109,18 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 func SidechainAccountDivide(wallet walt.Wallet) {
 	for {
 		select {
-		case <-time.After(time.Second * 3):
+		case <-time.After(time.Second * 60):
 			addresses, err := wallet.GetAddresses()
 			if err != nil {
 				log.Error("Get addresses error:", err)
 			}
-			warningAccounts, err := checkSideChainPowAccounts(addresses, 10, wallet)
+			warningAccounts, err := checkSideChainPowAccounts(addresses, config.Parameters.MinThreshold, wallet)
 			if err != nil {
 				log.Error("Check side chain pow err", err)
 			}
 			if len(warningAccounts) > 0 {
 				var outputs []*walt.Transfer
-				amount := Fixed64(10)
+				amount := Fixed64(config.Parameters.DepositAmount)
 				for _, warningAccount := range warningAccounts {
 					outputs = append(outputs, &walt.Transfer{
 						Address: warningAccount.Address,

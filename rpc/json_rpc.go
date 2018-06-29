@@ -163,7 +163,7 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 }
 
 func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
-	var reversedTxs []string
+	/*var reversedTxs []string
 	for _, txHash := range txs {
 		hashBytes, err := common.HexStringToBytes(txHash)
 		if err != nil {
@@ -172,9 +172,9 @@ func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]stri
 		reversedHashBytes := common.BytesReverse(hashBytes)
 		reversedTxHash := common.BytesToHexString(reversedHashBytes)
 		reversedTxs = append(reversedTxs, reversedTxHash)
-	}
+	}*/
 
-	infoBytes, err := json.Marshal(reversedTxs)
+	infoBytes, err := json.Marshal(txs)
 	if err != nil {
 		return nil, err
 	}

@@ -200,7 +200,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			if err != nil {
 				log.Warn("Add faild transaction to finished db failed")
 			}
-		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrDoubleSpend {
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrMainchainTxDuplicate {
 			if resp.Error != nil {
 				log.Info("Send deposit found transaction has been processed, move to finished db, txHash:", txHash)
 			} else {

@@ -124,8 +124,8 @@ func main() {
 	log.Info("10. Start check and remove cross chain transactions from db.")
 	go currentArbitrator.CheckAndRemoveCrossChainTransactionsFromDBLoop()
 
-	//log.Info("11. Start side chain account divide.")
-	//go sideauxpow.SidechainAccountDivide(wallet)
+	log.Info("11. Start side chain account divide.")
+	go sideauxpow.SidechainAccountDivide(wallet)
 
 	select {}
 }

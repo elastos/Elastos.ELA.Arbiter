@@ -166,8 +166,6 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 	}
 
 	//check outputs and fee
-	rate := common.Fixed64(exchangeRate * 100000000)
-
 	var outputTotalAmount common.Fixed64
 	for _, output := range txn.Outputs {
 		outputTotalAmount += output.Value
@@ -185,13 +183,13 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 			if amount < 0 {
 				return errors.New("Check withdraw transaction failed, cross chain amount less than 0")
 			}
-			oriOutputAmount += 100000000 * amount / rate
+			oriOutputAmount += common.Fixed64(float64(amount) / exchangeRate)
 		}
 		for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
 			if payloadObj.CrossChainAmounts[i] > tx.Outputs[payloadObj.OutputIndexes[i]].Value {
 				return errors.New("Check withdraw transaction failed, cross chain amount more than output amount")
 			}
-			totalFee += 100000000 * (tx.Outputs[payloadObj.OutputIndexes[i]].Value - payloadObj.CrossChainAmounts[i]) / rate
+			totalFee += common.Fixed64(float64(tx.Outputs[payloadObj.OutputIndexes[i]].Value-payloadObj.CrossChainAmounts[i]) / exchangeRate)
 		}
 		totalCrossChainCount += len(payloadObj.CrossChainAddresses)
 	}

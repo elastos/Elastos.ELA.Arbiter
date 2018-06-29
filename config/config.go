@@ -39,6 +39,8 @@ type Configuration struct {
 	MinOutbound                  int           `json:"MinOutbound"`
 	MaxConnections               int           `json:"MaxConnections"`
 	SideAuxPowFee                int           `json:"SideAuxPowFee"`
+	MinThreshold                 int           `json:"MinThreshold"`
+	DepositAmount                int           `json:"DepositAmount"`
 }
 
 type RpcConfig struct {
@@ -61,6 +63,7 @@ type SideNodeConfig struct {
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
+	PayToAddr           string  `json:"PayToAddr"`
 }
 
 type ConfigFile struct {

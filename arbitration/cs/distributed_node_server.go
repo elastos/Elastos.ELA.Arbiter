@@ -9,12 +9,12 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	scError "github.com/elastos/Elastos.ELA.SideChain/errors"
+
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
+	mcError "github.com/elastos/Elastos.ELA/errors"
 )
 
 const (
@@ -187,8 +187,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			transactionHashes = append(transactionHashes, hash.String())
 		}
 
-		//todo deal with ErrDuplicateMainchainTx ErrDuplicateSidechainTx and ErrDoubleSpend
-		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
+		if err != nil || resp.Error != nil && mcError.ErrCode(resp.Code) != mcError.ErrDoubleSpend {
 			log.Warn("Send withdraw transaction failed, move to finished db, txHash:", txn.Hash().String())
 
 			buf := new(bytes.Buffer)
@@ -205,7 +204,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			if err != nil {
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
-		} else if resp.Error == nil && resp.Result != nil {
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && mcError.ErrCode(resp.Code) == mcError.ErrSidechainTxDuplicate {
 			log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
 
 			err = store.DbCache.SideChainStore.RemoveSideChainTxs(transactionHashes)

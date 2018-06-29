@@ -67,8 +67,11 @@ func unmarshal(result interface{}, target interface{}) error {
 
 func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
 	log.Info("getSideAuxpow")
-
-	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"), sideNode.Rpc)
+	depositAddress := sideNode.PayToAddr
+	if depositAddress == "" {
+		depositAddress = "EN1WeHcjgtkxrg1AoBNBdo3eY5fektuBZe"
+	}
+	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", depositAddress), sideNode.Rpc)
 	if err != nil {
 		return err
 	}
