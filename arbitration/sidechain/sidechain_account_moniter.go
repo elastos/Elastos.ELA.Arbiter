@@ -62,7 +62,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {
-			for currentHeight < chainHeight-6 {
+			for chainHeight > 6 && currentHeight < chainHeight-6 {
 				transactions, err := GetDestroyedTransactionByHeight(currentHeight+1, sideNode.Rpc)
 				if err != nil {
 					break
@@ -70,16 +70,15 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1)
 				// Update wallet height
 				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height)
-				log.Info(" [arbitrator] Side chain [", sideNode.GenesisBlockAddress, "] height: ", transactions.Height)
-				if currentHeight == chainHeight-6 {
-					arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
-					if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-						sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
-						if ok {
-							sideChain.StartSideChainMining()
-							log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
-						}
-					}
+				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", transactions.Height)
+			}
+
+			arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
+			if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+				sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
+				if ok {
+					sideChain.StartSideChainMining()
+					log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
 				}
 			}
 		}
