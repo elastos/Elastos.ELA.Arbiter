@@ -49,11 +49,12 @@ type RpcConfig struct {
 }
 
 type MainNodeConfig struct {
-	Rpc            *RpcConfig `json:"Rpc"`
-	SpvSeedList    []string   `json:"SpvSeedList""`
-	Magic          uint32     `json:"Magic"`
-	MinOutbound    int        `json:"MinOutbound"`
-	MaxConnections int        `json:"MaxConnections"`
+	Rpc               *RpcConfig `json:"Rpc"`
+	SpvSeedList       []string   `json:"SpvSeedList""`
+	Magic             uint32     `json:"Magic"`
+	MinOutbound       int        `json:"MinOutbound"`
+	MaxConnections    int        `json:"MaxConnections"`
+	FoundationAddress string     `json:"FoundationAddress"`
 }
 
 type SideNodeConfig struct {
