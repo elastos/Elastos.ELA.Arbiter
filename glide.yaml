@@ -3,11 +3,11 @@ import:
 - package: github.com/elastos/Elastos.ELA.Utility
   version: dev
 - package: github.com/elastos/Elastos.ELA
-  version: dev
+  version: release_v0.1.1
 - package: github.com/elastos/Elastos.ELA.SPV
   version: dev
 - package: github.com/elastos/Elastos.ELA.SideChain
-  version: dev
+  version: release_v0.0.1
 - package: github.com/howeyc/gopass
 - package: github.com/itchyny/base58-go
 - package: github.com/mattn/go-sqlite3
