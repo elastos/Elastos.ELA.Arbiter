@@ -62,15 +62,18 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {
-			for chainHeight > 6 && currentHeight < chainHeight-6 {
-				transactions, err := GetDestroyedTransactionByHeight(currentHeight+1, sideNode.Rpc)
-				if err != nil {
-					break
+			log.Info("currentHeight:", currentHeight, " chainHeight:", chainHeight)
+			for currentHeight < chainHeight {
+				if currentHeight >= 6 {
+					transactions, err := GetDestroyedTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
+					if err != nil {
+						break
+					}
+					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
 				}
-				monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1)
 				// Update wallet height
-				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height)
-				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", transactions.Height)
+				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight+1)
+				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", chainHeight)
 			}
 
 			arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
