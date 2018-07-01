@@ -29,12 +29,12 @@ type MainChainImpl struct {
 }
 
 func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
-	txHases, genesisAddresses, transactions, _, err := DbCache.MainChainStore.GetAllMainChainTxs()
+	txHashes, genesisAddresses, transactions, _, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(txHases) != len(transactions) {
+	if len(txHashes) != len(transactions) {
 		return nil, errors.New("Invalid transactios in main chain txs db")
 	}
 
@@ -54,9 +54,9 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 			}
 		}
 		if hasSideChainInMap {
-			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], txHases[i])
+			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], txHashes[i])
 		} else {
-			allSideChainTxHashes[sc] = []string{txHases[i]}
+			allSideChainTxHashes[sc] = []string{txHashes[i]}
 		}
 	}
 
