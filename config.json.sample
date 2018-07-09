@@ -29,8 +29,7 @@
           "HttpJsonPort": 13336
         },
 		"ExchangeRate": 1.0,
-        "GenesisBlockAddress": "XQd1DCi6H62NQdWZQhJCRnrPn7sF9CTjaU",
-        "GenesisBlock": "168db7dedf19f584cd9acfc6062bb04a92ad1b7d34aed69905d4361728761a7c",
+        "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
         "KeystoreFile": "keystore1.dat",
         "PayToAddr": "ERtJFJaEfmABKDy3Afbrpwb6nDrRUGkZ6k"
       }

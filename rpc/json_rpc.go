@@ -203,7 +203,7 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 	//log.Trace("RPC call:", string(data))
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
 	if err != nil {
-		log.Info("POST requset: %v\n", err)
+		log.Info("POST requset err:", err)
 		return nil, err
 	}
 	defer resp.Body.Close()

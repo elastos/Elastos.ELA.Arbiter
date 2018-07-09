@@ -218,13 +218,9 @@ func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayl
 
 	// Check if output is valid add output with 0 amount to from address
 	if len(txOutputs) == 0 {
-		receiver, err := Uint168FromAddress(fromAddress)
-		if err != nil {
-			return nil, errors.New(fmt.Sprint("[Wallet], Invalid receiver address: ", fromAddress, ", error: ", err))
-		}
 		txOutput := &Output{
 			AssetID:     SystemAssetId,
-			ProgramHash: *receiver,
+			ProgramHash: *spender,
 			Value:       Fixed64(0),
 			OutputLock:  uint32(0),
 		}
