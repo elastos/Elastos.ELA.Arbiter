@@ -1,6 +1,11 @@
 package config
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/elastos/Elastos.ELA.SideChain/common"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
+)
 
 func InitMockConfig() {
 
@@ -31,8 +36,7 @@ func InitMockConfig() {
 		"          \"HttpJsonPort\": 20038" +
 		"        }," +
 		"        \"ExchangeRate\": 1.0," +
-		"        \"GenesisBlockAddress\": \"XQd1DCi6H62NQdWZQhJCRnrPn7sF9CTjaU\"," +
-		"        \"GenesisBlock\": \"168db7dedf19f584cd9acfc6062bb04a92ad1b7d34aed69905d4361728761a7c\"" +
+		"        \"GenesisBlock\": \"7c1a76281736d40599d6ae347d1bad924ab02b06c6cf9acd84f519dfdeb78d16\"" +
 		"      }," +
 		"      {" +
 		"        \"Rpc\": {" +
@@ -40,8 +44,7 @@ func InitMockConfig() {
 		"          \"HttpJsonPort\": 30038" +
 		"        }," +
 		"        \"ExchangeRate\": 1.0," +
-		"        \"GenesisBlockAddress\": \"XQd1DCi6H62NQdWZQhJCRnrPn7sF9CTjaU\"," +
-		"        \"GenesisBlock\": \"168db7dedf19f584cd9acfc6062bb04a92ad1b7d34aed69905d4361728761a7c\"" +
+		"        \"GenesisBlock\": \"7c1a76281736d40599d6ae347d1bad924ab02b06c6cf9acd84f519dfdeb78d33\"" +
 		"      }" +
 		"    ]," +
 		"    \"SyncInterval\": 10000," +
@@ -52,4 +55,23 @@ func InitMockConfig() {
 	config := ConfigFile{}
 	json.Unmarshal(mocConfig, &config)
 	Parameters.Configuration = &config.ConfigFile
+
+	for _, node := range Parameters.SideNodeList {
+		genesisBytes, err := HexStringToBytes(node.GenesisBlock)
+		if err != nil {
+			return
+		}
+		reversedGenesisBytes := BytesReverse(genesisBytes)
+		reversedGenesisStr := BytesToHexString(reversedGenesisBytes)
+		genesisBlockHash, err := Uint256FromHexString(reversedGenesisStr)
+		if err != nil {
+			return
+		}
+		address, err := common.GetGenesisAddress(*genesisBlockHash)
+		if err != nil {
+			return
+		}
+		node.GenesisBlockAddress = address
+		node.GenesisBlock = reversedGenesisStr
+	}
 }

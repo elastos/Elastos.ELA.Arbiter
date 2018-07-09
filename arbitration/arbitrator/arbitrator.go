@@ -310,8 +310,14 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		if err != nil {
 			return err
 		}
-		spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
-		spvService.RegisterTransactionListener(&DepositListener{ListenAddress: sideNode.GenesisBlockAddress})
+		err = spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
+		if err != nil {
+			return err
+		}
+		err = spvService.RegisterTransactionListener(&DepositListener{ListenAddress: sideNode.GenesisBlockAddress})
+		if err != nil {
+			return err
+		}
 	}
 
 	go func() {

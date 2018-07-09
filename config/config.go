@@ -7,6 +7,9 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+
+	"github.com/elastos/Elastos.ELA.SideChain/common"
+	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 const (
@@ -77,7 +80,7 @@ type configParams struct {
 
 func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	for _, node := range Parameters.SideNodeList {
-		if node.GenesisBlockAddress == genesisBlockHash {
+		if node.GenesisBlock == genesisBlockHash {
 			return node.Rpc, true
 		}
 	}
@@ -102,4 +105,31 @@ func Init() {
 	}
 
 	Parameters.Configuration = &(config.ConfigFile)
+
+	var out bytes.Buffer
+	err := json.Indent(&out, file, "", "")
+	if err != nil {
+		fmt.Printf("Config file error: %v\n", e)
+		os.Exit(1)
+	}
+	fmt.Println(out.String())
+
+	for _, node := range Parameters.SideNodeList {
+		genesisBytes, err := HexStringToBytes(node.GenesisBlock)
+		if err != nil {
+			return
+		}
+		reversedGenesisBytes := BytesReverse(genesisBytes)
+		reversedGenesisStr := BytesToHexString(reversedGenesisBytes)
+		genesisBlockHash, err := Uint256FromHexString(reversedGenesisStr)
+		if err != nil {
+			return
+		}
+		address, err := common.GetGenesisAddress(*genesisBlockHash)
+		if err != nil {
+			return
+		}
+		node.GenesisBlockAddress = address
+		node.GenesisBlock = reversedGenesisStr
+	}
 }
