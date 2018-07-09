@@ -200,7 +200,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			if err != nil {
 				log.Warn("Add faild transaction to finished db failed")
 			}
-		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrDoubleSpend {
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrMainchainTxDuplicate {
 			if resp.Error != nil {
 				log.Info("Send deposit found transaction has been processed, move to finished db, txHash:", txHash)
 			} else {
@@ -299,7 +299,7 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		return err
 	}
 
-	spvService, err = NewSPVService(config.Parameters.MainNode.Magic, binary.LittleEndian.Uint64(publicKeyBytes),
+	spvService, err = NewSPVService(config.Parameters.MainNode.Magic, config.Parameters.MainNode.FoundationAddress, binary.LittleEndian.Uint64(publicKeyBytes),
 		config.Parameters.MainNode.SpvSeedList, config.Parameters.MainNode.MinOutbound, config.Parameters.MainNode.MaxConnections)
 	if err != nil {
 		return err

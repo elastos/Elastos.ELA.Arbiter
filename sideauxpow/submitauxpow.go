@@ -9,7 +9,7 @@ import (
 )
 
 func SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error {
-	log.Info("submitauxblock")
+	log.Info("submitsideauxblock")
 
 	var sideNode *config.SideNodeConfig
 	for _, node := range config.Parameters.SideNodeList {
@@ -26,7 +26,7 @@ func SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) err
 	params["sideauxpow"] = submitauxpow
 
 	log.Info("[SubmitAuxpow] Submit auxblock sideNode.Rpc：", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort)
-	resp, err := rpc.CallAndUnmarshal("submitauxblock", params, sideNode.Rpc)
+	resp, err := rpc.CallAndUnmarshal("submitsideauxblock", params, sideNode.Rpc)
 	if err != nil {
 		return err
 	}

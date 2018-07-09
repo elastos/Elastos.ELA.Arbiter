@@ -11,14 +11,6 @@ import (
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
-func (txInfo *TransactionInfo) ConvertFrom(tx *Transaction) error {
-	return nil
-}
-
-func (txInfo *TransactionInfo) ConvertTo() (*Transaction, error) {
-	return nil, nil
-}
-
 func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 
 	switch object := plInfo.(type) {
@@ -72,9 +64,14 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 
 	var txAttribute []*Attribute
 	for _, att := range txInfo.Attributes {
-		attData, err := HexStringToBytes(att.Data)
-		if err != nil {
-			return nil, err
+		var attData []byte
+		if att.Usage == Nonce {
+			attData = []byte(att.Data)
+		} else {
+			attData, err = HexStringToBytes(att.Data)
+			if err != nil {
+				return nil, err
+			}
 		}
 		txAttr := &Attribute{
 			Usage: att.Usage,
@@ -90,7 +87,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		referID, err := Uint256FromBytes(txID)
+		referID, err := Uint256FromBytes(BytesReverse(txID))
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +107,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		assetId, err := Uint256FromBytes(assetIdBytes)
+		assetId, err := Uint256FromBytes(BytesReverse(assetIdBytes))
 		if err != nil {
 			return nil, err
 		}

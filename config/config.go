@@ -14,6 +14,7 @@ const (
 )
 
 var (
+	Version    string
 	Parameters configParams
 )
 
@@ -29,7 +30,7 @@ type Configuration struct {
 	SyncInterval  time.Duration `json:"SyncInterval"`
 	HttpJsonPort  int           `json:"HttpJsonPort"`
 	PrintLevel    int           `json:"PrintLevel"`
-	SpvPrintLevel uint8         `json:"SpvPrintLevel"`
+	SpvPrintLevel int           `json:"SpvPrintLevel"`
 	MaxLogSize    int64         `json:"MaxLogSize"`
 
 	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
@@ -37,6 +38,9 @@ type Configuration struct {
 	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
 	MinOutbound                  int           `json:"MinOutbound"`
 	MaxConnections               int           `json:"MaxConnections"`
+	SideAuxPowFee                int           `json:"SideAuxPowFee"`
+	MinThreshold                 int           `json:"MinThreshold"`
+	DepositAmount                int           `json:"DepositAmount"`
 }
 
 type RpcConfig struct {
@@ -45,20 +49,22 @@ type RpcConfig struct {
 }
 
 type MainNodeConfig struct {
-	Rpc            *RpcConfig `json:"Rpc"`
-	SpvSeedList    []string   `json:"SpvSeedList""`
-	Magic          uint32     `json:"Magic"`
-	MinOutbound    int        `json:"MinOutbound"`
-	MaxConnections int        `json:"MaxConnections"`
+	Rpc               *RpcConfig `json:"Rpc"`
+	SpvSeedList       []string   `json:"SpvSeedList""`
+	Magic             uint32     `json:"Magic"`
+	MinOutbound       int        `json:"MinOutbound"`
+	MaxConnections    int        `json:"MaxConnections"`
+	FoundationAddress string     `json:"FoundationAddress"`
 }
 
 type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
-	ExchangeRate        float32 `json:"ExchangeRate"`
+	ExchangeRate        float64 `json:"ExchangeRate"`
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
+	PayToAddr           string  `json:"PayToAddr"`
 }
 
 type ConfigFile struct {

@@ -97,6 +97,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 
 	var sideChain SideChain
 	for _, sideNode := range config.Parameters.SideNodeList {
+		log.Info("Side node genesis block:", sideNode.GenesisBlock, "side aux pow tx genesis hash:", genesishashString)
 		if sideNode.GenesisBlock == genesishashString {
 			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
 			if ok {
@@ -116,6 +117,12 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	}
 
 	if sideChain == nil {
+		log.Error("Arbiter not find side chain")
+		allChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
+		for index, chain := range allChains {
+			log.Error("Side chain", index, ":", chain.GetKey())
+		}
+
 		log.Error("Can not find side chain from genesis block hash: [", genesishashString, "]")
 		return
 	}

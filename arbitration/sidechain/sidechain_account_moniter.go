@@ -62,24 +62,26 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {
+			log.Info("currentHeight:", currentHeight, " chainHeight:", chainHeight)
 			for currentHeight < chainHeight {
-				transactions, err := GetDestroyedTransactionByHeight(currentHeight+1, sideNode.Rpc)
-				if err != nil {
-					break
-				}
-				monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1)
-				// Update wallet height
-				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, transactions.Height)
-				log.Info(" [arbitrator] Side chain [", sideNode.GenesisBlockAddress, "] height: ", transactions.Height)
-				if currentHeight == chainHeight {
-					arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
-					if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-						sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
-						if ok {
-							sideChain.StartSideChainMining()
-							log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
-						}
+				if currentHeight >= 6 {
+					transactions, err := GetDestroyedTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
+					if err != nil {
+						break
 					}
+					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
+				}
+				// Update wallet height
+				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight+1)
+				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", chainHeight)
+			}
+
+			arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
+			if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+				sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
+				if ok {
+					sideChain.StartSideChainMining()
+					log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
 				}
 			}
 		}

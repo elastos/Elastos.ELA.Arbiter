@@ -54,7 +54,7 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 }
 
 func main() {
-
+	log.Info("Arbiter version: ", config.Version)
 	log.Info("1. Init configurations.")
 	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
 		log.Fatal(err)
@@ -64,7 +64,7 @@ func main() {
 	log.Info("2. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
-		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
+		log.Fatalf("Data store open failed error: [s%]", err.Error())
 		os.Exit(1)
 	}
 	store.DbCache = *dataStore
@@ -124,8 +124,8 @@ func main() {
 	log.Info("10. Start check and remove cross chain transactions from db.")
 	go currentArbitrator.CheckAndRemoveCrossChainTransactionsFromDBLoop()
 
-	//log.Info("11. Start side chain account divide.")
-	//go sideauxpow.SidechainAccountDivide(wallet)
+	log.Info("11. Start side chain account divide.")
+	go sideauxpow.SidechainAccountDivide(wallet)
 
 	select {}
 }
