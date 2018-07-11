@@ -100,8 +100,6 @@ func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdrawInfo *WithdrawInfo,
 	sideChainTransactionHashes []string, mcFunc MainChainFunc) (*Transaction, error) {
 
-	mc.SyncChainData()
-
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
 	if err != nil {
@@ -461,15 +459,17 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get exist deposit transactions failed.")
 			continue
 		}
-		for _, recTx := range receivedTxs {
-			err = DbCache.MainChainStore.RemoveMainChainTx(recTx, k.GetKey())
-			if err != nil {
-				return err
-			}
-			err = FinishedTxsDbCache.AddSucceedDepositTx(recTx, k.GetKey())
-			if err != nil {
-				log.Error("[CheckAndRemoveDepositTransactionsFromDB] Add succeed deposit transactions into finished db failed")
-			}
+		finalGenesisAddresses := make([]string, len(receivedTxs))
+		for i := 0; i < len(finalGenesisAddresses); i++ {
+			finalGenesisAddresses[i] = k.GetKey()
+		}
+		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)
+		if err != nil {
+			return err
+		}
+		err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, finalGenesisAddresses)
+		if err != nil {
+			log.Error("[CheckAndRemoveDepositTransactionsFromDB] Add succeed deposit transactions into finished db failed")
 		}
 	}
 
