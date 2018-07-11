@@ -102,7 +102,7 @@ func ExampleNormalWithdraw() {
 	tx3.Deserialize(txReader)
 
 	//step3.3 parse withdraw info from tx3
-	withdrawInfos, _ := sidechainObj.ParseUserWithdrawTransactionInfos([]*Transaction{tx3})
+	withdrawInfos, _ := sidechainObj.ParseUserWithdrawTransactionInfo([]*Transaction{tx3})
 
 	hash := tx3.Hash()
 	//step3.4 create withdraw transactions(tx4) for main chain

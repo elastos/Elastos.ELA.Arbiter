@@ -304,7 +304,7 @@ func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction,
 	return tx, nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proof bloom.MerkleProof,
+func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proof *bloom.MerkleProof,
 	mainChainTransaction *core.Transaction) (*TransactionInfo, error) {
 	var txOutputs []OutputInfo // The outputs in transaction
 
@@ -361,7 +361,7 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	}, nil
 }
 
-func (sc *SideChainImpl) ParseUserWithdrawTransactionInfos(txn []*core.Transaction) (*WithdrawInfo, error) {
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn []*core.Transaction) (*WithdrawInfo, error) {
 	result := new(WithdrawInfo)
 	for _, tx := range txn {
 		payloadObj, ok := tx.Payload.(*core.PayloadTransferCrossChainAsset)
@@ -430,7 +430,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 			return err
 		}
 
-		err = store.FinishedTxsDbCache.AddSucceedWIthdrawTx(receivedTxs)
+		err = store.FinishedTxsDbCache.AddSucceedWithdrawTx(receivedTxs)
 		if err != nil {
 			return err
 		}
@@ -449,13 +449,14 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return nil
 	}
 
-	withdrawInfos, err := sc.ParseUserWithdrawTransactionInfos(unsolvedTransactions)
+	withdrawInfo, err := sc.ParseUserWithdrawTransactionInfo(unsolvedTransactions)
 	if err != nil {
 		return err
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfos, sc, txnHashes, &store.DbMainChainFunc{})
+	currentArbitrator.GetMainChain().SyncChainData()
+	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfo, sc, txnHashes, &store.DbMainChainFunc{})
 
 	log.Info("[CreateAndBroadcastWithdrawProposal] Transactions count: ", len(transactions))
 	currentArbitrator.BroadcastWithdrawProposal(transactions)

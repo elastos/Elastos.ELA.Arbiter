@@ -22,7 +22,7 @@ type SideChain interface {
 	RemoveLastUsedOutPoints(ops []core.OutPoint)
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
-	CreateDepositTransaction(depositInfo *DepositInfo, proof bloom.MerkleProof,
+	CreateDepositTransaction(depositInfo *DepositInfo, proof *bloom.MerkleProof,
 		mainChainTransaction *core.Transaction) (*TransactionInfo, error)
 
 	GetTransactionByHash(txHash string) (*core.Transaction, error)

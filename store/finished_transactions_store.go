@@ -49,13 +49,15 @@ var (
 
 type FinishedTransactionsDataStore interface {
 	AddDepositTx(transactionHash, genesisBlockAddress string, transactionInfoBytes []byte, succeed bool) error
+	AddDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte, succeed bool) error
 	AddSucceedDepositTx(transactionHash, genesisBlockAddress string) error
+	AddSucceedDepositTxs(transactionHashes, genesisBlockAddresses []string) error
 	HasDepositTx(transactionHash string) (bool, error)
 	GetDepositTxByHash(transactionHash string) ([]bool, []string, error)
 	GetDepositTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error)
 
 	AddWithdrawTx(transactionHashes []string, transactionByte []byte, succeed bool) error
-	AddSucceedWIthdrawTx(transactionHashes []string) error
+	AddSucceedWithdrawTx(transactionHashes []string) error
 	HasWithdrawTx(transactionHash string) (bool, error)
 	GetWithdrawTxByHash(transactionHash string) (bool, []byte, error)
 
@@ -145,6 +147,7 @@ func (store *FinishedTxsDataStoreImpl) AddDepositTx(transactionHash, genesisBloc
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionInfoBytes, succeed, time.Now().Format("2006-01-02_15.04.05"))
@@ -152,6 +155,33 @@ func (store *FinishedTxsDataStoreImpl) AddDepositTx(transactionHash, genesisBloc
 		return err
 	}
 
+	return nil
+}
+
+func (store *FinishedTxsDataStoreImpl) AddDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte, succeed bool) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO DepositTransactions(TransactionHash, GenesisBlockAddress, TransactionData, Succeed, RecordTime) values(?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+
+	// Do insert
+	for i := 0; i < len(transactionHashes); i++ {
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionInfoBytes[i], succeed, time.Now().Format("2006-01-02_15.04.05"))
+		if err != nil {
+			continue
+		}
+	}
+	stmt.Close()
+	tx.Commit()
 	return nil
 }
 
@@ -164,6 +194,7 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedDepositTx(transactionHash, gene
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	_, err = stmt.Exec(transactionHash, genesisBlockAddress, true, time.Now().Format("2006-01-02_15.04.05"))
@@ -174,15 +205,42 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedDepositTx(transactionHash, gene
 	return nil
 }
 
+func (store *FinishedTxsDataStoreImpl) AddSucceedDepositTxs(transactionHashes, genesisBlockAddresses []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO DepositTransactions(TransactionHash, GenesisBlockAddress, Succeed, RecordTime) values(?,?,?,?)")
+	if err != nil {
+		return err
+	}
+
+	// Do insert
+	for i := 0; i < len(transactionHashes); i++ {
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], true, time.Now().Format("2006-01-02_15.04.05"))
+		if err != nil {
+			continue
+		}
+	}
+	stmt.Close()
+	tx.Commit()
+	return nil
+}
+
 func (store *FinishedTxsDataStoreImpl) HasDepositTx(transactionHash string) (bool, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT GenesisBlockAddress FROM DepositTransactions WHERE TransactionHash=?`, transactionHash)
-	defer rows.Close()
 	if err != nil {
 		return false, err
 	}
+	defer rows.Close()
 
 	return rows.Next(), nil
 }
@@ -243,13 +301,13 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string,
 	if err != nil {
 		return err
 	}
+	stmt.Close()
 
 	// Do insert
 	_, err = stmt.Exec(transactionByte, time.Now().Format("2006-01-02_15.04.05"))
 	if err != nil {
 		return err
 	}
-	stmt.Close()
 
 	// Get id
 	rows, err := store.Query(`SELECT MAX(Id) FROM SideChainTransactions`)
@@ -290,7 +348,7 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string,
 	return nil
 }
 
-func (store *FinishedTxsDataStoreImpl) AddSucceedWIthdrawTx(transactionHashes []string) error {
+func (store *FinishedTxsDataStoreImpl) AddSucceedWithdrawTx(transactionHashes []string) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 

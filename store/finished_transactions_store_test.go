@@ -209,7 +209,7 @@ func TestFinishedTxsDataStoreImpl_AddSucceedWIthdrawTx(t *testing.T) {
 	txHash1 := "testHash1"
 	txHash2 := "testHash2"
 
-	err = datastore.AddSucceedWIthdrawTx([]string{txHash1, txHash2})
+	err = datastore.AddSucceedWithdrawTx([]string{txHash1, txHash2})
 	if err != nil {
 		t.Error("Add withdraw transaction error.")
 	}
