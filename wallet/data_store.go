@@ -6,7 +6,9 @@ import (
 	"math"
 	"sync"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -306,32 +308,40 @@ func (store *DataStoreImpl) GetAddressUTXOs(programHash *Uint168) ([]*UTXO, erro
 	store.Lock()
 	defer store.Unlock()
 
-	rows, err := store.Query(`SELECT UTXOs.OutPoint, UTXOs.Amount, UTXOs.LockTime FROM UTXOs INNER JOIN Addresses
- 								ON UTXOs.AddressId=Addresses.Id WHERE Addresses.ProgramHash=?`, programHash.Bytes())
+	address, err := programHash.ToAddress()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+
+	utxoInfos, err := rpc.GetUnspendUtxo([]string{address}, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
 
 	var inputs []*UTXO
-	for rows.Next() {
-		var opBytes []byte
-		var amountBytes []byte
-		var lockTime uint32
-		err = rows.Scan(&opBytes, &amountBytes, &lockTime)
+	for _, utxoInfo := range utxoInfos {
+
+		bytes, err := HexStringToBytes(utxoInfo.Txid)
+		if err != nil {
+			return nil, err
+		}
+		reversedBytes := BytesReverse(bytes)
+		txid, err := Uint256FromBytes(reversedBytes)
 		if err != nil {
 			return nil, err
 		}
 
 		var op OutPoint
-		reader := bytes.NewReader(opBytes)
-		op.Deserialize(reader)
+		op.TxID = *txid
+		op.Index = uint16(utxoInfo.VOut)
 
-		var amount Fixed64
-		reader = bytes.NewReader(amountBytes)
-		amount.Deserialize(reader)
+		amount, err := StringToFixed64(utxoInfo.Amount)
+		if err != nil {
+			return nil, err
+		}
 
-		inputs = append(inputs, &UTXO{&op, &amount, lockTime})
+		//todo get lock time from rpc interface of main chain
+		inputs = append(inputs, &UTXO{&op, amount, 0})
 	}
 	return inputs, nil
 }

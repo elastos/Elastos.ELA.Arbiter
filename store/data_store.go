@@ -472,12 +472,14 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisB
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	for i := 0; i < len(transactionHashes); i++ {
@@ -486,8 +488,6 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisB
 			return err
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 
 	return nil
 }
@@ -538,17 +538,17 @@ func (store *DataStoreSideChainImpl) RemoveSideChainTxs(transactionHashes []stri
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	stmt, err := tx.Prepare("DELETE FROM SideChainTxs WHERE TransactionHash=?")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	for _, txHash := range transactionHashes {
 		stmt.Exec(txHash)
 	}
-	stmt.Close()
-	tx.Commit()
 
 	return nil
 }
@@ -624,6 +624,7 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var transactionBytes []byte
@@ -638,7 +639,6 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 		txs = append(txs, &tx)
 
 	}
-	rows.Close()
 	return txs, nil
 }
 
@@ -657,6 +657,7 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(
 			var transactionBytes []byte
 			err = rows.Scan(&transactionBytes)
 			if err != nil {
+				rows.Close()
 				return nil, err
 			}
 
@@ -730,12 +731,14 @@ func (store *DataStoreMainChainImpl) AddMainChainTxs(transactionHashes, genesisB
 	if err != nil {
 		return nil, err
 	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := tx.Prepare("INSERT INTO MainChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
 	if err != nil {
 		return nil, err
 	}
+	defer stmt.Close()
 
 	var result []bool
 	for i := 0; i < len(transactionHashes); i++ {
@@ -757,8 +760,6 @@ func (store *DataStoreMainChainImpl) AddMainChainTxs(transactionHashes, genesisB
 			result = append(result, true)
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 
 	return result, nil
 }
@@ -802,11 +803,13 @@ func (store *DataStoreMainChainImpl) RemoveMainChainTxs(transactionHashes, genes
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	stmt, err := tx.Prepare("DELETE FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	for i := 0; i < len(transactionHashes); i++ {
 		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddress[i])
@@ -814,8 +817,6 @@ func (store *DataStoreMainChainImpl) RemoveMainChainTxs(transactionHashes, genes
 			continue
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 
 	return nil
 }
@@ -903,6 +904,7 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 			var merkleProofBytes []byte
 			err = rows.Scan(&transactionBytes, &merkleProofBytes)
 			if err != nil {
+				rows.Close()
 				return nil, nil, err
 			}
 

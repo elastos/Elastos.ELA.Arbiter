@@ -135,17 +135,6 @@ func GetTransactionByHash(transactionHash string, config *config.RpcConfig) ([]b
 }
 
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
-	/*var reversedTxs []string
-	for _, txHash := range txs {
-		hashBytes, err := common.HexStringToBytes(txHash)
-		if err != nil {
-			return nil, err
-		}
-		reversedHashBytes := common.BytesReverse(hashBytes)
-		reversedTxHash := common.BytesToHexString(reversedHashBytes)
-		reversedTxs = append(reversedTxs, reversedTxHash)
-	}*/
-
 	infoBytes, err := json.Marshal(txs)
 	if err != nil {
 		return nil, err
@@ -163,17 +152,6 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 }
 
 func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
-	/*var reversedTxs []string
-	for _, txHash := range txs {
-		hashBytes, err := common.HexStringToBytes(txHash)
-		if err != nil {
-			return nil, err
-		}
-		reversedHashBytes := common.BytesReverse(hashBytes)
-		reversedTxHash := common.BytesToHexString(reversedHashBytes)
-		reversedTxs = append(reversedTxs, reversedTxHash)
-	}*/
-
 	infoBytes, err := json.Marshal(txs)
 	if err != nil {
 		return nil, err
@@ -190,6 +168,20 @@ func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]stri
 	return removeTxs, nil
 }
 
+func GetUnspendUtxo(addresses []string, config *config.RpcConfig) ([]UTXOInfo, error) {
+	parameter := make(map[string][]string)
+	parameter["addresses"] = addresses
+	result, err := CallAndUnmarshals("listunspent", parameter, config)
+	if err != nil {
+		return nil, err
+	}
+
+	var utxoInfos []UTXOInfo
+	Unmarshal(&result, &utxoInfos)
+
+	return utxoInfos, nil
+}
+
 func Call(method string, params map[string]string, config *config.RpcConfig) ([]byte, error) {
 	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	data, err := json.Marshal(map[string]interface{}{
@@ -200,7 +192,6 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 		return nil, err
 	}
 
-	//log.Trace("RPC call:", string(data))
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
 	if err != nil {
 		log.Info("POST requset err:", err)
@@ -212,7 +203,31 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 	if err != nil {
 		return nil, err
 	}
-	//log.Trace("RPC resp:", string(body))
+
+	return body, nil
+}
+
+func Calls(method string, params map[string][]string, config *config.RpcConfig) ([]byte, error) {
+	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
+	data, err := json.Marshal(map[string]interface{}{
+		"method": method,
+		"params": params,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
+	if err != nil {
+		log.Info("POST requset err:", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 
 	return body, nil
 }
@@ -247,6 +262,25 @@ func GetBlockTransactions(resp interface{}) (*BlockTransactions, error) {
 
 func CallAndUnmarshal(method string, params map[string]string, config *config.RpcConfig) (interface{}, error) {
 	body, err := Call(method, params, config)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := Response{}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return string(body), nil
+	}
+
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+
+	return resp.Result, nil
+}
+
+func CallAndUnmarshals(method string, params map[string][]string, config *config.RpcConfig) (interface{}, error) {
+	body, err := Calls(method, params, config)
 	if err != nil {
 		return nil, err
 	}

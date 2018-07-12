@@ -166,12 +166,14 @@ func (store *FinishedTxsDataStoreImpl) AddDepositTxs(transactionHashes, genesisB
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := tx.Prepare("INSERT INTO DepositTransactions(TransactionHash, GenesisBlockAddress, TransactionData, Succeed, RecordTime) values(?,?,?,?,?)")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	for i := 0; i < len(transactionHashes); i++ {
@@ -180,8 +182,6 @@ func (store *FinishedTxsDataStoreImpl) AddDepositTxs(transactionHashes, genesisB
 			continue
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 	return nil
 }
 
@@ -213,12 +213,14 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedDepositTxs(transactionHashes, g
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := tx.Prepare("INSERT INTO DepositTransactions(TransactionHash, GenesisBlockAddress, Succeed, RecordTime) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	for i := 0; i < len(transactionHashes); i++ {
@@ -227,8 +229,6 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedDepositTxs(transactionHashes, g
 			continue
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 	return nil
 }
 
@@ -301,7 +301,7 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string,
 	if err != nil {
 		return err
 	}
-	stmt.Close()
+	defer stmt.Close()
 
 	// Do insert
 	_, err = stmt.Exec(transactionByte, time.Now().Format("2006-01-02_15.04.05"))
@@ -314,6 +314,7 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string,
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 
 	if !rows.Next() {
 		return errors.New("get max id from SideChainTransactions table failed")
@@ -323,18 +324,19 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string,
 	if err != nil {
 		return err
 	}
-	rows.Close()
 
 	tx, err := store.Begin()
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err = tx.Prepare("INSERT INTO WithdrawTransactions(TransactionHash, SideChainTransactionId, Succeed, RecordTime) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	for _, txHash := range transactionHashes {
@@ -343,8 +345,6 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTx(transactionHashes []string,
 			return err
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 	return nil
 }
 
@@ -356,12 +356,14 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedWithdrawTx(transactionHashes []
 	if err != nil {
 		return err
 	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := tx.Prepare("INSERT INTO WithdrawTransactions(TransactionHash, SideChainTransactionId, Succeed, RecordTime) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
+	defer stmt.Close()
 
 	// Do insert
 	for _, txHash := range transactionHashes {
@@ -370,8 +372,6 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedWithdrawTx(transactionHashes []
 			return err
 		}
 	}
-	stmt.Close()
-	tx.Commit()
 	return nil
 }
 
@@ -396,6 +396,7 @@ func (store *FinishedTxsDataStoreImpl) GetWithdrawTxByHash(transactionHash strin
 	if err != nil {
 		return false, nil, err
 	}
+	defer rows.Close()
 	if !rows.Next() {
 		return false, nil, errors.New("get withdraw transaction by hash failed")
 	}
@@ -405,22 +406,22 @@ func (store *FinishedTxsDataStoreImpl) GetWithdrawTxByHash(transactionHash strin
 	if err != nil {
 		return false, nil, err
 	}
-	rows.Close()
 
 	if succeed {
 		return true, nil, err
 	}
 
-	rows, err = store.Query(`SELECT TransactionData FROM SideChainTransactions WHERE Id=?`, sideChainTransactionId)
+	rowsS, err := store.Query(`SELECT TransactionData FROM SideChainTransactions WHERE Id=?`, sideChainTransactionId)
 	if err != nil {
 		return false, nil, err
 	}
+	defer rowsS.Close()
 
-	if !rows.Next() {
+	if !rowsS.Next() {
 		return false, nil, errors.New("get withdraw transaction by hash failed, SideChainTransactions table has no record of needed id")
 	}
 	var transactionBytes []byte
-	err = rows.Scan(&transactionBytes)
+	err = rowsS.Scan(&transactionBytes)
 	if err != nil {
 		return false, nil, err
 	}

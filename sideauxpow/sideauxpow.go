@@ -160,7 +160,7 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	// send transaction
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
-		return err
+		return errors.New("[SendSideChainMining] sendrawtransaction failed: " + err.Error())
 	}
 	log.Info("[SendSideChainMining] End send Sidemining transaction:  genesis address [", sideNode.GenesisBlockAddress, "], result: ", result)
 
