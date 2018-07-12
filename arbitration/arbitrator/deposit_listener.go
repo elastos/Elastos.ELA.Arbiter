@@ -96,7 +96,7 @@ func (l *DepositListener) start() {
 			case data, ok := <-l.notifyQueue:
 				if ok {
 					tasks = append(tasks, data)
-					log.Info("[DepositListener] len datas:", len(tasks))
+					log.Info("[DepositListener] len tasks:", len(tasks))
 					if len(tasks) >= 10000 {
 						l.ProcessNotifyData(tasks)
 						tasks = make([]*notifyTask, 0)
@@ -110,7 +110,7 @@ func (l *DepositListener) start() {
 				data, ok := <-l.notifyQueue
 				if ok {
 					tasks = append(tasks, data)
-					log.Info("[DepositListener] len datas:", len(tasks))
+					log.Info("[DepositListener] len tasks:", len(tasks))
 				}
 			}
 		}

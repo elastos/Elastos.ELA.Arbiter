@@ -107,3 +107,12 @@ type TransferCrossChainAssetInfo struct {
 
 type TransferAssetInfo struct {
 }
+
+type UTXOInfo struct {
+	AssetId       string `json:"assetid"`
+	Txid          string `json:"txid"`
+	VOut          uint32 `json:"vout"`
+	Address       string `json:"address"`
+	Amount        string `json:"amount"`
+	Confirmations uint32 `json:"confirmations"`
+}
