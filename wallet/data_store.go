@@ -313,7 +313,7 @@ func (store *DataStoreImpl) GetAddressUTXOs(programHash *Uint168) ([]*UTXO, erro
 		return nil, err
 	}
 
-	utxoInfos, err := rpc.GetUnspendUtxo([]string{address}, config.Parameters.MainNode.Rpc)
+	utxoInfos, err := rpc.GetUnspentUtxo([]string{address}, config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
@@ -340,8 +340,7 @@ func (store *DataStoreImpl) GetAddressUTXOs(programHash *Uint168) ([]*UTXO, erro
 			return nil, err
 		}
 
-		//todo get lock time from rpc interface of main chain
-		inputs = append(inputs, &UTXO{&op, amount, 0})
+		inputs = append(inputs, &UTXO{&op, amount, utxoInfo.OutputLock})
 	}
 	return inputs, nil
 }
