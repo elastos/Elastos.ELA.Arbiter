@@ -67,16 +67,17 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		}
 		unsolvedTxs := SubstractTransactionHashes(v, receivedTxs)
 		result[k] = unsolvedTxs
-
-		for _, recTx := range receivedTxs {
-			err = DbCache.MainChainStore.RemoveMainChainTx(recTx, k.GetKey())
-			if err != nil {
-				return nil, err
-			}
-			err = FinishedTxsDbCache.AddSucceedDepositTx(recTx, k.GetKey())
-			if err != nil {
-				log.Error("Add succeed deposit transactions into finished db failed")
-			}
+		var addresses []string
+		for i := 0; i < len(unsolvedTxs); i++ {
+			addresses = append(addresses, k.GetKey())
+		}
+		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
+		if err != nil {
+			return nil, err
+		}
+		err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
+		if err != nil {
+			log.Error("Add succeed deposit transactions into finished db failed")
 		}
 	}
 

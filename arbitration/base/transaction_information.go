@@ -1,6 +1,10 @@
 package base
 
-import "github.com/elastos/Elastos.ELA.Utility/common"
+import (
+	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/bloom"
+	"github.com/elastos/Elastos.ELA/core"
+)
 
 type WithdrawInfo struct {
 	TargetAddress     []string
@@ -13,4 +17,10 @@ type DepositInfo struct {
 	TargetAddress        []string
 	Amount               []common.Fixed64
 	CrossChainAmounts    []common.Fixed64
+}
+
+type SpvTransaction struct {
+	MainChainTransaction *core.Transaction
+	Proof                *bloom.MerkleProof
+	DepositInfo          *DepositInfo
 }

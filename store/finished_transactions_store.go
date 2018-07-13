@@ -254,37 +254,20 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTxs(transactionHashes []string
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTransactions(TransactionData, RecordTime) values(?,?)")
-	if err != nil {
-		return err
-	}
-
 	// Do insert
-	_, err = stmt.Exec(transactionByte, time.Now().Format("2006-01-02_15.04.05"))
+	_, err := store.Exec("INSERT INTO SideChainTransactions(TransactionData, RecordTime) values(?,?)",
+		transactionByte, time.Now().Format("2006-01-02_15.04.05"))
 	if err != nil {
-		stmt.Close()
 		return err
 	}
-	stmt.Close()
 
 	// Get id
-	rows, err := store.Query(`SELECT MAX(Id) FROM SideChainTransactions`)
-	if err != nil {
-		return err
-	}
-
-	if !rows.Next() {
-		rows.Close()
-		return errors.New("get max id from SideChainTransactions table failed")
-	}
 	var sideChainTransactionId int
-	err = rows.Scan(&sideChainTransactionId)
+	row := store.QueryRow(`SELECT MAX(Id) FROM SideChainTransactions`)
+	err = row.Scan(&sideChainTransactionId)
 	if err != nil {
-		rows.Close()
 		return err
 	}
-	rows.Close()
 
 	tx, err := store.Begin()
 	if err != nil {

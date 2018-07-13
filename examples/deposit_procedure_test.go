@@ -7,6 +7,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
@@ -73,10 +74,10 @@ func ExampleNormalDeposit() {
 	proof.Deserialize(proofReader)
 
 	//step3.2 parse deposit info from tx1
-	depositInfos, _ := arbitrator.ParseUserDepositTransactionInfo(tx1, side.GetKey())
+	depositInfo, _ := arbitrator.ParseUserDepositTransactionInfo(tx1, side.GetKey())
 
 	//step3.3 create transaction(tx2) info from deposit info
-	transactionInfos := arbitrator.CreateDepositTransactions(proof, tx1, depositInfos)
+	transactionInfos := arbitrator.CreateDepositTransactions([]*base.SpvTransaction{&base.SpvTransaction{tx1, &proof, depositInfo}})
 
 	//step3.4 send tx2 info to side chain
 	//arbitrator.SendDepositTransactions(transactionInfos)
