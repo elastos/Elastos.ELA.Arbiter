@@ -168,7 +168,7 @@ func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]stri
 	return removeTxs, nil
 }
 
-func GetUnspendUtxo(addresses []string, config *config.RpcConfig) ([]UTXOInfo, error) {
+func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]UTXOInfo, error) {
 	parameter := make(map[string][]string)
 	parameter["addresses"] = addresses
 	result, err := CallAndUnmarshals("listunspent", parameter, config)
