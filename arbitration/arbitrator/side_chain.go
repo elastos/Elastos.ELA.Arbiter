@@ -3,7 +3,6 @@ package arbitrator
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
-	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
 
@@ -22,8 +21,7 @@ type SideChain interface {
 	RemoveLastUsedOutPoints(ops []core.OutPoint)
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
-	CreateDepositTransaction(depositInfo *DepositInfo, proof *bloom.MerkleProof,
-		mainChainTransaction *core.Transaction) (*TransactionInfo, error)
+	CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error)
 
 	GetTransactionByHash(txHash string) (*core.Transaction, error)
 }

@@ -18,7 +18,6 @@ import (
 	scError "github.com/elastos/Elastos.ELA.SideChain/errors"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -41,9 +40,9 @@ type Arbitrator interface {
 
 	//deposit
 	ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error)
-	CreateDepositTransactions(proofs []*bloom.MerkleProof, mainChainTransactions []*Transaction, depositInfos []*DepositInfo) map[*TransactionInfo]*DepositTxInfo
+	CreateDepositTransactions(spvTxs []*SpvTransaction) map[*TransactionInfo]*DepositTxInfo
 	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]*DepositTxInfo)
-	CreateAndSendDepositTransactions(proofs []*bloom.MerkleProof, txs []*Transaction, genesisAddresses string)
+	CreateAndSendDepositTransactions(spvTxs []*SpvTransaction, genesisAddresses string)
 
 	//withdraw
 	CreateWithdrawTransactions(
@@ -161,12 +160,11 @@ type DepositTxInfo struct {
 	sideChain       SideChain
 }
 
-func (ar *ArbitratorImpl) CreateDepositTransactions(proofs []*bloom.MerkleProof, mainChainTransactions []*Transaction,
-	depositInfos []*DepositInfo) map[*TransactionInfo]*DepositTxInfo {
+func (ar *ArbitratorImpl) CreateDepositTransactions(spvTxs []*SpvTransaction) map[*TransactionInfo]*DepositTxInfo {
 	result := make(map[*TransactionInfo]*DepositTxInfo, 0)
 
-	for i := 0; i < len(mainChainTransactions); i++ {
-		addr, err := depositInfos[i].MainChainProgramHash.ToAddress()
+	for i := 0; i < len(spvTxs); i++ {
+		addr, err := spvTxs[i].DepositInfo.MainChainProgramHash.ToAddress()
 		if err != nil {
 			log.Warn("Invalid deposit program hash")
 			return nil
@@ -177,14 +175,14 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(proofs []*bloom.MerkleProof,
 			return nil
 		}
 
-		txInfo, err := sideChain.CreateDepositTransaction(depositInfos[i], proofs[i], mainChainTransactions[i])
+		txInfo, err := sideChain.CreateDepositTransaction(spvTxs[i])
 		if err != nil {
 			log.Warn("Create deposit transaction failed")
 			return nil
 		}
 
 		result[txInfo] = &DepositTxInfo{
-			mainChainTxHash: mainChainTransactions[i].Hash().String(),
+			mainChainTxHash: spvTxs[i].MainChainTransaction.Hash().String(),
 			sideChain:       sideChain,
 		}
 	}
@@ -212,7 +210,6 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			failedDepositTxBytes = append(failedDepositTxBytes, depositTxBytes)
 			failedMainChainTxHashes = append(failedMainChainTxHashes, depositTxInfo.mainChainTxHash)
 			failedGenesisAddresses = append(failedGenesisAddresses, depositTxInfo.sideChain.GetKey())
-
 		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrMainchainTxDuplicate {
 			if resp.Error != nil {
 				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
@@ -368,34 +365,30 @@ func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string,
 	return content, nil
 }
 
-func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(proofs []*bloom.MerkleProof, txs []*Transaction, genesisAddress string) {
-	var depositInfos []*DepositInfo
-	var finalProofs []*bloom.MerkleProof
-	var finalTxs []*Transaction
+func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string) {
+	var txs []*SpvTransaction
 	var finalTxHashes []string
-	for i := 0; i < len(txs); i++ {
-		depositInfo, err := ar.ParseUserDepositTransactionInfo(txs[i], genesisAddress)
+	for i := 0; i < len(spvTxs); i++ {
+		depositInfo, err := ar.ParseUserDepositTransactionInfo(spvTxs[i].MainChainTransaction, genesisAddress)
 		if err != nil {
 			log.Error(err)
 			continue
 		}
-		depositInfos = append(depositInfos, depositInfo)
-		finalProofs = append(finalProofs, proofs[i])
-		finalTxs = append(finalTxs, txs[i])
-		finalTxHashes = append(finalTxHashes, txs[i].Hash().String())
+		txs = append(txs, &SpvTransaction{spvTxs[i].MainChainTransaction, spvTxs[i].Proof, depositInfo})
+		finalTxHashes = append(finalTxHashes, spvTxs[i].MainChainTransaction.Hash().String())
 	}
 
-	transactionInfoMap := ar.CreateDepositTransactions(finalProofs, finalTxs, depositInfos)
+	transactionInfoMap := ar.CreateDepositTransactions(txs)
 	ar.SendDepositTransactions(transactionInfoMap)
 }
 
 func (ar *ArbitratorImpl) CreateAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
-	txs, proofs, err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
+	spvTxs, err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
 	if err != nil {
 		return
 	}
 
-	ar.CreateAndSendDepositTransactions(proofs, txs, sideChain.GetKey())
+	ar.CreateAndSendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
 func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {

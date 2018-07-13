@@ -111,9 +111,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		return
 	}
 
-	var depositInfos []*DepositInfo
-	var finalProofs []*bloom.MerkleProof
-	var finalTxs []*Transaction
+	var spvTxs []*SpvTransaction
 	var finalTxHashes []string
 	for i := 0; i < len(result); i++ {
 		if result[i] {
@@ -122,14 +120,12 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 				log.Error(err)
 				continue
 			}
-			depositInfos = append(depositInfos, depositInfo)
-			finalProofs = append(finalProofs, proofs[i])
-			finalTxs = append(finalTxs, txs[i])
+			spvTxs = append(spvTxs, &SpvTransaction{txs[i], proofs[i], depositInfo})
 			finalTxHashes = append(finalTxHashes, txHashes[i])
 		}
 	}
 
-	transactionInfoMap := arbitrator.CreateDepositTransactions(finalProofs, finalTxs, depositInfos)
+	transactionInfoMap := arbitrator.CreateDepositTransactions(spvTxs)
 	if len(transactionInfoMap) != testLoopTimes {
 		t.Error("Create deposit transactions failed")
 	}

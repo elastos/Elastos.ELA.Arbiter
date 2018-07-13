@@ -478,11 +478,11 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 		}
 	}
 
-	txs, proofs, err = datastore.GetMainChainTxsFromHashes([]string{txHash1, txHash2, txHash3}, genesisAddress)
+	spvTxs, err := datastore.GetMainChainTxsFromHashes([]string{txHash1, txHash2, txHash3}, genesisAddress)
 	if err != nil {
 		t.Error("Get main chain txs from hashes error.")
 	}
-	if len(txs) != 3 || len(proofs) != 3 {
+	if len(spvTxs) != 3 {
 		t.Error("Get main chain txs from hashes error.")
 	}
 

@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
@@ -886,17 +887,16 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]string, []string, [
 	return txHashes, genesisAddresses, txs, mps, nil
 }
 
-func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*Transaction, []*bloom.MerkleProof, error) {
+func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.SpvTransaction, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	var txs []*Transaction
-	var mps []*bloom.MerkleProof
+	var spvTxs []*base.SpvTransaction
 
 	for i := 0; i < len(transactionHashes); i++ {
 		rows, err := store.Query(`SELECT MainChainTxs.TransactionData, MainChainTxs.MerkleProof FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHashes[i], genesisBlockAddresses)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		for rows.Next() {
@@ -905,7 +905,7 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 			err = rows.Scan(&transactionBytes, &merkleProofBytes)
 			if err != nil {
 				rows.Close()
-				return nil, nil, err
+				return nil, err
 			}
 
 			var tx Transaction
@@ -916,13 +916,12 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 			reader = bytes.NewReader(merkleProofBytes)
 			mp.Deserialize(reader)
 
-			txs = append(txs, &tx)
-			mps = append(mps, &mp)
+			spvTxs = append(spvTxs, &base.SpvTransaction{MainChainTransaction: &tx, Proof: &mp})
 		}
 		rows.Close()
 	}
 
-	return txs, mps, nil
+	return spvTxs, nil
 }
 
 type DbMainChainFunc struct {

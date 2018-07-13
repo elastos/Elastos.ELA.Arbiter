@@ -22,7 +22,6 @@ import (
 	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA/bloom"
 	"github.com/elastos/Elastos.ELA/core"
 )
 
@@ -304,8 +303,7 @@ func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction,
 	return tx, nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proof *bloom.MerkleProof,
-	mainChainTransaction *core.Transaction) (*TransactionInfo, error) {
+func (sc *SideChainImpl) CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error) {
 	var txOutputs []OutputInfo // The outputs in transaction
 
 	assetID := spvWallet.SystemAssetId
@@ -313,24 +311,24 @@ func (sc *SideChainImpl) CreateDepositTransaction(depositInfo *DepositInfo, proo
 	if err != nil {
 		return nil, err
 	}
-	for i := 0; i < len(depositInfo.TargetAddress); i++ {
+	for i := 0; i < len(spvTx.DepositInfo.TargetAddress); i++ {
 		txOutput := OutputInfo{
 			AssetID:    common.BytesToHexString(common.BytesReverse(assetID.Bytes())),
-			Value:      common.Fixed64(float64(depositInfo.CrossChainAmounts[i]) * exchangeRate).String(),
-			Address:    depositInfo.TargetAddress[i],
+			Value:      common.Fixed64(float64(spvTx.DepositInfo.CrossChainAmounts[i]) * exchangeRate).String(),
+			Address:    spvTx.DepositInfo.TargetAddress[i],
 			OutputLock: uint32(0),
 		}
 		txOutputs = append(txOutputs, txOutput)
 	}
 
 	spvInfo := new(bytes.Buffer)
-	err = proof.Serialize(spvInfo)
+	err = spvTx.Proof.Serialize(spvInfo)
 	if err != nil {
 		return nil, err
 	}
 
 	transactionBuf := new(bytes.Buffer)
-	err = mainChainTransaction.Serialize(transactionBuf)
+	err = spvTx.MainChainTransaction.Serialize(transactionBuf)
 	if err != nil {
 		return nil, err
 	}

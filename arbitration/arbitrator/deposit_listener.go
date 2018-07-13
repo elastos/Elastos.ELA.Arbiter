@@ -1,6 +1,7 @@
 package arbitrator
 
 import (
+	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
@@ -63,19 +64,17 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 		return
 	}
 
-	var finalTxs []*ela.Transaction
-	var finalProofs []*bloom.MerkleProof
+	var spvTxs []*SpvTransaction
 	for i := 0; i < len(result); i++ {
 		if result[i] {
-			finalTxs = append(finalTxs, txs[i])
-			finalProofs = append(finalProofs, proofs[i])
+			spvTxs = append(spvTxs, &SpvTransaction{MainChainTransaction: txs[i], Proof: proofs[i]})
 		}
 	}
-	log.Info("[Notify-Process] find deposit transaction, create and send deposit transaction, size of txs:", len(finalTxs))
-	for index, tx := range finalTxs {
-		log.Info("[Notify-Process] tx hash[", index, "]:", tx.Hash().String())
+	log.Info("[Notify-Process] find deposit transaction, create and send deposit transaction, size of txs:", len(spvTxs))
+	for index, spvTx := range spvTxs {
+		log.Info("[Notify-Process] tx hash[", index, "]:", spvTx.MainChainTransaction.Hash().String())
 	}
-	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransactions(finalProofs, finalTxs, l.ListenAddress)
+	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransactions(spvTxs, l.ListenAddress)
 }
 
 func (l *DepositListener) Rollback(height uint32) {
