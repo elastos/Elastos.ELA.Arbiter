@@ -178,12 +178,12 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	log.Info("RemoveSideChainTxs time:", endTime.Sub(startTime).String())
 
 	startTime = time.Now()
-	err = fhDataStore.AddSucceedWithdrawTx(receivedTxs)
+	err = fhDataStore.AddSucceedWithdrawTxs(receivedTxs)
 	if err != nil {
 		t.Error("add succeed withdrawTx failed")
 	}
 	endTime = time.Now()
-	log.Info("AddSucceedWithdrawTx time:", endTime.Sub(startTime).String())
+	log.Info("AddSucceedWithdrawTxs time:", endTime.Sub(startTime).String())
 	log.Info("End time:", endTime.String())
 
 	store.DbCache.SideChainStore.ResetDataStore()

@@ -485,7 +485,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisB
 	for i := 0; i < len(transactionHashes); i++ {
 		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionsBytes[i], blockHeights[i])
 		if err != nil {
-			return err
+			continue
 		}
 	}
 

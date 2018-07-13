@@ -9,33 +9,31 @@ import (
 	"github.com/elastos/Elastos.ELA/core"
 )
 
-func TestFinishedTxsDataStoreImpl_AddDepositTx(t *testing.T) {
+func TestFinishedTxsDataStoreImpl_AddDepositTxs(t *testing.T) {
 	datastore, err := OpenFinishedTxsDataStore()
 	if err != nil {
 		t.Error("Open database error.")
 	}
 
-	genesisBlockAddress := "testAddress"
+	txHash := "testHash"
+	genesisBlockAddress1 := "testAddress1"
 	genesisBlockAddress2 := "testAddress2"
 
-	txHash := "testHash"
 	info := base.TransactionInfo{}
 	depositTxBytes, err := json.Marshal(info)
 	if err != nil {
 		t.Error("Deposit transactionInfo to bytes failed")
 	}
 
-	err = datastore.AddDepositTx(txHash, genesisBlockAddress, depositTxBytes, true)
+	err = datastore.AddDepositTxs(
+		[]string{txHash, txHash},
+		[]string{genesisBlockAddress1, genesisBlockAddress2},
+		[][]byte{depositTxBytes, depositTxBytes}, true)
 	if err != nil {
 		t.Error("Add deposit transaction error.")
 	}
 
-	err = datastore.AddDepositTx(txHash, genesisBlockAddress2, depositTxBytes, false)
-	if err != nil {
-		t.Error("Add deposit transaction error.")
-	}
-
-	ok, err := datastore.HasDepositTx(txHash)
+	ok, err := datastore.HasDepositTx(txHash, genesisBlockAddress1)
 	if err != nil {
 		t.Error("Check deposit transaction error.")
 	}
@@ -43,44 +41,7 @@ func TestFinishedTxsDataStoreImpl_AddDepositTx(t *testing.T) {
 		t.Error("Check deposit transaction error.")
 	}
 
-	succeedList, genesisAddresses, err := datastore.GetDepositTxByHash(txHash)
-	if err != nil {
-		t.Error("Get deposit transaction error.")
-	}
-	if len(succeedList) != 2 || len(genesisAddresses) != 2 {
-		t.Error("Get deposit transaction error.")
-	}
-	if succeedList[0] != true || succeedList[1] != false {
-		t.Error("Get deposit transaction error.")
-	}
-	if genesisAddresses[0] != genesisBlockAddress || genesisAddresses[1] != genesisBlockAddress2 {
-		t.Error("Get deposit transaction error.")
-	}
-
-	datastore.ResetDataStore()
-}
-
-func TestFinishedTxsDataStoreImpl_AddSucceedDepositTx(t *testing.T) {
-	datastore, err := OpenFinishedTxsDataStore()
-	if err != nil {
-		t.Error("Open database error.")
-	}
-
-	genesisBlockAddress := "testAddress"
-	genesisBlockAddress2 := "testAddress2"
-	txHash := "testHash"
-
-	err = datastore.AddSucceedDepositTx(txHash, genesisBlockAddress)
-	if err != nil {
-		t.Error("Add deposit transaction error.")
-	}
-
-	err = datastore.AddSucceedDepositTx(txHash, genesisBlockAddress2)
-	if err != nil {
-		t.Error("Add deposit transaction error.")
-	}
-
-	ok, err := datastore.HasDepositTx(txHash)
+	ok, err = datastore.HasDepositTx(txHash, genesisBlockAddress2)
 	if err != nil {
 		t.Error("Check deposit transaction error.")
 	}
@@ -98,14 +59,63 @@ func TestFinishedTxsDataStoreImpl_AddSucceedDepositTx(t *testing.T) {
 	if succeedList[0] != true || succeedList[1] != true {
 		t.Error("Get deposit transaction error.")
 	}
-	if genesisAddresses[0] != genesisBlockAddress || genesisAddresses[1] != genesisBlockAddress2 {
+	if genesisAddresses[0] != genesisBlockAddress1 || genesisAddresses[1] != genesisBlockAddress2 {
 		t.Error("Get deposit transaction error.")
 	}
 
 	datastore.ResetDataStore()
 }
 
-func TestFinishedTxsDataStoreImpl_AddWithdrawTx(t *testing.T) {
+func TestFinishedTxsDataStoreImpl_AddSucceedDepositTx(t *testing.T) {
+	datastore, err := OpenFinishedTxsDataStore()
+	if err != nil {
+		t.Error("Open database error.")
+	}
+
+	txHash := "testHash"
+	genesisBlockAddress1 := "testAddress1"
+	genesisBlockAddress2 := "testAddress2"
+
+	err = datastore.AddSucceedDepositTxs(
+		[]string{txHash, txHash},
+		[]string{genesisBlockAddress1, genesisBlockAddress2})
+	if err != nil {
+		t.Error("Add deposit transaction error.")
+	}
+
+	ok, err := datastore.HasDepositTx(txHash, genesisBlockAddress1)
+	if err != nil {
+		t.Error("Check deposit transaction error.")
+	}
+	if !ok {
+		t.Error("Check deposit transaction error.")
+	}
+	ok, err = datastore.HasDepositTx(txHash, genesisBlockAddress2)
+	if err != nil {
+		t.Error("Check deposit transaction error.")
+	}
+	if !ok {
+		t.Error("Check deposit transaction error.")
+	}
+
+	succeedList, genesisAddresses, err := datastore.GetDepositTxByHash(txHash)
+	if err != nil {
+		t.Error("Get deposit transaction error.")
+	}
+	if len(succeedList) != 2 || len(genesisAddresses) != 2 {
+		t.Error("Get deposit transaction error.")
+	}
+	if succeedList[0] != true || succeedList[1] != true {
+		t.Error("Get deposit transaction error.")
+	}
+	if genesisAddresses[0] != genesisBlockAddress1 || genesisAddresses[1] != genesisBlockAddress2 {
+		t.Error("Get deposit transaction error.")
+	}
+
+	datastore.ResetDataStore()
+}
+
+func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 	datastore, err := OpenFinishedTxsDataStore()
 	if err != nil {
 		t.Error("Open database error.")
@@ -123,17 +133,24 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTx(t *testing.T) {
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 
-	err = datastore.AddWithdrawTx([]string{txHash1, txHash2}, buf1.Bytes(), false)
+	err = datastore.AddWithdrawTxs([]string{txHash1, txHash2}, buf1.Bytes(), false)
 	if err != nil {
 		t.Error("Add withdraw transaction error.")
 	}
 
-	err = datastore.AddWithdrawTx([]string{txHash3}, buf2.Bytes(), true)
+	err = datastore.AddWithdrawTxs([]string{txHash3}, buf2.Bytes(), true)
 	if err != nil {
 		t.Error("Add withdraw transaction error.")
 	}
 
 	ok, err := datastore.HasWithdrawTx(txHash1)
+	if err != nil {
+		t.Error("Check withdraw transaction error.")
+	}
+	if !ok {
+		t.Error("Check withdraw transaction error.")
+	}
+	ok, err = datastore.HasWithdrawTx(txHash2)
 	if err != nil {
 		t.Error("Check withdraw transaction error.")
 	}
@@ -209,7 +226,7 @@ func TestFinishedTxsDataStoreImpl_AddSucceedWIthdrawTx(t *testing.T) {
 	txHash1 := "testHash1"
 	txHash2 := "testHash2"
 
-	err = datastore.AddSucceedWithdrawTx([]string{txHash1, txHash2})
+	err = datastore.AddSucceedWithdrawTxs([]string{txHash1, txHash2})
 	if err != nil {
 		t.Error("Add withdraw transaction error.")
 	}

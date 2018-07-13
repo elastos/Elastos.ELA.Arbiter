@@ -200,7 +200,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			if err != nil {
 				return errors.New("Remove failed withdraw transaction from db failed")
 			}
-			err = store.FinishedTxsDbCache.AddWithdrawTx(transactionHashes, buf.Bytes(), false)
+			err = store.FinishedTxsDbCache.AddWithdrawTxs(transactionHashes, buf.Bytes(), false)
 			if err != nil {
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
@@ -211,7 +211,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			if err != nil {
 				return errors.New("Remove succeed withdraw transaction from db failed")
 			}
-			err = store.FinishedTxsDbCache.AddSucceedWithdrawTx(transactionHashes)
+			err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(transactionHashes)
 			if err != nil {
 				return errors.New("Add succeed withdraw transaction into finished db failed")
 			}

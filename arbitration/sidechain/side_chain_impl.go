@@ -430,7 +430,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 			return err
 		}
 
-		err = store.FinishedTxsDbCache.AddSucceedWithdrawTx(receivedTxs)
+		err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(receivedTxs)
 		if err != nil {
 			return err
 		}
