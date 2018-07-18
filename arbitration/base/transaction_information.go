@@ -24,3 +24,17 @@ type SpvTransaction struct {
 	Proof                *bloom.MerkleProof
 	DepositInfo          *DepositInfo
 }
+
+type MainChainTransaction struct {
+	TransactionHash     string
+	GenesisBlockAddress string
+	Transaction         *core.Transaction
+	Proof               *bloom.MerkleProof
+}
+
+type SideChainTransaction struct {
+	TransactionHash     string
+	GenesisBlockAddress string
+	Transaction         *core.Transaction
+	BlockHeight         uint32
+}

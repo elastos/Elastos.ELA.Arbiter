@@ -38,26 +38,25 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	log.Info("[Notify-Process] deal with", len(tasks), "transactions")
 
 	var ids []common.Uint256
-	var txs []*ela.Transaction
-	var proofs []*bloom.MerkleProof
-	var txHashes []string
-	var genesisAddresses []string
+	var txs []*MainChainTransaction
 	for _, data := range tasks {
 		ids = append(ids, data.id)
-		txs = append(txs, data.tx)
-		proofs = append(proofs, data.proof)
-		txHashes = append(txHashes, data.tx.Hash().String())
-		genesisAddresses = append(genesisAddresses, l.ListenAddress)
+		txs = append(txs, &MainChainTransaction{
+			TransactionHash:     data.tx.Hash().String(),
+			GenesisBlockAddress: l.ListenAddress,
+			Transaction:         data.tx,
+			Proof:               data.proof,
+		})
 	}
 
-	result, err := store.DbCache.MainChainStore.AddMainChainTxs(txHashes, genesisAddresses, txs, proofs)
+	result, err := store.DbCache.MainChainStore.AddMainChainTxs(txs)
 	if err != nil {
 		log.Error("AddMainChainTx error:", err)
 		return
 	}
 
 	for i := 0; i < len(ids); i++ {
-		spvService.SubmitTransactionReceipt(ids[i], txs[i].Hash())
+		spvService.SubmitTransactionReceipt(ids[i], txs[i].Transaction.Hash())
 	}
 
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
@@ -67,7 +66,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	var spvTxs []*SpvTransaction
 	for i := 0; i < len(result); i++ {
 		if result[i] {
-			spvTxs = append(spvTxs, &SpvTransaction{MainChainTransaction: txs[i], Proof: proofs[i]})
+			spvTxs = append(spvTxs, &SpvTransaction{MainChainTransaction: txs[i].Transaction, Proof: txs[i].Proof})
 		}
 	}
 	log.Info("[Notify-Process] find deposit transaction, create and send deposit transaction, size of txs:", len(spvTxs))
