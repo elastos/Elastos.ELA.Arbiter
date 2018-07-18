@@ -88,10 +88,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	arbitrator.SetSideChainManager(sideChainManager)
 
 	startTime := time.Now()
-	var txs []*Transaction
-	var proofs []*bloom.MerkleProof
-	var txHashes []string
-	var genesisAddresses []string
+	var txs []*MainChainTransaction
 	for i := 0; i < testLoopTimes; i++ {
 		txBytes := tx.Hash().Bytes()
 		txBytes[28] = byte(i)
@@ -99,13 +96,15 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		txBytes[30] = byte(i >> 16)
 		txBytes[31] = byte(i >> 24)
 		txHash, _ := common.Uint256FromBytes(txBytes)
-		txHashes = append(txHashes, txHash.String())
-		txs = append(txs, tx)
-		genesisAddresses = append(genesisAddresses, genesisAddress)
-		proofs = append(proofs, proof)
+		txs = append(txs, &MainChainTransaction{
+			TransactionHash:     txHash.String(),
+			GenesisBlockAddress: genesisAddress,
+			Transaction:         tx,
+			Proof:               proof,
+		})
 	}
 
-	result, err := mcDataStore.AddMainChainTxs(txHashes, genesisAddresses, txs, proofs)
+	result, err := mcDataStore.AddMainChainTxs(txs)
 	if err != nil {
 		t.Error("AddMainChainTx error:", err)
 		return
@@ -113,15 +112,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 
 	var spvTxs []*SpvTransaction
 	var finalTxHashes []string
+	var genesisAddresses []string
 	for i := 0; i < len(result); i++ {
 		if result[i] {
-			depositInfo, err := ParseUserDepositTransactionInfo(txs[i], genesisAddress)
+			depositInfo, err := ParseUserDepositTransactionInfo(txs[i].Transaction, genesisAddress)
 			if err != nil {
 				log.Error(err)
 				continue
 			}
-			spvTxs = append(spvTxs, &SpvTransaction{txs[i], proofs[i], depositInfo})
-			finalTxHashes = append(finalTxHashes, txHashes[i])
+			spvTxs = append(spvTxs, &SpvTransaction{txs[i].Transaction, txs[i].Proof, depositInfo})
+			finalTxHashes = append(finalTxHashes, txs[i].TransactionHash)
+			genesisAddresses = append(genesisAddresses, txs[i].GenesisBlockAddress)
 		}
 	}
 
@@ -129,6 +130,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	if len(transactionInfoMap) != testLoopTimes {
 		t.Error("Create deposit transactions failed")
 	}
+
 	err = fhDataStore.AddSucceedDepositTxs(finalTxHashes, genesisAddresses)
 	if err != nil {
 		t.Error("Add succeed deposit tx failed")

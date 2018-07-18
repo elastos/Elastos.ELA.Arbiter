@@ -247,30 +247,26 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight u
 		return errors.New("OnUTXOChanged received txinfos, but size is 0")
 	}
 
-	var txHashes []string
-	var genesises []string
-	var txsBytes [][]byte
-	var blockHeights []uint32
+	var txs []*SideChainTransaction
 	for _, txinfo := range txinfos {
 		txn, err := txinfo.ToTransaction()
 		if err != nil {
 			return err
 		}
-		txHashes = append(txHashes, txinfo.Hash)
-		genesises = append(genesises, sc.GetKey())
-		// Serialize transaction
-		buf := new(bytes.Buffer)
-		txn.Serialize(buf)
-		txBytes := buf.Bytes()
-		txsBytes = append(txsBytes, txBytes)
-		blockHeights = append(blockHeights, blockHeight)
+
+		txs = append(txs, &SideChainTransaction{
+			TransactionHash:     txinfo.Hash,
+			GenesisBlockAddress: sc.GetKey(),
+			Transaction:         txn,
+			BlockHeight:         blockHeight,
+		})
 	}
 
-	if err := store.DbCache.SideChainStore.AddSideChainTxs(txHashes, genesises, txsBytes, blockHeights); err != nil {
+	if err := store.DbCache.SideChainStore.AddSideChainTxs(txs); err != nil {
 		return err
 	}
 
-	log.Info("[OnUTXOChanged] Find ", len(txHashes), "withdraw transaction, add into dbcache")
+	log.Info("[OnUTXOChanged] Find ", len(txs), "withdraw transaction, add into dbcache")
 	return nil
 }
 

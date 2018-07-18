@@ -27,18 +27,18 @@ type MainChainImpl struct {
 }
 
 func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
-	txHashes, genesisAddresses, transactions, _, err := DbCache.MainChainStore.GetAllMainChainTxs()
+	txs, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return nil, err
 	}
 
-	if len(txHashes) != len(transactions) {
-		return nil, errors.New("Invalid transactios in main chain txs db")
+	if len(txs) == 0 {
+		return nil, errors.New("No main chain tx in dbcache")
 	}
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
-	for i := 0; i < len(transactions); i++ {
-		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddresses[i])
+	for _, tx := range txs {
+		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
 		if !ok {
 			log.Warn("[SyncMainChainCachedTxs] Get side chain from genesis address failed")
 			continue
@@ -52,9 +52,9 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 			}
 		}
 		if hasSideChainInMap {
-			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], txHashes[i])
+			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], tx.TransactionHash)
 		} else {
-			allSideChainTxHashes[sc] = []string{txHashes[i]}
+			allSideChainTxHashes[sc] = []string{tx.TransactionHash}
 		}
 	}
 
@@ -68,7 +68,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		unsolvedTxs := SubstractTransactionHashes(v, receivedTxs)
 		result[k] = unsolvedTxs
 		var addresses []string
-		for i := 0; i < len(unsolvedTxs); i++ {
+		for i := 0; i < len(receivedTxs); i++ {
 			addresses = append(addresses, k.GetKey())
 		}
 		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
@@ -395,22 +395,18 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 
 func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	//remove deposit transactions if exist on side chain
-	txHases, genesisAddresses, transactions, _, err := DbCache.MainChainStore.GetAllMainChainTxs()
+	txs, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return err
 	}
 
-	if len(txHases) != len(transactions) {
-		return errors.New("[CheckAndRemoveDepositTransactionsFromDB] Invalid transactios in main chain txs db")
-	}
-
-	if len(txHases) == 0 {
+	if len(txs) == 0 {
 		return nil
 	}
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
-	for i := 0; i < len(transactions); i++ {
-		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddresses[i])
+	for _, tx := range txs {
+		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
 		if !ok {
 			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get chain from genesis addres failed.")
 			continue
@@ -424,9 +420,9 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 			}
 		}
 		if hasSideChainInMap {
-			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], txHases[i])
+			allSideChainTxHashes[sc] = append(allSideChainTxHashes[sc], tx.TransactionHash)
 		} else {
-			allSideChainTxHashes[sc] = []string{txHases[i]}
+			allSideChainTxHashes[sc] = []string{tx.TransactionHash}
 		}
 	}
 

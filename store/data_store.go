@@ -88,22 +88,22 @@ type DataStoreUTXO interface {
 type DataStoreMainChain interface {
 	DataStore
 
-	AddMainChainTx(transactionHash string, genesisBlockAddress string, transaction *Transaction, proof *bloom.MerkleProof) error
-	AddMainChainTxs(transactionHashes, genesisBlockAddresses []string, transactions []*Transaction, proofs []*bloom.MerkleProof) ([]bool, error)
+	AddMainChainTx(tx *base.MainChainTransaction) error
+	AddMainChainTxs(txs []*base.MainChainTransaction) ([]bool, error)
 	HasMainChainTx(transactionHash, genesisBlockAddress string) (bool, error)
 	RemoveMainChainTx(transactionHash, genesisBlockAddress string) error
 	RemoveMainChainTxs(transactionHashes, genesisBlockAddress []string) error
 	GetAllMainChainTxHashes() ([]string, []string, error)
-	GetAllMainChainTxs() ([]string, []string, []*Transaction, []*bloom.MerkleProof, error)
-	GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*Transaction, []*bloom.MerkleProof, error)
+	GetAllMainChainTxs() ([]*base.MainChainTransaction, error)
+	GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.SpvTransaction, error)
 }
 
 type DataStoreSideChain interface {
 	DataStore
 
 	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
-	AddSideChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, blockHeight uint32) error
-	AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error
+	AddSideChainTx(tx *base.SideChainTransaction) error
+	AddSideChainTxs(txs []*base.SideChainTransaction) error
 	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes() ([]string, error)
@@ -465,7 +465,7 @@ func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress strin
 	return storedHeight
 }
 
-func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisBlockAddresses []string, transactionsBytes [][]byte, blockHeights []uint32) error {
+func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransaction) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -483,8 +483,12 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisB
 	defer stmt.Close()
 
 	// Do insert
-	for i := 0; i < len(transactionHashes); i++ {
-		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionsBytes[i], blockHeights[i])
+	for _, tx := range txs {
+		// Serialize transaction
+		buf := new(bytes.Buffer)
+		tx.Transaction.Serialize(buf)
+
+		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, buf.Bytes(), tx.BlockHeight)
 		if err != nil {
 			continue
 		}
@@ -493,8 +497,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(transactionHashes, genesisB
 	return nil
 }
 
-func (store *DataStoreSideChainImpl) AddSideChainTx(transactionHash, genesisBlockAddress string,
-	transaction *Transaction, blockHeight uint32) error {
+func (store *DataStoreSideChainImpl) AddSideChainTx(tx *base.SideChainTransaction) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -507,11 +510,10 @@ func (store *DataStoreSideChainImpl) AddSideChainTx(transactionHash, genesisBloc
 
 	// Serialize transaction
 	buf := new(bytes.Buffer)
-	transaction.Serialize(buf)
-	transactionBytes := buf.Bytes()
+	tx.Transaction.Serialize(buf)
 
 	// Do insert
-	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionBytes, blockHeight)
+	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, buf.Bytes(), tx.BlockHeight)
 	if err != nil {
 		return err
 	}
@@ -695,7 +697,7 @@ func (store *DataStoreMainChainImpl) catchSystemSignals() {
 	})
 }
 
-func (store *DataStoreMainChainImpl) AddMainChainTx(transactionHash, genesisBlockAddress string, transaction *Transaction, proof *bloom.MerkleProof) error {
+func (store *DataStoreMainChainImpl) AddMainChainTx(tx *base.MainChainTransaction) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -708,23 +710,23 @@ func (store *DataStoreMainChainImpl) AddMainChainTx(transactionHash, genesisBloc
 
 	// Serialize transaction
 	buf := new(bytes.Buffer)
-	transaction.Serialize(buf)
+	tx.Transaction.Serialize(buf)
 	transactionBytes := buf.Bytes()
 
 	// Serialize merkleProof
 	buf = new(bytes.Buffer)
-	proof.Serialize(buf)
+	tx.Proof.Serialize(buf)
 	merkleProofBytes := buf.Bytes()
 
 	// Do insert
-	_, err = stmt.Exec(transactionHash, genesisBlockAddress, transactionBytes, merkleProofBytes)
+	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, transactionBytes, merkleProofBytes)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (store *DataStoreMainChainImpl) AddMainChainTxs(transactionHashes, genesisBlockAddresses []string, transactions []*Transaction, proofs []*bloom.MerkleProof) ([]bool, error) {
+func (store *DataStoreMainChainImpl) AddMainChainTxs(txs []*base.MainChainTransaction) ([]bool, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -742,19 +744,19 @@ func (store *DataStoreMainChainImpl) AddMainChainTxs(transactionHashes, genesisB
 	defer stmt.Close()
 
 	var result []bool
-	for i := 0; i < len(transactionHashes); i++ {
+	for _, tx := range txs {
 		// Serialize transaction
 		buf := new(bytes.Buffer)
-		transactions[i].Serialize(buf)
+		tx.Transaction.Serialize(buf)
 		transactionBytes := buf.Bytes()
 
 		// Serialize merkleProof
 		buf = new(bytes.Buffer)
-		proofs[i].Serialize(buf)
+		tx.Proof.Serialize(buf)
 		merkleProofBytes := buf.Bytes()
 
 		// Do insert
-		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionBytes, merkleProofBytes)
+		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, transactionBytes, merkleProofBytes)
 		if err != nil {
 			result = append(result, false)
 		} else {
@@ -847,20 +849,17 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxHashes() ([]string, []stri
 	return txHashes, genesisAddresses, nil
 }
 
-func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]string, []string, []*Transaction, []*bloom.MerkleProof, error) {
+func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTransaction, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof FROM MainChainTxs`)
 	if err != nil {
-		return nil, nil, nil, nil, err
+		return nil, err
 	}
 	defer rows.Close()
 
-	var txHashes []string
-	var genesisAddresses []string
-	var txs []*Transaction
-	var mps []*bloom.MerkleProof
+	var txs []*base.MainChainTransaction
 	for rows.Next() {
 		var txHash string
 		var genesisAddress string
@@ -868,7 +867,7 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]string, []string, [
 		var merkleProofBytes []byte
 		err = rows.Scan(&txHash, &genesisAddress, &transactionBytes, &merkleProofBytes)
 		if err != nil {
-			return nil, nil, nil, nil, err
+			return nil, err
 		}
 
 		var tx Transaction
@@ -879,12 +878,9 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]string, []string, [
 		reader = bytes.NewReader(merkleProofBytes)
 		mp.Deserialize(reader)
 
-		txHashes = append(txHashes, txHash)
-		genesisAddresses = append(genesisAddresses, genesisAddress)
-		txs = append(txs, &tx)
-		mps = append(mps, &mp)
+		txs = append(txs, &base.MainChainTransaction{txHash, genesisAddress, &tx, &mp})
 	}
-	return txHashes, genesisAddresses, txs, mps, nil
+	return txs, nil
 }
 
 func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.SpvTransaction, error) {

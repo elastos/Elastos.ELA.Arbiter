@@ -9,6 +9,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	. "github.com/elastos/Elastos.ELA/core"
 	"github.com/stretchr/testify/assert"
@@ -77,7 +78,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Fee:        0,
 		FeePerKB:   0,
 	}
-	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
+	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction
 	tx2 := &Transaction{
@@ -118,7 +119,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Fee:        0,
 		FeePerKB:   0,
 	}
-	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
+	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction with utxo is not from genesis address account
 	tx2 = &Transaction{
@@ -161,7 +162,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Fee:        0,
 		FeePerKB:   0,
 	}
-	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
+	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction
 	tx2 = &Transaction{
@@ -202,7 +203,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Fee:        0,
 		FeePerKB:   0,
 	}
-	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
+	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction
 	tx2 = &Transaction{
@@ -243,7 +244,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Fee:        0,
 		FeePerKB:   0,
 	}
-	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
+	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction with cross chain count not equal withdraw output count
 	tx2 = &Transaction{
@@ -284,7 +285,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		Fee:        0,
 		FeePerKB:   0,
 	}
-	store.DbCache.SideChainStore.AddSideChainTx(tx1.Hash().String(), genesisAddress, tx1, 10)
+	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction with input amount not equal output amount
 	tx2 = &Transaction{
