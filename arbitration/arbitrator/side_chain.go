@@ -1,7 +1,13 @@
 package arbitrator
 
 import (
+	"errors"
+	"math"
+
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/core"
 )
@@ -32,4 +38,36 @@ type SideChainManager interface {
 
 	StartSideChainMining()
 	CheckAndRemoveWithdrawTransactionsFromDB() error
+}
+
+type DbMainChainFunc struct {
+}
+
+func (dbFunc *DbMainChainFunc) GetAvailableUtxos(withdrawBank string) ([]*store.AddressUTXO, error) {
+	utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
+	if err != nil {
+		return nil, errors.New("Get spender's UTXOs failed.")
+	}
+	var availableUTXOs []*store.AddressUTXO
+	var currentHeight = store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
+	for _, utxo := range utxos {
+		if utxo.Input.Sequence > 0 {
+			if utxo.Input.Sequence >= currentHeight {
+				continue
+			}
+			utxo.Input.Sequence = math.MaxUint32 - 1
+		}
+		availableUTXOs = append(availableUTXOs, utxo)
+	}
+	availableUTXOs = store.SortUTXOs(availableUTXOs)
+
+	return availableUTXOs, nil
+}
+
+func (dbFunc *DbMainChainFunc) GetMainNodeCurrentHeight() (uint32, error) {
+	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return 0, err
+	}
+	return chainHeight, nil
 }

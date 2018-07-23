@@ -450,7 +450,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	currentArbitrator.GetMainChain().SyncChainData()
-	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfo, sc, txnHashes, &store.DbMainChainFunc{})
+	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfo, sc, txnHashes, &arbitrator.DbMainChainFunc{})
 
 	log.Info("[CreateAndBroadcastWithdrawProposal] Transactions count: ", len(transactions))
 	currentArbitrator.BroadcastWithdrawProposal(transactions)
