@@ -3,7 +3,6 @@ package store
 import (
 	"bytes"
 	"database/sql"
-	"errors"
 	"math"
 	"os"
 	"sync"
@@ -11,7 +10,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
@@ -918,38 +916,6 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 	}
 
 	return spvTxs, nil
-}
-
-type DbMainChainFunc struct {
-}
-
-func (dbFunc *DbMainChainFunc) GetAvailableUtxos(withdrawBank string) ([]*AddressUTXO, error) {
-	utxos, err := DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
-	if err != nil {
-		return nil, errors.New("Get spender's UTXOs failed.")
-	}
-	var availableUTXOs []*AddressUTXO
-	var currentHeight = DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
-	for _, utxo := range utxos {
-		if utxo.Input.Sequence > 0 {
-			if utxo.Input.Sequence >= currentHeight {
-				continue
-			}
-			utxo.Input.Sequence = math.MaxUint32 - 1
-		}
-		availableUTXOs = append(availableUTXOs, utxo)
-	}
-	availableUTXOs = SortUTXOs(availableUTXOs)
-
-	return availableUTXOs, nil
-}
-
-func (dbFunc *DbMainChainFunc) GetMainNodeCurrentHeight() (uint32, error) {
-	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
-	if err != nil {
-		return 0, err
-	}
-	return chainHeight, nil
 }
 
 func CheckAndCreateDocument(path string) error {

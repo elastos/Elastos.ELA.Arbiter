@@ -13,15 +13,18 @@ import (
 )
 
 //an instance of the multiplexer
-var mainMux map[string]func(map[string]interface{}) map[string]interface{}
+var mainMux map[string]func(Params) map[string]interface{}
 
 func StartRPCServer() {
-	mainMux = make(map[string]func(map[string]interface{}) map[string]interface{})
+	mainMux = make(map[string]func(Params) map[string]interface{})
 
 	http.HandleFunc("/", Handle)
 
 	mainMux["submitcomplain"] = SubmitComplain
 	mainMux["getcomplainstatus"] = GetComplainStatus
+	mainMux["getmainchainblockheight"] = GetMainChainBlockHeight
+	mainMux["getsidechainblockheightbygenesisaddress"] = GetSideChainBlockHeightByGenesisAddress
+	mainMux["getsidechainblockheightbygenesisblockhash"] = GetSideChainBlockHeightByGenesisBlockHash
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
@@ -71,19 +74,31 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	response := function(params)
-	data, err := json.Marshal(map[string]interface{}{
-		"jsonpc": "2.0",
-		"code":   response["Error"],
-		"result": response["Result"],
-	})
-	if err != nil {
-		log.Error("HTTP JSON RPC Handle - json.Marshal: ", err)
-		return
+	var data []byte
+	if response["Error"] != errors.ErrCode(0) {
+		data, _ = json.Marshal(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"result":  nil,
+			"error": map[string]interface{}{
+				"code":    response["Error"],
+				"message": response["Result"],
+				"id":      request["id"],
+			},
+		})
+
+	} else {
+		data, _ = json.Marshal(map[string]interface{}{
+			"jsonrpc": "2.0",
+			"result":  response["Result"],
+			"id":      request["id"],
+			"error":   nil,
+		})
 	}
+	w.Header().Set("Content-type", "application/json")
 	w.Write(data)
 }
 
-func checkMethod(request map[string]interface{}) (func(map[string]interface{}) map[string]interface{}, interface{}, bool) {
+func checkMethod(request map[string]interface{}) (func(Params) map[string]interface{}, interface{}, bool) {
 	method := request["method"]
 	if method == nil {
 		return nil, method, false
