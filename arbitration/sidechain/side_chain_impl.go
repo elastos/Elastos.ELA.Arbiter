@@ -278,6 +278,14 @@ func (sc *SideChainImpl) SubmitAuxpow(genesishash string, blockhash string, subm
 	return sideauxpow.SubmitAuxpow(genesishash, blockhash, submitauxpow)
 }
 
+func (sc *SideChainImpl) UpdateLastNotifySideMiningHeight(addr string) {
+	sideauxpow.UpdateLastNotifySideMiningHeight(addr)
+}
+
+func (sc *SideChainImpl) UpdateLastSubmitAuxpowHeight(addr string) {
+	sideauxpow.UpdateLastSubmitAuxpowHeight(addr)
+}
+
 func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, error) {
 	receivedTxs, err := rpc.GetExistDepositTransactions(txs, sc.CurrentConfig.Rpc)
 	if err != nil {

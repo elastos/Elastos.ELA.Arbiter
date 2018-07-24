@@ -25,6 +25,12 @@ func StartRPCServer() {
 	mainMux["getmainchainblockheight"] = GetMainChainBlockHeight
 	mainMux["getsidechainblockheightbygenesisaddress"] = GetSideChainBlockHeightByGenesisAddress
 	mainMux["getsidechainblockheightbygenesisblockhash"] = GetSideChainBlockHeightByGenesisBlockHash
+	mainMux["getlastsendsideminingheightbygenesisaddress"] = GetLastSendSideMiningHeightByGenesisAddress
+	mainMux["getlastsendsideminingheightbygenesisblockhash"] = GetLastSendSideMiningHeightByGenesisBlockHash
+	mainMux["getlastnotifysideminingheightbygenesisaddress"] = GetLastNotifySideMiningHeightByGenesisAddress
+	mainMux["getlastnotifysideminingheightbygenesisblockhash"] = GetLastNotifySideMiningHeightByGenesisBlockHash
+	mainMux["getlastsubmitauxpowheightbygenesisaddress"] = GetLastSubmitAuxpowHeightByGenesisAddress
+	mainMux["getlastsubmitauxpowheightbygenesisblockhash"] = GetLastSubmitAuxpowHeightByGenesisBlockHash
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
