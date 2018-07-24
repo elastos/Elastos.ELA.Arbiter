@@ -22,11 +22,11 @@ func StartRPCServer() {
 
 	mainMux["submitcomplain"] = SubmitComplain
 	mainMux["getcomplainstatus"] = GetComplainStatus
+
+	mainMux["getinfo"] = GetInfo
+	mainMux["getsidemininginfo"] = GetSideMiningInfo
 	mainMux["getmainchainblockheight"] = GetMainChainBlockHeight
 	mainMux["getsidechainblockheight"] = GetSideChainBlockHeight
-	mainMux["getlastsendsideminingheight"] = GetLastSendSideMiningHeight
-	mainMux["getlastnotifysideminingheight"] = GetLastNotifySideMiningHeight
-	mainMux["getlastsubmitauxpowheight"] = GetLastSubmitAuxpowHeight
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
