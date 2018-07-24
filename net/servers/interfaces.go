@@ -5,6 +5,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/errors"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.SideChain/common"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
@@ -82,11 +83,11 @@ func GetMainChainBlockHeight(param Params) map[string]interface{} {
 }
 
 func GetSideChainBlockHeightByGenesisAddress(param Params) map[string]interface{} {
-	addr, ok := param.String("addr")
+	address, ok := param.String("addr")
 	if !ok {
 		return ResponsePack(InvalidParams, "need a string parameter named addr")
 	}
-	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(addr, 0))
+	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0))
 }
 
 func GetSideChainBlockHeightByGenesisBlockHash(param Params) map[string]interface{} {
@@ -110,4 +111,109 @@ func GetSideChainBlockHeightByGenesisBlockHash(param Params) map[string]interfac
 	}
 
 	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0))
+}
+
+func GetLastSendSideMiningHeightByGenesisAddress(param Params) map[string]interface{} {
+	address, ok := param.String("addr")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a string parameter named addr")
+	}
+	height, ok := sideauxpow.LastSendSideMiningHeight[address]
+	if !ok {
+		return ResponsePack(InvalidParams, "genesis address not matched")
+	}
+	return ResponsePack(Success, height)
+}
+
+func GetLastSendSideMiningHeightByGenesisBlockHash(param Params) map[string]interface{} {
+	genesisBlockHashStr, ok := param.String("hash")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a string parameter named hash")
+	}
+	genesisBlockHashBytes, err := HexStringToBytes(genesisBlockHashStr)
+	if err != nil {
+		return ResponsePack(InvalidParams, "invalid genesis block hash")
+	}
+	reversedGenesisBlockHashBytes := BytesReverse(genesisBlockHashBytes)
+	reversedGenesisBlockHashStr := BytesToHexString(reversedGenesisBlockHashBytes)
+	genesisBlockHash, err := Uint256FromHexString(reversedGenesisBlockHashStr)
+	if err != nil {
+		return ResponsePack(InvalidParams, "invalid genesis block hash")
+	}
+	address, err := common.GetGenesisAddress(*genesisBlockHash)
+	height, ok := sideauxpow.LastSendSideMiningHeight[address]
+	if !ok {
+		return ResponsePack(InvalidParams, "genesis block hash not matched")
+	}
+	return ResponsePack(Success, height)
+}
+
+func GetLastNotifySideMiningHeightByGenesisAddress(param Params) map[string]interface{} {
+	address, ok := param.String("addr")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a string parameter named addr")
+	}
+	height, ok := sideauxpow.LastNotifySideMiningHeight[address]
+	if !ok {
+		return ResponsePack(InvalidParams, "genesis address not matched")
+	}
+	return ResponsePack(Success, height)
+}
+
+func GetLastNotifySideMiningHeightByGenesisBlockHash(param Params) map[string]interface{} {
+	genesisBlockHashStr, ok := param.String("hash")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a string parameter named hash")
+	}
+	genesisBlockHashBytes, err := HexStringToBytes(genesisBlockHashStr)
+	if err != nil {
+		return ResponsePack(InvalidParams, "invalid genesis block hash")
+	}
+	reversedGenesisBlockHashBytes := BytesReverse(genesisBlockHashBytes)
+	reversedGenesisBlockHashStr := BytesToHexString(reversedGenesisBlockHashBytes)
+	genesisBlockHash, err := Uint256FromHexString(reversedGenesisBlockHashStr)
+	if err != nil {
+		return ResponsePack(InvalidParams, "invalid genesis block hash")
+	}
+	address, err := common.GetGenesisAddress(*genesisBlockHash)
+	height, ok := sideauxpow.LastNotifySideMiningHeight[address]
+	if !ok {
+		return ResponsePack(InvalidParams, "genesis block hash not matched")
+	}
+	return ResponsePack(Success, height)
+}
+
+func GetLastSubmitAuxpowHeightByGenesisAddress(param Params) map[string]interface{} {
+	address, ok := param.String("addr")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a string parameter named addr")
+	}
+	height, ok := sideauxpow.LastSubmitAuxpowHeight[address]
+	if !ok {
+		return ResponsePack(InvalidParams, "genesis address not matched")
+	}
+	return ResponsePack(Success, height)
+}
+
+func GetLastSubmitAuxpowHeightByGenesisBlockHash(param Params) map[string]interface{} {
+	genesisBlockHashStr, ok := param.String("hash")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a string parameter named hash")
+	}
+	genesisBlockHashBytes, err := HexStringToBytes(genesisBlockHashStr)
+	if err != nil {
+		return ResponsePack(InvalidParams, "invalid genesis block hash")
+	}
+	reversedGenesisBlockHashBytes := BytesReverse(genesisBlockHashBytes)
+	reversedGenesisBlockHashStr := BytesToHexString(reversedGenesisBlockHashBytes)
+	genesisBlockHash, err := Uint256FromHexString(reversedGenesisBlockHashStr)
+	if err != nil {
+		return ResponsePack(InvalidParams, "invalid genesis block hash")
+	}
+	address, err := common.GetGenesisAddress(*genesisBlockHash)
+	height, ok := sideauxpow.LastSubmitAuxpowHeight[address]
+	if !ok {
+		return ResponsePack(InvalidParams, "genesis block hash not matched")
+	}
+	return ResponsePack(Success, height)
 }

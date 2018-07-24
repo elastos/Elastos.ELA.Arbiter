@@ -24,6 +24,10 @@ import (
 var (
 	CurrentWallet       wallet.Wallet
 	mainAccountPassword []byte
+
+	LastSendSideMiningHeight   map[string]uint32
+	LastNotifySideMiningHeight map[string]uint32
+	LastSubmitAuxpowHeight     map[string]uint32
 )
 
 func getMainAccountPassword() []byte {
@@ -32,6 +36,14 @@ func getMainAccountPassword() []byte {
 
 func SetMainAccountPassword(passwd []byte) {
 	mainAccountPassword = passwd
+}
+
+func UpdateLastNotifySideMiningHeight(addr string) {
+	LastNotifySideMiningHeight[addr] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+}
+
+func UpdateLastSubmitAuxpowHeight(addr string) {
+	LastSubmitAuxpowHeight[addr] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
 func getPassword(passwd []byte, confirmed bool) []byte {
@@ -164,6 +176,8 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	}
 	log.Info("[SendSideChainMining] End send Sidemining transaction:  genesis address [", sideNode.GenesisBlockAddress, "], result: ", result)
 
+	LastSendSideMiningHeight[sideNode.GenesisBlockAddress] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+
 	return nil
 }
 
@@ -202,4 +216,10 @@ func TestMultiSidechain() {
 			println("TestMultiSidechain")
 		}
 	}
+}
+
+func init() {
+	LastSendSideMiningHeight = make(map[string]uint32)
+	LastNotifySideMiningHeight = make(map[string]uint32)
+	LastSubmitAuxpowHeight = make(map[string]uint32)
 }

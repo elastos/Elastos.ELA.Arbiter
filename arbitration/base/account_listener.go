@@ -6,6 +6,8 @@ type AccountListener interface {
 
 	StartSideChainMining()
 	SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error
+	UpdateLastNotifySideMiningHeight(addr string)
+	UpdateLastSubmitAuxpowHeight(addr string)
 
 	SendCachedWithdrawTxs() error
 }
