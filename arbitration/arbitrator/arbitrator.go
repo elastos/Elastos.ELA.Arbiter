@@ -228,7 +228,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 		if err != nil {
 			log.Warn("Remove faild transaction from db failed")
 		}
-		err = store.FinishedTxsDbCache.AddDepositTxs(failedMainChainTxHashes, failedGenesisAddresses, failedDepositTxBytes, false)
+		err = store.FinishedTxsDbCache.AddFailedDepositTxs(failedMainChainTxHashes, failedGenesisAddresses, failedDepositTxBytes)
 		if err != nil {
 			log.Warn("Add faild transaction to finished db failed")
 		}
