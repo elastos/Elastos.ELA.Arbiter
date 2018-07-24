@@ -48,16 +48,18 @@ var (
 )
 
 type FinishedTransactionsDataStore interface {
-	AddDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte, succeed bool) error
+	AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte) error
 	AddSucceedDepositTxs(transactionHashes, genesisBlockAddresses []string) error
 	HasDepositTx(transactionHash string, genesisBlockAddress string) (bool, error)
 	GetDepositTxByHash(transactionHash string) ([]bool, []string, error)
 	GetDepositTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error)
+	GetDepositTxs(succeed bool) ([]string, []string, error)
 
-	AddWithdrawTxs(transactionHashes []string, transactionByte []byte, succeed bool) error
+	AddFailedWithdrawTxs(transactionHashes []string, transactionByte []byte) error
 	AddSucceedWithdrawTxs(transactionHashes []string) error
 	HasWithdrawTx(transactionHash string) (bool, error)
 	GetWithdrawTxByHash(transactionHash string) (bool, []byte, error)
+	GetWithdrawTxs(succeed bool) ([]string, error)
 
 	AddSideChainTx(transactionByte []byte) error
 	GetSideChainTx(sideChainTransactionId uint64) ([]byte, error)
@@ -136,7 +138,7 @@ func (store *FinishedTxsDataStoreImpl) ResetDataStore() error {
 	return nil
 }
 
-func (store *FinishedTxsDataStoreImpl) AddDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte, succeed bool) error {
+func (store *FinishedTxsDataStoreImpl) AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -155,7 +157,7 @@ func (store *FinishedTxsDataStoreImpl) AddDepositTxs(transactionHashes, genesisB
 
 	// Do insert
 	for i := 0; i < len(transactionHashes); i++ {
-		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionInfoBytes[i], succeed, time.Now().Format("2006-01-02_15.04.05"))
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionInfoBytes[i], false, time.Now().Format("2006-01-02_15.04.05"))
 		if err != nil {
 			continue
 		}
@@ -214,19 +216,19 @@ func (store *FinishedTxsDataStoreImpl) GetDepositTxByHash(transactionHash string
 	defer rows.Close()
 
 	var succeed []bool
-	var addresses []string
+	var genesisAddresses []string
 	for rows.Next() {
-		var genesisBlockAddress string
+		var address string
 		var suc bool
-		err = rows.Scan(&suc, &genesisBlockAddress)
+		err = rows.Scan(&suc, &address)
 		if err != nil {
 			return nil, nil, err
 		}
 
 		succeed = append(succeed, suc)
-		addresses = append(addresses, genesisBlockAddress)
+		genesisAddresses = append(genesisAddresses, address)
 	}
-	return succeed, addresses, nil
+	return succeed, genesisAddresses, nil
 }
 
 func (store *FinishedTxsDataStoreImpl) GetDepositTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error) {
@@ -250,7 +252,34 @@ func (store *FinishedTxsDataStoreImpl) GetDepositTxByHashAndGenesisAddress(trans
 	return suc, nil
 }
 
-func (store *FinishedTxsDataStoreImpl) AddWithdrawTxs(transactionHashes []string, transactionByte []byte, succeed bool) error {
+func (store *FinishedTxsDataStoreImpl) GetDepositTxs(succeed bool) ([]string, []string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress FROM DepositTransactions WHERE Succeed=?`, succeed)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	var genesisAddresses []string
+	for rows.Next() {
+		var hash string
+		var address string
+		err = rows.Scan(&hash, &address)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		txHashes = append(txHashes, hash)
+		genesisAddresses = append(genesisAddresses, address)
+	}
+
+	return txHashes, genesisAddresses, nil
+}
+
+func (store *FinishedTxsDataStoreImpl) AddFailedWithdrawTxs(transactionHashes []string, transactionByte []byte) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -284,7 +313,7 @@ func (store *FinishedTxsDataStoreImpl) AddWithdrawTxs(transactionHashes []string
 
 	// Do insert
 	for _, txHash := range transactionHashes {
-		_, err = stmt2.Exec(txHash, sideChainTransactionId, succeed, time.Now().Format("2006-01-02_15.04.05"))
+		_, err = stmt2.Exec(txHash, sideChainTransactionId, false, time.Now().Format("2006-01-02_15.04.05"))
 		if err != nil {
 			continue
 		}
@@ -371,6 +400,30 @@ func (store *FinishedTxsDataStoreImpl) GetWithdrawTxByHash(transactionHash strin
 	}
 
 	return false, transactionBytes, nil
+}
+
+func (store *FinishedTxsDataStoreImpl) GetWithdrawTxs(succeed bool) ([]string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash FROM WithdrawTransactions WHERE Succeed=?`, succeed)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	for rows.Next() {
+		var hash string
+		err = rows.Scan(&hash)
+		if err != nil {
+			return nil, err
+		}
+
+		txHashes = append(txHashes, hash)
+	}
+
+	return txHashes, nil
 }
 
 func (store *FinishedTxsDataStoreImpl) AddSideChainTx(transactionByte []byte) error {

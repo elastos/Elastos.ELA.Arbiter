@@ -200,7 +200,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			if err != nil {
 				return errors.New("Remove failed withdraw transaction from db failed")
 			}
-			err = store.FinishedTxsDbCache.AddWithdrawTxs(transactionHashes, buf.Bytes(), false)
+			err = store.FinishedTxsDbCache.AddFailedWithdrawTxs(transactionHashes, buf.Bytes())
 			if err != nil {
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
