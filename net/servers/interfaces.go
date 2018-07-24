@@ -171,3 +171,49 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 
 	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0))
 }
+
+func GetFinishedDepositTxs(param Params) map[string]interface{} {
+	succeed, ok := param.Bool("succeed")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a bool parameter named succeed")
+	}
+	txHashes, genesisAddresses, err := FinishedTxsDbCache.GetDepositTxs(succeed)
+	if err != nil {
+		return ResponsePack(InvalidParams, "get deposit transactions from finished dbcache failed")
+	}
+	type depositTx struct {
+		TransactionHash string
+		GenesisAddress  string
+	}
+	depositTxs := struct {
+		Transactions []depositTx
+	}{}
+
+	for i := 0; i < len(txHashes); i++ {
+		depositTxs.Transactions = append(depositTxs.Transactions,
+			depositTx{
+				TransactionHash: txHashes[i],
+				GenesisAddress:  genesisAddresses[i],
+			})
+	}
+
+	return ResponsePack(Success, &depositTxs)
+}
+
+func GetFinishedWithdrawTxs(param Params) map[string]interface{} {
+	succeed, ok := param.Bool("succeed")
+	if !ok {
+		return ResponsePack(InvalidParams, "need a bool parameter named succeed")
+	}
+	txHashes, err := FinishedTxsDbCache.GetWithdrawTxs(succeed)
+	if err != nil {
+		return ResponsePack(InvalidParams, "get withdraw transactions from finished dbcache failed")
+	}
+	withdrawTxs := struct{ Transactions []string }{}
+
+	for _, hash := range txHashes {
+		withdrawTxs.Transactions = append(withdrawTxs.Transactions, hash)
+	}
+
+	return ResponsePack(Success, &withdrawTxs)
+}

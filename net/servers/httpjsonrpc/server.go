@@ -27,6 +27,8 @@ func StartRPCServer() {
 	mainMux["getsidemininginfo"] = GetSideMiningInfo
 	mainMux["getmainchainblockheight"] = GetMainChainBlockHeight
 	mainMux["getsidechainblockheight"] = GetSideChainBlockHeight
+	mainMux["getfinisheddeposittxs"] = GetFinishedDepositTxs
+	mainMux["getfinishedwithdrawtxs"] = GetFinishedWithdrawTxs
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
