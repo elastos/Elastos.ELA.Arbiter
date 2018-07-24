@@ -182,8 +182,8 @@ func GetFinishedDepositTxs(param Params) map[string]interface{} {
 		return ResponsePack(InvalidParams, "get deposit transactions from finished dbcache failed")
 	}
 	type depositTx struct {
-		TransactionHash string
-		GenesisAddress  string
+		Hash                string
+		GenesisBlockAddress string
 	}
 	depositTxs := struct {
 		Transactions []depositTx
@@ -192,8 +192,8 @@ func GetFinishedDepositTxs(param Params) map[string]interface{} {
 	for i := 0; i < len(txHashes); i++ {
 		depositTxs.Transactions = append(depositTxs.Transactions,
 			depositTx{
-				TransactionHash: txHashes[i],
-				GenesisAddress:  genesisAddresses[i],
+				Hash:                txHashes[i],
+				GenesisBlockAddress: genesisAddresses[i],
 			})
 	}
 
@@ -216,4 +216,8 @@ func GetFinishedWithdrawTxs(param Params) map[string]interface{} {
 	}
 
 	return ResponsePack(Success, &withdrawTxs)
+}
+
+func GetGitVersion(param Params) map[string]interface{} {
+	return ResponsePack(Success, config.Version)
 }
