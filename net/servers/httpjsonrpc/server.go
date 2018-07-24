@@ -23,14 +23,10 @@ func StartRPCServer() {
 	mainMux["submitcomplain"] = SubmitComplain
 	mainMux["getcomplainstatus"] = GetComplainStatus
 	mainMux["getmainchainblockheight"] = GetMainChainBlockHeight
-	mainMux["getsidechainblockheightbygenesisaddress"] = GetSideChainBlockHeightByGenesisAddress
-	mainMux["getsidechainblockheightbygenesisblockhash"] = GetSideChainBlockHeightByGenesisBlockHash
-	mainMux["getlastsendsideminingheightbygenesisaddress"] = GetLastSendSideMiningHeightByGenesisAddress
-	mainMux["getlastsendsideminingheightbygenesisblockhash"] = GetLastSendSideMiningHeightByGenesisBlockHash
-	mainMux["getlastnotifysideminingheightbygenesisaddress"] = GetLastNotifySideMiningHeightByGenesisAddress
-	mainMux["getlastnotifysideminingheightbygenesisblockhash"] = GetLastNotifySideMiningHeightByGenesisBlockHash
-	mainMux["getlastsubmitauxpowheightbygenesisaddress"] = GetLastSubmitAuxpowHeightByGenesisAddress
-	mainMux["getlastsubmitauxpowheightbygenesisblockhash"] = GetLastSubmitAuxpowHeightByGenesisBlockHash
+	mainMux["getsidechainblockheight"] = GetSideChainBlockHeight
+	mainMux["getlastsendsideminingheight"] = GetLastSendSideMiningHeight
+	mainMux["getlastnotifysideminingheight"] = GetLastNotifySideMiningHeight
+	mainMux["getlastsubmitauxpowheight"] = GetLastSubmitAuxpowHeight
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {

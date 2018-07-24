@@ -127,11 +127,11 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 		return
 	}
 
-	sideChain.UpdateLastNotifySideMiningHeight(sideChain.GetKey())
+	sideChain.UpdateLastNotifySideMiningHeight(payload.SideGenesisHash)
 	err = sideChain.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
 	if err != nil {
 		log.Error("[Notify-Auxpow] Submit SideAuxpow error: ", err)
 		return
 	}
-	sideChain.UpdateLastSubmitAuxpowHeight(sideChain.GetKey())
+	sideChain.UpdateLastSubmitAuxpowHeight(payload.SideGenesisHash)
 }
