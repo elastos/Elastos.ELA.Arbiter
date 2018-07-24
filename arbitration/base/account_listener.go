@@ -1,13 +1,15 @@
 package base
 
+import "github.com/elastos/Elastos.ELA.Utility/common"
+
 type AccountListener interface {
 	GetAccountAddress() string
 	OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error
 
 	StartSideChainMining()
 	SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error
-	UpdateLastNotifySideMiningHeight(addr string)
-	UpdateLastSubmitAuxpowHeight(addr string)
+	UpdateLastNotifySideMiningHeight(genesisBlockHash common.Uint256)
+	UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256)
 
 	SendCachedWithdrawTxs() error
 }
