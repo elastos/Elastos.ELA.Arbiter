@@ -266,4 +266,24 @@ result sample:
     "result": "ea51-dirty"
 }
 ```
+#### getinfo  
+description: return current main chain height of spv
 
+parameters: none
+
+arguments sample:
+```json
+{
+  "method": "getspvheight"
+}
+```
+
+result sample:
+```json
+{
+    "error": null,
+    "id": null,
+    "jsonrpc": "2.0",
+    "result": 2509
+}
+```
