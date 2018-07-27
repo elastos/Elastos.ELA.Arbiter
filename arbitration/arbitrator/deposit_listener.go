@@ -56,7 +56,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	}
 
 	for i := 0; i < len(ids); i++ {
-		spvService.SubmitTransactionReceipt(ids[i], txs[i].Transaction.Hash())
+		SpvService.SubmitTransactionReceipt(ids[i], txs[i].Transaction.Hash())
 	}
 
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {

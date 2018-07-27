@@ -3,6 +3,7 @@ package servers
 import (
 	"time"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/complain"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/errors"
@@ -220,4 +221,12 @@ func GetFinishedWithdrawTxs(param Params) map[string]interface{} {
 
 func GetGitVersion(param Params) map[string]interface{} {
 	return ResponsePack(Success, config.Version)
+}
+
+func GetSPVHeight(param Params) map[string]interface{} {
+	bestHeader, err := arbitrator.SpvService.HeaderStore().GetBestHeader()
+	if err != nil {
+		return ResponsePack(InternalError, "get spv best header failed")
+	}
+	return ResponsePack(Success, bestHeader.Height)
 }

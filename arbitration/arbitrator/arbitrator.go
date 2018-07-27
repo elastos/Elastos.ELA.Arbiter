@@ -21,7 +21,7 @@ import (
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
-var spvService SPVService
+var SpvService SPVService
 
 type Arbitrator interface {
 	GetPublicKey() *crypto.PublicKey
@@ -323,7 +323,7 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		return err
 	}
 
-	spvService, err = NewSPVService(config.Parameters.MainNode.Magic, config.Parameters.MainNode.FoundationAddress, binary.LittleEndian.Uint64(publicKeyBytes),
+	SpvService, err = NewSPVService(config.Parameters.MainNode.Magic, config.Parameters.MainNode.FoundationAddress, binary.LittleEndian.Uint64(publicKeyBytes),
 		config.Parameters.MainNode.SpvSeedList, config.Parameters.MainNode.MinOutbound, config.Parameters.MainNode.MaxConnections)
 	if err != nil {
 		return err
@@ -334,20 +334,20 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		if err != nil {
 			return err
 		}
-		err = spvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
+		err = SpvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
 		if err != nil {
 			return err
 		}
 		dpListener := &DepositListener{ListenAddress: sideNode.GenesisBlockAddress}
 		dpListener.start()
-		err = spvService.RegisterTransactionListener(dpListener)
+		err = SpvService.RegisterTransactionListener(dpListener)
 		if err != nil {
 			return err
 		}
 	}
 
 	go func() {
-		if err = spvService.Start(); err != nil {
+		if err = SpvService.Start(); err != nil {
 			log.Error("spvService start failed ：", err)
 		}
 	}()

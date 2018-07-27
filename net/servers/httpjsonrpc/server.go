@@ -30,6 +30,7 @@ func StartRPCServer() {
 	mainMux["getfinisheddeposittxs"] = GetFinishedDepositTxs
 	mainMux["getfinishedwithdrawtxs"] = GetFinishedWithdrawTxs
 	mainMux["getgitversion"] = GetGitVersion
+	mainMux["getspvheight"] = GetSPVHeight
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
