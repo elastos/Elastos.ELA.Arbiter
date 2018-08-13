@@ -63,7 +63,7 @@ If you cannot see the version number, there must be something wrong when install
 ### Clone source code to $GOPATH/src/github.com/elastos/ folder
 Make sure you are in the folder of `$GOPATH/src/github.com/elastos/`
 ```shell
-$ go clone https://github.com/elastos/Elastos.ELA.Arbiter.git
+$ git clone https://github.com/elastos/Elastos.ELA.Arbiter.git
 ```
 
 If clone works successfully, you should see folder structure like $GOPATH/src/github.com/elastos/Elastos.ELA.Arbiter/Makefile
@@ -80,7 +80,7 @@ $ go install github.com/elastos/Elastos.ELA.Arbiter/vendor/github.com/mattn/go-s
 
 ### Make
 
-Run `make` to build the executable files `ela-cli`
+Run `make` to build the executable files `arbiter`
 
 ## Build on Ubuntu
 
@@ -146,7 +146,7 @@ If you cannot see the version number, there must be something wrong when install
 ### Clone source code to $GOPATH/src/github.com/elastos/ folder
 Make sure you are in the folder of `$GOPATH/src/github.com/elastos/`
 ```shell
-$ go clone https://github.com/elastos/Elastos.ELA.Arbiter.git
+$ git clone https://github.com/elastos/Elastos.ELA.Arbiter.git
 ```
 
 If clone works successfully, you should see folder structure like $GOPATH/src/github.com/elastos/Elastos.ELA.Arbiter/Makefile
@@ -163,7 +163,7 @@ $ go install github.com/elastos/Elastos.ELA.Client/vendor/github.com/mattn/go-sq
 
 ### Make
 
-Run `make` to build the executable files `ela-cli`
+Run `make` to build the executable files `arbiter`
 
 
 ## Run on Mac/Ubuntu
@@ -172,48 +172,72 @@ Run `make` to build the executable files `ela-cli`
 A file named `config.json` should be placed in the same folder with `arbiter` with the parameters as below.
 ```
 {
-  "PrintLevel": 4,
   "Configuration": {
-    "Magic": 7630402,
+    "Magic": 7530402,
     "Version": 0,
     "SeedList": [
-      "127.0.0.1:20338"
     ],
     "NodePort": 10338,
     "PrintLevel": 1,
-    "HttpJsonPort": 10010,
+    "HttpJsonPort": 10336,
+    "SpvPrintLevel": 1,
     "MainNode": {
       "Rpc": {
-        "IpAddress": "localhost",
-        "HttpJsonPort": 10038
+        "IpAddress": "127.0.0.1",
+        "HttpJsonPort": 11336
       },
-      "SpvSeedList": [
-        "127.0.0.1:20866"
-      ]
+     "SpvSeedList": [
+       "127.0.0.1:20866"
+    ],
+     "Magic": 7630401,
+     "MinOutbound": 4,
+     "MaxConnections": 100
     },
     "SideNodeList": [
       {
         "Rpc": {
-          "IpAddress": "localhost",
-          "HttpJsonPort": 20038
+          "IpAddress": "127.0.0.1",
+          "HttpJsonPort": 13336
         },
-        "GenesisBlockAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB",
-        "DestroyAddress": "XV3qTRxKoffDFWsVZXWo421MRyEmEGCuNu"
-      },
-      {
-        "Rpc": {
-          "IpAddress": "localhost",
-          "HttpJsonPort": 30038
-        },
-        "GenesisBlockAddress": "XH6gHwZC1yKaRRx62tzvWu5oxa3hekEgXp",
-        "DestroyAddress": "XFjTcbZ9sN8CAmUhNTjf67AFFC3RBYoCRB2"
+        "ExchangeRate": 1.0,
+        "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
+        "KeystoreFile": "keystore1.dat",
+        "PayToAddr": "XKUh4GLhFJiqAMTF6HyWQrV9pK9HcGUdfJ"
       }
     ],
-    "SyncInterval": 10000,
-    "SideChainMonitorScanInterval": 1000
+    "SyncInterval": 1000,
+    "SideChainMonitorScanInterval": 1000,
+    "MinThreshold": 10000000,
+    "DepositAmount": 10000000,
+    "MinReceivedUsedUtxoMsgNumber": 2,
+    "ClearTransactionInterval": 60000,
+    "MinOutbound": 3,
+    "MaxConnections": 8,
+    "SideAuxPowFee": 50000
   }
 }
 ```
+
+###parameters in config
+"ExchangeRate" in "SideNodeList" is exchange rate of to side chain
+
+"GenesisBlock" in "SideNodeList" is genesis block hash of side chain, you can get it by rpc or restful interface
+
+rpc:
+```
+{
+  "method": "getblockhash",
+  "params":{"height":0
+  }
+}
+```
+restful: 
+```
+ api/v1/block/details/height/0
+```
+"KeystoreFile" in "SideNodeList" is create by wallet for side mining
+
+"PayToAddr" in "SideNodeList" is the reward address of arbiter for side chain mining
 
 
 ### Examples
