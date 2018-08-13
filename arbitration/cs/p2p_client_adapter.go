@@ -22,6 +22,7 @@ import (
 
 var (
 	P2PClientSingleton *P2PClientAdapter
+	spvP2PClient       spvI.P2PClient
 )
 
 const (
@@ -35,9 +36,7 @@ const (
 )
 
 type P2PClientAdapter struct {
-	p2pClient  spvI.P2PClient
-	listeners  []base.P2PClientListener
-	arbitrator Arbitrator
+	listeners []base.P2PClientListener
 
 	messageHashes map[common.Uint256]uint32
 	cacheLock     sync.Mutex
@@ -48,18 +47,19 @@ func InitP2PClient(arbitrator Arbitrator) error {
 	magic := config.Parameters.Magic
 	seedList := config.Parameters.SeedList
 
-	client := spvI.NewP2PClient(magic, 80000, seedList, config.Parameters.MinOutbound, config.Parameters.MaxConnections)
+	spvP2PClient = spvI.NewP2PClient(magic, 80000, seedList, config.Parameters.MinOutbound, config.Parameters.MaxConnections)
 	P2PClientSingleton = &P2PClientAdapter{
-		p2pClient:     client,
-		arbitrator:    arbitrator,
 		messageHashes: make(map[common.Uint256]uint32, 0),
 	}
 
-	client.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
-	client.SetMessageHandler(P2PClientSingleton)
+	spvP2PClient.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
+	spvP2PClient.SetMessageHandler(P2PClientSingleton.newSpvMessageHandler)
 
-	client.Start()
 	return nil
+}
+
+func (adapter *P2PClientAdapter) newSpvMessageHandler() spvnet.MessageHandler {
+	return P2PClientSingleton
 }
 
 func (adapter *P2PClientAdapter) tryInit() {
@@ -69,11 +69,11 @@ func (adapter *P2PClientAdapter) tryInit() {
 }
 
 func (adapter *P2PClientAdapter) Start() {
-	adapter.p2pClient.Start()
+	spvP2PClient.Start()
 }
 
 func (adapter *P2PClientAdapter) InitLocalPeer(peer *spvnet.Peer) {
-	publicKey := adapter.arbitrator.GetPublicKey()
+	publicKey := ArbitratorGroupSingleton.GetCurrentArbitrator().GetPublicKey()
 	publicKeyBytes, _ := publicKey.EncodePoint(true)
 	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
 	port := config.Parameters.NodePort
@@ -129,7 +129,7 @@ func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
 }
 
 func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
-	adapter.p2pClient.PeerManager().Broadcast(msg)
+	spvP2PClient.PeerManager().Broadcast(msg)
 }
 
 func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
