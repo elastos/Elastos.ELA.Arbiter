@@ -32,6 +32,7 @@ type Configuration struct {
 
 	SyncInterval  time.Duration `json:"SyncInterval"`
 	HttpJsonPort  int           `json:"HttpJsonPort"`
+	HttpRestPort  uint16        `json:"HttpRestPort"`
 	PrintLevel    int           `json:"PrintLevel"`
 	SpvPrintLevel int           `json:"SpvPrintLevel"`
 	MaxLogSize    int64         `json:"MaxLogSize"`
@@ -97,7 +98,27 @@ func Init() {
 	// Remove the UTF-8 Byte Order Mark
 	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
 
-	config := ConfigFile{}
+	config := ConfigFile{
+		ConfigFile: Configuration{
+			Magic:                        0,
+			Version:                      0,
+			NodePort:                     20538,
+			HttpJsonPort:                 20536,
+			HttpRestPort:                 20534,
+			PrintLevel:                   1,
+			SpvPrintLevel:                1,
+			MaxLogSize:                   0,
+			SyncInterval:                 1000,
+			SideChainMonitorScanInterval: 1000,
+			ClearTransactionInterval:     60000,
+			MinReceivedUsedUtxoMsgNumber: 2,
+			MinOutbound:                  3,
+			MaxConnections:               8,
+			SideAuxPowFee:                50000,
+			MinThreshold:                 10000000,
+			DepositAmount:                10000000,
+		},
+	}
 	e = json.Unmarshal(file, &config)
 	if e != nil {
 		fmt.Printf("Unmarshal json file erro %v", e)
@@ -114,19 +135,32 @@ func Init() {
 	}
 	fmt.Println(out.String())
 
+	if Parameters.Configuration.MainNode == nil {
+		fmt.Printf("Need to set main node in config file\n")
+		return
+	}
+
+	if Parameters.Configuration.SideNodeList == nil {
+		fmt.Printf("Need to set side node list in config file\n")
+		return
+	}
+
 	for _, node := range Parameters.SideNodeList {
 		genesisBytes, err := HexStringToBytes(node.GenesisBlock)
 		if err != nil {
+			fmt.Printf("Side node genesis block hash error: %v\n", e)
 			return
 		}
 		reversedGenesisBytes := BytesReverse(genesisBytes)
 		reversedGenesisStr := BytesToHexString(reversedGenesisBytes)
 		genesisBlockHash, err := Uint256FromHexString(reversedGenesisStr)
 		if err != nil {
+			fmt.Printf("Side node genesis block hash reverse error: %v\n", e)
 			return
 		}
 		address, err := common.GetGenesisAddress(*genesisBlockHash)
 		if err != nil {
+			fmt.Printf("Side node genesis block hash to address error: %v\n", e)
 			return
 		}
 		node.GenesisBlockAddress = address
