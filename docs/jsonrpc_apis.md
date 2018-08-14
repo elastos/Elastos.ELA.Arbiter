@@ -239,7 +239,7 @@ result sample:
     }
 }
 ```
-#### getinfo  
+#### getgitversion  
 description: return git version of current arbiter
 
 parameters: none
@@ -266,7 +266,7 @@ result sample:
     "result": "ea51-dirty"
 }
 ```
-#### getinfo  
+#### getspvheight  
 description: return current main chain height of spv
 
 parameters: none
