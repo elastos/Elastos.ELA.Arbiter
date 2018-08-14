@@ -93,10 +93,8 @@ func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*
 	if err != nil {
 		return nil, err
 	}
-	transactions, err := GetBlockTransactions(resp)
-	if err != nil {
-		return nil, err
-	}
+	transactions := UnmarshalCrossChainTransactions(resp)
+	log.Debug("[getdestorytransactions] len transactions:", len(transactions.Transactions), "transactions:", transactions)
 
 	return transactions, nil
 }
@@ -232,32 +230,24 @@ func Calls(method string, params map[string][]string, config *config.RpcConfig) 
 	return body, nil
 }
 
-func GetBlockTransactions(resp interface{}) (*BlockTransactions, error) {
+func UnmarshalCrossChainTransactions(resp interface{}) *BlockTransactions {
 	transactions := &BlockTransactions{}
 	Unmarshal(&resp, transactions)
 
+	var resultTransactions []*TransactionInfo
 	for _, txInfo := range transactions.Transactions {
 		var assetInfo PayloadInfo
-		switch txInfo.TxType {
-		case elaCore.RegisterAsset:
-			assetInfo = &RegisterAssetInfo{}
-		case elaCore.CoinBase:
-			assetInfo = &CoinbaseInfo{}
-		case elaCore.TransferAsset:
-			assetInfo = &TransferAssetInfo{}
-		case elaCore.RechargeToSideChain:
-			assetInfo = &RechargeToSideChainInfo{}
-		case elaCore.TransferCrossChainAsset:
+		if txInfo.TxType == elaCore.TransferCrossChainAsset {
 			assetInfo = &TransferCrossChainAssetInfo{}
-		default:
-			return nil, errors.New("GetBlockTransactions: Unknown payload type")
-		}
-		err := Unmarshal(&txInfo.Payload, assetInfo)
-		if err == nil {
-			txInfo.Payload = assetInfo
+			err := Unmarshal(&txInfo.Payload, assetInfo)
+			if err == nil {
+				txInfo.Payload = assetInfo
+			}
+			resultTransactions = append(resultTransactions, txInfo)
 		}
 	}
-	return transactions, nil
+	transactions.Transactions = resultTransactions
+	return transactions
 }
 
 func CallAndUnmarshal(method string, params map[string]string, config *config.RpcConfig) (interface{}, error) {

@@ -67,6 +67,9 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				if currentHeight >= 6 {
 					transactions, err := GetDestroyedTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
 					if err != nil {
+						log.Error("Get destoryed transaction at height:", currentHeight+1-6, "failed\n"+
+							"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
+							"error:", err)
 						break
 					}
 					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
