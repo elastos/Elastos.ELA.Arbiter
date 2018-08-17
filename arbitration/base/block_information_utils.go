@@ -76,7 +76,6 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txAttr := &Attribute{
 			Usage: att.Usage,
 			Data:  attData,
-			Size:  0,
 		}
 		txAttribute = append(txAttribute, txAttr)
 	}
