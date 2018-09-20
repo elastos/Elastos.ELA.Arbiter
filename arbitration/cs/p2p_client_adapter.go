@@ -117,7 +117,7 @@ func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
 	//delete message height 5 less than current main chain height
 	var needToDeleteMessages []common.Uint256
 	for k, v := range adapter.messageHashes {
-		if v < currentMainChainHeight-MessageStoreHeight {
+		if currentMainChainHeight > MessageStoreHeight && v < currentMainChainHeight-MessageStoreHeight {
 			needToDeleteMessages = append(needToDeleteMessages, k)
 		}
 	}

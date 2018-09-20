@@ -80,7 +80,12 @@ func main() {
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
 	log.Info("4. Init wallet.")
-	wallet, err := wallet.Open()
+	passwd, err := password.GetAccountPassword()
+	if err != nil {
+		log.Fatal("Get password error.")
+		os.Exit(1)
+	}
+	wallet, err := wallet.Open(passwd)
 	if err != nil {
 		log.Fatal("error: open wallet failed, ", err)
 		os.Exit(1)
@@ -88,11 +93,6 @@ func main() {
 	sideauxpow.CurrentWallet = wallet
 
 	log.Info("5. Init arbitrator account.")
-	passwd, err := password.GetAccountPassword()
-	if err != nil {
-		log.Fatal("Get password error.")
-		os.Exit(1)
-	}
 	sideauxpow.SetMainAccountPassword(passwd)
 	if err := currentArbitrator.InitAccount(passwd); err != nil {
 		log.Fatal(err)

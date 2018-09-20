@@ -8,7 +8,8 @@ import (
 	"math/rand"
 	"strconv"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
@@ -22,80 +23,74 @@ type Transfer struct {
 	Amount  *Fixed64
 }
 
+type UTXO struct {
+	Op       *OutPoint
+	Amount   *Fixed64
+	LockTime uint32
+}
+
+type KeyAddress struct {
+	Name string
+	Addr *Address
+}
+
 var wallet Wallet // Single instance of wallet
 
 type Wallet interface {
-	DataStore
-
 	OpenKeystore(name string, password []byte) error
-	ChangePassword(oldPassword, newPassword []byte) error
 
-	AddStandardAccount(publicKey *crypto.PublicKey) (*Uint168, error)
-	AddMultiSignAccount(M uint, publicKey ...*crypto.PublicKey) (*Uint168, error)
+	GetAddresses() []*KeyAddress
+	GetAddress(keystoreFile string) *KeyAddress
+	GetAddressUTXOs(programHash *Uint168) ([]*UTXO, error)
 
-	CreateTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64) (*Transaction, error)
-	CreateAuxpowTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64) (*Transaction, error)
-	CreateLockedTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, lockedUntil uint32) (*Transaction, error)
-	CreateMultiOutputTransaction(fromAddress string, fee *Fixed64, output ...*Transfer) (*Transaction, error)
-	CreateLockedMultiOutputTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, lockedUntil uint32, output ...*Transfer) (*Transaction, error)
+	CreateTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, redeemScript []byte, currentHeight uint32) (*Transaction, error)
+	CreateAuxpowTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, redeemScript []byte, currentHeight uint32) (*Transaction, error)
+	CreateLockedTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32) (*Transaction, error)
+	CreateMultiOutputTransaction(fromAddress string, fee *Fixed64, redeemScript []byte, currentHeight uint32, output ...*Transfer) (*Transaction, error)
+	CreateLockedMultiOutputTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32, output ...*Transfer) (*Transaction, error)
 
 	Sign(name string, password []byte, transaction *Transaction) (*Transaction, error)
-
-	Reset() error
 }
 
 type WalletImpl struct {
-	DataStore
 	Keystore
 
-	Addresses []*Address
+	keys []*KeyAddress
 }
 
-func Create(name string, password []byte) (Wallet, error) {
-	keyStore, err := CreateKeystore(name, password)
-	if err != nil {
-		log.Error("Wallet create key store failed:", err)
-		return nil, err
+func Open(passwd []byte) (Wallet, error) {
+	var keys []*KeyAddress
+	var keystoreFiles []string
+	keystoreFiles = append(keystoreFiles, DefaultKeystoreFile)
+	for _, side := range config.Parameters.SideNodeList {
+		keystoreFiles = append(keystoreFiles, side.KeystoreFile)
 	}
 
-	dataStore, err := OpenDataStore()
-	if err != nil {
-		log.Error("Wallet create data store failed:", err)
-		return nil, err
+	for _, keystore := range keystoreFiles {
+		ks, err := OpenKeystore(keystore, passwd)
+		if err != nil {
+			return nil, errors.New("Side node keystore file open failed:" + err.Error())
+		}
+		address := ks.Address()
+		hash, err := Uint168FromAddress(ks.Address())
+		if err != nil {
+			return nil, errors.New("Side chain invalid address:" + err.Error())
+		}
+		script := ks.GetRedeemScript()
+		keys = append(keys, &KeyAddress{
+			Name: keystore,
+			Addr: &Address{
+				Address:      address,
+				ProgramHash:  hash,
+				RedeemScript: script,
+				Type:         TypeStand,
+			}})
 	}
 
-	dataStore.AddAddress(keyStore.GetProgramHash(), keyStore.GetRedeemScript(), TypeMaster)
-
-	addresses, err := dataStore.GetAddresses()
-	if err != nil {
-		return nil, err
-	}
-
-	wallet = &WalletImpl{
-		DataStore: dataStore,
-		Keystore:  keyStore,
-		Addresses: addresses,
-	}
-	return wallet, nil
-}
-
-func Open() (Wallet, error) {
 	if wallet == nil {
-		dataStore, err := OpenDataStore()
-		if err != nil {
-			return nil, err
-		}
-
-		addresses, err := dataStore.GetAddresses()
-		if err != nil {
-			return nil, err
-		}
-
 		wallet = &WalletImpl{
-			DataStore: dataStore,
-			Addresses: addresses,
+			keys: keys,
 		}
-
 	}
 	return wallet, nil
 }
@@ -109,63 +104,25 @@ func (wallet *WalletImpl) OpenKeystore(name string, password []byte) error {
 	return nil
 }
 
-func (wallet *WalletImpl) AddStandardAccount(publicKey *crypto.PublicKey) (*Uint168, error) {
-	redeemScript, err := crypto.CreateStandardRedeemScript(publicKey)
-	if err != nil {
-		return nil, errors.New("[Wallet], CreateStandardRedeemScript failed")
-	}
-
-	programHash, err := crypto.ToProgramHash(redeemScript)
-	if err != nil {
-		return nil, errors.New("[Wallet], CreateStandardAddress failed")
-	}
-
-	err = wallet.AddAddress(programHash, redeemScript, TypeStand)
-	if err != nil {
-		return nil, err
-	}
-
-	return programHash, nil
+func (wallet *WalletImpl) CreateTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, redeemScript []byte, currentHeight uint32) (*Transaction, error) {
+	return wallet.CreateLockedTransaction(txType, txPayload, fromAddress, toAddress, amount, fee, redeemScript, uint32(0), currentHeight)
 }
 
-func (wallet *WalletImpl) AddMultiSignAccount(M uint, publicKeys ...*crypto.PublicKey) (*Uint168, error) {
-	redeemScript, err := crypto.CreateMultiSignRedeemScript(M, publicKeys)
-	if err != nil {
-		return nil, errors.New("[Wallet], CreateMultiSignRedeemScript failed")
-	}
-
-	programHash, err := crypto.ToProgramHash(redeemScript)
-	if err != nil {
-		return nil, errors.New("[Wallet], CreateMultiSignAddress failed")
-	}
-
-	err = wallet.AddAddress(programHash, redeemScript, TypeMulti)
-	if err != nil {
-		return nil, err
-	}
-
-	return programHash, nil
+func (wallet *WalletImpl) CreateLockedTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32) (*Transaction, error) {
+	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, redeemScript, lockedUntil, currentHeight, &Transfer{toAddress, amount})
 }
 
-func (wallet *WalletImpl) CreateTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64) (*Transaction, error) {
-	return wallet.CreateLockedTransaction(txType, txPayload, fromAddress, toAddress, amount, fee, uint32(0))
-}
-
-func (wallet *WalletImpl) CreateLockedTransaction(txType TransactionType, txPayload Payload, fromAddress, toAddress string, amount, fee *Fixed64, lockedUntil uint32) (*Transaction, error) {
-	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, lockedUntil, &Transfer{toAddress, amount})
-}
-
-func (wallet *WalletImpl) CreateMultiOutputTransaction(fromAddress string, fee *Fixed64, outputs ...*Transfer) (*Transaction, error) {
+func (wallet *WalletImpl) CreateMultiOutputTransaction(fromAddress string, fee *Fixed64, redeemScript []byte, currentHeight uint32, outputs ...*Transfer) (*Transaction, error) {
 	txType := TransferAsset
 	txPayload := &PayloadTransferAsset{}
-	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, uint32(0), outputs...)
+	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, redeemScript, uint32(0), currentHeight, outputs...)
 }
 
-func (wallet *WalletImpl) CreateLockedMultiOutputTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, lockedUntil uint32, outputs ...*Transfer) (*Transaction, error) {
-	return wallet.createTransaction(txType, txPayload, fromAddress, fee, lockedUntil, outputs...)
+func (wallet *WalletImpl) CreateLockedMultiOutputTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32, outputs ...*Transfer) (*Transaction, error) {
+	return wallet.createTransaction(txType, txPayload, fromAddress, fee, redeemScript, lockedUntil, currentHeight, outputs...)
 }
 
-func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64) (*Transaction, error) {
+func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, redeemScript []byte, currentHeight uint32) (*Transaction, error) {
 	// Check if from address is valid
 	spender, err := Uint168FromAddress(fromAddress)
 	if err != nil {
@@ -181,8 +138,8 @@ func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayl
 	if err != nil {
 		return nil, errors.New("[Wallet], Get spender's UTXOs failed")
 	}
-	availableUTXOs := wallet.removeLockedUTXOs(UTXOs) // Remove locked UTXOs
-	availableUTXOs = SortUTXOs(availableUTXOs)        // Sort available UTXOs by value ASC
+	availableUTXOs := wallet.removeLockedUTXOs(UTXOs, currentHeight) // Remove locked UTXOs
+	availableUTXOs = SortUTXOs(availableUTXOs)                       // Sort available UTXOs by value ASC
 
 	// Create transaction inputs
 	var txInputs []*Input // The inputs in transaction
@@ -227,15 +184,10 @@ func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayl
 		txOutputs = append(txOutputs, txOutput)
 	}
 
-	account, err := wallet.GetAddressInfo(spender)
-	if err != nil {
-		return nil, errors.New("[Wallet], Get spenders account info failed")
-	}
-
-	return wallet.newTransaction(txType, txPayload, account.RedeemScript, txInputs, txOutputs), nil
+	return wallet.newTransaction(txType, txPayload, redeemScript, txInputs, txOutputs, currentHeight), nil
 }
 
-func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, lockedUntil uint32, outputs ...*Transfer) (*Transaction, error) {
+func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Payload, fromAddress string, fee *Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32, outputs ...*Transfer) (*Transaction, error) {
 	// Check if output is valid
 	if len(outputs) == 0 {
 		return nil, errors.New("[Wallet], Invalid transaction target")
@@ -269,8 +221,8 @@ func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Pa
 	if err != nil {
 		return nil, errors.New("[Wallet], Get spender's UTXOs failed")
 	}
-	availableUTXOs := wallet.removeLockedUTXOs(UTXOs) // Remove locked UTXOs
-	availableUTXOs = SortUTXOs(availableUTXOs)        // Sort available UTXOs by value ASC
+	availableUTXOs := wallet.removeLockedUTXOs(UTXOs, currentHeight) // Remove locked UTXOs
+	availableUTXOs = SortUTXOs(availableUTXOs)                       // Sort available UTXOs by value ASC
 
 	// Create transaction inputs
 	var txInputs []*Input // The inputs in transaction
@@ -304,12 +256,7 @@ func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Pa
 		return nil, errors.New("[Wallet], Available token is not enough")
 	}
 
-	account, err := wallet.GetAddressInfo(spender)
-	if err != nil {
-		return nil, errors.New("[Wallet], Get spenders account info failed")
-	}
-
-	return wallet.newTransaction(txType, txPayload, account.RedeemScript, txInputs, txOutputs), nil
+	return wallet.newTransaction(txType, txPayload, redeemScript, txInputs, txOutputs, currentHeight), nil
 }
 
 func (wallet *WalletImpl) Sign(name string, password []byte, txn *Transaction) (*Transaction, error) {
@@ -402,10 +349,6 @@ func (wallet *WalletImpl) signMultiSignTransaction(password []byte, txn *Transac
 	return txn, nil
 }
 
-func (wallet *WalletImpl) Reset() error {
-	return wallet.ResetDataStore()
-}
-
 func getSystemAssetId() Uint256 {
 	systemToken := &Transaction{
 		TxType:         RegisterAsset,
@@ -427,9 +370,8 @@ func getSystemAssetId() Uint256 {
 	return systemToken.Hash()
 }
 
-func (wallet *WalletImpl) removeLockedUTXOs(utxos []*UTXO) []*UTXO {
+func (wallet *WalletImpl) removeLockedUTXOs(utxos []*UTXO, currentHeight uint32) []*UTXO {
 	var availableUTXOs []*UTXO
-	var currentHeight = wallet.CurrentHeight(QueryHeightCode)
 	for _, utxo := range utxos {
 		if utxo.LockTime > 0 {
 			if utxo.LockTime >= currentHeight {
@@ -442,7 +384,7 @@ func (wallet *WalletImpl) removeLockedUTXOs(utxos []*UTXO) []*UTXO {
 	return availableUTXOs
 }
 
-func (wallet *WalletImpl) newTransaction(txType TransactionType, txPayload Payload, redeemScript []byte, inputs []*Input, outputs []*Output) *Transaction {
+func (wallet *WalletImpl) newTransaction(txType TransactionType, txPayload Payload, redeemScript []byte, inputs []*Input, outputs []*Output, currentHeight uint32) *Transaction {
 	// Create payload
 	// txPayload = &payload.TransferAsset{}
 	// Create attributes
@@ -459,6 +401,57 @@ func (wallet *WalletImpl) newTransaction(txType TransactionType, txPayload Paylo
 		Inputs:     inputs,
 		Outputs:    outputs,
 		Programs:   []*Program{program},
-		LockTime:   wallet.CurrentHeight(QueryHeightCode) - 1,
+		LockTime:   currentHeight - 1,
 	}
+}
+
+func (wallet *WalletImpl) GetAddresses() []*KeyAddress {
+	return wallet.keys
+}
+
+func (wallet *WalletImpl) GetAddress(keystoreFile string) *KeyAddress {
+	for _, ks := range wallet.keys {
+		if ks.Name == keystoreFile {
+			return ks
+		}
+	}
+	return nil
+}
+
+func (wallet *WalletImpl) GetAddressUTXOs(programHash *Uint168) ([]*UTXO, error) {
+	address, err := programHash.ToAddress()
+	if err != nil {
+		return nil, err
+	}
+
+	utxoInfos, err := rpc.GetUnspentUtxo([]string{address}, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var inputs []*UTXO
+	for _, utxoInfo := range utxoInfos {
+
+		bytes, err := HexStringToBytes(utxoInfo.Txid)
+		if err != nil {
+			return nil, err
+		}
+		reversedBytes := BytesReverse(bytes)
+		txid, err := Uint256FromBytes(reversedBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		var op OutPoint
+		op.TxID = *txid
+		op.Index = uint16(utxoInfo.VOut)
+
+		amount, err := StringToFixed64(utxoInfo.Amount)
+		if err != nil {
+			return nil, err
+		}
+
+		inputs = append(inputs, &UTXO{&op, amount, utxoInfo.OutputLock})
+	}
+	return inputs, nil
 }

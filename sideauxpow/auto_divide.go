@@ -5,10 +5,12 @@ import (
 	"errors"
 	"time"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	walt "github.com/elastos/Elastos.ELA.Arbiter/wallet"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
@@ -19,15 +21,15 @@ type SideChainPowAccount struct {
 	availableBalance Fixed64
 }
 
-func checkSideChainPowAccounts(addrs []*walt.Address, minThreshold int, wallet walt.Wallet) ([]*SideChainPowAccount, error) {
+func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, wallet walt.Wallet) ([]*SideChainPowAccount, error) {
 	var warnAddresses []*SideChainPowAccount
-	currentHeight := wallet.CurrentHeight(walt.QueryHeightCode)
+	currentHeight := *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 	for _, addr := range addrs {
 		available := Fixed64(0)
 		locked := Fixed64(0)
-		UTXOs, err := wallet.GetAddressUTXOs(addr.ProgramHash)
+		UTXOs, err := wallet.GetAddressUTXOs(addr.Addr.ProgramHash)
 		if err != nil {
-			return nil, errors.New("get " + addr.Address + " UTXOs failed")
+			return nil, errors.New("get " + addr.Addr.Address + " UTXOs failed")
 		}
 		for _, utxo := range UTXOs {
 			if utxo.LockTime < currentHeight {
@@ -39,7 +41,7 @@ func checkSideChainPowAccounts(addrs []*walt.Address, minThreshold int, wallet w
 
 		if available < Fixed64(minThreshold) {
 			warnAddresses = append(warnAddresses, &SideChainPowAccount{
-				Address:          addr.Address,
+				Address:          addr.Addr.Address,
 				availableBalance: available,
 			})
 		}
@@ -72,8 +74,13 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 
 	from := keystore.Address()
 
+	script, err := crypto.CreateStandardRedeemScript(keystore.GetPublicKey())
+	if err != nil {
+		return err
+	}
+
 	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, outputs...)
+	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
 	if err != nil {
 		return errors.New("create divide transaction failed: " + err.Error())
 	}
@@ -110,9 +117,9 @@ func SidechainAccountDivide(wallet walt.Wallet) {
 	for {
 		select {
 		case <-time.After(time.Second * 60):
-			addresses, err := wallet.GetAddresses()
-			if err != nil {
-				log.Error("Get addresses error:", err)
+			addresses := wallet.GetAddresses()
+			if len(addresses) == 0 {
+				log.Error("Wallet addresses is null")
 			}
 			warningAccounts, err := checkSideChainPowAccounts(addresses, config.Parameters.MinThreshold, wallet)
 			if err != nil {
