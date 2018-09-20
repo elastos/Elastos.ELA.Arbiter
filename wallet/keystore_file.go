@@ -1,17 +1,16 @@
 package wallet
 
 import (
-	"os"
-	"sync"
+	"encoding/json"
 	"errors"
 	"io/ioutil"
-	"encoding/json"
+	"os"
+	"sync"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
 const (
-	OldWalletFile       = "wallet.dat"
 	DefaultKeystoreFile = "keystore.dat"
 )
 
@@ -42,72 +41,16 @@ func CreateKeystoreFile(name string) (*KeystoreFile, error) {
 }
 
 func OpenKeystoreFile(name string) (*KeystoreFile, error) {
-
 	file := &KeystoreFile{
 		fileName: name,
 	}
 
 	err := file.LoadFromFile()
 	if err != nil {
-		// Try to open keystore file from old version
-		file, err = OpenFromOldVersion()
-		if err == nil {
-			return file, nil
-		}
 		return nil, err
 	}
 
 	return file, nil
-}
-
-func OpenFromOldVersion() (*KeystoreFile, error) {
-	if _, err := os.Stat(OldWalletFile); err != nil {
-		return nil, errors.New("wallet file not exist")
-	}
-
-	file, err := os.OpenFile(OldWalletFile, os.O_RDONLY, 0666)
-	if err != nil {
-		return nil, err
-	}
-
-	data, err := ioutil.ReadAll(file)
-	if err != nil {
-		return nil, err
-	}
-
-	content := make(map[string]interface{})
-	err = json.Unmarshal(data, &content)
-	if err != nil {
-		return nil, err
-	}
-
-	accounts := content["Account"].([]interface{})
-
-	var privateKeyEncrypted string
-
-	for _, account := range accounts {
-		accountType := account.(map[string]interface{})["Type"].(string)
-		if accountType == "main-account" {
-			privateKeyEncrypted = account.(map[string]interface{})["PrivateKeyEncrypted"].(string)
-			break
-		}
-	}
-
-	keystoreFile := &KeystoreFile{
-		fileName:            DefaultKeystoreFile,
-		Version:             KeystoreVersion,
-		IV:                  content["IV"].(string),
-		PasswordHash:        content["PasswordHash"].(string),
-		MasterKeyEncrypted:  content["MasterKey"].(string),
-		PrivateKeyEncrypted: privateKeyEncrypted,
-	}
-
-	err = keystoreFile.SaveToFile()
-	if err != nil {
-		return nil, err
-	}
-
-	return keystoreFile, nil
 }
 
 func (store *KeystoreFile) SetIV(iv []byte) {

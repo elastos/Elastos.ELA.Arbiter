@@ -137,15 +137,16 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	}
 	fee := Fixed64(config.Parameters.SideAuxPowFee)
 
-	keystore, err := wallet.OpenKeystore(name, passwd)
-	if err != nil {
-		return err
+	addr := CurrentWallet.GetAddress(name)
+	if addr == nil {
+		return errors.New("Get key store address failed:" + name)
 	}
 
-	from := keystore.Address()
+	from := addr.Addr.Address
+	script := addr.Addr.RedeemScript
 
 	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, &fee)
+	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight())
 	if err != nil {
 		return errors.New("create transaction failed: " + err.Error())
 	}

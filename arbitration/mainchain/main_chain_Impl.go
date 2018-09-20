@@ -432,9 +432,9 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get exist deposit transactions failed.")
 			continue
 		}
-		finalGenesisAddresses := make([]string, len(receivedTxs))
+		finalGenesisAddresses := make([]string, 0)
 		for i := 0; i < len(finalGenesisAddresses); i++ {
-			finalGenesisAddresses[i] = k.GetKey()
+			finalGenesisAddresses = append(finalGenesisAddresses, k.GetKey())
 		}
 		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)
 		if err != nil {
