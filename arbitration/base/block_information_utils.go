@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	sc "github.com/elastos/Elastos.ELA.SideChain/core"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/auxpow"
@@ -46,9 +47,18 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
 		obj := new(PayloadTransferCrossChainAsset)
-		obj.CrossChainAddresses = object.CrossChainAddresses
-		obj.OutputIndexes = object.OutputIndexes
-		obj.CrossChainAmounts = object.CrossChainAmounts
+		obj.CrossChainAddresses = make([]string, 0)
+		obj.OutputIndexes = make([]uint64, 0)
+		obj.CrossChainAmounts = make([]Fixed64, 0)
+		for _, assetInfo := range object.CrossChainAssets {
+			obj.CrossChainAddresses = append(obj.CrossChainAddresses, assetInfo.CrossChainAddress)
+			obj.OutputIndexes = append(obj.OutputIndexes, assetInfo.OutputIndex)
+			amount, err := StringToFixed64(assetInfo.CrossChainAmount)
+			if err != nil {
+				return nil, err
+			}
+			obj.CrossChainAmounts = append(obj.CrossChainAmounts, *amount)
+		}
 		return obj, nil
 	}
 
@@ -102,14 +112,6 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 
 	var txOutputs []*Output
 	for _, output := range txInfo.Outputs {
-		assetIdBytes, err := HexStringToBytes(output.AssetID)
-		if err != nil {
-			return nil, err
-		}
-		assetId, err := Uint256FromBytes(BytesReverse(assetIdBytes))
-		if err != nil {
-			return nil, err
-		}
 		value, err := StringToFixed64(output.Value)
 		if err != nil {
 			return nil, err
@@ -124,7 +126,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 			}
 		}
 		output := &Output{
-			AssetID:     *assetId,
+			AssetID:     spvwallet.SystemAssetId,
 			Value:       *value,
 			OutputLock:  output.OutputLock,
 			ProgramHash: *programHash,

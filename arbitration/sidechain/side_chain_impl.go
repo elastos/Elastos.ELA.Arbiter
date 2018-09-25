@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"crypto/rand"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"strconv"
 	"sync"
@@ -19,7 +18,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA.SPV/net"
-	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/core"
@@ -222,14 +220,9 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 }
 
 func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, error) {
-	infoBytes, err := json.Marshal(info)
-	if err != nil {
-		return rpc.Response{}, err
-	}
-
 	log.Info("[Rpc-sendtransactioninfo] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
 	response, err := rpc.CallAndUnmarshalResponse("sendtransactioninfo",
-		rpc.Param("Info", common.BytesToHexString(infoBytes)), sc.CurrentConfig.Rpc)
+		rpc.Param("info", info), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
@@ -295,14 +288,15 @@ func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, er
 }
 
 func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction, error) {
-	txBytes, err := rpc.GetTransactionByHash(txHash, sc.CurrentConfig.Rpc)
+	txInfo, err := rpc.GetTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
 	if err != nil {
 		return nil, err
 	}
 
-	tx := new(core.Transaction)
-	reader := bytes.NewReader(txBytes)
-	tx.Deserialize(reader)
+	tx, err := txInfo.ToTransaction()
+	if err != nil {
+		return nil, err
+	}
 
 	return tx, nil
 }
@@ -310,14 +304,12 @@ func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction,
 func (sc *SideChainImpl) CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error) {
 	var txOutputs []OutputInfo // The outputs in transaction
 
-	assetID := spvWallet.SystemAssetId
 	exchangeRate, err := sc.GetExchangeRate()
 	if err != nil {
 		return nil, err
 	}
 	for i := 0; i < len(spvTx.DepositInfo.TargetAddress); i++ {
 		txOutput := OutputInfo{
-			AssetID:    common.BytesToHexString(common.BytesReverse(assetID.Bytes())),
 			Value:      common.Fixed64(float64(spvTx.DepositInfo.CrossChainAmounts[i]) * exchangeRate).String(),
 			Address:    spvTx.DepositInfo.TargetAddress[i],
 			OutputLock: uint32(0),
