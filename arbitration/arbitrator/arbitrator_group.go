@@ -71,7 +71,7 @@ func (group *ArbitratorGroupImpl) InitArbitratorsByStrings(arbiters []string, on
 
 func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	currentTime := uint64(time.Now().UnixNano())
-	if group.lastSyncTime != nil && currentTime*uint64(time.Millisecond) < group.timeoutLimit {
+	if group.lastSyncTime != nil && (currentTime-*group.lastSyncTime)*uint64(time.Millisecond) < group.timeoutLimit {
 		return nil
 	}
 
