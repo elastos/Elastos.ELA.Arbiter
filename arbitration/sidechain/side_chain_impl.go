@@ -227,7 +227,12 @@ func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, e
 		return rpc.Response{}, err
 	}
 
-	log.Info("response:", response)
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else {
+		log.Info("response:", response)
+	}
+
 	return response, nil
 }
 
