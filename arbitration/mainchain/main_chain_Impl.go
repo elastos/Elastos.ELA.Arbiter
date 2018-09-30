@@ -264,12 +264,14 @@ func (mc *MainChainImpl) SyncChainData() {
 	for {
 		chainHeight, currentHeight, needSync = mc.needSyncBlocks()
 		if !needSync {
+			log.Debug("No need sync, chain height:", chainHeight, "current height:", currentHeight)
 			break
 		}
 
 		for currentHeight <= chainHeight {
 			block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
 			if err != nil {
+				log.Error("get block by height failed, chain height:", chainHeight, "current height:", currentHeight)
 				break
 			}
 			mc.processBlock(block, currentHeight)

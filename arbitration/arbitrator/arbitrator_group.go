@@ -72,23 +72,27 @@ func (group *ArbitratorGroupImpl) InitArbitratorsByStrings(arbiters []string, on
 func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	currentTime := uint64(time.Now().UnixNano())
 	if group.lastSyncTime != nil && (currentTime-*group.lastSyncTime)*uint64(time.Millisecond) < group.timeoutLimit {
+		log.Info("[SyncFromMainNode] less than timeout limit")
 		return nil
 	}
 
 	height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
+		log.Info("[SyncFromMainNode] rpc get current height failed")
 		return err
 	}
 
 	group.mux.Lock()
 	if group.currentHeight != nil && *group.currentHeight == height {
 		group.mux.Unlock()
+		log.Info("[SyncFromMainNode] current height == rpc height")
 		return nil
 	}
 	group.mux.Unlock()
 
 	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
 	if err != nil {
+		log.Info("[SyncFromMainNode] get arbitrator group info failed")
 		return err
 	}
 
