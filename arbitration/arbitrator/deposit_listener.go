@@ -51,7 +51,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 
 	result, err := store.DbCache.MainChainStore.AddMainChainTxs(txs)
 	if err != nil {
-		log.Error("AddMainChainTx error:", err)
+		log.Error("[Notify-Process] AddMainChainTx error:", err)
 		return
 	}
 
@@ -60,6 +60,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	}
 
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+		log.Warn("[Notify-Process] i am not onduty")
 		return
 	}
 

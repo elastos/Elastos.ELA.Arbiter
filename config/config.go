@@ -133,7 +133,6 @@ func Init() {
 		fmt.Printf("Config file error: %v\n", e)
 		os.Exit(1)
 	}
-	fmt.Println(out.String())
 
 	if Parameters.Configuration.MainNode == nil {
 		fmt.Printf("Need to set main node in config file\n")
