@@ -67,7 +67,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		}
 		unsolvedTxs := SubstractTransactionHashes(v, receivedTxs)
 		result[k] = unsolvedTxs
-		var addresses []string
+		addresses := make([]string, 0)
 		for i := 0; i < len(receivedTxs); i++ {
 			addresses = append(addresses, k.GetKey())
 		}
@@ -435,7 +435,7 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 			continue
 		}
 		finalGenesisAddresses := make([]string, 0)
-		for i := 0; i < len(finalGenesisAddresses); i++ {
+		for i := 0; i < len(receivedTxs); i++ {
 			finalGenesisAddresses = append(finalGenesisAddresses, k.GetKey())
 		}
 		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)
