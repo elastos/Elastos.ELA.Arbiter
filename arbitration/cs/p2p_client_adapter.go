@@ -2,9 +2,7 @@ package cs
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
-	"fmt"
 	"sync"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -12,17 +10,15 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
-	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
-	"github.com/elastos/Elastos.ELA.SPV/sdk"
+	"github.com/elastos/Elastos.ELA.SPV/peer"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/server"
 )
 
 var (
 	P2PClientSingleton *P2PClientAdapter
-	spvP2PClient       spvI.P2PClient
+	spvP2PClient       server.IServer
 )
 
 const (
@@ -32,7 +28,9 @@ const (
 	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
 	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
 
-	MessageStoreHeight = 5
+	MessageStoreHeight        = 5
+	OpenService               = 1 << 2
+	EIP001Version      uint32 = 10001
 )
 
 type P2PClientAdapter struct {
@@ -44,22 +42,34 @@ type P2PClientAdapter struct {
 
 func InitP2PClient(arbitrator Arbitrator) error {
 
-	magic := config.Parameters.Magic
-	seedList := config.Parameters.SeedList
-
-	spvP2PClient = spvI.NewP2PClient(magic, 80000, seedList, config.Parameters.MinOutbound, config.Parameters.MaxConnections)
 	P2PClientSingleton = &P2PClientAdapter{
 		messageHashes: make(map[common.Uint256]uint32, 0),
 	}
 
-	spvP2PClient.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
-	spvP2PClient.SetMessageHandler(P2PClientSingleton.newSpvMessageHandler)
+	// Initiate P2P server configuration
+	serverCfg := server.NewDefaultConfig(
+		config.Parameters.Magic,
+		EIP001Version,
+		OpenService,
+		config.Parameters.DefaultPort,
+		config.Parameters.SeedList,
+		nil,
+		nil,
+		nil,
+		P2PClientSingleton.MakeMessage,
+		func() uint64 { return uint64(0) },
+	)
+	serverCfg.MaxPeers = config.Parameters.MaxConnections
+	serverCfg.DisableListen = true
+	serverCfg.DisableRelayTx = true
+
+	var err error
+	spvP2PClient, err = server.NewServer(serverCfg)
+	if err != nil {
+		return err
+	}
 
 	return nil
-}
-
-func (adapter *P2PClientAdapter) newSpvMessageHandler() spvnet.MessageHandler {
-	return P2PClientSingleton
 }
 
 func (adapter *P2PClientAdapter) tryInit() {
@@ -70,19 +80,6 @@ func (adapter *P2PClientAdapter) tryInit() {
 
 func (adapter *P2PClientAdapter) Start() {
 	spvP2PClient.Start()
-}
-
-func (adapter *P2PClientAdapter) InitLocalPeer(peer *spvnet.Peer) {
-	publicKey := ArbitratorGroupSingleton.GetCurrentArbitrator().GetPublicKey()
-	publicKeyBytes, _ := publicKey.EncodePoint(true)
-	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
-	port := config.Parameters.NodePort
-
-	peer.SetVersion(uint32(10007))
-	peer.SetServices(uint64(4))
-	peer.SetID(clientId)
-	peer.SetPort(port)
-	peer.SetRelay(uint8(1))
 }
 
 func (adapter *P2PClientAdapter) AddListener(listener base.P2PClientListener) {
@@ -129,10 +126,10 @@ func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
 }
 
 func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
-	spvP2PClient.PeerManager().Broadcast(msg)
+	spvP2PClient.BroadcastMessage(msg)
 }
 
-func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
+func (adapter *P2PClientAdapter) HandleMessage(peer *peer.Peer, msg p2p.Message) error {
 	msgHash := adapter.GetMessageHash(msg)
 	if adapter.ExistMessageHash(msgHash) {
 		return nil
@@ -172,21 +169,4 @@ func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, e
 		return nil, errors.New("Received unsupported message, CMD " + cmd)
 	}
 	return message, nil
-}
-
-func (adapter *P2PClientAdapter) OnHandshake(v *msg.Version) error {
-
-	if v.Version < sdk.ProtocolVersion {
-		return errors.New(fmt.Sprint("To support SPV protocol, peer version must greater than ", sdk.ProtocolVersion))
-	}
-
-	//if v.Services/ServiveSPV&1 == 0 {
-	//	return errors.New("SPV service not enabled on connected peer")
-	//}
-
-	return nil
-}
-
-func (adapter *P2PClientAdapter) OnPeerEstablish(peer *spvnet.Peer) {
-	//peer.Send(msg.NewFilterLoad(spv.chain.GetBloomFilter()))
 }

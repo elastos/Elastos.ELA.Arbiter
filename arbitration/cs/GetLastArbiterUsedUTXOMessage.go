@@ -7,6 +7,11 @@ import (
 	"github.com/elastos/Elastos.ELA/core"
 )
 
+const (
+	MaxGetUsedUTXOMessageDataSize  = 1000
+	MaxSendUsedUTXOMessageDataSize = 80000
+)
+
 type GetLastArbiterUsedUTXOMessage struct {
 	Command        string
 	GenesisAddress string
@@ -16,6 +21,10 @@ type GetLastArbiterUsedUTXOMessage struct {
 
 func (msg *GetLastArbiterUsedUTXOMessage) CMD() string {
 	return msg.Command
+}
+
+func (msg *GetLastArbiterUsedUTXOMessage) MaxLength() uint32 {
+	return MaxGetUsedUTXOMessageDataSize
 }
 
 func (msg *GetLastArbiterUsedUTXOMessage) Serialize(w io.Writer) error {
@@ -63,6 +72,10 @@ type SendLastArbiterUsedUTXOMessage struct {
 
 func (msg *SendLastArbiterUsedUTXOMessage) CMD() string {
 	return msg.Command
+}
+
+func (msg *SendLastArbiterUsedUTXOMessage) MaxLength() uint32 {
+	return MaxSendUsedUTXOMessageDataSize
 }
 
 func (msg *SendLastArbiterUsedUTXOMessage) Serialize(w io.Writer) error {

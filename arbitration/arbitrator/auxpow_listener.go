@@ -46,7 +46,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	}
 
 	// Get Header from main chain
-	header, err := SpvService.HeaderStore().GetHeader(&proof.BlockHash)
+	header, err := SpvService.HeaderStore().Get(&proof.BlockHash)
 	if err != nil {
 		log.Error("can not get block from main chain")
 		return

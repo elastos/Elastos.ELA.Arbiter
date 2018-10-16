@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastos/Elastos.ELA.SideChain/common"
+	"github.com/elastos/Elastos.ELA.SideChain/mempool"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -22,10 +22,11 @@ var (
 )
 
 type Configuration struct {
-	Magic    uint32   `json:"Magic"`
-	Version  int      `json:"Version"`
-	SeedList []string `json:"SeedList"`
-	NodePort uint16   `json:"NodePort"`
+	Magic       uint32   `json:"Magic"`
+	Version     int      `json:"Version"`
+	SeedList    []string `json:"SeedList"`
+	NodePort    uint16   `json:"NodePort"`
+	DefaultPort uint16   `json:"DefaultPort"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
@@ -55,10 +56,12 @@ type RpcConfig struct {
 type MainNodeConfig struct {
 	Rpc               *RpcConfig `json:"Rpc"`
 	SpvSeedList       []string   `json:"SpvSeedList""`
+	DefaultPort       uint16     `json:"MainChainDefaultPort"`
 	Magic             uint32     `json:"Magic"`
 	MinOutbound       int        `json:"MinOutbound"`
 	MaxConnections    int        `json:"MaxConnections"`
 	FoundationAddress string     `json:"FoundationAddress"`
+	MinPeersForSync   int        `json:"MinPeersForSync"`
 }
 
 type SideNodeConfig struct {
@@ -157,7 +160,7 @@ func Init() {
 			fmt.Printf("Side node genesis block hash reverse error: %v\n", e)
 			return
 		}
-		address, err := common.GetGenesisAddress(*genesisBlockHash)
+		address, err := mempool.GetGenesisAddress(*genesisBlockHash)
 		if err != nil {
 			fmt.Printf("Side node genesis block hash to address error: %v\n", e)
 			return

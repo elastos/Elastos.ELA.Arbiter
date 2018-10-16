@@ -14,8 +14,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SPV/net"
-	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
+	"github.com/elastos/Elastos.ELA.SPV/peer"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/core"
@@ -84,7 +83,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 	return result, err
 }
 
-func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
 	if msg.CMD() != mc.P2pCommand {
 		return nil
 	}
@@ -109,7 +108,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	// Create transaction outputs
 	var txOutputs []*Output
 	// Check if from address is valid
-	assetID := spvWallet.SystemAssetId
+	assetID := SystemAssetId
 	for i := 0; i < len(withdrawInfo.TargetAddress); i++ {
 		programhash, err := Uint168FromAddress(withdrawInfo.TargetAddress[i])
 		if err != nil {
@@ -161,7 +160,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 				return nil, err
 			}
 			change := &Output{
-				AssetID:     Uint256(spvWallet.SystemAssetId),
+				AssetID:     Uint256(SystemAssetId),
 				Value:       Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
@@ -435,7 +434,7 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 			continue
 		}
 		finalGenesisAddresses := make([]string, 0)
-		for i := 0; i < len(finalGenesisAddresses); i++ {
+		for i := 0; i < len(receivedTxs); i++ {
 			finalGenesisAddresses = append(finalGenesisAddresses, k.GetKey())
 		}
 		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)

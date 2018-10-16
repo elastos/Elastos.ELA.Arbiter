@@ -10,7 +10,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
-	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
@@ -64,9 +63,10 @@ func (group *ArbitratorGroupImpl) InitArbitrators() error {
 
 func (group *ArbitratorGroupImpl) InitArbitratorsByStrings(arbiters []string, onDutyIndex int) {
 	group.mux.Lock()
+	defer group.mux.Unlock()
+
 	group.arbitrators = arbiters
 	group.onDutyArbitratorIndex = onDutyIndex
-	group.mux.Unlock()
 }
 
 func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
@@ -184,5 +184,5 @@ func Init() {
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 
-	spvLog.Init(config.Parameters.SpvPrintLevel, 20, 1024)
+	//spvLog.Init(config.Parameters.SpvPrintLevel, 20, 1024)
 }

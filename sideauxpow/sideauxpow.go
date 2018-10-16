@@ -15,7 +15,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
-	"github.com/elastos/Elastos.ELA.SideChain/common"
+	"github.com/elastos/Elastos.ELA.SideChain/mempool"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
@@ -199,7 +199,7 @@ func calculateGenesisAddress(genesisBlockHash string) (string, error) {
 		return "", errors.New("genesis block hash bytes to hash failed")
 	}
 
-	genesisAddress, err := common.GetGenesisAddress(*genesisHash)
+	genesisAddress, err := mempool.GetGenesisAddress(*genesisHash)
 	if err != nil {
 		return "", errors.New("genesis block hash to genesis address failed")
 	}

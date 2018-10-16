@@ -10,7 +10,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SideChain/common"
+	"github.com/elastos/Elastos.ELA.SideChain/mempool"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -165,7 +165,7 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
-	address, err := common.GetGenesisAddress(*genesisBlockHash)
+	address, err := mempool.GetGenesisAddress(*genesisBlockHash)
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
@@ -224,7 +224,7 @@ func GetGitVersion(param Params) map[string]interface{} {
 }
 
 func GetSPVHeight(param Params) map[string]interface{} {
-	bestHeader, err := arbitrator.SpvService.HeaderStore().GetBestHeader()
+	bestHeader, err := arbitrator.SpvService.HeaderStore().GetBest()
 	if err != nil {
 		return ResponsePack(InternalError, "get spv best header failed")
 	}

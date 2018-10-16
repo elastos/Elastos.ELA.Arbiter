@@ -11,12 +11,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
 )
-
-var SystemAssetId = getSystemAssetId()
 
 type Transfer struct {
 	Address string
@@ -159,7 +158,7 @@ func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayl
 			break
 		} else if *utxo.Amount > totalOutputAmount {
 			change := &Output{
-				AssetID:     SystemAssetId,
+				AssetID:     base.SystemAssetId,
 				Value:       *utxo.Amount - totalOutputAmount,
 				OutputLock:  uint32(0),
 				ProgramHash: *spender,
@@ -176,7 +175,7 @@ func (wallet *WalletImpl) CreateAuxpowTransaction(txType TransactionType, txPayl
 	// Check if output is valid add output with 0 amount to from address
 	if len(txOutputs) == 0 {
 		txOutput := &Output{
-			AssetID:     SystemAssetId,
+			AssetID:     base.SystemAssetId,
 			ProgramHash: *spender,
 			Value:       Fixed64(0),
 			OutputLock:  uint32(0),
@@ -208,7 +207,7 @@ func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Pa
 			return nil, errors.New(fmt.Sprint("[Wallet], Invalid receiver address: ", output.Address, ", error: ", err))
 		}
 		txOutput := &Output{
-			AssetID:     SystemAssetId,
+			AssetID:     base.SystemAssetId,
 			ProgramHash: *receiver,
 			Value:       *output.Amount,
 			OutputLock:  lockedUntil,
@@ -242,7 +241,7 @@ func (wallet *WalletImpl) createTransaction(txType TransactionType, txPayload Pa
 			break
 		} else if *utxo.Amount > totalOutputAmount {
 			change := &Output{
-				AssetID:     SystemAssetId,
+				AssetID:     base.SystemAssetId,
 				Value:       *utxo.Amount - totalOutputAmount,
 				OutputLock:  uint32(0),
 				ProgramHash: *spender,
@@ -347,27 +346,6 @@ func (wallet *WalletImpl) signMultiSignTransaction(password []byte, txn *Transac
 	}
 
 	return txn, nil
-}
-
-func getSystemAssetId() Uint256 {
-	systemToken := &Transaction{
-		TxType:         RegisterAsset,
-		PayloadVersion: 0,
-		Payload: &PayloadRegisterAsset{
-			Asset: Asset{
-				Name:      "ELA",
-				Precision: 0x08,
-				AssetType: 0x00,
-			},
-			Amount:     0 * 100000000,
-			Controller: Uint168{},
-		},
-		Attributes: []*Attribute{},
-		Inputs:     []*Input{},
-		Outputs:    []*Output{},
-		Programs:   []*Program{},
-	}
-	return systemToken.Hash()
 }
 
 func (wallet *WalletImpl) removeLockedUTXOs(utxos []*UTXO, currentHeight uint32) []*UTXO {

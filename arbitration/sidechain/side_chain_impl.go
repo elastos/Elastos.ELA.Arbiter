@@ -17,7 +17,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SPV/net"
+	"github.com/elastos/Elastos.ELA.SPV/peer"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA/core"
@@ -38,7 +38,7 @@ type SideChainImpl struct {
 	ReceivedUsedUtxoMsgNumber uint32
 }
 
-func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+func (client *SideChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
 	if msg.CMD() != cs.GetLastArbiterUsedUtxoCommand && msg.CMD() != cs.SendLastArbiterUsedUtxoCommand {
 		return nil
 	}
@@ -58,14 +58,21 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 	defer sc.withdrawMux.Unlock()
 
 	sc.mux.Lock()
+	scKey := sc.GetKey()
+	scHeight := sc.ToSendTransactionsHeight
+	ready := sc.Ready
+	msgNum := sc.ReceivedUsedUtxoMsgNumber
+	txs := sc.ToSendTransactionHashes
+	sc.mux.Unlock()
 	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
-	if sc.GetKey() == genesisAddress && sc.ToSendTransactionsHeight <= height {
+	if scKey == genesisAddress && scHeight <= height {
+		sc.mux.Lock()
 		sc.ReceivedUsedUtxoMsgNumber++
 		sc.mux.Unlock()
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
-		if sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
-			for _, v := range sc.ToSendTransactionHashes {
+		if ready && msgNum >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
+			for _, v := range txs {
 				err := sc.CreateAndBroadcastWithdrawProposal(v)
 				if err != nil {
 					log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")

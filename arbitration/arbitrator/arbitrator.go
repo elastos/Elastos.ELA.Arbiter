@@ -2,7 +2,6 @@ package arbitrator
 
 import (
 	"bytes"
-	"encoding/binary"
 	"encoding/json"
 	"sync"
 	"time"
@@ -15,7 +14,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	scError "github.com/elastos/Elastos.ELA.SideChain/errors"
+	scError "github.com/elastos/Elastos.ELA.SideChain/service"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
@@ -199,7 +198,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 	var succeedGenesisAddresses []string
 	for txInfo, depositTxInfo := range transactionInfoMap {
 		resp, err := depositTxInfo.sideChain.SendTransaction(txInfo)
-		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
+		if err != nil || resp.Error != nil && scError.ErrorCode(resp.Code) != scError.ErrDoubleSpend {
 			log.Warn("Send deposit transaction failed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
 			depositTxBytes, err := json.Marshal(txInfo)
 			if err != nil {
@@ -210,7 +209,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			failedDepositTxBytes = append(failedDepositTxBytes, depositTxBytes)
 			failedMainChainTxHashes = append(failedMainChainTxHashes, depositTxInfo.mainChainTxHash)
 			failedGenesisAddresses = append(failedGenesisAddresses, depositTxInfo.sideChain.GetKey())
-		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrMainchainTxDuplicate {
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrorCode(resp.Code) == scError.ErrMainchainTxDuplicate {
 			if resp.Error != nil {
 				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
 			} else {
@@ -317,14 +316,18 @@ func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
 }
 
 func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
-	publicKey := ar.Keystore.MainAccount().PublicKey()
-	publicKeyBytes, err := publicKey.EncodePoint(true)
-	if err != nil {
-		return err
+	spvCfg := &Config{
+		Magic:           config.Parameters.MainNode.Magic,
+		Foundation:      config.Parameters.MainNode.FoundationAddress,
+		SeedList:        config.Parameters.MainNode.SpvSeedList,
+		DefaultPort:     config.Parameters.MainNode.DefaultPort,
+		MinPeersForSync: config.Parameters.MainNode.MinPeersForSync,
+		MinOutbound:     config.Parameters.MainNode.MinOutbound,
+		MaxConnections:  config.Parameters.MainNode.MaxConnections,
+		OnRollback:      nil, // Not implemented yet
 	}
 
-	SpvService, err = NewSPVService(config.Parameters.MainNode.Magic, config.Parameters.MainNode.FoundationAddress, binary.LittleEndian.Uint64(publicKeyBytes),
-		config.Parameters.MainNode.SpvSeedList, config.Parameters.MainNode.MinOutbound, config.Parameters.MainNode.MaxConnections)
+	SpvService, err := NewSPVService(spvCfg)
 	if err != nil {
 		return err
 	}
@@ -346,11 +349,7 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		}
 	}
 
-	go func() {
-		if err = SpvService.Start(); err != nil {
-			log.Error("spvService start failed ：", err)
-		}
-	}()
+	go SpvService.Start()
 
 	return nil
 }
