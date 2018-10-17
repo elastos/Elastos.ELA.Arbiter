@@ -228,8 +228,9 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 
 func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, error) {
 	log.Info("[Rpc-sendtransactioninfo] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	response, err := rpc.CallAndUnmarshalResponse("sendtransactioninfo",
-		rpc.Param("info", info), sc.CurrentConfig.Rpc)
+	parameter := make(map[string]TransactionInfo)
+	parameter["info"] = *info
+	response, err := rpc.CallAndUnmarshalTxResponse("sendtransactioninfo", parameter, sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}

@@ -8,7 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastos/Elastos.ELA.SideChain/mempool"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -56,7 +57,7 @@ type RpcConfig struct {
 type MainNodeConfig struct {
 	Rpc               *RpcConfig `json:"Rpc"`
 	SpvSeedList       []string   `json:"SpvSeedList""`
-	DefaultPort       uint16     `json:"MainChainDefaultPort"`
+	DefaultPort       uint16     `json:"DefaultPort"`
 	Magic             uint32     `json:"Magic"`
 	MinOutbound       int        `json:"MinOutbound"`
 	MaxConnections    int        `json:"MaxConnections"`
@@ -160,7 +161,7 @@ func Init() {
 			fmt.Printf("Side node genesis block hash reverse error: %v\n", e)
 			return
 		}
-		address, err := mempool.GetGenesisAddress(*genesisBlockHash)
+		address, err := base.GetGenesisAddress(*genesisBlockHash)
 		if err != nil {
 			fmt.Printf("Side node genesis block hash to address error: %v\n", e)
 			return

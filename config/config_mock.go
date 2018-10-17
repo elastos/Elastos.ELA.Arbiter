@@ -3,7 +3,8 @@ package config
 import (
 	"encoding/json"
 
-	"github.com/elastos/Elastos.ELA.SideChain/mempool"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -67,7 +68,7 @@ func InitMockConfig() {
 		if err != nil {
 			return
 		}
-		address, err := mempool.GetGenesisAddress(*genesisBlockHash)
+		address, err := base.GetGenesisAddress(*genesisBlockHash)
 		if err != nil {
 			return
 		}

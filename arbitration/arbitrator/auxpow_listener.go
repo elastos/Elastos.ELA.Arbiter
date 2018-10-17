@@ -30,9 +30,7 @@ func (l *AuxpowListener) Flags() uint64 {
 	return spv.FlagNotifyInSyncing
 }
 
-func (l *AuxpowListener) Rollback(height uint32) {
-
-}
+func (l *AuxpowListener) Rollback(height uint32) {}
 
 func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
 	// Submit transaction receipt

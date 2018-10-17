@@ -3,11 +3,11 @@ package base
 import (
 	"bytes"
 	"errors"
+	"strings"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	. "github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
-	"strings"
 )
 
 const (
@@ -123,4 +123,21 @@ func hasHash(hashSet []string, hash string) bool {
 		}
 	}
 	return false
+}
+
+func GetGenesisAddress(genesisHash Uint256) (string, error) {
+	programHash, err := genesisProgramHash(genesisHash)
+	if err != nil {
+		return "", err
+	}
+	return programHash.ToAddress()
+}
+
+func genesisProgramHash(genesisHash Uint256) (*Uint168, error) {
+	buf := new(bytes.Buffer)
+	buf.WriteByte(byte(len(genesisHash.Bytes())))
+	buf.Write(genesisHash.Bytes())
+	buf.WriteByte(byte(CROSSCHAIN))
+
+	return ToProgramHash(buf.Bytes())
 }

@@ -4,13 +4,13 @@ import (
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/complain"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SideChain/mempool"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -165,7 +165,7 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
-	address, err := mempool.GetGenesisAddress(*genesisBlockHash)
+	address, err := base.GetGenesisAddress(*genesisBlockHash)
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}

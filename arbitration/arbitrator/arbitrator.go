@@ -14,10 +14,14 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	scError "github.com/elastos/Elastos.ELA.SideChain/service"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
+)
+
+const (
+	SCErrDoubleSpend          int64 = 45010
+	SCErrMainchainTxDuplicate int64 = 45013
 )
 
 var SpvService SPVService
@@ -198,7 +202,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 	var succeedGenesisAddresses []string
 	for txInfo, depositTxInfo := range transactionInfoMap {
 		resp, err := depositTxInfo.sideChain.SendTransaction(txInfo)
-		if err != nil || resp.Error != nil && scError.ErrorCode(resp.Code) != scError.ErrDoubleSpend {
+		if err != nil || resp.Error != nil && resp.Code != SCErrDoubleSpend {
 			log.Warn("Send deposit transaction failed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
 			depositTxBytes, err := json.Marshal(txInfo)
 			if err != nil {
@@ -209,7 +213,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*Transa
 			failedDepositTxBytes = append(failedDepositTxBytes, depositTxBytes)
 			failedMainChainTxHashes = append(failedMainChainTxHashes, depositTxInfo.mainChainTxHash)
 			failedGenesisAddresses = append(failedGenesisAddresses, depositTxInfo.sideChain.GetKey())
-		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrorCode(resp.Code) == scError.ErrMainchainTxDuplicate {
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && resp.Code == SCErrMainchainTxDuplicate {
 			if resp.Error != nil {
 				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
 			} else {
@@ -327,7 +331,10 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		OnRollback:      nil, // Not implemented yet
 	}
 
-	SpvService, err := NewSPVService(spvCfg)
+	log.Info("[StartSpvModule] new spv service:", spvCfg)
+
+	var err error
+	SpvService, err = NewSPVService(spvCfg)
 	if err != nil {
 		return err
 	}
@@ -337,10 +344,12 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		if err != nil {
 			return err
 		}
+		log.Info("[StartSpvModule] register auxpow listener:", keystore.Address())
 		err = SpvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
 		if err != nil {
 			return err
 		}
+		log.Info("[StartSpvModule] register dposit listener:", sideNode.GenesisBlockAddress)
 		dpListener := &DepositListener{ListenAddress: sideNode.GenesisBlockAddress}
 		dpListener.start()
 		err = SpvService.RegisterTransactionListener(dpListener)
