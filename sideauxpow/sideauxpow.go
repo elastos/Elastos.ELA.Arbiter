@@ -78,17 +78,18 @@ func unmarshal(result interface{}, target interface{}) error {
 }
 
 func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
-	log.Info("getSideAuxpow")
+	log.Info("[sideChainPowTransfer] start")
 	depositAddress := sideNode.PayToAddr
 	if depositAddress == "" {
-		return errors.New("Has no side aux pow paytoaddr")
+		return errors.New("[sideChainPowTransfer] has no side aux pow paytoaddr")
 	}
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", depositAddress), sideNode.Rpc)
 	if err != nil {
+		log.Error("[sideChainPowTransfer] create aux block failed")
 		return err
 	}
 	if resp == nil {
-		log.Info("Create auxblock, nil ")
+		log.Info("[sideChainPowTransfer] create auxblock, nil ")
 		return nil
 	}
 
@@ -133,13 +134,13 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 
 	// create transaction
 	if config.Parameters.SideAuxPowFee <= 0 {
-		return errors.New("Invalid side aux pow fee")
+		return errors.New("[sideChainPowTransfer] invalid side aux pow fee")
 	}
 	fee := Fixed64(config.Parameters.SideAuxPowFee)
 
 	addr := CurrentWallet.GetAddress(name)
 	if addr == nil {
-		return errors.New("Get key store address failed:" + name)
+		return errors.New("[sideChainPowTransfer] get key store address failed:" + name)
 	}
 
 	from := addr.Addr.Address
@@ -148,7 +149,7 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	var txn *ela.Transaction
 	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight())
 	if err != nil {
-		return errors.New("create transaction failed: " + err.Error())
+		return errors.New("[sideChainPowTransfer] create transaction failed: " + err.Error())
 	}
 
 	// sign transaction
@@ -156,14 +157,14 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 
 	haveSign, needSign, err := crypto.GetSignStatus(program.Code, program.Parameter)
 	if haveSign == needSign {
-		return errors.New("transaction was fully signed, no need more sign")
+		return errors.New("[sideChainPowTransfer] transaction was fully signed, no need more sign")
 	}
 	_, err = CurrentWallet.Sign(name, getPassword(passwd, false), txn)
 	if err != nil {
 		return err
 	}
 	haveSign, needSign, _ = crypto.GetSignStatus(program.Code, program.Parameter)
-	log.Debug("Transaction successfully signed: ", haveSign, needSign)
+	log.Debug("[sideChainPowTransfer] transaction successfully signed: ", haveSign, needSign)
 
 	sideChainPowBuf := new(bytes.Buffer)
 	txn.Serialize(sideChainPowBuf)
@@ -179,6 +180,7 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 
 	LastSendSideMiningHeightMap[*sideGenesisHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 
+	log.Info("[sideChainPowTransfer] end")
 	return nil
 }
 
