@@ -58,14 +58,21 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 	defer sc.withdrawMux.Unlock()
 
 	sc.mux.Lock()
+	scKey := sc.GetKey()
+	scHeight := sc.ToSendTransactionsHeight
+	ready := sc.Ready
+	msgNum := sc.ReceivedUsedUtxoMsgNumber
+	txs := sc.ToSendTransactionHashes
+	sc.mux.Unlock()
 	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
-	if sc.GetKey() == genesisAddress && sc.ToSendTransactionsHeight <= height {
+	if scKey == genesisAddress && scHeight <= height {
+		sc.mux.Lock()
 		sc.ReceivedUsedUtxoMsgNumber++
 		sc.mux.Unlock()
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
-		if sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
-			for _, v := range sc.ToSendTransactionHashes {
+		if ready && msgNum >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
+			for _, v := range txs {
 				err := sc.CreateAndBroadcastWithdrawProposal(v)
 				if err != nil {
 					log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
@@ -204,11 +211,11 @@ func (sc *SideChainImpl) GetExchangeRate() (float64, error) {
 	if config == nil {
 		return 0, errors.New("Get exchange rate failed, side chain has no config")
 	}
-	if sc.getCurrentConfig().ExchangeRate <= 0 {
+	if config.ExchangeRate <= 0 {
 		return 0, errors.New("Get exchange rate failed, invalid exchange rate")
 	}
 
-	return sc.getCurrentConfig().ExchangeRate, nil
+	return config.ExchangeRate, nil
 }
 
 func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
