@@ -14,9 +14,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SPV/peer"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 	"github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA/core"
 )
@@ -323,6 +323,7 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 }
 
 func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
+	log.Info("[processBlock] block height:", block.Height, "current height:", height)
 	sideChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
 	// Add UTXO to wallet address from transaction outputs
 	for _, txnInfo := range block.Tx {

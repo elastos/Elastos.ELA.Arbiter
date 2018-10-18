@@ -14,11 +14,27 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
+	"github.com/elastos/Elastos.ELA.Utility/elalog"
+	//"github.com/elastos/Elastos.ELA.Utility/p2p/addrmgr"
+	//"github.com/elastos/Elastos.ELA.Utility/p2p/connmgr"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
+)
+
+var (
+	backend = elalog.NewBackend(log.Stdout, elalog.Llongfile)
+
+	addrlog = backend.Logger("ADDR", 0)
+	connlog = backend.Logger("CONN", 0)
+	peerlog = backend.Logger("PEER", 0)
 )
 
 func init() {
 	config.Init()
 	log.Init(log.Path, log.Stdout)
+
+	//addrmgr.UseLogger(addrlog)
+	//connmgr.UseLogger(connlog)
+	peer.UseLogger(peerlog)
 
 	arbitrator.Init()
 	sidechain.Init()

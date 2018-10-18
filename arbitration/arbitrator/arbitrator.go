@@ -180,7 +180,7 @@ func (ar *ArbitratorImpl) CreateDepositTransactions(spvTxs []*SpvTransaction) ma
 
 		txInfo, err := sideChain.CreateDepositTransaction(spvTxs[i])
 		if err != nil {
-			log.Warn("Create deposit transaction failed")
+			log.Warn("Create deposit transaction failed, err:", err.Error())
 			return nil
 		}
 

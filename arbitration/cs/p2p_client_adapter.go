@@ -3,6 +3,7 @@ package cs
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"sync"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -10,10 +11,12 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	"github.com/elastos/Elastos.ELA.SPV/peer"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/server"
+	"github.com/elastos/Elastos.ELA/core"
 )
 
 var (
@@ -51,17 +54,20 @@ func InitP2PClient(arbitrator Arbitrator) error {
 		config.Parameters.Magic,
 		EIP001Version,
 		OpenService,
-		config.Parameters.DefaultPort,
+		config.Parameters.NodePort,
 		config.Parameters.SeedList,
-		nil,
-		nil,
-		nil,
+		[]string{fmt.Sprint("127.0.0.1:", config.Parameters.NodePort)},
+		func(p server.IPeer) {
+			p.ToPeer().AddMessageFunc(P2PClientSingleton.HandleMessage)
+		},
+		func(p server.IPeer) {
+			log.Info("down server speer:", p)
+		},
 		P2PClientSingleton.MakeMessage,
 		func() uint64 { return uint64(0) },
 	)
 	serverCfg.MaxPeers = config.Parameters.MaxConnections
-	serverCfg.DisableListen = true
-	serverCfg.DisableRelayTx = true
+	log.Info("server config:", serverCfg)
 
 	var err error
 	spvP2PClient, err = server.NewServer(serverCfg)
@@ -129,20 +135,18 @@ func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
 	spvP2PClient.BroadcastMessage(msg)
 }
 
-func (adapter *P2PClientAdapter) HandleMessage(peer *peer.Peer, msg p2p.Message) error {
+func (adapter *P2PClientAdapter) HandleMessage(peer *peer.Peer, msg p2p.Message) {
 	msgHash := adapter.GetMessageHash(msg)
 	if adapter.ExistMessageHash(msgHash) {
-		return nil
+		return
 	} else {
 		adapter.AddMessageHash(msgHash)
-		log.Info("*****")
-		log.Info(msg.CMD())
-		log.Info("*****")
+		log.Info("[HandleMessage] received msg:", msg.CMD(), "from peer id-", peer.ID())
 		adapter.Broadcast(msg)
 	}
 
 	if adapter.listeners == nil {
-		return nil
+		return
 	}
 
 	for _, listener := range adapter.listeners {
@@ -152,11 +156,23 @@ func (adapter *P2PClientAdapter) HandleMessage(peer *peer.Peer, msg p2p.Message)
 		}
 	}
 
-	return nil
+	return
 }
 
 func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, err error) {
 	switch cmd {
+	case p2p.CmdInv:
+		message = new(msg.Inv)
+	case p2p.CmdGetData:
+		message = new(msg.GetData)
+	case p2p.CmdNotFound:
+		message = new(msg.NotFound)
+	case p2p.CmdTx:
+		message = msg.NewTx(new(core.Transaction))
+	case p2p.CmdMerkleBlock:
+		message = msg.NewMerkleBlock(new(core.Header))
+	case p2p.CmdReject:
+		message = new(msg.Reject)
 	case WithdrawCommand:
 		message = &SignMessage{Command: WithdrawCommand}
 	case ComplainCommand:
