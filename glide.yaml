@@ -1,13 +1,13 @@
 package: github.com/elastos/Elastos.ELA.Arbiter
 import:
 - package: github.com/elastos/Elastos.ELA.Utility
-  version: refactor
+  version: release_v0.1.1
 - package: github.com/elastos/Elastos.ELA
-  version: release_v0.2.0
+  version: release_v0.2.1
 - package: github.com/elastos/Elastos.ELA.SPV
-  version: refactor
+  version: release_v0.0.1
 - package: github.com/elastos/Elastos.ELA.SideChain
-  version: refactor
+  version: release_v0.0.2
 - package: github.com/howeyc/gopass
 - package: github.com/itchyny/base58-go
 - package: github.com/mattn/go-sqlite3
