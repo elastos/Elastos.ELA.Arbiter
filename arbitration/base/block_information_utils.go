@@ -54,7 +54,7 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		return obj, nil
 	case *TransferAssetInfo:
 		return new(PayloadTransferAsset), nil
-	case *RechargeToSideChainInfo:
+	case *RechargeToSideChainInfoV0:
 		obj := new(types.PayloadRechargeToSideChain)
 		proofBytes, err := HexStringToBytes(object.Proof)
 		if err != nil {
@@ -66,6 +66,14 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 			return nil, err
 		}
 		obj.MainChainTransaction = transactionBytes
+		return obj, nil
+	case *RechargeToSideChainInfoV1:
+		obj := new(types.PayloadRechargeToSideChain)
+		hash, err := Uint256FromHexString(object.MainChainTransactionHash)
+		if err != nil {
+			return nil, err
+		}
+		obj.MainChainTransactionHash = *hash
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
 		obj := new(PayloadTransferCrossChainAsset)

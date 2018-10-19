@@ -17,7 +17,6 @@ import (
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
-	"github.com/elastos/Elastos.ELA/core"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -124,7 +123,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		totalOutputAmount += Fixed64(float64(withdrawInfo.Amount[i]) / exchangeRate)
 	}
 
-	var txInputs []*Input
 	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
 	if err != nil {
 		return nil, err
@@ -134,6 +132,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	ops := sideChain.GetLastUsedOutPoints()
 
 	var realAvailableUtxos []*AddressUTXO
+	var unavailableUtxos []*AddressUTXO
 	for _, utxo := range availableUTXOs {
 		isUsed := false
 		for _, ops := range ops {
@@ -143,10 +142,13 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		}
 		if !isUsed {
 			realAvailableUtxos = append(realAvailableUtxos, utxo)
+		} else {
+			unavailableUtxos = append(unavailableUtxos, utxo)
 		}
 	}
 
 	// Create transaction inputs
+	var txInputs []*Input
 	for _, utxo := range realAvailableUtxos {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -171,11 +173,33 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		}
 	}
 
-	var newUsedUtxos []core.OutPoint
-	for _, input := range txInputs {
-		newUsedUtxos = append(newUsedUtxos, input.Previous)
+	//if available utxo is not enough, try to use unavailable utxos from biggest one
+	if totalOutputAmount > 0 && len(unavailableUtxos) != 0 {
+		for i := len(unavailableUtxos) - 1; i >= 0; i++ {
+			utxo := unavailableUtxos[i]
+			txInputs = append(txInputs, utxo.Input)
+			if *utxo.Amount < totalOutputAmount {
+				totalOutputAmount -= *utxo.Amount
+			} else if *utxo.Amount == totalOutputAmount {
+				totalOutputAmount = 0
+				break
+			} else if *utxo.Amount > totalOutputAmount {
+				programHash, err := Uint168FromAddress(withdrawBank)
+				if err != nil {
+					return nil, err
+				}
+				change := &Output{
+					AssetID:     Uint256(SystemAssetId),
+					Value:       Fixed64(*utxo.Amount - totalOutputAmount),
+					OutputLock:  uint32(0),
+					ProgramHash: *programHash,
+				}
+				txOutputs = append(txOutputs, change)
+				totalOutputAmount = 0
+				break
+			}
+		}
 	}
-	sideChain.AddLastUsedOutPoints(newUsedUtxos)
 
 	if totalOutputAmount > 0 {
 		return nil, errors.New("Available token is not enough")

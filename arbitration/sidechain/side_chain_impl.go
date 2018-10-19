@@ -17,6 +17,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA.SideChain/types"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
@@ -61,13 +62,14 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 	scKey := sc.GetKey()
 	scHeight := sc.ToSendTransactionsHeight
 	ready := sc.Ready
-	msgNum := sc.ReceivedUsedUtxoMsgNumber
 	txs := sc.ToSendTransactionHashes
 	sc.mux.Unlock()
+	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, scKey", scKey, "genesisAddress:", genesisAddress)
 	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
 	if scKey == genesisAddress && scHeight <= height {
 		sc.mux.Lock()
 		sc.ReceivedUsedUtxoMsgNumber++
+		msgNum := sc.ReceivedUsedUtxoMsgNumber
 		sc.mux.Unlock()
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
@@ -330,22 +332,10 @@ func (sc *SideChainImpl) CreateDepositTransaction(spvTx *SpvTransaction) (*Trans
 		txOutputs = append(txOutputs, txOutput)
 	}
 
-	spvInfo := new(bytes.Buffer)
-	err = spvTx.Proof.Serialize(spvInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	transactionBuf := new(bytes.Buffer)
-	err = spvTx.MainChainTransaction.Serialize(transactionBuf)
-	if err != nil {
-		return nil, err
-	}
-
 	// Create payload
-	txPayloadInfo := new(RechargeToSideChainInfo)
-	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
-	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionBuf.Bytes())
+	txPayloadInfo := new(RechargeToSideChainInfoV1)
+	txPayloadInfo.MainChainTransactionHash =
+		common.BytesToHexString(common.BytesReverse(spvTx.MainChainTransaction.Hash().Bytes()))
 
 	// Create attributes
 	var number = make([]byte, 8)
@@ -359,12 +349,13 @@ func (sc *SideChainImpl) CreateDepositTransaction(spvTx *SpvTransaction) (*Trans
 
 	// Create program
 	return &TransactionInfo{
-		TxType:     core.RechargeToSideChain,
-		Payload:    txPayloadInfo,
-		Attributes: attributesInfo,
-		Inputs:     []InputInfo{},
-		Outputs:    txOutputs,
-		LockTime:   uint32(0),
+		TxType:         core.RechargeToSideChain,
+		PayloadVersion: types.RechargeToSideChainPayloadVersion1,
+		Payload:        txPayloadInfo,
+		Attributes:     attributesInfo,
+		Inputs:         []InputInfo{},
+		Outputs:        txOutputs,
+		LockTime:       uint32(0),
 	}, nil
 }
 
@@ -385,6 +376,7 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn []*core.Transactio
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
+	log.Info("[SendCachedWithdrawTxs] start")
 	txHashes, blockHeights, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 	if err != nil {
 		return err
@@ -442,7 +434,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 			return err
 		}
 	}
-
+	log.Info("[SendCachedWithdrawTxs] end")
 	return nil
 }
 

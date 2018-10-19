@@ -93,9 +93,13 @@ type CoinbaseInfo struct {
 	CoinbaseData string
 }
 
-type RechargeToSideChainInfo struct {
+type RechargeToSideChainInfoV0 struct {
 	Proof                string
 	MainChainTransaction string
+}
+
+type RechargeToSideChainInfoV1 struct {
+	MainChainTransactionHash string `json:"mainchaintxhash"`
 }
 
 type CrossChainAssetInfo struct {

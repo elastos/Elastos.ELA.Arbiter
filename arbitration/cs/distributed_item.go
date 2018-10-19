@@ -164,7 +164,7 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	}
 	item.redeemScript = redeemScript
 
-	signedData, err := ReadVarBytes(r, SignatureScriptLength, "signed data")
+	signedData, err := ReadVarBytes(r, SignatureScriptLength*2, "signed data")
 	if err != nil {
 		return errors.New("signedData deserialization failed.")
 	}

@@ -103,6 +103,8 @@ out:
 			log.Debugf("p2pclient new peer %v", p)
 			p.AddMessageFunc(c.handleMessage)
 
+			go handlePeer(p)
+
 		case p := <-c.donePeers:
 			_, ok := peers[p]
 			if !ok {
@@ -129,6 +131,17 @@ cleanup:
 		}
 	}
 	log.Trace("Service peers handler done")
+}
+
+func handlePeer(peer *peer.Peer) {
+out:
+	for {
+		select {
+		case <-peer.SendDoneQueue():
+		case <-peer.Quit():
+			break out
+		}
+	}
 }
 
 func (c *p2pclient) tryInit() {
@@ -191,6 +204,7 @@ func (c *p2pclient) AddMessageHash(msgHash common.Uint256) bool {
 }
 
 func (c *p2pclient) Broadcast(msg p2p.Message) {
+	log.Debug("Broadcast peers", c.server.ConnectedPeers())
 	c.server.BroadcastMessage(msg)
 }
 

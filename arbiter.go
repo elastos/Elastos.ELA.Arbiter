@@ -17,7 +17,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/elalog"
 	//"github.com/elastos/Elastos.ELA.Utility/p2p/addrmgr"
 	//"github.com/elastos/Elastos.ELA.Utility/p2p/connmgr"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
+	//"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 )
 
 var (
@@ -34,7 +34,7 @@ func init() {
 
 	//addrmgr.UseLogger(addrlog)
 	//connmgr.UseLogger(connlog)
-	peer.UseLogger(peerlog)
+	//peer.UseLogger(peerlog)
 
 	arbitrator.Init()
 	sidechain.Init()

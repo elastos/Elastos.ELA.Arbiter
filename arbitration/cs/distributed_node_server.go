@@ -208,6 +208,15 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			}
 		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && resp.Code == MCErrSidechainTxDuplicate {
 			log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
+			var newUsedUtxos []OutPoint
+			for _, input := range txn.Inputs {
+				newUsedUtxos = append(newUsedUtxos, input.Previous)
+			}
+			sidechain, ok := currentArbitrator.GetSideChainManager().GetChain(withdrawPayload.GenesisBlockAddress)
+			if !ok {
+				return errors.New("Get side chain from withdraw payload failed")
+			}
+			sidechain.AddLastUsedOutPoints(newUsedUtxos)
 
 			err = store.DbCache.SideChainStore.RemoveSideChainTxs(transactionHashes)
 			if err != nil {

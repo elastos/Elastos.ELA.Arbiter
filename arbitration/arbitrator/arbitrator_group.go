@@ -112,7 +112,6 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	}
 
 	group.CheckOnDutyStatus()
-
 	return nil
 }
 

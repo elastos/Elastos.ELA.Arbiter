@@ -95,13 +95,16 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 		depositTxs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
 		if err != nil {
 			log.Warn(err)
-		}
-		for sideChain, txHashes := range depositTxs {
-			ar.CreateAndSendDepositTransactionsInDB(sideChain, txHashes)
+		} else {
+			for sideChain, txHashes := range depositTxs {
+				ar.CreateAndSendDepositTransactionsInDB(sideChain, txHashes)
+			}
 		}
 		//send withdraw transaction
 		for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
-			sc.SendCachedWithdrawTxs()
+			if err = sc.SendCachedWithdrawTxs(); err != nil {
+				log.Warn("[[OnDutyArbitratorChanged] send withdraw transaction err:", err)
+			}
 		}
 		//send side chain pow transaction
 		ar.sideChainManagerImpl.StartSideChainMining()
