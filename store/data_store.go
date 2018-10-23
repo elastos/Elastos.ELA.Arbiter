@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"database/sql"
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"math"
 	"os"
 	"sync"
@@ -12,7 +13,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -769,7 +769,8 @@ func (store *DataStoreMainChainImpl) HasMainChainTx(transactionHash, genesisBloc
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHash, genesisBlockAddress)
+	sql := `SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`
+	rows, err := store.Query(sql, transactionHash, genesisBlockAddress)
 	if err != nil {
 		return false, err
 	}
@@ -851,7 +852,8 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof FROM MainChainTxs`)
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
+ 									TransactionData, MerkleProof FROM MainChainTxs`)
 	if err != nil {
 		return nil, err
 	}
@@ -876,19 +878,22 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 		reader = bytes.NewReader(merkleProofBytes)
 		mp.Deserialize(reader)
 
-		txs = append(txs, &base.MainChainTransaction{txHash, genesisAddress, &tx, &mp})
+		txs = append(txs, &base.MainChainTransaction{txHash,
+		genesisAddress, &tx, &mp})
 	}
 	return txs, nil
 }
 
-func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.SpvTransaction, error) {
+func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string,
+	genesisBlockAddresses string) ([]*base.SpvTransaction, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
 	var spvTxs []*base.SpvTransaction
 
+	sql := `SELECT TransactionData, MerkleProof FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	for i := 0; i < len(transactionHashes); i++ {
-		rows, err := store.Query(`SELECT MainChainTxs.TransactionData, MainChainTxs.MerkleProof FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHashes[i], genesisBlockAddresses)
+		rows, err := store.Query(sql, transactionHashes[i], genesisBlockAddresses)
 		if err != nil {
 			return nil, err
 		}

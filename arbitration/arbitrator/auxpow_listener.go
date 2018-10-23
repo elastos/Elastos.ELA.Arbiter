@@ -6,11 +6,12 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.SPV/util"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
-	"github.com/elastos/Elastos.ELA/bloom"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -52,7 +53,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 
 	// Check if merkleroot is match
 	merkleBlock := msg.MerkleBlock{
-		Header:       &header.Header,
+		Header:       header.BlockHeader,
 		Transactions: proof.Transactions,
 		Hashes:       proof.Hashes,
 		Flags:        proof.Flags,
@@ -65,12 +66,13 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 		return
 	}
 
+	elaHeader := header.BlockHeader.(*util.ElaHeader)
 	// sideAuxpow serilze
 	sideAuxpow := auxpow.SideAuxPow{
 		SideAuxMerkleBranch: merkleBranch.Branches,
 		SideAuxMerkleIndex:  merkleBranch.Index,
 		SideAuxBlockTx:      tx,
-		MainBlockHeader:     header.Header,
+		MainBlockHeader:     *elaHeader.Header,
 	}
 
 	sideAuxpowBuf := bytes.NewBuffer([]byte{})
@@ -95,9 +97,11 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 
 	var sideChain SideChain
 	for _, sideNode := range config.Parameters.SideNodeList {
-		log.Info("Side node genesis block:", sideNode.GenesisBlock, "side aux pow tx genesis hash:", genesishashString)
+		log.Info("Side node genesis block:", sideNode.GenesisBlock,
+			"side aux pow tx genesis hash:", genesishashString)
 		if sideNode.GenesisBlock == genesishashString {
-			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
+			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().
+				GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
 			if ok {
 				currentHeight, err := sc.GetCurrentHeight()
 				if err != nil {
@@ -107,7 +111,8 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 				if currentHeight == blockHeight {
 					sideChain = sc
 				} else {
-					log.Warn("No need to submit auxpow, current side chain height:", currentHeight, " block height:", blockHeight)
+					log.Warn("No need to submit auxpow, current side chain height:",
+						currentHeight, " block height:", blockHeight)
 					return
 				}
 			}

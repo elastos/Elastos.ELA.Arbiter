@@ -5,9 +5,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
