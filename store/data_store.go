@@ -879,7 +879,7 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 		mp.Deserialize(reader)
 
 		txs = append(txs, &base.MainChainTransaction{txHash,
-		genesisAddress, &tx, &mp})
+			genesisAddress, &tx, &mp})
 	}
 	return txs, nil
 }

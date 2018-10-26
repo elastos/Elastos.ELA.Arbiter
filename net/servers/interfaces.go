@@ -147,7 +147,7 @@ func GetSideMiningInfo(param Params) map[string]interface{} {
 }
 
 func GetMainChainBlockHeight(param Params) map[string]interface{} {
-	return ResponsePack(Success, DbCache.UTXOStore.CurrentHeight(0)-1)
+	return ResponsePack(Success, DbCache.UTXOStore.CurrentHeight(0))
 }
 
 func GetSideChainBlockHeight(param Params) map[string]interface{} {
@@ -170,7 +170,7 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
 
-	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0)-1)
+	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0))
 }
 
 func GetFinishedDepositTxs(param Params) map[string]interface{} {
