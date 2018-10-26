@@ -268,19 +268,38 @@ func (mc *MainChainImpl) SyncChainData() {
 			break
 		}
 
-		for currentHeight <= chainHeight {
-			block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+		//sync genesis block
+		if currentHeight == 0 {
+			err := mc.syncAndProcessBlock(currentHeight)
 			if err != nil {
-				log.Error("get block by height failed, chain height:", chainHeight, "current height:", currentHeight)
+				log.Error("get genesis block failed, chainHeight:", chainHeight)
 				break
 			}
-			mc.processBlock(block, currentHeight)
+		}
 
-			// Update wallet height
-			currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height + 1)
-			log.Info("[arbitrator] Main chain height: ", block.Height)
+		for currentHeight < chainHeight {
+			err := mc.syncAndProcessBlock(currentHeight + 1)
+			if err != nil {
+				log.Error("get block by height failed, chain height:", chainHeight,
+					"current height:", currentHeight+1, "err:", err.Error())
+				break
+			}
+			currentHeight += 1
 		}
 	}
+}
+
+func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
+	block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return err
+	}
+	mc.processBlock(block, currentHeight)
+
+	// Update wallet height
+	currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height)
+	log.Info("[arbitrator] Main chain height: ", block.Height)
+	return nil
 }
 
 func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
@@ -292,7 +311,7 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 
 	currentHeight := DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
 
-	if currentHeight >= chainHeight+1 {
+	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
 	}
 

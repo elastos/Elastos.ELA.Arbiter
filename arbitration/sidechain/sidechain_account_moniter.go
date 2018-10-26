@@ -76,7 +76,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				}
 				// Update wallet height
 				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight+1)
-				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", chainHeight)
+				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 			}
 
 			arbitrator.ArbitratorGroupSingleton.SyncFromMainNode()
