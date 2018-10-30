@@ -85,7 +85,6 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	group.mux.Lock()
 	if group.currentHeight != nil && *group.currentHeight == height {
 		group.mux.Unlock()
-		log.Debug("[SyncFromMainNode] current height == rpc height")
 		return nil
 	}
 	group.mux.Unlock()

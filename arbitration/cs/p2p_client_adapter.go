@@ -128,7 +128,7 @@ cleanup:
 			break cleanup
 		}
 	}
-	log.Trace("Service peers handler done")
+	log.Debug("Service peers handler done")
 }
 
 func (c *p2pclient) tryInit() {

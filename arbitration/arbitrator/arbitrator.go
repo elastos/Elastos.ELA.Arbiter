@@ -324,14 +324,13 @@ func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
 
 func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 	spvCfg := &Config{
-		Magic:           config.Parameters.MainNode.Magic,
-		Foundation:      config.Parameters.MainNode.FoundationAddress,
-		SeedList:        config.Parameters.MainNode.SpvSeedList,
-		DefaultPort:     config.Parameters.MainNode.DefaultPort,
-		MinPeersForSync: config.Parameters.MainNode.MinPeersForSync,
-		MinOutbound:     config.Parameters.MainNode.MinOutbound,
-		MaxConnections:  config.Parameters.MainNode.MaxConnections,
-		OnRollback:      nil, // Not implemented yet
+		Magic:          config.Parameters.MainNode.Magic,
+		Foundation:     config.Parameters.MainNode.FoundationAddress,
+		SeedList:       config.Parameters.MainNode.SpvSeedList,
+		DefaultPort:    config.Parameters.MainNode.DefaultPort,
+		MinOutbound:    config.Parameters.MainNode.MinOutbound,
+		MaxConnections: config.Parameters.MainNode.MaxConnections,
+		OnRollback:     nil, // Not implemented yet
 	}
 
 	log.Info("[StartSpvModule] new spv service:", spvCfg)

@@ -34,9 +34,10 @@ type Configuration struct {
 	SyncInterval  time.Duration `json:"SyncInterval"`
 	HttpJsonPort  int           `json:"HttpJsonPort"`
 	HttpRestPort  uint16        `json:"HttpRestPort"`
-	PrintLevel    int           `json:"PrintLevel"`
-	SpvPrintLevel int           `json:"SpvPrintLevel"`
-	MaxLogSize    int64         `json:"MaxLogSize"`
+	PrintLevel    uint8         `json:"PrintLevel"`
+	SpvPrintLevel uint8         `json:"SpvPrintLevel"`
+	MaxLogsSize   int64         `json:"MaxLogsSize"`
+	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
 	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
 	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
@@ -61,7 +62,6 @@ type MainNodeConfig struct {
 	MinOutbound       int        `json:"MinOutbound"`
 	MaxConnections    int        `json:"MaxConnections"`
 	FoundationAddress string     `json:"FoundationAddress"`
-	MinPeersForSync   int        `json:"MinPeersForSync"`
 }
 
 type SideNodeConfig struct {
@@ -91,7 +91,7 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	return nil, false
 }
 
-func Init() {
+func init() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)
@@ -110,7 +110,6 @@ func Init() {
 			HttpRestPort:                 20534,
 			PrintLevel:                   1,
 			SpvPrintLevel:                1,
-			MaxLogSize:                   0,
 			SyncInterval:                 1000,
 			SideChainMonitorScanInterval: 1000,
 			ClearTransactionInterval:     60000,
