@@ -47,7 +47,6 @@ var (
 )
 
 const (
-	OutputPath            = "./ArbiterLogs/" // The log files output path
 	calldepth             = 2
 	KBSize                = int64(1024)
 	MBSize                = KBSize * 1024
@@ -79,7 +78,7 @@ type Logger struct {
 	logger *log.Logger
 }
 
-func NewLogger(level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) *Logger {
+func NewLogger(outputPath string, level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) *Logger {
 	var perLogFileSize = defaultPerLogFileSize
 	var logsFolderSize = defaultLogsFolderSize
 
@@ -90,7 +89,7 @@ func NewLogger(level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) *Logger {
 		logsFolderSize = maxLogsSizeMb * MBSize
 	}
 
-	writer := elalog.NewFileWriter(OutputPath, perLogFileSize, logsFolderSize)
+	writer := elalog.NewFileWriter(outputPath, perLogFileSize, logsFolderSize)
 
 	return &Logger{
 		level: level,
@@ -99,8 +98,8 @@ func NewLogger(level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) *Logger {
 	}
 }
 
-func Init(level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) {
-	logger = NewLogger(level, maxPerLogSizeMb, maxLogsSizeMb)
+func Init(outputPath string, level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) {
+	logger = NewLogger(outputPath, level, maxPerLogSizeMb, maxLogsSizeMb)
 }
 
 func (l *Logger) SetPrintLevel(level uint8) {

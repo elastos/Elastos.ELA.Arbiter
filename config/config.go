@@ -35,7 +35,9 @@ type Configuration struct {
 	HttpJsonPort  int           `json:"HttpJsonPort"`
 	HttpRestPort  uint16        `json:"HttpRestPort"`
 	PrintLevel    uint8         `json:"PrintLevel"`
-	SpvPrintLevel uint8         `json:"SpvPrintLevel"`
+	SPVPrintLevel uint8         `json:"SPVPrintLevel"`
+	LogPath       string        `json:"LogPath"`
+	SPVLogPath    string        `json:"SpvLogPath"`
 	MaxLogsSize   int64         `json:"MaxLogsSize"`
 	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
@@ -109,7 +111,7 @@ func init() {
 			HttpJsonPort:                 20536,
 			HttpRestPort:                 20534,
 			PrintLevel:                   1,
-			SpvPrintLevel:                1,
+			SPVPrintLevel:                1,
 			SyncInterval:                 1000,
 			SideChainMonitorScanInterval: 1000,
 			ClearTransactionInterval:     60000,

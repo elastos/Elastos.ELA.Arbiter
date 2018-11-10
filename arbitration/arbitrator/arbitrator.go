@@ -347,7 +347,9 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 			return err
 		}
 		log.Info("[StartSpvModule] register auxpow listener:", keystore.Address())
-		err = SpvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
+		auxpowListener := &AuxpowListener{ListenAddress: keystore.Address()}
+		auxpowListener.start()
+		err = SpvService.RegisterTransactionListener(auxpowListener)
 		if err != nil {
 			return err
 		}

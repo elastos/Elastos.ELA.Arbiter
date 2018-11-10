@@ -21,8 +21,7 @@
      "MinOutbound": 1,
      "MaxConnections": 3,
      "FoundationAddress": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
-     "DefaultPort": 20866,
-     "MinPeersForSync": 1
+     "DefaultPort": 20866
     },
     "SideNodeList": [
       {
@@ -44,6 +43,10 @@
     "MinReceivedUsedUtxoMsgNumber": 1,
     "MinOutbound": 3,
     "MaxConnections": 8,
-    "SideAuxPowFee": 50000
+    "SideAuxPowFee": 50000,
+    "MaxLogsSize": 0,
+    "MaxPerLogSize": 0,
+    "LogPath": "",
+    "SPVLogPath": ""
   }
 }

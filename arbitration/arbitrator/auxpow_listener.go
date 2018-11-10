@@ -17,6 +17,9 @@ import (
 
 type AuxpowListener struct {
 	ListenAddress string
+
+	msgs        map[common.Uint256]struct{}
+	notifyQueue chan *notifyTask
 }
 
 func (l *AuxpowListener) Address() string {
@@ -34,18 +37,29 @@ func (l *AuxpowListener) Flags() uint64 {
 func (l *AuxpowListener) Rollback(height uint32) {}
 
 func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
-	// Submit transaction receipt
-	defer SpvService.SubmitTransactionReceipt(id, tx.Hash())
+	txHash := tx.Hash()
+	if _, ok := l.msgs[txHash]; !ok {
+		log.Info("[Notify-Auxpow][", l.ListenAddress, "] find side aux pow transaction, hash:", tx.Hash().String())
+		l.msgs[txHash] = struct{}{}
+		l.notifyQueue <- &notifyTask{id, &proof, &tx}
+		SpvService.SubmitTransactionReceipt(id, tx.Hash())
+	}
+}
 
-	log.Info("[Notify-Auxpow] Receive side chain pow transaction, hash:", tx.Hash().String())
-	err := SpvService.VerifyTransaction(proof, tx)
+func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
+	for _, t := range tasks {
+		delete(l.msgs, t.tx.Hash())
+	}
+	task := tasks[len(tasks)-1]
+	log.Info("[Notify-ProcessNotifyData][", l.ListenAddress, "] process hash:", task.tx.Hash().String(), "len tasks:", len(tasks))
+	err := SpvService.VerifyTransaction(*task.proof, *task.tx)
 	if err != nil {
 		log.Error("Verify transaction error: ", err)
 		return
 	}
 
 	// Get Header from main chain
-	header, err := SpvService.HeaderStore().Get(&proof.BlockHash)
+	header, err := SpvService.HeaderStore().Get(&task.proof.BlockHash)
 	if err != nil {
 		log.Error("can not get block from main chain")
 		return
@@ -54,12 +68,12 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	// Check if merkleroot is match
 	merkleBlock := msg.MerkleBlock{
 		Header:       header.BlockHeader,
-		Transactions: proof.Transactions,
-		Hashes:       proof.Hashes,
-		Flags:        proof.Flags,
+		Transactions: task.proof.Transactions,
+		Hashes:       task.proof.Hashes,
+		Flags:        task.proof.Flags,
 	}
 
-	txId := tx.Hash()
+	txId := task.tx.Hash()
 	merkleBranch, err := bloom.GetTxMerkleBranch(merkleBlock, &txId)
 	if err != nil {
 		log.Error("can not get merkle branch")
@@ -71,7 +85,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	sideAuxpow := auxpow.SideAuxPow{
 		SideAuxMerkleBranch: merkleBranch.Branches,
 		SideAuxMerkleIndex:  merkleBranch.Index,
-		SideAuxBlockTx:      tx,
+		SideAuxBlockTx:      *task.tx,
 		MainBlockHeader:     *elaHeader.Header,
 	}
 
@@ -83,7 +97,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	}
 
 	// send submit block
-	payload, ok := tx.Payload.(*ela.PayloadSideChainPow)
+	payload, ok := task.tx.Payload.(*ela.PayloadSideChainPow)
 	if !ok {
 		log.Error("Invalid payload type.")
 		return
@@ -137,4 +151,34 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 		return
 	}
 	sideChain.UpdateLastSubmitAuxpowHeight(payload.SideGenesisHash)
+}
+
+func (l *AuxpowListener) start() {
+	l.msgs = make(map[common.Uint256]struct{})
+	l.notifyQueue = make(chan *notifyTask, 10000)
+	go func() {
+		var tasks []*notifyTask
+		for {
+			select {
+			case data, ok := <-l.notifyQueue:
+				if ok {
+					tasks = append(tasks, data)
+					if len(tasks) >= 10000 {
+						l.ProcessNotifyData(tasks)
+						tasks = make([]*notifyTask, 0)
+					}
+				}
+			default:
+				if len(tasks) > 0 {
+					//only deal with the last one task
+					l.ProcessNotifyData(tasks)
+					tasks = make([]*notifyTask, 0)
+				}
+				data, ok := <-l.notifyQueue
+				if ok {
+					tasks = append(tasks, data)
+				}
+			}
+		}
+	}()
 }

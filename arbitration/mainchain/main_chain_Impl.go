@@ -474,7 +474,7 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	for k, v := range allSideChainTxHashes {
 		receivedTxs, err := k.GetExistDepositTransactions(v)
 		if err != nil {
-			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get exist deposit transactions failed.")
+			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get exist deposit transactions failed:", err.Error())
 			continue
 		}
 		finalGenesisAddresses := make([]string, 0)

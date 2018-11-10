@@ -23,29 +23,60 @@ import (
 )
 
 const (
-	SpvLogOutputPath = "./SpvLogs/" // The spv log files output path
-)
+	ArbiterLogOutputPath = "./ArbiterLogs/" // The log files output path
+	SpvLogOutputPath     = "./SPVLogs/"     // The spv log files output path
 
-var (
-	fileWriter = elalog.NewFileWriter(
-		SpvLogOutputPath,
-		config.Parameters.MaxPerLogSize,
-		config.Parameters.MaxLogsSize,
-	)
-	logWriter = io.MultiWriter(os.Stdout, fileWriter)
-	level     = elalog.Level(config.Parameters.SpvPrintLevel)
-	backend   = elalog.NewBackend(logWriter, elalog.Llongfile)
+	defaultSpvMaxPerLogFileSize int64 = elalog.MBSize * 20
+	defaultSpvMaxLogsFolderSize int64 = elalog.GBSize * 2
 
-	addrlog = backend.Logger("ADDR", level)
-	connlog = backend.Logger("CONN", level)
-	peerlog = backend.Logger("PEER", level)
+	defaultArbiterMaxPerLogFileSize int64 = 20
+	defaultArbiterMaxLogsFolderSize int64 = 2 * 1024
 )
 
 func init() {
+	spvMaxPerLogFileSize := defaultSpvMaxPerLogFileSize
+	spvMaxLogsFolderSize := defaultSpvMaxLogsFolderSize
+	if config.Parameters.MaxPerLogSize > 0 {
+		spvMaxPerLogFileSize = int64(config.Parameters.MaxPerLogSize) * elalog.MBSize
+	}
+	if config.Parameters.MaxLogsSize > 0 {
+		spvMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize) * elalog.MBSize
+	}
+	spvLogPath := SpvLogOutputPath
+	if config.Parameters.SPVLogPath != "" {
+		spvLogPath = config.Parameters.SPVLogPath
+	}
+	fileWriter := elalog.NewFileWriter(
+		spvLogPath,
+		spvMaxPerLogFileSize,
+		spvMaxLogsFolderSize,
+	)
+	logWriter := io.MultiWriter(os.Stdout, fileWriter)
+	level := elalog.Level(config.Parameters.SPVPrintLevel)
+	backend := elalog.NewBackend(logWriter, elalog.Llongfile)
+
+	addrlog := backend.Logger("ADDR", level)
+	connlog := backend.Logger("CONN", level)
+	peerlog := backend.Logger("PEER", level)
+
+	arbiterMaxPerLogFileSize := defaultArbiterMaxPerLogFileSize
+	arbiterMaxLogsFolderSize := defaultArbiterMaxLogsFolderSize
+	if config.Parameters.MaxPerLogSize > 0 {
+		arbiterMaxPerLogFileSize = int64(config.Parameters.MaxPerLogSize)
+	}
+	if config.Parameters.MaxLogsSize > 0 {
+		arbiterMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize)
+	}
+
+	arbiterLogPath := ArbiterLogOutputPath
+	if config.Parameters.LogPath != "" {
+		arbiterLogPath = config.Parameters.LogPath
+	}
 	log.Init(
+		arbiterLogPath,
 		config.Parameters.PrintLevel,
-		config.Parameters.MaxPerLogSize,
-		config.Parameters.MaxLogsSize,
+		arbiterMaxPerLogFileSize,
+		arbiterMaxLogsFolderSize,
 	)
 
 	addrmgr.UseLogger(addrlog)

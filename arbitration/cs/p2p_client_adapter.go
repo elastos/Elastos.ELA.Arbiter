@@ -49,7 +49,7 @@ type p2pclient struct {
 
 func InitP2PClient(arbitrator Arbitrator) error {
 	maxPeers := config.Parameters.MaxConnections
-	if maxPeers == 0 {
+	if maxPeers <= 0 {
 		maxPeers = defaultMaxPeers
 	}
 	a := p2pclient{

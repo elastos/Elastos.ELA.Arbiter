@@ -182,5 +182,5 @@ func Init() {
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 
-	//spvLog.Init(config.Parameters.SpvPrintLevel, 20, 1024)
+	//spvLog.Init(config.Parameters.SPVPrintLevel, 20, 1024)
 }
