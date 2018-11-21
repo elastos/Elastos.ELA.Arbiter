@@ -290,6 +290,7 @@ func (mc *MainChainImpl) SyncChainData() {
 			log.Debug("No need sync, chain height:", chainHeight, "current height:", currentHeight)
 			break
 		}
+		log.Info("[arbitrator] Main chain height: ", chainHeight)
 
 		//sync genesis block
 		if currentHeight == 0 {
@@ -321,7 +322,6 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 
 	// Update wallet height
 	currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height)
-	log.Info("[arbitrator] Main chain height: ", block.Height)
 	return nil
 }
 
