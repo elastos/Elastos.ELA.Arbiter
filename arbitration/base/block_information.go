@@ -35,6 +35,7 @@ type OutputInfo struct {
 	Value      string `json:"value"`
 	Index      uint32 `json:"n"`
 	Address    string `json:"address"`
+	AssetID    string `json:"assetid"`
 	OutputLock uint32 `json:"outputlock"`
 }
 
@@ -98,14 +99,10 @@ type RechargeToSideChainInfo struct {
 	MainChainTransaction string
 }
 
-type CrossChainAssetInfo struct {
-	CrossChainAddress string `json:"crosschainaddress"`
-	OutputIndex       uint64 `json:"outputindex"`
-	CrossChainAmount  string `json:"crosschainamount"`
-}
-
 type TransferCrossChainAssetInfo struct {
-	CrossChainAssets []CrossChainAssetInfo `json:"crosschainassets"`
+	CrossChainAddresses []string
+	OutputIndexes       []uint64
+	CrossChainAmounts   []Fixed64
 }
 
 type TransferAssetInfo struct {

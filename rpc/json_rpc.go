@@ -108,7 +108,7 @@ func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool,
 	return true, nil
 }
 
-func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*TransactionInfo, error) {
+func GetTransactionByHash(transactionHash string, config *config.RpcConfig) ([]byte, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
 		return nil, err
@@ -116,15 +116,20 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	reversedHashBytes := common.BytesReverse(hashBytes)
 	reversedHashStr := common.BytesToHexString(reversedHashBytes)
 
-	result, err := CallAndUnmarshal("gettransactioninfo", Param("txid", reversedHashStr), config)
+	result, err := CallAndUnmarshal("getrawtransaction", Param("txid", reversedHashStr), config)
 	if err != nil {
 		return nil, err
 	}
 
-	tx := &TransactionInfo{}
+	var tx string
 	Unmarshal(&result, &tx)
 
-	return tx, nil
+	txBytes, err := common.HexStringToBytes(tx)
+	if err != nil {
+		return nil, err
+	}
+
+	return txBytes, nil
 }
 
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
@@ -145,7 +150,13 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 }
 
 func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
-	result, err := CallAndUnmarshal("getexistdeposittransactions", Param("txs", txs), config)
+	infoBytes, err := json.Marshal(txs)
+	if err != nil {
+		return nil, err
+	}
+
+	result, err := CallAndUnmarshal("getexistdeposittransactions",
+		Param("txs", common.BytesToHexString(infoBytes)), config)
 	if err != nil {
 		return nil, err
 	}
