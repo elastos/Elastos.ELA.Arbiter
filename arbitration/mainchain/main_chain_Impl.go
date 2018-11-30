@@ -24,14 +24,17 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
+func (mc *MainChainImpl) SyncMainChainCachedTxs() error {
+	log.Info("[SyncMainChainCachedTxs] start")
+	defer log.Info("[SyncMainChainCachedTxs] end")
+
 	txs, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
-		return nil, err
+		return errors.New("[SyncMainChainCachedTxs]" + err.Error())
 	}
 
 	if len(txs) == 0 {
-		return nil, errors.New("No main chain tx in dbcache")
+		return errors.New("[SyncMainChainCachedTxs] No main chain tx in dbcache")
 	}
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
@@ -56,30 +59,40 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		}
 	}
 
-	result := make(map[SideChain][]string, 0)
 	for k, v := range allSideChainTxHashes {
-		receivedTxs, err := k.GetExistDepositTransactions(v)
-		if err != nil {
-			log.Warn("[SyncMainChainCachedTxs] Get exist deposit transactions failed")
-			continue
-		}
-		unsolvedTxs := SubstractTransactionHashes(v, receivedTxs)
-		result[k] = unsolvedTxs
-		var addresses []string
-		for i := 0; i < len(receivedTxs); i++ {
-			addresses = append(addresses, k.GetKey())
-		}
-		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
-		if err != nil {
-			return nil, err
-		}
-		err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
-		if err != nil {
-			log.Error("Add succeed deposit transactions into finished db failed")
-		}
+		go mc.createAndSendDepositTransactionsInDB(k, v)
 	}
 
-	return result, err
+	return nil
+}
+
+func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
+	receivedTxs, err := sideChain.GetExistDepositTransactions(txHashes)
+	if err != nil {
+		log.Warn("[SyncMainChainCachedTxs] Get exist deposit transactions failed, err:", err.Error())
+		return
+	}
+	unsolvedTxs := SubstractTransactionHashes(txHashes, receivedTxs)
+	var addresses []string
+	for i := 0; i < len(receivedTxs); i++ {
+		addresses = append(addresses, sideChain.GetKey())
+	}
+	err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
+	if err != nil {
+		log.Warn("[SyncMainChainCachedTxs] Remove main chain txs failed, err:", err.Error())
+	}
+	err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
+	if err != nil {
+		log.Error("[SyncMainChainCachedTxs] Add succeed deposit transactions into finished db failed, err:", err.Error())
+	}
+
+	spvTxs, err := DbCache.MainChainStore.GetMainChainTxsFromHashes(unsolvedTxs, sideChain.GetKey())
+	if err != nil {
+		log.Error("[SyncMainChainCachedTxs] Get main chain txs from hashes failed, err:", err.Error())
+		return
+	}
+
+	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
 func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {

@@ -243,6 +243,7 @@ func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, e
 	if err != nil {
 		return rpc.Response{}, err
 	}
+	log.Info("[Rpc-sendtransactioninfo] Deposit transaction finished")
 
 	if response.Error != nil {
 		log.Info("response: ", response.Error.Message)
@@ -382,28 +383,33 @@ func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn []*core.Transactio
 	return result, nil
 }
 
-func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
+func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	log.Info("[SendCachedWithdrawTxs] start")
+	defer log.Info("[SendCachedWithdrawTxs] end")
+
 	txHashes, blockHeights, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 	if err != nil {
-		return err
+		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+		return
 	}
 
 	if len(txHashes) == 0 {
 		log.Info("No cached withdraw transaction need to send")
-		return nil
+		return
 	}
 
 	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
 	if err != nil {
-		return err
+		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+		return
 	}
 
 	unsolvedTxs, unsolvedBlockHeights := SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
 
 	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
-		return err
+		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+		return
 	}
 
 	if len(unsolvedTxs) != 0 {
@@ -433,16 +439,16 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	if len(receivedTxs) != 0 {
 		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
 		if err != nil {
-			return err
+			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+			return
 		}
 
 		err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(receivedTxs)
 		if err != nil {
-			return err
+			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+			return
 		}
 	}
-	log.Info("[SendCachedWithdrawTxs] end")
-	return nil
 }
 
 func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) error {

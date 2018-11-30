@@ -91,26 +91,28 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 	if onDuty {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
-		//send deposit transaction
-		depositTxs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
-		if err != nil {
-			log.Warn(err)
-		} else {
-			for sideChain, txHashes := range depositTxs {
-				ar.CreateAndSendDepositTransactionsInDB(sideChain, txHashes)
-			}
-		}
-		//send withdraw transaction
-		for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
-			if err = sc.SendCachedWithdrawTxs(); err != nil {
-				log.Warn("[[OnDutyArbitratorChanged] send withdraw transaction err:", err)
-			}
-		}
-		//send side chain pow transaction
-		ar.sideChainManagerImpl.StartSideChainMining()
+		ar.ProcessDepositTransactions()
+		ar.processWithdrawTransactions()
+		ar.ProcessSideChainPowTransaction()
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
 	}
+}
+
+func (ar *ArbitratorImpl) ProcessDepositTransactions() {
+	if err := ar.mainChainImpl.SyncMainChainCachedTxs(); err != nil {
+		log.Warn(err)
+	}
+}
+
+func (ar *ArbitratorImpl) processWithdrawTransactions() {
+	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+		go sc.SendCachedWithdrawTxs()
+	}
+}
+
+func (ar *ArbitratorImpl) ProcessSideChainPowTransaction() {
+	ar.sideChainManagerImpl.StartSideChainMining()
 }
 
 func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
@@ -392,15 +394,6 @@ func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(spvTxs []*SpvTransact
 
 	transactionInfoMap := ar.CreateDepositTransactions(txs)
 	ar.SendDepositTransactions(transactionInfoMap)
-}
-
-func (ar *ArbitratorImpl) CreateAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
-	spvTxs, err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
-	if err != nil {
-		return
-	}
-
-	ar.CreateAndSendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
 func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {

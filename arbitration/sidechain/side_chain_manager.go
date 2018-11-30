@@ -32,7 +32,7 @@ func (sideManager *SideChainManagerImpl) GetAllChains() []arbitrator.SideChain {
 func (sideManager *SideChainManagerImpl) StartSideChainMining() {
 	for _, sc := range sideManager.SideChains {
 		log.Info("[OnDutyChanged] Start side chain mining: genesis address [", sc.GetKey(), "]")
-		sc.StartSideChainMining()
+		go sc.StartSideChainMining()
 	}
 }
 

@@ -15,7 +15,7 @@ type MainChain interface {
 	BroadcastWithdrawProposal(txn *core.Transaction) error
 	ReceiveProposalFeedback(content []byte) error
 
-	SyncMainChainCachedTxs() (map[SideChain][]string, error)
+	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error
 	SyncChainData()
 }

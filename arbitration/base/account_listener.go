@@ -11,7 +11,7 @@ type AccountListener interface {
 	UpdateLastNotifySideMiningHeight(genesisBlockHash common.Uint256)
 	UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256)
 
-	SendCachedWithdrawTxs() error
+	SendCachedWithdrawTxs()
 }
 
 type AccountMonitor interface {
