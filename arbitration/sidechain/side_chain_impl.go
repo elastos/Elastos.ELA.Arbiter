@@ -194,6 +194,13 @@ func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []core.OutPoint) {
 	sc.LastUsedOutPoints = newOutPoints
 }
 
+func (sc *SideChainImpl) ClearLastUsedOutPoints() {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+
+	sc.LastUsedOutPoints = make([]core.OutPoint, 0)
+}
+
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()

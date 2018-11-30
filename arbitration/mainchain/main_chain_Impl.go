@@ -393,22 +393,11 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 				Sequence: input.Sequence,
 			}
 			DbCache.UTXOStore.DeleteUTXO(txInput)
-
-			for _, sc := range sideChains {
-				var containedOps []OutPoint
-				for _, op := range sc.GetLastUsedOutPoints() {
-					if op.IsEqual(outPoint) {
-						containedOps = append(containedOps, op)
-					}
-				}
-				if len(containedOps) != 0 {
-					sc.RemoveLastUsedOutPoints(containedOps)
-				}
-			}
 		}
 	}
 
 	for _, sc := range sideChains {
+		sc.ClearLastUsedOutPoints()
 		sc.SetLastUsedUtxoHeight(height)
 		log.Info("Side chain [", sc.GetKey(), "] SetLastUsedUtxoHeight ", height)
 	}
