@@ -64,7 +64,7 @@ func InitP2PClient(arbitrator Arbitrator) error {
 		OpenService,
 		config.Parameters.NodePort,
 		config.Parameters.SeedList,
-		[]string{fmt.Sprint("127.0.0.1:", config.Parameters.NodePort)},
+		[]string{fmt.Sprint(":", config.Parameters.NodePort)},
 		a.newPeer, a.donePeer,
 		makeEmptyMessage,
 		func() uint64 { return uint64(0) },
