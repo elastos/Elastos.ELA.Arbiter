@@ -74,7 +74,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	for index, spvTx := range spvTxs {
 		log.Info("[Notify-Process] tx hash[", index, "]:", spvTx.MainChainTransaction.Hash().String())
 	}
-	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransactions(spvTxs, l.ListenAddress)
+	ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, l.ListenAddress)
 }
 
 func (l *DepositListener) Rollback(height uint32) {

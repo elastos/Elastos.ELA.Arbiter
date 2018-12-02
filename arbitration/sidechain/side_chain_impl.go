@@ -17,7 +17,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SideChain/types"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
@@ -235,11 +234,9 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 	return rpc.GetBlockByHeight(height, sc.getCurrentConfig().Rpc)
 }
 
-func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, error) {
+func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, error) {
 	log.Info("[Rpc-sendtransactioninfo] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	parameter := make(map[string]TransactionInfo)
-	parameter["info"] = *info
-	response, err := rpc.CallAndUnmarshalTxResponse("sendtransactioninfo", parameter, sc.CurrentConfig.Rpc)
+	response, err := rpc.CallAndUnmarshalResponse("sendtransactioninfo", rpc.Param("txid", txHash.String()), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
@@ -322,49 +319,6 @@ func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction,
 	}
 
 	return tx, nil
-}
-
-func (sc *SideChainImpl) CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error) {
-	var txOutputs []OutputInfo // The outputs in transaction
-
-	exchangeRate, err := sc.GetExchangeRate()
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < len(spvTx.DepositInfo.TargetAddress); i++ {
-		txOutput := OutputInfo{
-			Value:      common.Fixed64(float64(spvTx.DepositInfo.CrossChainAmounts[i]) * exchangeRate).String(),
-			Address:    spvTx.DepositInfo.TargetAddress[i],
-			OutputLock: uint32(0),
-		}
-		txOutputs = append(txOutputs, txOutput)
-	}
-
-	// Create payload
-	txPayloadInfo := new(RechargeToSideChainInfoV1)
-	txPayloadInfo.MainChainTransactionHash =
-		common.BytesToHexString(common.BytesReverse(spvTx.MainChainTransaction.Hash().Bytes()))
-
-	// Create attributes
-	var number = make([]byte, 8)
-	var nonce int64
-	rand.Read(number)
-	binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
-
-	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(nonce, 10)}
-	attributesInfo := make([]AttributeInfo, 0)
-	attributesInfo = append(attributesInfo, txAttr)
-
-	// Create program
-	return &TransactionInfo{
-		TxType:         core.RechargeToSideChain,
-		PayloadVersion: types.RechargeToSideChainPayloadVersion1,
-		Payload:        txPayloadInfo,
-		Attributes:     attributesInfo,
-		Inputs:         []InputInfo{},
-		Outputs:        txOutputs,
-		LockTime:       uint32(0),
-	}, nil
 }
 
 func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn []*core.Transaction) (*WithdrawInfo, error) {

@@ -28,7 +28,6 @@ type SideChain interface {
 	ClearLastUsedOutPoints()
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
-	CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error)
 
 	GetTransactionByHash(txHash string) (*core.Transaction, error)
 }

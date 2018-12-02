@@ -92,7 +92,7 @@ func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain SideChai
 		return
 	}
 
-	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransactions(spvTxs, sideChain.GetKey())
+	ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
 func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
@@ -265,31 +265,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		Programs:   []*Program{program},
 		LockTime:   uint32(0),
 	}, nil
-}
-
-func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error) {
-	result := new(DepositInfo)
-	payloadObj, ok := txn.Payload.(*PayloadTransferCrossChainAsset)
-	if !ok {
-		return nil, errors.New("Invalid payload")
-	}
-	if len(txn.Outputs) == 0 {
-		return nil, errors.New("Invalid TransferCrossChainAsset payload, outputs is null")
-	}
-	programHash, err := Uint168FromAddress(genesisAddress)
-	if err != nil {
-		return nil, errors.New("Invalid genesis address")
-	}
-	result.MainChainProgramHash = *programHash
-	for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
-		if txn.Outputs[payloadObj.OutputIndexes[i]].ProgramHash == result.MainChainProgramHash {
-			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddresses[i])
-			result.Amount = append(result.Amount, txn.Outputs[payloadObj.OutputIndexes[i]].Value)
-			result.CrossChainAmounts = append(result.CrossChainAmounts, payloadObj.CrossChainAmounts[i])
-		}
-	}
-
-	return result, nil
 }
 
 func (mc *MainChainImpl) SyncChainData() {

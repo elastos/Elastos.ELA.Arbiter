@@ -12,17 +12,9 @@ type WithdrawInfo struct {
 	CrossChainAmounts []common.Fixed64
 }
 
-type DepositInfo struct {
-	MainChainProgramHash common.Uint168
-	TargetAddress        []string
-	Amount               []common.Fixed64
-	CrossChainAmounts    []common.Fixed64
-}
-
 type SpvTransaction struct {
 	MainChainTransaction *core.Transaction
 	Proof                *bloom.MerkleProof
-	DepositInfo          *DepositInfo
 }
 
 type MainChainTransaction struct {
