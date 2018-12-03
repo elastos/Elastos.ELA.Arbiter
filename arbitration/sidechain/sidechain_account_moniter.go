@@ -44,7 +44,7 @@ func (monitor *SideChainAccountMonitorImpl) RemoveListener(account string) error
 	return nil
 }
 
-func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*TransactionInfo, genesisBlockAddress string, blockHeight uint32) error {
+func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*WithdrawTx, genesisBlockAddress string, blockHeight uint32) error {
 	if monitor.accountListenerMap == nil {
 		return nil
 	}
@@ -65,7 +65,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 			log.Info("currentHeight:", currentHeight, " chainHeight:", chainHeight)
 			for currentHeight < chainHeight {
 				if currentHeight >= 6 {
-					transactions, err := GetDestroyedTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
+					transactions, err := GetWithdrawTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
 					if err != nil {
 						log.Error("Get destoryed transaction at height:", currentHeight+1-6, "failed\n"+
 							"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
@@ -109,27 +109,58 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 	return chainHeight, currentHeight, true
 }
 
-func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions *BlockTransactions, genesisAddress string, blockHeight uint32) {
-	var txInfos []*TransactionInfo
-	for _, txn := range transactions.Transactions {
-		for _, output := range txn.Outputs {
-			if output.Address == DESTROY_ADDRESS {
-				txnBytes, err := common.HexStringToBytes(txn.Hash)
-				if err != nil {
-					log.Warn("Find output to destroy address, but transaction hash to transaction bytes failed")
-					continue
-				}
-				reversedTxnBytes := common.BytesReverse(txnBytes)
-				reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
-				txn.Hash = reversedTxnHash
-				if ok, err := store.DbCache.SideChainStore.HasSideChainTx(txn.Hash); err != nil || !ok {
-					txInfos = append(txInfos, txn)
-					break
-				}
+func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*WithdrawTxInfo, genesisAddress string, blockHeight uint32) {
+	var txInfos []*WithdrawTx
+	for _, txn := range transactions {
+		txnBytes, err := common.HexStringToBytes(txn.TxID)
+		if err != nil {
+			log.Warn("Find output to destroy address, but transaction hash to transaction bytes failed")
+			continue
+		}
+		reversedTxnBytes := common.BytesReverse(txnBytes)
+		hash, err := common.Uint256FromBytes(reversedTxnBytes)
+		if err != nil {
+			log.Warn("Find output to destroy address, but reversed transaction hash bytes to transaction hash failed")
+			continue
+		}
+
+		var withdrawAssets []*WithdrawAsset
+		for _, withdraw := range txn.CrossChainAssets {
+			opAmount, err := common.StringToFixed64(withdraw.OutputAmount)
+			if err != nil {
+				log.Warn("Find output to destroy address, but have invlaid corss chain output amount")
+				continue
 			}
+			csAmount, err := common.StringToFixed64(withdraw.CrossChainAmount)
+			if err != nil {
+				log.Warn("Find output to destroy address, but have invlaid corss chain amount")
+				continue
+			}
+
+			withdrawAssets = append(withdrawAssets, &WithdrawAsset{
+				TargetAddress:    withdraw.CrossChainAddress,
+				Amount:           opAmount,
+				CrossChainAmount: csAmount,
+			})
+		}
+
+		withdrawTx := &WithdrawTx{
+			Txid: hash,
+			WithdrawInfo: &WithdrawInfo{
+				WithdrawAssets: withdrawAssets,
+			},
+		}
+
+		reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
+		if ok, err := store.DbCache.SideChainStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
+			txInfos = append(txInfos, withdrawTx)
+			break
 		}
 	}
 	if len(txInfos) != 0 {
-		monitor.fireUTXOChanged(txInfos, genesisAddress, blockHeight)
+		err := monitor.fireUTXOChanged(txInfos, genesisAddress, blockHeight)
+		if err != nil {
+			log.Error("[fireUTXOChanged] err:", err.Error())
+		}
 	}
 }

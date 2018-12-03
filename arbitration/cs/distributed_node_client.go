@@ -128,17 +128,45 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 		transactionHashes = append(transactionHashes, hash.String())
 	}
 
-	var txs []*ela.Transaction
+	var txs []*WithdrawTx
 	sideChainTxs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashesAndGenesisAddress(
 		transactionHashes, payloadWithdraw.GenesisBlockAddress)
 	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
-		log.Info("Check withdraw transaction, need to get side chain transaction from rpc")
+		log.Info("[checkWithdrawTransaction], need to get side chain transaction from rpc")
 		for _, txHash := range payloadWithdraw.SideChainTransactionHashes {
-			tx, err := sideChain.GetTransactionByHash(txHash.String())
+			tx, err := sideChain.GetWithdrawTransaction(txHash.String())
 			if err != nil {
-				return errors.New("Check withdraw transaction failed, unknown side chain transachtions")
+				return errors.New("[checkWithdrawTransaction] failed, unknown side chain transachtions")
 			}
-			txs = append(txs, tx)
+
+			txid, err := common.Uint256FromHexString(tx.TxID)
+			if err != nil {
+				return errors.New("[checkWithdrawTransaction] failed, invalid txid")
+			}
+
+			var withdrawAssets []*WithdrawAsset
+			for _, cs := range tx.CrossChainAssets {
+				csAmount, err := common.StringToFixed64(cs.CrossChainAmount)
+				if err != nil {
+					return errors.New("[checkWithdrawTransaction] invlaid cross chain amount in tx")
+				}
+				opAmount, err := common.StringToFixed64(cs.OutputAmount)
+				if err != nil {
+					return errors.New("[checkWithdrawTransaction] invlaid cross chain amount in tx")
+				}
+				withdrawAssets = append(withdrawAssets, &WithdrawAsset{
+					TargetAddress:    cs.CrossChainAddress,
+					Amount:           csAmount,
+					CrossChainAmount: opAmount,
+				})
+			}
+
+			txs = append(txs, &WithdrawTx{
+				Txid: txid,
+				WithdrawInfo: &WithdrawInfo{
+					WithdrawAssets: withdrawAssets,
+				},
+			})
 		}
 	} else {
 		txs = sideChainTxs
@@ -175,23 +203,15 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 	var oriOutputAmount common.Fixed64
 	var totalCrossChainCount int
 	for _, tx := range txs {
-		payloadObj, ok := tx.Payload.(*ela.PayloadTransferCrossChainAsset)
-		if !ok {
-			return errors.New("Check withdraw transaction failed, invalid side chain transaction payload")
-		}
-		for _, amount := range payloadObj.CrossChainAmounts {
-			if amount < 0 {
+		for _, w := range tx.WithdrawInfo.WithdrawAssets {
+
+			if *w.CrossChainAmount < 0 || *w.Amount <= 0 || *w.CrossChainAmount >= *w.Amount {
 				return errors.New("Check withdraw transaction failed, cross chain amount less than 0")
 			}
-			oriOutputAmount += common.Fixed64(float64(amount) / exchangeRate)
+			oriOutputAmount += common.Fixed64(float64(*w.CrossChainAmount) / exchangeRate)
+			totalFee += common.Fixed64(float64(*w.Amount-*w.CrossChainAmount) / exchangeRate)
 		}
-		for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
-			if payloadObj.CrossChainAmounts[i] > tx.Outputs[payloadObj.OutputIndexes[i]].Value {
-				return errors.New("Check withdraw transaction failed, cross chain amount more than output amount")
-			}
-			totalFee += common.Fixed64(float64(tx.Outputs[payloadObj.OutputIndexes[i]].Value-payloadObj.CrossChainAmounts[i]) / exchangeRate)
-		}
-		totalCrossChainCount += len(payloadObj.CrossChainAddresses)
+		totalCrossChainCount += len(tx.WithdrawInfo.WithdrawAssets)
 	}
 
 	if inputTotalAmount != outputTotalAmount+totalFee {

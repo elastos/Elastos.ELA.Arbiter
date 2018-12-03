@@ -124,3 +124,14 @@ type UTXOInfo struct {
 	Confirmations uint32 `json:"confirmations"`
 	OutputLock    uint32 `json:"OutputLock"`
 }
+
+type WithdrawOutputInfo struct {
+	CrossChainAddress string `json:"crosschainaddress"`
+	CrossChainAmount  string `json:"crosschainamount"`
+	OutputAmount      string `json:"outputamount"`
+}
+
+type WithdrawTxInfo struct {
+	TxID             string                `json:"txid"`
+	CrossChainAssets []*WithdrawOutputInfo `json:"crosschainassets"`
+}

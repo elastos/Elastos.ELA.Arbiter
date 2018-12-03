@@ -11,8 +11,8 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	elaCore "github.com/elastos/Elastos.ELA/core"
 )
 
 type Response struct {
@@ -31,12 +31,6 @@ type Error struct {
 type ArbitratorGroupInfo struct {
 	OnDutyArbitratorIndex int
 	Arbitrators           []string
-}
-
-type BlockTransactions struct {
-	Hash         string
-	Height       uint32
-	Transactions []*TransactionInfo
 }
 
 func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error) {
@@ -88,27 +82,22 @@ func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*BlockInfo,
 	return block, nil
 }
 
-func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*BlockTransactions, error) {
-	resp, err := CallAndUnmarshal("getdestroyedtransactions", Param("height", height), config)
+func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]*WithdrawTxInfo, error) {
+	resp, err := CallAndUnmarshal("getwithdrawtransactionsbyheight", Param("height", height), config)
 	if err != nil {
 		return nil, err
 	}
-	transactions := UnmarshalCrossChainTransactions(resp)
-	log.Debug("[getdestorytransactions] len transactions:", len(transactions.Transactions), "transactions:", transactions)
-
-	return transactions, nil
-}
-
-func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool, error) {
-	_, err := CallAndUnmarshal("getrawtransaction", Param("txid", transactionHash), config)
-	if err != nil {
-		return false, err
+	txs := make([]*WithdrawTxInfo, 0)
+	if err = Unmarshal(&resp, &txs); err != nil {
+		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
+		return nil, err
 	}
+	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs), "transactions:", txs)
 
-	return true, nil
+	return txs, nil
 }
 
-func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*TransactionInfo, error) {
+func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*WithdrawTxInfo, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
 		return nil, err
@@ -116,13 +105,13 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	reversedHashBytes := common.BytesReverse(hashBytes)
 	reversedHashStr := common.BytesToHexString(reversedHashBytes)
 
-	result, err := CallAndUnmarshal("gettransactioninfo", Param("txid", reversedHashStr), config)
+	result, err := CallAndUnmarshal("getwithdrawtransaction", Param("txid", reversedHashStr), config)
 	if err != nil {
 		return nil, err
 	}
 
-	tx := &TransactionInfo{}
-	Unmarshal(&result, &tx)
+	tx := &WithdrawTxInfo{}
+	Unmarshal(&result, tx)
 
 	return tx, nil
 }
@@ -244,26 +233,6 @@ func CallTx(method string, params map[string]TransactionInfo, config *config.Rpc
 	}
 
 	return body, nil
-}
-
-func UnmarshalCrossChainTransactions(resp interface{}) *BlockTransactions {
-	transactions := &BlockTransactions{}
-	Unmarshal(&resp, transactions)
-
-	var resultTransactions []*TransactionInfo
-	for _, txInfo := range transactions.Transactions {
-		var assetInfo PayloadInfo
-		if txInfo.TxType == elaCore.TransferCrossChainAsset {
-			assetInfo = &TransferCrossChainAssetInfo{}
-			err := Unmarshal(&txInfo.Payload, assetInfo)
-			if err == nil {
-				txInfo.Payload = assetInfo
-			}
-			resultTransactions = append(resultTransactions, txInfo)
-		}
-	}
-	transactions.Transactions = resultTransactions
-	return transactions
 }
 
 func CallAndUnmarshal(method string, params map[string]string, config *config.RpcConfig) (interface{}, error) {

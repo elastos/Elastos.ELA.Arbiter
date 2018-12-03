@@ -121,19 +121,19 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	var txOutputs []*Output
 	// Check if from address is valid
 	assetID := SystemAssetId
-	for i := 0; i < len(withdrawInfo.TargetAddress); i++ {
-		programhash, err := Uint168FromAddress(withdrawInfo.TargetAddress[i])
+	for _, withdraw := range withdrawInfo.WithdrawAssets {
+		programhash, err := Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
 			return nil, err
 		}
 		txOutput := &Output{
 			AssetID:     Uint256(assetID),
 			ProgramHash: *programhash,
-			Value:       Fixed64(float64(withdrawInfo.CrossChainAmounts[i]) / exchangeRate),
+			Value:       Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
 			OutputLock:  0,
 		}
 		txOutputs = append(txOutputs, txOutput)
-		totalOutputAmount += Fixed64(float64(withdrawInfo.Amount[i]) / exchangeRate)
+		totalOutputAmount += Fixed64(float64(*withdraw.Amount) / exchangeRate)
 	}
 
 	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)

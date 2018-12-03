@@ -29,7 +29,7 @@ type SideChain interface {
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
 
-	GetTransactionByHash(txHash string) (*core.Transaction, error)
+	GetWithdrawTransaction(txHash string) (*WithdrawTxInfo, error)
 }
 
 type SideChainManager interface {

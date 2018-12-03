@@ -236,7 +236,7 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 
 func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, error) {
 	log.Info("[Rpc-sendtransactioninfo] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	response, err := rpc.CallAndUnmarshalResponse("sendtransactioninfo", rpc.Param("txid", txHash.String()), sc.CurrentConfig.Rpc)
+	response, err := rpc.CallAndUnmarshalResponse("sendrechargetransaction", rpc.Param("txid", txHash.String()), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
@@ -255,22 +255,22 @@ func (sc *SideChainImpl) GetAccountAddress() string {
 	return sc.GetKey()
 }
 
-func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error {
+func (sc *SideChainImpl) OnUTXOChanged(txinfos []*WithdrawTx, blockHeight uint32) error {
 	if len(txinfos) == 0 {
-		return errors.New("OnUTXOChanged received txinfos, but size is 0")
+		return errors.New("[OnUTXOChanged] received txinfos, but size is 0")
 	}
 
 	var txs []*SideChainTransaction
 	for _, txinfo := range txinfos {
-		txn, err := txinfo.ToTransaction()
-		if err != nil {
-			return err
+		buf := new(bytes.Buffer)
+		if err := txinfo.Serialize(buf); err != nil {
+			return errors.New("[OnUTXOChanged] received txinfos, but have invalid tx," + err.Error())
 		}
 
 		txs = append(txs, &SideChainTransaction{
-			TransactionHash:     txinfo.Hash,
+			TransactionHash:     txinfo.Txid.String(),
 			GenesisBlockAddress: sc.GetKey(),
-			Transaction:         txn,
+			Transaction:         buf.Bytes(),
 			BlockHeight:         blockHeight,
 		})
 	}
@@ -307,31 +307,20 @@ func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, er
 	return receivedTxs, nil
 }
 
-func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction, error) {
+func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*WithdrawTxInfo, error) {
 	txInfo, err := rpc.GetTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := txInfo.ToTransaction()
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
+	return txInfo, nil
 }
 
-func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn []*core.Transaction) (*WithdrawInfo, error) {
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txs []*WithdrawTx) (*WithdrawInfo, error) {
 	result := new(WithdrawInfo)
-	for _, tx := range txn {
-		payloadObj, ok := tx.Payload.(*core.PayloadTransferCrossChainAsset)
-		if !ok {
-			return nil, errors.New("Invalid payload")
-		}
-		for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
-			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddresses[i])
-			result.Amount = append(result.Amount, tx.Outputs[payloadObj.OutputIndexes[i]].Value)
-			result.CrossChainAmounts = append(result.CrossChainAmounts, payloadObj.CrossChainAmounts[i])
+	for _, tx := range txs {
+		for _, withdraw := range tx.WithdrawInfo.WithdrawAssets {
+			result.WithdrawAssets = append(result.WithdrawAssets, withdraw)
 		}
 	}
 	return result, nil

@@ -482,11 +482,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 
 	// Do insert
 	for _, tx := range txs {
-		// Serialize transaction
-		buf := new(bytes.Buffer)
-		tx.Transaction.Serialize(buf)
-
-		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, buf.Bytes(), tx.BlockHeight)
+		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
 		if err != nil {
 			continue
 		}
@@ -506,12 +502,8 @@ func (store *DataStoreSideChainImpl) AddSideChainTx(tx *base.SideChainTransactio
 	}
 	defer stmt.Close()
 
-	// Serialize transaction
-	buf := new(bytes.Buffer)
-	tx.Transaction.Serialize(buf)
-
 	// Do insert
-	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, buf.Bytes(), tx.BlockHeight)
+	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
 	if err != nil {
 		return err
 	}
@@ -601,11 +593,11 @@ func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights(genesisBl
 	return txHashes, blockHeights, nil
 }
 
-func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
+func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	var txs []*Transaction
+	var txs []*base.WithdrawTx
 	var buf bytes.Buffer
 	buf.WriteString("SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash IN (")
 	hashesLen := len(transactionHashes)
@@ -634,20 +626,20 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 			return nil, err
 		}
 
-		var tx Transaction
+		tx := new(base.WithdrawTx)
 		reader := bytes.NewReader(transactionBytes)
 		tx.Deserialize(reader)
-		txs = append(txs, &tx)
+		txs = append(txs, tx)
 
 	}
 	return txs, nil
 }
 
-func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error) {
+func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	var txs []*Transaction
+	var txs []*base.WithdrawTx
 	for _, txHash := range transactionHashes {
 		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
 		if err != nil {
@@ -662,11 +654,11 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(
 				return nil, err
 			}
 
-			var tx Transaction
+			tx := new(base.WithdrawTx)
 			reader := bytes.NewReader(transactionBytes)
 			tx.Deserialize(reader)
 
-			txs = append(txs, &tx)
+			txs = append(txs, tx)
 		}
 		rows.Close()
 	}

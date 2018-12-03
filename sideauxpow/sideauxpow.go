@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"os"
 	"time"
 
@@ -58,7 +57,7 @@ func getPassword(passwd []byte, confirmed bool) []byte {
 			tmp, err = password.GetPassword()
 		}
 		if err != nil {
-			fmt.Println(err)
+			log.Error(err)
 			os.Exit(1)
 		}
 	}
@@ -107,7 +106,6 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	if err != nil {
 		return err
 	}
-	// fmt.Println(sideAuxBlock)
 
 	txType := ela.SideChainPow
 
@@ -117,7 +115,7 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	sideGenesisHash, _ := Uint256FromBytes(sideGenesisHashData)
 	sideBlockHash, _ := Uint256FromBytes(sideBlockHashData)
 
-	fmt.Println(sideGenesisHash, sideBlockHash)
+	log.Info("sideGenesisHash:", sideGenesisHash, "sideBlockHash:", sideBlockHash)
 	// Create payload
 	txPayload := &ela.PayloadSideChainPow{
 		BlockHeight:     sideAuxBlock.Height,

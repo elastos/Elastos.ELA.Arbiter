@@ -176,7 +176,8 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 			if resp.Error != nil {
 				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", hash.String())
 			} else {
-				log.Info("Send deposit transaction succeed, move to finished db, main chain tx hash:")
+				log.Info("Send deposit transaction succeed, move to finished db, main chain tx hash:", hash.String())
+				log.Info("Send deposit transaction succeed, move to finished db, side chain tx hash:", resp.Result.(string))
 			}
 			succeedMainChainTxHashes = append(succeedMainChainTxHashes, hash.String())
 			succeedGenesisAddresses = append(succeedGenesisAddresses, genesisAddress)

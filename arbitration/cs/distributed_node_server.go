@@ -207,7 +207,11 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 				return errors.New("Add failed withdraw transaction into finished db failed")
 			}
 		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && resp.Code == MCErrSidechainTxDuplicate {
-			log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
+			if resp.Error != nil {
+				log.Info("Send withdraw transaction found has been processed, move to finished db, txHash:", txn.Hash().String())
+			} else {
+				log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
+			}
 			var newUsedUtxos []OutPoint
 			for _, input := range txn.Inputs {
 				newUsedUtxos = append(newUsedUtxos, input.Previous)
