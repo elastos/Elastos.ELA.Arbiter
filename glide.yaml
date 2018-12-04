@@ -13,6 +13,8 @@ import:
 - package: github.com/mattn/go-sqlite3
 - package: github.com/stretchr/testify/assert
 - package: github.com/golang/crypto
+- package: github.com/syndtr/goleveldb/leveldb
+- package: github.com/golang/snappy
   subpackages:
   - ripemd160
   - ssh/terminal
