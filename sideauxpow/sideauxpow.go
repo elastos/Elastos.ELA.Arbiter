@@ -18,15 +18,17 @@ import (
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	ela "github.com/elastos/Elastos.ELA/core"
+	"sync"
 )
 
 var (
 	CurrentWallet       wallet.Wallet
 	mainAccountPassword []byte
 
-	LastSendSideMiningHeightMap   map[Uint256]uint32
-	LastNotifySideMiningHeightMap map[Uint256]uint32
-	LastSubmitAuxpowHeightMap     map[Uint256]uint32
+	lock                          sync.RWMutex
+	lastSendSideMiningHeightMap   map[Uint256]uint32
+	lastNotifySideMiningHeightMap map[Uint256]uint32
+	lastSubmitAuxpowHeightMap     map[Uint256]uint32
 )
 
 func getMainAccountPassword() []byte {
@@ -37,12 +39,38 @@ func SetMainAccountPassword(passwd []byte) {
 	mainAccountPassword = passwd
 }
 
+func GetLastSendSideMiningHeight(genesisBlockHash *Uint256) (uint32, bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	height, ok := lastSendSideMiningHeightMap[*genesisBlockHash]
+	return height, ok
+}
+
+func GetLastNotifySideMiningHeight(genesisBlockHash *Uint256) (uint32, bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	height, ok := lastNotifySideMiningHeightMap[*genesisBlockHash]
+	return height, ok
+}
+
+func GetLastSubmitAuxpowHeight(genesisBlockHash *Uint256) (uint32, bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	height, ok := lastSubmitAuxpowHeightMap[*genesisBlockHash]
+	return height, ok
+
+}
+
 func UpdateLastNotifySideMiningHeight(genesisBlockHash Uint256) {
-	LastNotifySideMiningHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lock.Lock()
+	defer lock.Unlock()
+	lastNotifySideMiningHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
 func UpdateLastSubmitAuxpowHeight(genesisBlockHash Uint256) {
-	LastSubmitAuxpowHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lock.Lock()
+	defer lock.Unlock()
+	lastSubmitAuxpowHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
 func getPassword(passwd []byte, confirmed bool) []byte {
@@ -176,7 +204,9 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	}
 	log.Info("[SendSideChainMining] End send Sidemining transaction:  genesis address [", sideNode.GenesisBlockAddress, "], result: ", result)
 
-	LastSendSideMiningHeightMap[*sideGenesisHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lock.Lock()
+	defer lock.Unlock()
+	lastSendSideMiningHeightMap[*sideGenesisHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 
 	log.Info("[sideChainPowTransfer] end")
 	return nil
@@ -220,7 +250,7 @@ func TestMultiSidechain() {
 }
 
 func init() {
-	LastSendSideMiningHeightMap = make(map[Uint256]uint32)
-	LastNotifySideMiningHeightMap = make(map[Uint256]uint32)
-	LastSubmitAuxpowHeightMap = make(map[Uint256]uint32)
+	lastSendSideMiningHeightMap = make(map[Uint256]uint32)
+	lastNotifySideMiningHeightMap = make(map[Uint256]uint32)
+	lastSubmitAuxpowHeightMap = make(map[Uint256]uint32)
 }

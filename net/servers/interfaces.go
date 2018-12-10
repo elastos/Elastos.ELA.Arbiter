@@ -122,15 +122,15 @@ func GetSideMiningInfo(param Params) map[string]interface{} {
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
-	lastSendSideMiningHeight, ok := sideauxpow.LastSendSideMiningHeightMap[*genesisBlockHash]
+	lastSendSideMiningHeight, ok := sideauxpow.GetLastSendSideMiningHeight(genesisBlockHash)
 	if !ok {
 		return ResponsePack(InvalidParams, "genesis block hash not matched")
 	}
-	lastNotifySideMiningHeight, ok := sideauxpow.LastNotifySideMiningHeightMap[*genesisBlockHash]
+	lastNotifySideMiningHeight, ok := sideauxpow.GetLastNotifySideMiningHeight(genesisBlockHash)
 	if !ok {
 		return ResponsePack(InvalidParams, "genesis block hash not matched")
 	}
-	lastSubmitAuxpowHeight, ok := sideauxpow.LastSubmitAuxpowHeightMap[*genesisBlockHash]
+	lastSubmitAuxpowHeight, ok := sideauxpow.GetLastSubmitAuxpowHeight(genesisBlockHash)
 	if !ok {
 		return ResponsePack(InvalidParams, "genesis block hash not matched")
 	}
