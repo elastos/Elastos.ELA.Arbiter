@@ -2,13 +2,14 @@ package arbitrator
 
 import (
 	"bytes"
+	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.SPV/util"
+	"github.com/elastos/Elastos.ELA.SPV/interface/iutil"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
@@ -18,6 +19,7 @@ import (
 type AuxpowListener struct {
 	ListenAddress string
 
+	lock        sync.Mutex
 	msgs        map[common.Uint256]struct{}
 	notifyQueue chan *notifyTask
 }
@@ -37,6 +39,9 @@ func (l *AuxpowListener) Flags() uint64 {
 func (l *AuxpowListener) Rollback(height uint32) {}
 
 func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
 	txHash := tx.Hash()
 	if _, ok := l.msgs[txHash]; !ok {
 		log.Info("[Notify-Auxpow][", l.ListenAddress, "] find side aux pow transaction, hash:", tx.Hash().String())
@@ -47,9 +52,12 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 }
 
 func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
+	l.lock.Lock()
 	for _, t := range tasks {
 		delete(l.msgs, t.tx.Hash())
 	}
+	l.lock.Unlock()
+
 	task := tasks[len(tasks)-1]
 	log.Info("[Notify-ProcessNotifyData][", l.ListenAddress, "] process hash:", task.tx.Hash().String(), "len tasks:", len(tasks))
 	err := SpvService.VerifyTransaction(*task.proof, *task.tx)
@@ -80,7 +88,7 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 		return
 	}
 
-	elaHeader := header.BlockHeader.(*util.ElaHeader)
+	elaHeader := header.BlockHeader.(*iutil.Header)
 	// sideAuxpow serilze
 	sideAuxpow := auxpow.SideAuxPow{
 		SideAuxMerkleBranch: merkleBranch.Branches,
