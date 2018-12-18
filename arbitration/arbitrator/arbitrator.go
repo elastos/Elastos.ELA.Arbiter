@@ -2,6 +2,7 @@ package arbitrator
 
 import (
 	"bytes"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -281,6 +282,7 @@ func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
 
 func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 	spvCfg := &Config{
+		DataDir:        filepath.Join(config.DefaultDataPath, config.DefaultDataDir, config.DefaultSpvDir),
 		Magic:          config.Parameters.MainNode.Magic,
 		Foundation:     config.Parameters.MainNode.FoundationAddress,
 		SeedList:       config.Parameters.MainNode.SpvSeedList,

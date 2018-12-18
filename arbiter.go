@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
@@ -22,10 +23,13 @@ import (
 	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 )
 
-const (
-	ArbiterLogOutputPath = "./ArbiterLogs/" // The log files output path
-	SpvLogOutputPath     = "./SPVLogs/"     // The spv log files output path
+var (
+	LogsPath             = filepath.Join(config.DefaultDataPath, config.DefaultLogDir)
+	ArbiterLogOutputPath = filepath.Join(LogsPath, "arbiter")
+	SpvLogOutputPath     = filepath.Join(LogsPath, "spv")
+)
 
+const (
 	defaultSpvMaxPerLogFileSize int64 = elalog.MBSize * 20
 	defaultSpvMaxLogsFolderSize int64 = elalog.GBSize * 2
 

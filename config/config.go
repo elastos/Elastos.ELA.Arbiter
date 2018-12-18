@@ -20,6 +20,11 @@ const (
 var (
 	Version    string
 	Parameters configParams
+
+	DefaultDataPath = "elastos_arbiter"
+	DefaultDataDir  = "data"
+	DefaultSpvDir   = "spv"
+	DefaultLogDir   = "logs"
 )
 
 type Configuration struct {

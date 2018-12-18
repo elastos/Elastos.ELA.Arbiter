@@ -3,26 +3,32 @@ package store
 import (
 	"bytes"
 	"database/sql"
-	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"math"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	. "github.com/elastos/Elastos.ELA/core"
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var (
+	DBDocumentNAME  = filepath.Join(config.DefaultDataPath, config.DefaultDataDir, "arbiter")
+	DBNameUTXO      = filepath.Join(DBDocumentNAME, "chainUTXOCache.db")
+	DBNameMainChain = filepath.Join(DBDocumentNAME, "mainChainCache.db")
+	DBNameSideChain = filepath.Join(DBDocumentNAME, "sideChainCache.db")
+)
+
 const (
-	DriverName      = "sqlite3"
-	DBDocumentNAME  = "./DBCache"
-	DBNameUTXO      = "./DBCache/chainUTXOCache.db"
-	DBNameMainChain = "./DBCache/mainChainCache.db"
-	DBNameSideChain = "./DBCache/sideChainCache.db"
+	DriverName = "sqlite3"
+
 	QueryHeightCode = 0
 	ResetHeightCode = math.MaxUint32
 )
@@ -200,10 +206,14 @@ func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
 }
 
 func initUTXODB() (*sql.DB, error) {
-	err := CheckAndCreateDocument(DBDocumentNAME)
-	if err != nil {
-		log.Error("Create DBCache doucument error:", err)
-		return nil, err
+	//config.DefaultDataPath, config.DefaultDataDir, "arbiter"
+	arbiterPath := filepath.Join(config.DefaultDataPath, config.DefaultDataDir, "arbiter")
+	if _, err := os.Stat(arbiterPath); os.IsNotExist(err) {
+		cmd := exec.Command("mkdir", "-p", arbiterPath)
+		if err = cmd.Run(); err != nil {
+			log.Errorf("Create arbiter db dir error: %s\n", err)
+			return nil, err
+		}
 	}
 	db, err := sql.Open(DriverName, DBNameUTXO)
 	if err != nil {
