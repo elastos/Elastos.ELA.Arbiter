@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -12,9 +13,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const (
-	FinishedTxsDBName = "./DBCache/finishedTxs.db"
-)
+var FinishedTxsDBName = filepath.Join(DBDocumentNAME, "finishedTxs.db")
 
 const (
 	//TransactionHash: tx3
