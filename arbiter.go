@@ -24,7 +24,7 @@ import (
 )
 
 var (
-	LogsPath             = filepath.Join(config.DefaultDataPath, config.DefaultLogDir)
+	LogsPath             = filepath.Join(config.DataPath, config.LogDir)
 	ArbiterLogOutputPath = filepath.Join(LogsPath, "arbiter")
 	SpvLogOutputPath     = filepath.Join(LogsPath, "spv")
 )
@@ -103,8 +103,8 @@ func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	}
 }
 
-func initP2P(arbitrator arbitrator.Arbitrator) error {
-	if err := cs.InitP2PClient(arbitrator); err != nil {
+func initP2P(dataDir string, arbitrator arbitrator.Arbitrator) error {
+	if err := cs.InitP2PClient(dataDir); err != nil {
 		return err
 	}
 
@@ -167,7 +167,7 @@ func main() {
 	}
 
 	log.Info("6. Start arbitrator P2P networks.")
-	if err := initP2P(currentArbitrator); err != nil {
+	if err := initP2P(filepath.Join(config.DataPath, config.DataDir), currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}

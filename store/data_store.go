@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	DBDocumentNAME  = filepath.Join(config.DefaultDataPath, config.DefaultDataDir, "arbiter")
+	DBDocumentNAME  = filepath.Join(config.DataPath, config.DataDir, "arbiter")
 	DBNameUTXO      = filepath.Join(DBDocumentNAME, "chainUTXOCache.db")
 	DBNameMainChain = filepath.Join(DBDocumentNAME, "mainChainCache.db")
 	DBNameSideChain = filepath.Join(DBDocumentNAME, "sideChainCache.db")
@@ -206,8 +206,7 @@ func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
 }
 
 func initUTXODB() (*sql.DB, error) {
-	//config.DefaultDataPath, config.DefaultDataDir, "arbiter"
-	arbiterPath := filepath.Join(config.DefaultDataPath, config.DefaultDataDir, "arbiter")
+	arbiterPath := filepath.Join(config.DataPath, config.DataDir, "arbiter")
 	if _, err := os.Stat(arbiterPath); os.IsNotExist(err) {
 		cmd := exec.Command("mkdir", "-p", arbiterPath)
 		if err = cmd.Run(); err != nil {

@@ -47,7 +47,7 @@ type p2pclient struct {
 	quit      chan struct{}
 }
 
-func InitP2PClient(arbitrator Arbitrator) error {
+func InitP2PClient(dataDir string) error {
 	maxPeers := config.Parameters.MaxConnections
 	if maxPeers <= 0 {
 		maxPeers = defaultMaxPeers
@@ -69,6 +69,7 @@ func InitP2PClient(arbitrator Arbitrator) error {
 		makeEmptyMessage,
 		func() uint64 { return uint64(0) },
 	)
+	serverCfg.DataDir = dataDir
 	serverCfg.MaxPeers = maxPeers
 	log.Info("server config:", serverCfg)
 
