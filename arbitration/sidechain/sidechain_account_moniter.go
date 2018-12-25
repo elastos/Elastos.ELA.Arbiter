@@ -154,7 +154,6 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
 		if ok, err := store.DbCache.SideChainStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
 			txInfos = append(txInfos, withdrawTx)
-			break
 		}
 	}
 	if len(txInfos) != 0 {
