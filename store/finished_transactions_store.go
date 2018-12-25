@@ -338,9 +338,8 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedWithdrawTxs(transactionHashes [
 
 	// Do insert
 	for _, txHash := range transactionHashes {
-		_, err = stmt.Exec(txHash, 0, true, time.Now().Format("2006-01-02_15.04.05"))
-		if err != nil {
-			return err
+		if _, err := stmt.Exec(txHash, 0, true, time.Now().Format("2006-01-02_15.04.05")); err != nil {
+			log.Error("[AddSucceedWithdrawTxs] txHash:", txHash, "err:", err.Error())
 		}
 	}
 	return nil
