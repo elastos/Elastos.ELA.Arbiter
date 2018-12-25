@@ -79,6 +79,7 @@ type SideNodeConfig struct {
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
 	PayToAddr           string  `json:"PayToAddr"`
+	PowChain            bool    `json:"PowChain"`
 }
 
 type ConfigFile struct {

@@ -112,7 +112,7 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	}
 	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", depositAddress), sideNode.Rpc)
 	if err != nil {
-		log.Error("[sideChainPowTransfer] create aux block failed")
+		log.Errorf("[sideChainPowTransfer] create aux block failed: %s", err)
 		return err
 	}
 	if resp == nil {

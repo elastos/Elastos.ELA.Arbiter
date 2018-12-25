@@ -23,7 +23,6 @@ type Response struct {
 }
 
 type Error struct {
-	ID      int64  `json:"id"`
 	Code    int64  `json:"code"`
 	Message string `json:"message"`
 }
@@ -172,7 +171,7 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
 	if err != nil {
-		log.Info("POST requset err:", err)
+		log.Debug("POST requset err:", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
