@@ -156,8 +156,8 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 				}
 				withdrawAssets = append(withdrawAssets, &WithdrawAsset{
 					TargetAddress:    cs.CrossChainAddress,
-					Amount:           csAmount,
-					CrossChainAmount: opAmount,
+					Amount:           opAmount,
+					CrossChainAmount: csAmount,
 				})
 			}
 
