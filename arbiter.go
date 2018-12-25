@@ -17,10 +17,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
+	"github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/elalog"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/addrmgr"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/connmgr"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 )
 
 var (
@@ -59,9 +57,8 @@ func init() {
 	level := elalog.Level(config.Parameters.SPVPrintLevel)
 	backend := elalog.NewBackend(logWriter, elalog.Llongfile)
 
-	addrlog := backend.Logger("ADDR", level)
-	connlog := backend.Logger("CONN", level)
-	peerlog := backend.Logger("PEER", level)
+	spvslog := backend.Logger("SPVS", level)
+	_interface.UseLogger(spvslog)
 
 	arbiterMaxPerLogFileSize := defaultArbiterMaxPerLogFileSize
 	arbiterMaxLogsFolderSize := defaultArbiterMaxLogsFolderSize
@@ -82,10 +79,6 @@ func init() {
 		arbiterMaxPerLogFileSize,
 		arbiterMaxLogsFolderSize,
 	)
-
-	addrmgr.UseLogger(addrlog)
-	connmgr.UseLogger(connlog)
-	peer.UseLogger(peerlog)
 
 	arbitrator.Init()
 	sidechain.Init()

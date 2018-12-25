@@ -152,7 +152,7 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 				}
 				opAmount, err := common.StringToFixed64(cs.OutputAmount)
 				if err != nil {
-					return errors.New("[checkWithdrawTransaction] invlaid cross chain amount in tx")
+					return errors.New("[checkWithdrawTransaction] invlaid output amount in tx")
 				}
 				withdrawAssets = append(withdrawAssets, &WithdrawAsset{
 					TargetAddress:    cs.CrossChainAddress,
