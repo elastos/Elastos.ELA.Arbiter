@@ -2,7 +2,6 @@ package arbitrator
 
 import (
 	"bytes"
-	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
@@ -19,8 +18,6 @@ import (
 type AuxpowListener struct {
 	ListenAddress string
 
-	lock        sync.Mutex
-	msgs        map[common.Uint256]struct{}
 	notifyQueue chan *notifyTask
 }
 
@@ -39,25 +36,15 @@ func (l *AuxpowListener) Flags() uint64 {
 func (l *AuxpowListener) Rollback(height uint32) {}
 
 func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
-	txHash := tx.Hash()
-	if _, ok := l.msgs[txHash]; !ok {
-		log.Info("[Notify-Auxpow][", l.ListenAddress, "] find side aux pow transaction, hash:", tx.Hash().String())
-		l.msgs[txHash] = struct{}{}
-		l.notifyQueue <- &notifyTask{id, &proof, &tx}
-		SpvService.SubmitTransactionReceipt(id, tx.Hash())
+	l.notifyQueue <- &notifyTask{id, &proof, &tx}
+	log.Info("[Notify-Auxpow][", l.ListenAddress, "] find side aux pow transaction, hash:", tx.Hash().String())
+	err := SpvService.SubmitTransactionReceipt(id, tx.Hash())
+	if err != nil {
+		return
 	}
 }
 
 func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
-	l.lock.Lock()
-	for _, t := range tasks {
-		delete(l.msgs, t.tx.Hash())
-	}
-	l.lock.Unlock()
-
 	task := tasks[len(tasks)-1]
 	log.Info("[Notify-ProcessNotifyData][", l.ListenAddress, "] process hash:", task.tx.Hash().String(), "len tasks:", len(tasks))
 	err := SpvService.VerifyTransaction(*task.proof, *task.tx)
@@ -162,7 +149,6 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 }
 
 func (l *AuxpowListener) start() {
-	l.msgs = make(map[common.Uint256]struct{})
 	l.notifyQueue = make(chan *notifyTask, 10000)
 	go func() {
 		var tasks []*notifyTask

@@ -284,7 +284,12 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*WithdrawTx, blockHeight uint32
 }
 
 func (sc *SideChainImpl) StartSideChainMining() {
-	sideauxpow.StartSideChainMining(sc.CurrentConfig)
+	if sc.CurrentConfig.PowChain {
+		log.Info("[OnDutyChanged] Start side chain mining: genesis address [", sc.Key, "]")
+		sideauxpow.StartSideChainMining(sc.CurrentConfig)
+	} else {
+		log.Debug("[StartSideChainMining] side chain is not pow chain, no need to mining")
+	}
 }
 
 func (sc *SideChainImpl) SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error {

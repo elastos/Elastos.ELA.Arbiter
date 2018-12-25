@@ -305,13 +305,17 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		if err != nil {
 			return err
 		}
-		log.Info("[StartSpvModule] register auxpow listener:", keystore.Address())
-		auxpowListener := &AuxpowListener{ListenAddress: keystore.Address()}
-		auxpowListener.start()
-		err = SpvService.RegisterTransactionListener(auxpowListener)
-		if err != nil {
-			return err
+
+		if sideNode.PowChain {
+			log.Info("[StartSpvModule] register auxpow listener:", keystore.Address())
+			auxpowListener := &AuxpowListener{ListenAddress: keystore.Address()}
+			auxpowListener.start()
+			err = SpvService.RegisterTransactionListener(auxpowListener)
+			if err != nil {
+				return err
+			}
 		}
+
 		log.Info("[StartSpvModule] register dposit listener:", sideNode.GenesisBlockAddress)
 		dpListener := &DepositListener{ListenAddress: sideNode.GenesisBlockAddress}
 		dpListener.start()
