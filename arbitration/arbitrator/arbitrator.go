@@ -178,7 +178,11 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", hash.String())
 			} else {
 				log.Info("Send deposit transaction succeed, move to finished db, main chain tx hash:", hash.String())
-				log.Info("Send deposit transaction succeed, move to finished db, side chain tx hash:", resp.Result.(string))
+				if txHash, ok := resp.Result.(string); ok {
+					log.Info("Send deposit transaction succeed, move to finished db, side chain tx hash:", txHash)
+				} else {
+					log.Info("Send deposit transaction, received invalid response")
+				}
 			}
 			succeedMainChainTxHashes = append(succeedMainChainTxHashes, hash.String())
 			succeedGenesisAddresses = append(succeedGenesisAddresses, genesisAddress)

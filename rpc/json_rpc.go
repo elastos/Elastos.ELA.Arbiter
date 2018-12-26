@@ -48,7 +48,10 @@ func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return uint32(result.(float64)) - 1, nil
+	if count, ok := result.(float64); ok {
+		return uint32(count) - 1, nil
+	}
+	return 0, errors.New("[GetCurrentHeight] invalid count")
 }
 
 func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, error) {

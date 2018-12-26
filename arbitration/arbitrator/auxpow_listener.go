@@ -75,7 +75,11 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 		return
 	}
 
-	elaHeader := header.BlockHeader.(*iutil.Header)
+	elaHeader, ok := header.BlockHeader.(*iutil.Header)
+	if !ok {
+		log.Error("invalid block header")
+		return
+	}
 	// sideAuxpow serilze
 	sideAuxpow := auxpow.SideAuxPow{
 		SideAuxMerkleBranch: merkleBranch.Branches,
