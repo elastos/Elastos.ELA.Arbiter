@@ -3,6 +3,7 @@ package sideauxpow
 import (
 	"bytes"
 	"errors"
+	"github.com/elastos/Elastos.ELA/core/types"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -11,22 +12,21 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	walt "github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	ela "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 type SideChainPowAccount struct {
 	Address          string
-	availableBalance Fixed64
+	availableBalance common.Fixed64
 }
 
 func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, wallet walt.Wallet) ([]*SideChainPowAccount, error) {
 	var warnAddresses []*SideChainPowAccount
 	currentHeight := *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 	for _, addr := range addrs {
-		available := Fixed64(0)
-		locked := Fixed64(0)
+		available := common.Fixed64(0)
+		locked := common.Fixed64(0)
 		UTXOs, err := wallet.GetAddressUTXOs(addr.Addr.ProgramHash)
 		if err != nil {
 			return nil, errors.New("get " + addr.Addr.Address + " UTXOs failed")
@@ -39,7 +39,7 @@ func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, walle
 			}
 		}
 
-		if available < Fixed64(minThreshold) {
+		if available < common.Fixed64(minThreshold) {
 			warnAddresses = append(warnAddresses, &SideChainPowAccount{
 				Address:          addr.Addr.Address,
 				availableBalance: available,
@@ -66,7 +66,7 @@ func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, walle
 
 func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error {
 	// create transaction
-	fee := Fixed64(100000)
+	fee := common.Fixed64(100000)
 	keystore, err := walt.OpenKeystore(name, getMainAccountPassword())
 	if err != nil {
 		return err
@@ -79,7 +79,7 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 		return err
 	}
 
-	var txn *ela.Transaction
+	var txn *types.Transaction
 	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
 	if err != nil {
 		return errors.New("create divide transaction failed: " + err.Error())
@@ -101,7 +101,7 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 
 	buf := new(bytes.Buffer)
 	txn.Serialize(buf)
-	content := BytesToHexString(buf.Bytes())
+	content := common.BytesToHexString(buf.Bytes())
 
 	// send transaction
 	result, err := rpc.CallAndUnmarshal("sendrawtransaction", rpc.Param("data", content), config.Parameters.MainNode.Rpc)
@@ -127,7 +127,7 @@ func SidechainAccountDivide(wallet walt.Wallet) {
 			}
 			if len(warningAccounts) > 0 {
 				var outputs []*walt.Transfer
-				amount := Fixed64(config.Parameters.DepositAmount)
+				amount := common.Fixed64(config.Parameters.DepositAmount)
 				for _, warningAccount := range warningAccounts {
 					outputs = append(outputs, &walt.Transfer{
 						Address: warningAccount.Address,

@@ -1,14 +1,14 @@
 package mainchain
 
 import (
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 type MainChainClientImpl struct {
-	*DistributedNodeClient
+	*cs.DistributedNodeClient
 }
 
 func (client *MainChainClientImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
@@ -17,7 +17,7 @@ func (client *MainChainClientImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Messag
 	}
 
 	switch m := msg.(type) {
-	case *SignMessage:
+	case *cs.SignMessage:
 		return client.OnReceivedProposal(m.Content)
 	}
 	return nil

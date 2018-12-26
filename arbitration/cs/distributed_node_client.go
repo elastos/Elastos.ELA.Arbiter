@@ -3,14 +3,16 @@ package cs
 import (
 	"bytes"
 	"errors"
+	"github.com/elastos/Elastos.ELA/core/contract"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	ela "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type DistributedNodeClient struct {
@@ -18,11 +20,11 @@ type DistributedNodeClient struct {
 }
 
 type DistributedNodeClientFunc interface {
-	GetSideChainAndExchangeRate(genesisAddress string) (SideChain, float64, error)
+	GetSideChainAndExchangeRate(genesisAddress string) (arbitrator.SideChain, float64, error)
 }
 
-func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress string) (SideChain, float64, error) {
-	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress string) (arbitrator.SideChain, float64, error) {
+	sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok || sideChain == nil {
 		return nil, 0, errors.New("Get side chain from genesis address failed.")
 	}
@@ -34,7 +36,7 @@ func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress 
 }
 
 func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
-	return item.Sign(ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
+	return item.Sign(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
 }
 
 func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
@@ -47,7 +49,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return nil
 	}
 
-	payloadWithdraw, ok := transactionItem.ItemContent.Payload.(*ela.PayloadWithdrawFromSideChain)
+	payloadWithdraw, ok := transactionItem.ItemContent.Payload.(*payload.PayloadWithdrawFromSideChain)
 	if !ok {
 		return errors.New("Unknown payload type.")
 	}
@@ -57,14 +59,14 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return err
 	}
 
-	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	sc, ok := currentArbitrator.GetSideChainManager().GetChain(payloadWithdraw.GenesisBlockAddress)
 	if !ok {
 		return errors.New("Get side chain from GenesisBlockAddress failed")
 	}
 
 	if payloadWithdraw.BlockHeight > sc.GetLastUsedUtxoHeight() {
-		var outPoints []ela.OutPoint
+		var outPoints []types.OutPoint
 		for _, input := range transactionItem.ItemContent.Inputs {
 			outPoints = append(outPoints, input.Previous)
 		}
@@ -83,10 +85,14 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 }
 
 func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
-	ar := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	ar := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
 
-	programHash, err := StandardAcccountPublicKeyToProgramHash(item.TargetArbitratorPublicKey)
+	pkBuf, err := item.TargetArbitratorPublicKey.EncodePoint(true)
+	if err != nil {
+		return err
+	}
+	programHash, err := contract.PublicKeyToStandardProgramHash(pkBuf)
 	if err != nil {
 		return err
 	}
@@ -111,8 +117,8 @@ func (client *DistributedNodeClient) broadcast(message []byte) {
 	P2PClientSingleton.Broadcast(msg)
 }
 
-func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeClientFunc) error {
-	payloadWithdraw, ok := txn.Payload.(*ela.PayloadWithdrawFromSideChain)
+func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
+	payloadWithdraw, ok := txn.Payload.(*payload.PayloadWithdrawFromSideChain)
 	if !ok {
 		return errors.New("Check withdraw transaction failed, unknown payload type")
 	}
@@ -128,7 +134,7 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 		transactionHashes = append(transactionHashes, hash.String())
 	}
 
-	var txs []*WithdrawTx
+	var txs []*base.WithdrawTx
 	sideChainTxs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashesAndGenesisAddress(
 		transactionHashes, payloadWithdraw.GenesisBlockAddress)
 	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
@@ -144,7 +150,7 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 				return errors.New("[checkWithdrawTransaction] failed, invalid txid")
 			}
 
-			var withdrawAssets []*WithdrawAsset
+			var withdrawAssets []*base.WithdrawAsset
 			for _, cs := range tx.CrossChainAssets {
 				csAmount, err := common.StringToFixed64(cs.CrossChainAmount)
 				if err != nil {
@@ -154,16 +160,16 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 				if err != nil {
 					return errors.New("[checkWithdrawTransaction] invlaid output amount in tx")
 				}
-				withdrawAssets = append(withdrawAssets, &WithdrawAsset{
+				withdrawAssets = append(withdrawAssets, &base.WithdrawAsset{
 					TargetAddress:    cs.CrossChainAddress,
 					Amount:           opAmount,
 					CrossChainAmount: csAmount,
 				})
 			}
 
-			txs = append(txs, &WithdrawTx{
+			txs = append(txs, &base.WithdrawTx{
 				Txid: txid,
-				WithdrawInfo: &WithdrawInfo{
+				WithdrawInfo: &base.WithdrawInfo{
 					WithdrawAssets: withdrawAssets,
 				},
 			})

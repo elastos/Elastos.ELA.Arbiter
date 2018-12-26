@@ -1,6 +1,6 @@
 package base
 
-import "github.com/elastos/Elastos.ELA.Utility/common"
+import "github.com/elastos/Elastos.ELA/common"
 
 type AccountListener interface {
 	GetAccountAddress() string

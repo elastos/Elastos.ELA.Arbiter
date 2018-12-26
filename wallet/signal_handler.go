@@ -2,9 +2,9 @@ package wallet
 
 import (
 	"os"
-	"time"
-	"syscall"
 	"os/signal"
+	"syscall"
+	"time"
 )
 
 const MaxSignalQueueLen = 5

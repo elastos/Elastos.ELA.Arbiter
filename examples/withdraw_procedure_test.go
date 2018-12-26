@@ -12,8 +12,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 func init() {
@@ -29,8 +30,8 @@ func (mcFunc *TestMainChainFunc) GetAvailableUtxos(withdrawBank string) ([]*stor
 	var utxos []*store.AddressUTXO
 	amount := common.Fixed64(10000000000)
 	utxo := &store.AddressUTXO{
-		Input: &Input{
-			Previous: OutPoint{
+		Input: &types.Input{
+			Previous: types.OutPoint{
 				TxID:  common.Uint256{},
 				Index: 0,
 			},
@@ -94,15 +95,15 @@ func ExampleNormalWithdraw() {
 	// from parameter of OnUTXOChanged
 	var strTx3 string
 	strTx3 = "08000122456261506d65774a63584575555733446138464a68506665754a386956557565483100e00f97000000000001001335353737303036373931393437373739343130059a160631fd3b332d97685bbde279ae0795aa8f7afd6ec2fe56ff21238615e7330100000000002cfd5e8457827ddc5051844d0326fe290fec27cb7d920a7133b3c36fb58fb9d60100fefffffff9eb8f672a8f8555103c376ecf7a86421400a4b835e9dc9d82e7003d5428b8fc0100feffffff300676308144d58dc6177b17e7e747a570e7a8dba0be3c57486e85104d68312e0100feffffff23fc2b13fa5aba5edc43f36daa513787f036e020eaf39c6fadee1cc9aaa6ef300100feffffff02b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3809698000000000000000000000000000000000000000000000000000000000000b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3fdb62300000000000000000021291454167350dc6e64059a34358225be84bd817100000000010023210271c405c657b59502547e45d86d1b49f5278b2d67431493c631a405fde7bec13cac"
-	var tx3 *Transaction
+	var tx3 *types.Transaction
 
-	tx3 = new(Transaction)
+	tx3 = new(types.Transaction)
 	byteTx1, _ := common.HexStringToBytes(strTx3)
 	txReader := bytes.NewReader(byteTx1)
 	tx3.Deserialize(txReader)
 
 	//step3.3 parse withdraw info from tx3
-	withdrawInfos, _ := sidechainObj.ParseUserWithdrawTransactionInfo([]*Transaction{tx3})
+	withdrawInfos, _ := sidechainObj.ParseUserWithdrawTransactionInfo([]*types.Transaction{tx3})
 
 	hash := tx3.Hash()
 	//step3.4 create withdraw transactions(tx4) for main chain

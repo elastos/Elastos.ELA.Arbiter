@@ -14,8 +14,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -70,8 +70,8 @@ var (
 )
 
 type AddressUTXO struct {
-	Input               *Input
-	Amount              *Fixed64
+	Input               *types.Input
+	Amount              *common.Fixed64
 	GenesisBlockAddress string
 }
 
@@ -85,7 +85,7 @@ type DataStoreUTXO interface {
 
 	CurrentHeight(height uint32) uint32
 	AddAddressUTXO(utxo *AddressUTXO) error
-	DeleteUTXO(input *Input) error
+	DeleteUTXO(input *types.Input) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
 }
 
@@ -112,8 +112,8 @@ type DataStoreSideChain interface {
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes() ([]string, error)
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
-	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
-	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error)
+	GetSideChainTxsFromHashes(transactionHashes []string) ([]*types.Transaction, error)
+	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*types.Transaction, error)
 }
 
 type DataStoreImpl struct {
@@ -369,7 +369,7 @@ func (store *DataStoreUTXOImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 	return nil
 }
 
-func (store *DataStoreUTXOImpl) DeleteUTXO(input *Input) error {
+func (store *DataStoreUTXOImpl) DeleteUTXO(input *types.Input) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -411,11 +411,11 @@ func (store *DataStoreUTXOImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBl
 			return nil, err
 		}
 
-		var input Input
+		var input types.Input
 		reader := bytes.NewReader(outputBytes)
 		input.Deserialize(reader)
 
-		var amount Fixed64
+		var amount common.Fixed64
 		reader = bytes.NewReader(amountBytes)
 		amount.Deserialize(reader)
 
@@ -871,7 +871,7 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 			return nil, err
 		}
 
-		var tx Transaction
+		var tx types.Transaction
 		reader := bytes.NewReader(transactionBytes)
 		tx.Deserialize(reader)
 
@@ -908,7 +908,7 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 				return nil, err
 			}
 
-			var tx Transaction
+			var tx types.Transaction
 			reader := bytes.NewReader(transactionBytes)
 			tx.Deserialize(reader)
 

@@ -1,8 +1,9 @@
 package base
 
 import (
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type ProgramInfo struct {
@@ -11,18 +12,18 @@ type ProgramInfo struct {
 }
 
 type TxoutputMap struct {
-	Key   Uint256
+	Key   common.Uint256
 	Txout []OutputInfo
 }
 
 type AmountMap struct {
-	Key   Uint256
-	Value Fixed64
+	Key   common.Uint256
+	Value common.Fixed64
 }
 
 type AttributeInfo struct {
-	Usage AttributeUsage `json:"usage"`
-	Data  string         `json:"data"`
+	Usage types.AttributeUsage `json:"usage"`
+	Data  string               `json:"data"`
 }
 
 type InputInfo struct {
@@ -51,7 +52,7 @@ type TransactionInfo struct {
 	Confirmations  uint32          `json:"confirmations"`
 	Time           uint32          `json:"time"`
 	BlockTime      uint32          `json:"blocktime"`
-	TxType         TransactionType `json:"type"`
+	TxType         types.TxType    `json:"type"`
 	PayloadVersion byte            `json:"payloadversion"`
 	Payload        PayloadInfo     `json:"payload"`
 	Attributes     []AttributeInfo `json:"attributes"`
@@ -84,7 +85,7 @@ type PayloadInfo interface {
 }
 
 type RegisterAssetInfo struct {
-	Asset      *Asset
+	Asset      *payload.Asset
 	Amount     string
 	Controller string
 }

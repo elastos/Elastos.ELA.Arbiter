@@ -14,9 +14,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 const (
@@ -46,9 +46,9 @@ type Arbitrator interface {
 
 	//withdraw
 	CreateWithdrawTransactions(
-		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction
-	BroadcastWithdrawProposal(txns []*Transaction)
-	SendWithdrawTransaction(txn *Transaction) (rpc.Response, error)
+		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*types.Transaction
+	BroadcastWithdrawProposal(txns []*types.Transaction)
+	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
 	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
@@ -133,9 +133,9 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfo *WithdrawInfo, sideChain SideChain,
-	sideTransactionHash []string, mcFunc MainChainFunc) []*Transaction {
+	sideTransactionHash []string, mcFunc MainChainFunc) []*types.Transaction {
 	//todo divide into different transactions by the number of side chain transactions
-	var result []*Transaction
+	var result []*types.Transaction
 
 	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, withdrawInfo, sideTransactionHash, mcFunc)
 	if err != nil {
@@ -213,7 +213,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*Transaction) {
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*types.Transaction) {
 	for _, txn := range txns {
 		err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 		if err != nil {
@@ -222,7 +222,7 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*Transaction) {
 	}
 }
 
-func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *Transaction) (rpc.Response, error) {
+func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error) {
 	content, err := ar.convertToTransactionContent(txn)
 	if err != nil {
 		return rpc.Response{}, err
@@ -334,7 +334,7 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 	return nil
 }
 
-func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string, error) {
+func (ar *ArbitratorImpl) convertToTransactionContent(txn *types.Transaction) (string, error) {
 	buf := new(bytes.Buffer)
 	err := txn.Serialize(buf)
 	if err != nil {

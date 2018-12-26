@@ -6,29 +6,31 @@ import (
 	"math/rand"
 	"strconv"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	. "github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 type MainChainImpl struct {
-	*DistributedNodeServer
+	*cs.DistributedNodeServer
 }
 
 func (mc *MainChainImpl) SyncMainChainCachedTxs() error {
 	log.Info("[SyncMainChainCachedTxs] start")
 	defer log.Info("[SyncMainChainCachedTxs] end")
 
-	txs, err := DbCache.MainChainStore.GetAllMainChainTxs()
+	txs, err := store.DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return errors.New("[SyncMainChainCachedTxs]" + err.Error())
 	}
@@ -37,9 +39,9 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() error {
 		return errors.New("[SyncMainChainCachedTxs] No main chain tx in dbcache")
 	}
 
-	allSideChainTxHashes := make(map[SideChain][]string, 0)
+	allSideChainTxHashes := make(map[arbitrator.SideChain][]string, 0)
 	for _, tx := range txs {
-		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
+		sc, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
 		if !ok {
 			log.Warn("[SyncMainChainCachedTxs] Get side chain from genesis address failed")
 			continue
@@ -66,33 +68,33 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() error {
 	return nil
 }
 
-func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
+func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain arbitrator.SideChain, txHashes []string) {
 	receivedTxs, err := sideChain.GetExistDepositTransactions(txHashes)
 	if err != nil {
 		log.Warn("[SyncMainChainCachedTxs] Get exist deposit transactions failed, err:", err.Error())
 		return
 	}
-	unsolvedTxs := SubstractTransactionHashes(txHashes, receivedTxs)
+	unsolvedTxs := base.SubstractTransactionHashes(txHashes, receivedTxs)
 	var addresses []string
 	for i := 0; i < len(receivedTxs); i++ {
 		addresses = append(addresses, sideChain.GetKey())
 	}
-	err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
+	err = store.DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
 	if err != nil {
 		log.Warn("[SyncMainChainCachedTxs] Remove main chain txs failed, err:", err.Error())
 	}
-	err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
+	err = store.FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
 	if err != nil {
 		log.Error("[SyncMainChainCachedTxs] Add succeed deposit transactions into finished db failed, err:", err.Error())
 	}
 
-	spvTxs, err := DbCache.MainChainStore.GetMainChainTxsFromHashes(unsolvedTxs, sideChain.GetKey())
+	spvTxs, err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes(unsolvedTxs, sideChain.GetKey())
 	if err != nil {
 		log.Error("[SyncMainChainCachedTxs] Get main chain txs from hashes failed, err:", err.Error())
 		return
 	}
 
-	ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, sideChain.GetKey())
+	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
 func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
@@ -101,14 +103,14 @@ func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
 	}
 
 	switch m := msg.(type) {
-	case *SignMessage:
+	case *cs.SignMessage:
 		return mc.ReceiveProposalFeedback(m.Content)
 	}
 	return nil
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdrawInfo *WithdrawInfo,
-	sideChainTransactionHashes []string, mcFunc MainChainFunc) (*Transaction, error) {
+func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChain, withdrawInfo *base.WithdrawInfo,
+	sideChainTransactionHashes []string, mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
@@ -116,24 +118,24 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		return nil, err
 	}
 
-	var totalOutputAmount Fixed64
+	var totalOutputAmount common.Fixed64
 	// Create transaction outputs
-	var txOutputs []*Output
+	var txOutputs []*types.Output
 	// Check if from address is valid
-	assetID := SystemAssetId
+	assetID := base.SystemAssetId
 	for _, withdraw := range withdrawInfo.WithdrawAssets {
-		programhash, err := Uint168FromAddress(withdraw.TargetAddress)
+		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
 			return nil, err
 		}
-		txOutput := &Output{
-			AssetID:     Uint256(assetID),
+		txOutput := &types.Output{
+			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
-			Value:       Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
+			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
 			OutputLock:  0,
 		}
 		txOutputs = append(txOutputs, txOutput)
-		totalOutputAmount += Fixed64(float64(*withdraw.Amount) / exchangeRate)
+		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
 	}
 
 	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
@@ -144,8 +146,8 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	//get real available utxos
 	ops := sideChain.GetLastUsedOutPoints()
 
-	var realAvailableUtxos []*AddressUTXO
-	var unavailableUtxos []*AddressUTXO
+	var realAvailableUtxos []*store.AddressUTXO
+	var unavailableUtxos []*store.AddressUTXO
 	for _, utxo := range availableUTXOs {
 		isUsed := false
 		for _, ops := range ops {
@@ -161,7 +163,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	}
 
 	// Create transaction inputs
-	var txInputs []*Input
+	var txInputs []*types.Input
 	for _, utxo := range realAvailableUtxos {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -170,13 +172,13 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 			totalOutputAmount = 0
 			break
 		} else if *utxo.Amount > totalOutputAmount {
-			programHash, err := Uint168FromAddress(withdrawBank)
+			programHash, err := common.Uint168FromAddress(withdrawBank)
 			if err != nil {
 				return nil, err
 			}
-			change := &Output{
-				AssetID:     Uint256(SystemAssetId),
-				Value:       Fixed64(*utxo.Amount - totalOutputAmount),
+			change := &types.Output{
+				AssetID:     common.Uint256(base.SystemAssetId),
+				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
 			}
@@ -197,13 +199,13 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 				totalOutputAmount = 0
 				break
 			} else if *utxo.Amount > totalOutputAmount {
-				programHash, err := Uint168FromAddress(withdrawBank)
+				programHash, err := common.Uint168FromAddress(withdrawBank)
 				if err != nil {
 					return nil, err
 				}
-				change := &Output{
-					AssetID:     Uint256(SystemAssetId),
-					Value:       Fixed64(*utxo.Amount - totalOutputAmount),
+				change := &types.Output{
+					AssetID:     common.Uint256(base.SystemAssetId),
+					Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 					OutputLock:  uint32(0),
 					ProgramHash: *programHash,
 				}
@@ -221,7 +223,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		return nil, err
 	}
 
-	redeemScript, err := CreateRedeemScript()
+	redeemScript, err := cs.CreateRedeemScript()
 	if err != nil {
 		return nil, err
 	}
@@ -232,37 +234,37 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		return nil, err
 	}
 
-	var txHashes []Uint256
+	var txHashes []common.Uint256
 	for _, hash := range sideChainTransactionHashes {
-		hashBytes, err := HexStringToBytes(hash)
+		hashBytes, err := common.HexStringToBytes(hash)
 		if err != nil {
 			return nil, err
 		}
-		txHash, err := Uint256FromBytes(hashBytes)
+		txHash, err := common.Uint256FromBytes(hashBytes)
 		if err != nil {
 			return nil, err
 		}
 		txHashes = append(txHashes, *txHash)
 	}
 
-	txPayload := &PayloadWithdrawFromSideChain{
+	txPayload := &payload.PayloadWithdrawFromSideChain{
 		BlockHeight:                chainHeight,
 		GenesisBlockAddress:        withdrawBank,
 		SideChainTransactionHashes: txHashes}
-	program := &Program{redeemScript, nil}
+	p := &program.Program{redeemScript, nil}
 
-	// Create attributes
-	txAttr := NewAttribute(Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*Attribute, 0)
+	// Create attribute
+	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*types.Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
-	return &Transaction{
-		TxType:     WithdrawFromSideChain,
+	return &types.Transaction{
+		TxType:     types.WithdrawFromSideChain,
 		Payload:    txPayload,
 		Attributes: attributes,
 		Inputs:     txInputs,
 		Outputs:    txOutputs,
-		Programs:   []*Program{program},
+		Programs:   []*program.Program{p},
 		LockTime:   uint32(0),
 	}, nil
 }
@@ -309,7 +311,7 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 	mc.processBlock(block, currentHeight)
 
 	// Update wallet height
-	currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height)
+	currentHeight = store.DbCache.UTXOStore.CurrentHeight(block.Height)
 	return nil
 }
 
@@ -320,7 +322,7 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 		return 0, 0, false
 	}
 
-	currentHeight := DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
+	currentHeight := store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
@@ -329,9 +331,9 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 	return chainHeight, currentHeight, true
 }
 
-func (mc *MainChainImpl) getAvailableUTXOs(utxos []*AddressUTXO) []*AddressUTXO {
-	var availableUTXOs []*AddressUTXO
-	var currentHeight = DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
+func (mc *MainChainImpl) getAvailableUTXOs(utxos []*store.AddressUTXO) []*store.AddressUTXO {
+	var availableUTXOs []*store.AddressUTXO
+	var currentHeight = store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
 	for _, utxo := range utxos {
 		if utxo.Input.Sequence > 0 {
 			if utxo.Input.Sequence >= currentHeight {
@@ -353,58 +355,58 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 	return false
 }
 
-func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
+func (mc *MainChainImpl) processBlock(block *base.BlockInfo, height uint32) {
 	log.Info("[processBlock] block height:", block.Height, "current height:", height)
-	sideChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
+	sideChains := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
 	// Add UTXO to wallet address from transaction outputs
 	for _, txnInfo := range block.Tx {
-		var txn TransactionInfo
+		var txn base.TransactionInfo
 		rpc.Unmarshal(&txnInfo, &txn)
 
 		// Add UTXOs to wallet address from transaction outputs
 		for index, output := range txn.Outputs {
 			if ok := mc.containGenesisBlockAddress(output.Address); ok {
 				// Create UTXO input from output
-				txHashBytes, _ := HexStringToBytes(txn.Hash)
-				referTxHash, _ := Uint256FromBytes(BytesReverse(txHashBytes))
+				txHashBytes, _ := common.HexStringToBytes(txn.Hash)
+				referTxHash, _ := common.Uint256FromBytes(common.BytesReverse(txHashBytes))
 				sequence := output.OutputLock
-				input := &Input{
-					Previous: OutPoint{
+				input := &types.Input{
+					Previous: types.OutPoint{
 						TxID:  *referTxHash,
 						Index: uint16(index),
 					},
 					Sequence: sequence,
 				}
-				if txn.TxType == CoinBase {
+				if txn.TxType == types.CoinBase {
 					sequence = block.Height + 100
 				}
 
-				amount, _ := StringToFixed64(output.Value)
+				amount, _ := common.StringToFixed64(output.Value)
 				// Save UTXO input to data store
-				addressUTXO := &AddressUTXO{
+				addressUTXO := &store.AddressUTXO{
 					Input:               input,
 					Amount:              amount,
 					GenesisBlockAddress: output.Address,
 				}
-				if *amount > Fixed64(0) {
-					DbCache.UTXOStore.AddAddressUTXO(addressUTXO)
+				if *amount > common.Fixed64(0) {
+					store.DbCache.UTXOStore.AddAddressUTXO(addressUTXO)
 				}
 			}
 		}
 
 		// Delete UTXOs from wallet by transaction inputs
 		for _, input := range txn.Inputs {
-			txHashBytes, _ := HexStringToBytes(input.TxID)
-			referTxID, _ := Uint256FromBytes(BytesReverse(txHashBytes))
-			outPoint := OutPoint{
+			txHashBytes, _ := common.HexStringToBytes(input.TxID)
+			referTxID, _ := common.Uint256FromBytes(common.BytesReverse(txHashBytes))
+			outPoint := types.OutPoint{
 				TxID:  *referTxID,
 				Index: input.VOut,
 			}
-			txInput := &Input{
+			txInput := &types.Input{
 				Previous: outPoint,
 				Sequence: input.Sequence,
 			}
-			DbCache.UTXOStore.DeleteUTXO(txInput)
+			store.DbCache.UTXOStore.DeleteUTXO(txInput)
 		}
 	}
 
@@ -417,7 +419,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 
 func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	//remove deposit transactions if exist on side chain
-	txs, err := DbCache.MainChainStore.GetAllMainChainTxs()
+	txs, err := store.DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
 		return err
 	}
@@ -426,9 +428,9 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 		return nil
 	}
 
-	allSideChainTxHashes := make(map[SideChain][]string, 0)
+	allSideChainTxHashes := make(map[arbitrator.SideChain][]string, 0)
 	for _, tx := range txs {
-		sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
+		sc, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
 		if !ok {
 			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get chain from genesis addres failed.")
 			continue
@@ -458,11 +460,11 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 		for i := 0; i < len(receivedTxs); i++ {
 			finalGenesisAddresses = append(finalGenesisAddresses, k.GetKey())
 		}
-		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)
+		err = store.DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)
 		if err != nil {
 			return err
 		}
-		err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, finalGenesisAddresses)
+		err = store.FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, finalGenesisAddresses)
 		if err != nil {
 			log.Error("[CheckAndRemoveDepositTransactionsFromDB] Add succeed deposit transactions into finished db failed")
 		}
@@ -471,18 +473,18 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	return nil
 }
 
-func InitMainChain(arbitrator Arbitrator) error {
-	currentArbitrator, ok := arbitrator.(*ArbitratorImpl)
+func InitMainChain(ar arbitrator.Arbitrator) error {
+	currentArbitrator, ok := ar.(*arbitrator.ArbitratorImpl)
 	if !ok {
 		return errors.New("Unknown arbitrator type.")
 	}
 
-	mainChainServer := &MainChainImpl{&DistributedNodeServer{P2pCommand: WithdrawCommand}}
-	P2PClientSingleton.AddListener(mainChainServer)
+	mainChainServer := &MainChainImpl{&cs.DistributedNodeServer{P2pCommand: cs.WithdrawCommand}}
+	cs.P2PClientSingleton.AddListener(mainChainServer)
 	currentArbitrator.SetMainChain(mainChainServer)
 
-	mainChainClient := &MainChainClientImpl{&DistributedNodeClient{P2pCommand: WithdrawCommand}}
-	P2PClientSingleton.AddListener(mainChainClient)
+	mainChainClient := &MainChainClientImpl{&cs.DistributedNodeClient{P2pCommand: cs.WithdrawCommand}}
+	cs.P2PClientSingleton.AddListener(mainChainClient)
 	currentArbitrator.SetMainChainClient(mainChainClient)
 
 	return nil

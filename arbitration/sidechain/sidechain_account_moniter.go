@@ -6,28 +6,29 @@ import (
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	. "github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.Utility/common"
+
+	"github.com/elastos/Elastos.ELA/common"
 )
 
 type SideChainAccountMonitorImpl struct {
 	mux sync.Mutex
 
 	ParentArbitrator   arbitrator.Arbitrator
-	accountListenerMap map[string]AccountListener
+	accountListenerMap map[string]base.AccountListener
 }
 
 func (monitor *SideChainAccountMonitorImpl) tryInit() {
 	if monitor.accountListenerMap == nil {
-		monitor.accountListenerMap = make(map[string]AccountListener)
+		monitor.accountListenerMap = make(map[string]base.AccountListener)
 	}
 }
 
-func (monitor *SideChainAccountMonitorImpl) AddListener(listener AccountListener) {
+func (monitor *SideChainAccountMonitorImpl) AddListener(listener base.AccountListener) {
 	monitor.tryInit()
 	monitor.accountListenerMap[listener.GetAccountAddress()] = listener
 }
@@ -44,7 +45,7 @@ func (monitor *SideChainAccountMonitorImpl) RemoveListener(account string) error
 	return nil
 }
 
-func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*WithdrawTx, genesisBlockAddress string, blockHeight uint32) error {
+func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*base.WithdrawTx, genesisBlockAddress string, blockHeight uint32) error {
 	if monitor.accountListenerMap == nil {
 		return nil
 	}
@@ -65,7 +66,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 			log.Info("currentHeight:", currentHeight, " chainHeight:", chainHeight)
 			for currentHeight < chainHeight {
 				if currentHeight >= 6 {
-					transactions, err := GetWithdrawTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
+					transactions, err := rpc.GetWithdrawTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
 					if err != nil {
 						log.Error("Get destoryed transaction at height:", currentHeight+1-6, "failed\n"+
 							"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
@@ -95,7 +96,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 
 func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress string, config *config.RpcConfig) (uint32, uint32, bool) {
 
-	chainHeight, err := GetCurrentHeight(config)
+	chainHeight, err := rpc.GetCurrentHeight(config)
 	if err != nil {
 		return 0, 0, false
 	}
@@ -109,8 +110,8 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 	return chainHeight, currentHeight, true
 }
 
-func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*WithdrawTxInfo, genesisAddress string, blockHeight uint32) {
-	var txInfos []*WithdrawTx
+func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*base.WithdrawTxInfo, genesisAddress string, blockHeight uint32) {
+	var txInfos []*base.WithdrawTx
 	for _, txn := range transactions {
 		txnBytes, err := common.HexStringToBytes(txn.TxID)
 		if err != nil {
@@ -124,7 +125,7 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 			continue
 		}
 
-		var withdrawAssets []*WithdrawAsset
+		var withdrawAssets []*base.WithdrawAsset
 		for _, withdraw := range txn.CrossChainAssets {
 			opAmount, err := common.StringToFixed64(withdraw.OutputAmount)
 			if err != nil {
@@ -137,16 +138,16 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 				continue
 			}
 
-			withdrawAssets = append(withdrawAssets, &WithdrawAsset{
+			withdrawAssets = append(withdrawAssets, &base.WithdrawAsset{
 				TargetAddress:    withdraw.CrossChainAddress,
 				Amount:           opAmount,
 				CrossChainAmount: csAmount,
 			})
 		}
 
-		withdrawTx := &WithdrawTx{
+		withdrawTx := &base.WithdrawTx{
 			Txid: hash,
-			WithdrawInfo: &WithdrawInfo{
+			WithdrawInfo: &base.WithdrawInfo{
 				WithdrawAssets: withdrawAssets,
 			},
 		}

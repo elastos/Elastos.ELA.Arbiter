@@ -8,7 +8,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 
 	"github.com/elastos/Elastos.ELA/bloom"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 func TestMain(m *testing.M) {
@@ -37,7 +38,7 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &Transaction{Payload: new(PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{Payload: new(payload.PayloadWithdrawFromSideChain)}
 	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, tx, 10}); err != nil {
 		t.Error("Add side chain transaction error.")
 	}
@@ -88,7 +89,7 @@ func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &Transaction{Payload: new(PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{Payload: new(PayloadWithdrawFromSideChain)}
 	err = datastore.AddSideChainTxs(
 		[]*base.SideChainTransaction{
 			&base.SideChainTransaction{txHash1, genesisBlockAddress1, tx, 10},

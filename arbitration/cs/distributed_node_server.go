@@ -3,6 +3,8 @@ package cs
 import (
 	"bytes"
 	"errors"
+	"github.com/elastos/Elastos.ELA/account"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"math"
 	"sync"
 
@@ -11,9 +13,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 const (
@@ -27,7 +30,7 @@ type DistributedNodeServer struct {
 	mux                  *sync.Mutex
 	withdrawMux          *sync.Mutex
 	P2pCommand           string
-	unsolvedTransactions map[common.Uint256]*Transaction
+	unsolvedTransactions map[common.Uint256]*types.Transaction
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -38,11 +41,11 @@ func (dns *DistributedNodeServer) tryInit() {
 		dns.withdrawMux = new(sync.Mutex)
 	}
 	if dns.unsolvedTransactions == nil {
-		dns.unsolvedTransactions = make(map[common.Uint256]*Transaction)
+		dns.unsolvedTransactions = make(map[common.Uint256]*types.Transaction)
 	}
 }
 
-func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*Transaction {
+func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]*types.Transaction {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 	return dns.unsolvedTransactions
@@ -79,7 +82,7 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	log.Info("[sendToArbitrator] Send withdraw transaction to arbtiers for multi sign")
 }
 
-func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transaction) error {
+func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *types.Transaction) error {
 
 	proposal, err := dns.generateWithdrawProposal(transaction, &DistrubutedItemFuncImpl{})
 	if err != nil {
@@ -91,11 +94,15 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(transaction *Transac
 	return nil
 }
 
-func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transaction, itemFunc DistrubutedItemFunc) ([]byte, error) {
+func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *types.Transaction, itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
 	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
-	programHash, err := StandardAcccountPublicKeyToProgramHash(currentArbitrator.GetPublicKey())
+	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return nil, err
+	}
+	programHash, err := contract.PublicKeyToStandardProgramHash(pkBuf)
 	if err != nil {
 		return nil, err
 	}
@@ -151,13 +158,13 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Unlock()
 
 	var signerIndex = -1
-	programHashes, err := crypto.GetCrossChainSigners(txn.Programs[0].Code)
+	codeHashes, err := account.GetSigners(txn.Programs[0].Code)
 	if err != nil {
 		return err
 	}
-	userProgramHash := transactionItem.TargetArbitratorProgramHash
-	for i, programHash := range programHashes {
-		if *userProgramHash == *programHash {
+	userCodeHash := transactionItem.TargetArbitratorProgramHash.ToCodeHash()
+	for i, programHash := range codeHashes {
+		if userCodeHash.IsEqual(*programHash) {
 			signerIndex = i
 			break
 		}
@@ -176,7 +183,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		delete(dns.unsolvedTransactions, txn.Hash())
 		dns.mux.Unlock()
 
-		withdrawPayload, ok := txn.Payload.(*PayloadWithdrawFromSideChain)
+		withdrawPayload, ok := txn.Payload.(*payload.PayloadWithdrawFromSideChain)
 		if !ok {
 			return errors.New("Received proposal feed back but withdraw transaction has invalid payload")
 		}
@@ -212,7 +219,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 			} else {
 				log.Info("Send withdraw transaction succeed, move to finished db, txHash:", txn.Hash().String())
 			}
-			var newUsedUtxos []OutPoint
+			var newUsedUtxos []types.OutPoint
 			for _, input := range txn.Inputs {
 				newUsedUtxos = append(newUsedUtxos, input.Previous)
 			}

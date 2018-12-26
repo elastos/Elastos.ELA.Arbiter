@@ -4,17 +4,17 @@ import (
 	"errors"
 	"math"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type SideChain interface {
-	AccountListener
-	P2PClientListener
+	base.AccountListener
+	base.P2PClientListener
 	SideChainNode
 
 	GetKey() string
@@ -22,14 +22,14 @@ type SideChain interface {
 
 	SetLastUsedUtxoHeight(height uint32)
 	GetLastUsedUtxoHeight() uint32
-	GetLastUsedOutPoints() []core.OutPoint
-	AddLastUsedOutPoints(ops []core.OutPoint)
-	RemoveLastUsedOutPoints(ops []core.OutPoint)
+	GetLastUsedOutPoints() []types.OutPoint
+	AddLastUsedOutPoints(ops []types.OutPoint)
+	RemoveLastUsedOutPoints(ops []types.OutPoint)
 	ClearLastUsedOutPoints()
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
 
-	GetWithdrawTransaction(txHash string) (*WithdrawTxInfo, error)
+	GetWithdrawTransaction(txHash string) (*base.WithdrawTxInfo, error)
 }
 
 type SideChainManager interface {

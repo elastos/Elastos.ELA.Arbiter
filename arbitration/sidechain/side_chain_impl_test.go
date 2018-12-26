@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	abtor "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	abtor "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/common"
 )
 
 func TestClientInit(t *testing.T) {
@@ -46,23 +47,23 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	amount3 := common.Fixed64(8000)
 	amount4 := common.Fixed64(1000)
 
-	input1 := Input{Previous: OutPoint{TxID: txId1, Index: 0}, Sequence: 0}
-	output1 := Output{AssetID: assetId, Value: amount1, OutputLock: 0, ProgramHash: *genesisProgramHash}
-	output2 := Output{AssetID: assetId, Value: amount2, OutputLock: 0, ProgramHash: *genesisProgramHash}
-	output3 := Output{AssetID: assetId, Value: amount4, OutputLock: 0, ProgramHash: *programHash1}
+	input1 := types.Input{Previous: types.OutPoint{TxID: txId1, Index: 0}, Sequence: 0}
+	output1 := types.Output{AssetID: assetId, Value: amount1, OutputLock: 0, ProgramHash: *genesisProgramHash}
+	output2 := types.Output{AssetID: assetId, Value: amount2, OutputLock: 0, ProgramHash: *genesisProgramHash}
+	output3 := types.Output{AssetID: assetId, Value: amount4, OutputLock: 0, ProgramHash: *programHash1}
 
 	//create deposit transaction
-	tx := &Transaction{
+	tx := &types.Transaction{
 		TxType:         6,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address2, address3},
 			OutputIndexes:       []uint64{0, 1},
 			CrossChainAmounts:   []common.Fixed64{amount2, amount3},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1, &output2, &output3},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1, &output2, &output3},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -88,7 +89,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	arbitrator.SetSideChainManager(sideChainManager)
 
 	startTime := time.Now()
-	var txs []*MainChainTransaction
+	var txs []*base.MainChainTransaction
 	for i := 0; i < testLoopTimes; i++ {
 		txBytes := tx.Hash().Bytes()
 		txBytes[28] = byte(i)
@@ -96,7 +97,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		txBytes[30] = byte(i >> 16)
 		txBytes[31] = byte(i >> 24)
 		txHash, _ := common.Uint256FromBytes(txBytes)
-		txs = append(txs, &MainChainTransaction{
+		txs = append(txs, &base.MainChainTransaction{
 			TransactionHash:     txHash.String(),
 			GenesisBlockAddress: genesisAddress,
 			Transaction:         tx,
@@ -110,7 +111,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		return
 	}
 
-	var spvTxs []*SpvTransaction
+	var spvTxs []*base.SpvTransaction
 	var finalTxHashes []string
 	var genesisAddresses []string
 	for i := 0; i < len(result); i++ {
@@ -120,7 +121,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 				log.Error(err)
 				continue
 			}
-			spvTxs = append(spvTxs, &SpvTransaction{txs[i].Transaction, txs[i].Proof, depositInfo})
+			spvTxs = append(spvTxs, &base.SpvTransaction{txs[i].Transaction, txs[i].Proof, depositInfo})
 			finalTxHashes = append(finalTxHashes, txs[i].TransactionHash)
 			genesisAddresses = append(genesisAddresses, txs[i].GenesisBlockAddress)
 		}
@@ -149,9 +150,9 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	fhDataStore.ResetDataStore()
 }
 
-func ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error) {
+func ParseUserDepositTransactionInfo(txn *types.Transaction, genesisAddress string) (*DepositInfo, error) {
 	result := new(DepositInfo)
-	payloadObj, ok := txn.Payload.(*PayloadTransferCrossChainAsset)
+	payloadObj, ok := txn.Payload.(*payload.PayloadTransferCrossChainAsset)
 	if !ok {
 		return nil, errors.New("Invalid payload")
 	}

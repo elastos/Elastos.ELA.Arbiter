@@ -9,28 +9,28 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	. "github.com/elastos/Elastos.ELA.Arbiter/net/servers"
+	 "github.com/elastos/Elastos.ELA.Arbiter/net/servers"
 )
 
 //an instance of the multiplexer
-var mainMux map[string]func(Params) map[string]interface{}
+var mainMux map[string]func(servers.Params) map[string]interface{}
 
 func StartRPCServer() {
-	mainMux = make(map[string]func(Params) map[string]interface{})
+	mainMux = make(map[string]func(servers.Params) map[string]interface{})
 
 	http.HandleFunc("/", Handle)
 
-	mainMux["submitcomplain"] = SubmitComplain
-	mainMux["getcomplainstatus"] = GetComplainStatus
+	mainMux["submitcomplain"] = servers.SubmitComplain
+	mainMux["getcomplainstatus"] = servers.GetComplainStatus
 
-	mainMux["getinfo"] = GetInfo
-	mainMux["getsidemininginfo"] = GetSideMiningInfo
-	mainMux["getmainchainblockheight"] = GetMainChainBlockHeight
-	mainMux["getsidechainblockheight"] = GetSideChainBlockHeight
-	mainMux["getfinisheddeposittxs"] = GetFinishedDepositTxs
-	mainMux["getfinishedwithdrawtxs"] = GetFinishedWithdrawTxs
-	mainMux["getgitversion"] = GetGitVersion
-	mainMux["getspvheight"] = GetSPVHeight
+	mainMux["getinfo"] = servers.GetInfo
+	mainMux["getsidemininginfo"] = servers.GetSideMiningInfo
+	mainMux["getmainchainblockheight"] = servers.GetMainChainBlockHeight
+	mainMux["getsidechainblockheight"] = servers.GetSideChainBlockHeight
+	mainMux["getfinisheddeposittxs"] = servers.GetFinishedDepositTxs
+	mainMux["getfinishedwithdrawtxs"] = servers.GetFinishedWithdrawTxs
+	mainMux["getgitversion"] = servers.GetGitVersion
+	mainMux["getspvheight"] = servers.GetSPVHeight
 
 	err := http.ListenAndServe(":"+strconv.Itoa(config.Parameters.HttpJsonPort), nil)
 	if err != nil {
@@ -104,7 +104,7 @@ func Handle(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func checkMethod(request map[string]interface{}) (func(Params) map[string]interface{}, interface{}, bool) {
+func checkMethod(request map[string]interface{}) (func(servers.Params) map[string]interface{}, interface{}, bool) {
 	method := request["method"]
 	if method == nil {
 		return nil, method, false

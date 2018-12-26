@@ -5,15 +5,15 @@ import (
 	"time"
 
 	abter "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type TestWithdrawFunc struct {
@@ -23,8 +23,8 @@ func (mcFunc *TestWithdrawFunc) GetAvailableUtxos(withdrawBank string) ([]*store
 	var utxos []*store.AddressUTXO
 	amount := common.Fixed64(10000000000)
 	utxo := &store.AddressUTXO{
-		Input: &core.Input{
-			Previous: core.OutPoint{
+		Input: &types.Input{
+			Previous: types.OutPoint{
 				TxID:  common.Uint256{},
 				Index: 0,
 			},
@@ -64,12 +64,12 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	amount3 := common.Fixed64(8000)
 	amount4 := common.Fixed64(1000)
 
-	inputInfo1 := InputInfo{TxID: txId1.String(), VOut: 0, Sequence: 0}
-	outputInfo1 := OutputInfo{Value: amount1.String(), Index: 0, Address: destroyAddress, AssetID: assetId.String(), OutputLock: 0}
-	outputInfo2 := OutputInfo{Value: amount2.String(), Index: 0, Address: destroyAddress, AssetID: assetId.String(), OutputLock: 0}
-	outputInfo3 := OutputInfo{Value: amount4.String(), Index: 0, Address: address1, AssetID: assetId.String(), OutputLock: 0}
+	inputInfo1 := base.InputInfo{TxID: txId1.String(), VOut: 0, Sequence: 0}
+	outputInfo1 := base.OutputInfo{Value: amount1.String(), Index: 0, Address: destroyAddress, AssetID: assetId.String(), OutputLock: 0}
+	outputInfo2 := base.OutputInfo{Value: amount2.String(), Index: 0, Address: destroyAddress, AssetID: assetId.String(), OutputLock: 0}
+	outputInfo3 := base.OutputInfo{Value: amount4.String(), Index: 0, Address: address1, AssetID: assetId.String(), OutputLock: 0}
 
-	var txInfos []*TransactionInfo
+	var txInfos []*base.TransactionInfo
 	var txHashes []string
 	for i := 0; i < testLoopTimes; i++ {
 		txBytes, _ := common.HexStringToBytes(txHashStr)
@@ -80,22 +80,22 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 		txHash, _ := common.Uint256FromBytes(txBytes)
 
 		//create withdraw transactionInfo
-		txInfo := &TransactionInfo{
+		txInfo := &base.TransactionInfo{
 			TxId:           txHash.String(),
 			Hash:           txHash.String(),
 			Size:           0,
 			VSize:          0,
 			Version:        0,
 			LockTime:       0,
-			Inputs:         []InputInfo{inputInfo1},
-			Outputs:        []OutputInfo{outputInfo1, outputInfo2, outputInfo3},
+			Inputs:         []base.InputInfo{inputInfo1},
+			Outputs:        []base.OutputInfo{outputInfo1, outputInfo2, outputInfo3},
 			BlockHash:      blockHash,
 			Confirmations:  0,
 			Time:           0,
 			BlockTime:      0,
 			TxType:         8,
 			PayloadVersion: 0,
-			Payload: &TransferCrossChainAssetInfo{
+			Payload: &base.TransferCrossChainAssetInfo{
 				CrossChainAddresses: []string{address2, address3},
 				OutputIndexes:       []uint64{0, 1},
 				CrossChainAmounts:   []common.Fixed64{amount2, amount3},
@@ -147,7 +147,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	log.Info("GetAllSideChainTxHashesAndHeights Used time:", endTime.Sub(startTime).String())
 
 	startTime = time.Now()
-	unsolvedTxs, _ := SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, []string{})
+	unsolvedTxs, _ := base.SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, []string{})
 	unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(unsolvedTxs)
 	if err != nil {
 		t.Error("Get side chain txs from hashes failed")

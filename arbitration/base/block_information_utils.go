@@ -5,85 +5,87 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/elastos/Elastos.ELA.SideChain/types"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/auxpow"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 var SystemAssetId = getSystemAssetId()
 
-func getSystemAssetId() Uint256 {
-	systemToken := &Transaction{
-		TxType:         RegisterAsset,
+func getSystemAssetId() common.Uint256 {
+	systemToken := &types.Transaction{
+		TxType:         types.RegisterAsset,
 		PayloadVersion: 0,
-		Payload: &PayloadRegisterAsset{
-			Asset: Asset{
+		Payload: &payload.PayloadRegisterAsset{
+			Asset: payload.Asset{
 				Name:      "ELA",
 				Precision: 0x08,
 				AssetType: 0x00,
 			},
 			Amount:     0 * 100000000,
-			Controller: Uint168{},
+			Controller: common.Uint168{},
 		},
-		Attributes: []*Attribute{},
-		Inputs:     []*Input{},
-		Outputs:    []*Output{},
-		Programs:   []*Program{},
+		Attributes: []*types.Attribute{},
+		Inputs:     []*types.Input{},
+		Outputs:    []*types.Output{},
+		Programs:   []*program.Program{},
 	}
 	return systemToken.Hash()
 }
 
-func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
+func PayloadInfoToTransPayload(plInfo PayloadInfo) (types.Payload, error) {
 
 	switch object := plInfo.(type) {
 	case *RegisterAssetInfo:
-		obj := new(PayloadRegisterAsset)
+		obj := new(payload.PayloadRegisterAsset)
 		obj.Asset = *object.Asset
-		amount, err := StringToFixed64(object.Amount)
+		amount, err := common.StringToFixed64(object.Amount)
 		if err != nil {
 			return nil, err
 		}
 		obj.Amount = *amount
-		bytes, err := HexStringToBytes(object.Controller)
+		bytes, err := common.HexStringToBytes(object.Controller)
 		if err != nil {
 			return nil, err
 		}
-		controller, err := Uint168FromBytes(bytes)
+		controller, err := common.Uint168FromBytes(bytes)
 		obj.Controller = *controller
 		return obj, nil
 	case *TransferAssetInfo:
-		return new(PayloadTransferAsset), nil
-	case *RechargeToSideChainInfoV0:
-		obj := new(types.PayloadRechargeToSideChain)
-		proofBytes, err := HexStringToBytes(object.Proof)
-		if err != nil {
-			return nil, err
-		}
-		obj.MerkleProof = proofBytes
-		transactionBytes, err := HexStringToBytes(object.MainChainTransaction)
-		if err != nil {
-			return nil, err
-		}
-		obj.MainChainTransaction = transactionBytes
-		return obj, nil
-	case *RechargeToSideChainInfoV1:
-		obj := new(types.PayloadRechargeToSideChain)
-		hash, err := Uint256FromHexString(object.MainChainTransactionHash)
-		if err != nil {
-			return nil, err
-		}
-		obj.MainChainTransactionHash = *hash
-		return obj, nil
+		return new(payload.PayloadTransferAsset), nil
+		//fixme use transaction info instead of side chain payload
+	//case *RechargeToSideChainInfoV0:
+	//	obj := new(payload.PayloadRechargeToSideChain)
+	//	proofBytes, err := common.HexStringToBytes(object.Proof)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	obj.MerkleProof = proofBytes
+	//	transactionBytes, err := common.HexStringToBytes(object.MainChainTransaction)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	obj.MainChainTransaction = transactionBytes
+	//	return obj, nil
+	//case *RechargeToSideChainInfoV1:
+	//	obj := new(payload.PayloadRechargeToSideChain)
+	//	hash, err := common.Uint256FromHexString(object.MainChainTransactionHash)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	obj.MainChainTransactionHash = *hash
+	//	return obj, nil
 	case *TransferCrossChainAssetInfo:
-		obj := new(PayloadTransferCrossChainAsset)
+		obj := new(payload.PayloadTransferCrossChainAsset)
 		obj.CrossChainAddresses = make([]string, 0)
 		obj.OutputIndexes = make([]uint64, 0)
-		obj.CrossChainAmounts = make([]Fixed64, 0)
+		obj.CrossChainAmounts = make([]common.Fixed64, 0)
 		for _, assetInfo := range object.CrossChainAssets {
 			obj.CrossChainAddresses = append(obj.CrossChainAddresses, assetInfo.CrossChainAddress)
 			obj.OutputIndexes = append(obj.OutputIndexes, assetInfo.OutputIndex)
-			amount, err := StringToFixed64(assetInfo.CrossChainAmount)
+			amount, err := common.StringToFixed64(assetInfo.CrossChainAmount)
 			if err != nil {
 				return nil, err
 			}
@@ -95,43 +97,43 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 	return nil, errors.New("Invalid payload type.")
 }
 
-func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
+func (txInfo *TransactionInfo) ToTransaction() (*types.Transaction, error) {
 
 	txPaload, err := PayloadInfoToTransPayload(txInfo.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	var txAttribute []*Attribute
+	var txAttribute []*types.Attribute
 	for _, att := range txInfo.Attributes {
 		var attData []byte
-		if att.Usage == Nonce {
+		if att.Usage == types.Nonce {
 			attData = []byte(att.Data)
 		} else {
-			attData, err = HexStringToBytes(att.Data)
+			attData, err = common.HexStringToBytes(att.Data)
 			if err != nil {
 				return nil, err
 			}
 		}
-		txAttr := &Attribute{
+		txAttr := &types.Attribute{
 			Usage: att.Usage,
 			Data:  attData,
 		}
 		txAttribute = append(txAttribute, txAttr)
 	}
 
-	var txUTXOTxInput []*Input
+	var txUTXOTxInput []*types.Input
 	for _, input := range txInfo.Inputs {
-		txID, err := HexStringToBytes(input.TxID)
+		txID, err := common.HexStringToBytes(input.TxID)
 		if err != nil {
 			return nil, err
 		}
-		referID, err := Uint256FromBytes(BytesReverse(txID))
+		referID, err := common.Uint256FromBytes(common.BytesReverse(txID))
 		if err != nil {
 			return nil, err
 		}
-		utxoInput := &Input{
-			Previous: OutPoint{
+		utxoInput := &types.Input{
+			Previous: types.OutPoint{
 				TxID:  *referID,
 				Index: input.VOut,
 			},
@@ -140,22 +142,22 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txUTXOTxInput = append(txUTXOTxInput, utxoInput)
 	}
 
-	var txOutputs []*Output
+	var txOutputs []*types.Output
 	for _, output := range txInfo.Outputs {
-		value, err := StringToFixed64(output.Value)
+		value, err := common.StringToFixed64(output.Value)
 		if err != nil {
 			return nil, err
 		}
-		var programHash *Uint168
+		var programHash *common.Uint168
 		if output.Address == DESTROY_ADDRESS {
-			programHash = &Uint168{}
+			programHash = &common.Uint168{}
 		} else {
-			programHash, err = Uint168FromAddress(output.Address)
+			programHash, err = common.Uint168FromAddress(output.Address)
 			if err != nil {
 				return nil, err
 			}
 		}
-		output := &Output{
+		output := &types.Output{
 			AssetID:     SystemAssetId,
 			Value:       *value,
 			OutputLock:  output.OutputLock,
@@ -164,24 +166,24 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txOutputs = append(txOutputs, output)
 	}
 
-	var txPrograms []*Program
+	var txPrograms []*program.Program
 	for _, pgrm := range txInfo.Programs {
-		code, err := HexStringToBytes(pgrm.Code)
+		code, err := common.HexStringToBytes(pgrm.Code)
 		if err != nil {
 			return nil, err
 		}
-		parameter, err := HexStringToBytes(pgrm.Parameter)
+		parameter, err := common.HexStringToBytes(pgrm.Parameter)
 		if err != nil {
 			return nil, err
 		}
-		txProgram := &Program{
+		txProgram := &program.Program{
 			Code:      code,
 			Parameter: parameter,
 		}
 		txPrograms = append(txPrograms, txProgram)
 	}
 
-	txTransaction := &Transaction{
+	txTransaction := &types.Transaction{
 		TxType:         txInfo.TxType,
 		PayloadVersion: txInfo.PayloadVersion,
 		Payload:        txPaload,
@@ -193,27 +195,27 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 	return txTransaction, nil
 }
 
-func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
+func GetBlockHeader(blInfo *BlockInfo) (*types.Header, error) {
 
-	previousBytes, err := HexStringToBytes(blInfo.PreviousBlockHash)
+	previousBytes, err := common.HexStringToBytes(blInfo.PreviousBlockHash)
 	if err != nil {
 		return nil, err
 	}
-	previous, err := Uint256FromBytes(previousBytes)
-	if err != nil {
-		return nil, err
-	}
-
-	merkleRootBytes, err := HexStringToBytes(blInfo.PreviousBlockHash)
-	if err != nil {
-		return nil, err
-	}
-	merkleRoot, err := Uint256FromBytes(merkleRootBytes)
+	previous, err := common.Uint256FromBytes(previousBytes)
 	if err != nil {
 		return nil, err
 	}
 
-	auxPowBytes, err := HexStringToBytes(blInfo.AuxPow)
+	merkleRootBytes, err := common.HexStringToBytes(blInfo.PreviousBlockHash)
+	if err != nil {
+		return nil, err
+	}
+	merkleRoot, err := common.Uint256FromBytes(merkleRootBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	auxPowBytes, err := common.HexStringToBytes(blInfo.AuxPow)
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +226,7 @@ func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
 		return nil, err
 	}
 
-	return &Header{
+	return &types.Header{
 		Version:    blInfo.Version,
 		Previous:   *previous,
 		MerkleRoot: *merkleRoot,
@@ -236,14 +238,14 @@ func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
 	}, nil
 }
 
-func (blInfo *BlockInfo) ToBlock() (*Block, error) {
+func (blInfo *BlockInfo) ToBlock() (*types.Block, error) {
 
 	header, err := GetBlockHeader(blInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	var transactions []*Transaction
+	var transactions []*types.Transaction
 	for _, txInfo := range blInfo.Tx {
 		switch txInfo.(type) {
 		case *TransactionInfo:
@@ -264,7 +266,7 @@ func (blInfo *BlockInfo) ToBlock() (*Block, error) {
 		}
 	}
 
-	return &Block{
+	return &types.Block{
 		Header:       *header,
 		Transactions: transactions,
 	}, nil

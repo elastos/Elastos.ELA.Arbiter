@@ -8,11 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/common"
 )
 
 type Response struct {
@@ -54,18 +54,18 @@ func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	return 0, errors.New("[GetCurrentHeight] invalid count")
 }
 
-func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, error) {
+func GetBlockByHeight(height uint32, config *config.RpcConfig) (*base.BlockInfo, error) {
 	resp, err := CallAndUnmarshal("getblockbyheight", Param("height", height), config)
 	if err != nil {
 		return nil, err
 	}
-	block := &BlockInfo{}
+	block := &base.BlockInfo{}
 	Unmarshal(&resp, block)
 
 	return block, nil
 }
 
-func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*BlockInfo, error) {
+func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*base.BlockInfo, error) {
 	hashBytes, err := common.HexStringToBytes(hash.String())
 	if err != nil {
 		return nil, err
@@ -78,18 +78,18 @@ func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*BlockInfo,
 	if err != nil {
 		return nil, err
 	}
-	block := &BlockInfo{}
+	block := &base.BlockInfo{}
 	Unmarshal(&resp, block)
 
 	return block, nil
 }
 
-func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]*WithdrawTxInfo, error) {
+func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.WithdrawTxInfo, error) {
 	resp, err := CallAndUnmarshal("getwithdrawtransactionsbyheight", Param("height", height), config)
 	if err != nil {
 		return nil, err
 	}
-	txs := make([]*WithdrawTxInfo, 0)
+	txs := make([]*base.WithdrawTxInfo, 0)
 	if err = Unmarshal(&resp, &txs); err != nil {
 		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
 		return nil, err
@@ -99,7 +99,7 @@ func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 	return txs, nil
 }
 
-func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*WithdrawTxInfo, error) {
+func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*base.WithdrawTxInfo, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
 		return nil, err
@@ -112,7 +112,7 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 		return nil, err
 	}
 
-	tx := &WithdrawTxInfo{}
+	tx := &base.WithdrawTxInfo{}
 	Unmarshal(&result, tx)
 
 	return tx, nil
@@ -148,7 +148,7 @@ func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]stri
 	return removeTxs, nil
 }
 
-func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]UTXOInfo, error) {
+func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]base.UTXOInfo, error) {
 	parameter := make(map[string][]string)
 	parameter["addresses"] = addresses
 	result, err := CallAndUnmarshals("listunspent", parameter, config)
@@ -156,7 +156,7 @@ func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]UTXOInfo, e
 		return nil, err
 	}
 
-	var utxoInfos []UTXOInfo
+	var utxoInfos []base.UTXOInfo
 	Unmarshal(&result, &utxoInfos)
 
 	return utxoInfos, nil
@@ -212,7 +212,7 @@ func Calls(method string, params map[string][]string, config *config.RpcConfig) 
 	return body, nil
 }
 
-func CallTx(method string, params map[string]TransactionInfo, config *config.RpcConfig) ([]byte, error) {
+func CallTx(method string, params map[string]base.TransactionInfo, config *config.RpcConfig) ([]byte, error) {
 	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	data, err := json.Marshal(map[string]interface{}{
 		"method": method,
@@ -275,7 +275,7 @@ func CallAndUnmarshals(method string, params map[string][]string, config *config
 	return resp.Result, nil
 }
 
-func CallAndUnmarshalTx(method string, params map[string]TransactionInfo, config *config.RpcConfig) (interface{}, error) {
+func CallAndUnmarshalTx(method string, params map[string]base.TransactionInfo, config *config.RpcConfig) (interface{}, error) {
 	body, err := CallTx(method, params, config)
 	if err != nil {
 		return nil, err
@@ -324,7 +324,7 @@ func CallAndUnmarshalsResponse(method string, params map[string][]string, config
 	return resp, nil
 }
 
-func CallAndUnmarshalTxResponse(method string, params map[string]TransactionInfo, config *config.RpcConfig) (Response, error) {
+func CallAndUnmarshalTxResponse(method string, params map[string]base.TransactionInfo, config *config.RpcConfig) (Response, error) {
 	body, err := CallTx(method, params, config)
 	if err != nil {
 		return Response{}, err

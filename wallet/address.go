@@ -1,6 +1,6 @@
 package wallet
 
-import . "github.com/elastos/Elastos.ELA.Utility/common"
+import "github.com/elastos/Elastos.ELA/common"
 
 const (
 	TypeMaster = 0
@@ -10,7 +10,7 @@ const (
 
 type Address struct {
 	Address      string
-	ProgramHash  *Uint168
+	ProgramHash  *common.Uint168
 	RedeemScript []byte
 	Type         int
 }

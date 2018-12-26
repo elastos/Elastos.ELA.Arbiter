@@ -2,11 +2,13 @@ package complain
 
 import (
 	"bytes"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/core"
+
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 const (
@@ -17,11 +19,11 @@ const (
 )
 
 var (
-	ComplainSolver ComplainSolving
+	ComplainSolver base.ComplainSolving
 )
 
 type ComplainSolvingImpl struct {
-	*DistributedNodeServer
+	*cs.DistributedNodeServer
 }
 
 func (comp *ComplainSolvingImpl) AcceptComplain(userAddress, genesisBlockHash string, transactionHash common.Uint256) ([]byte, error) {
@@ -83,7 +85,7 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 	return None
 }
 
-func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*core.Transaction, error) {
+func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*types.Transaction, error) {
 	//todo append ComplainItem variables into attribute of transaction
 	return nil, nil
 }

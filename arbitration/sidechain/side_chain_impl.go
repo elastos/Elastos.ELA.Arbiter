@@ -9,7 +9,7 @@ import (
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
@@ -17,10 +17,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 type SideChainImpl struct {
@@ -31,7 +31,7 @@ type SideChainImpl struct {
 	CurrentConfig *config.SideNodeConfig
 
 	LastUsedUtxoHeight        uint32
-	LastUsedOutPoints         []core.OutPoint
+	LastUsedOutPoints         []types.OutPoint
 	ToSendTransactionHashes   map[uint32][]string
 	ToSendTransactionsHeight  uint32
 	Ready                     bool
@@ -53,7 +53,7 @@ func (client *SideChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) err
 	return nil
 }
 
-func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
+func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []types.OutPoint) error {
 	sc.withdrawMux.Lock()
 	defer sc.withdrawMux.Unlock()
 
@@ -116,7 +116,7 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 			if err != nil {
 				return err
 			}
-			var newOutPoints []core.OutPoint
+			var newOutPoints []types.OutPoint
 			for _, op := range sc.LastUsedOutPoints {
 				isContained := false
 				for _, utxo := range utxos {
@@ -153,13 +153,13 @@ func (sc *SideChainImpl) SetLastUsedUtxoHeight(height uint32) {
 	sc.LastUsedUtxoHeight = height
 }
 
-func (sc *SideChainImpl) GetLastUsedOutPoints() []core.OutPoint {
+func (sc *SideChainImpl) GetLastUsedOutPoints() []types.OutPoint {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	return sc.LastUsedOutPoints
 }
 
-func (sc *SideChainImpl) AddLastUsedOutPoints(ops []core.OutPoint) {
+func (sc *SideChainImpl) AddLastUsedOutPoints(ops []types.OutPoint) {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	for _, op := range ops {
@@ -175,10 +175,10 @@ func (sc *SideChainImpl) AddLastUsedOutPoints(ops []core.OutPoint) {
 	}
 }
 
-func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []core.OutPoint) {
+func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []types.OutPoint) {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
-	var newOutPoints []core.OutPoint
+	var newOutPoints []types.OutPoint
 	for _, outPoint := range sc.LastUsedOutPoints {
 		isContained := false
 		for _, op := range ops {
@@ -197,7 +197,7 @@ func (sc *SideChainImpl) ClearLastUsedOutPoints() {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 
-	sc.LastUsedOutPoints = make([]core.OutPoint, 0)
+	sc.LastUsedOutPoints = make([]types.OutPoint, 0)
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
@@ -230,7 +230,7 @@ func (sc *SideChainImpl) GetCurrentHeight() (uint32, error) {
 	return rpc.GetCurrentHeight(sc.getCurrentConfig().Rpc)
 }
 
-func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
+func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*base.BlockInfo, error) {
 	return rpc.GetBlockByHeight(height, sc.getCurrentConfig().Rpc)
 }
 
@@ -255,19 +255,19 @@ func (sc *SideChainImpl) GetAccountAddress() string {
 	return sc.GetKey()
 }
 
-func (sc *SideChainImpl) OnUTXOChanged(txinfos []*WithdrawTx, blockHeight uint32) error {
+func (sc *SideChainImpl) OnUTXOChanged(txinfos []*base.WithdrawTx, blockHeight uint32) error {
 	if len(txinfos) == 0 {
 		return errors.New("[OnUTXOChanged] received txinfos, but size is 0")
 	}
 
-	var txs []*SideChainTransaction
+	var txs []*base.SideChainTransaction
 	for _, txinfo := range txinfos {
 		buf := new(bytes.Buffer)
 		if err := txinfo.Serialize(buf); err != nil {
 			return errors.New("[OnUTXOChanged] received txinfos, but have invalid tx," + err.Error())
 		}
 
-		txs = append(txs, &SideChainTransaction{
+		txs = append(txs, &base.SideChainTransaction{
 			TransactionHash:     txinfo.Txid.String(),
 			GenesisBlockAddress: sc.GetKey(),
 			Transaction:         buf.Bytes(),
@@ -312,7 +312,7 @@ func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, er
 	return receivedTxs, nil
 }
 
-func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*WithdrawTxInfo, error) {
+func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTxInfo, error) {
 	txInfo, err := rpc.GetTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
 	if err != nil {
 		return nil, err
@@ -321,8 +321,8 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*WithdrawTxInfo,
 	return txInfo, nil
 }
 
-func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txs []*WithdrawTx) (*WithdrawInfo, error) {
-	result := new(WithdrawInfo)
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txs []*base.WithdrawTx) (*base.WithdrawInfo, error) {
+	result := new(base.WithdrawInfo)
 	for _, tx := range txs {
 		for _, withdraw := range tx.WithdrawInfo.WithdrawAssets {
 			result.WithdrawAssets = append(result.WithdrawAssets, withdraw)
@@ -352,7 +352,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 		return
 	}
 
-	unsolvedTxs, unsolvedBlockHeights := SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
+	unsolvedTxs, unsolvedBlockHeights := base.SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
 
 	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
@@ -361,7 +361,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	}
 
 	if len(unsolvedTxs) != 0 {
-		heightTxsMap := GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
+		heightTxsMap := base.GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
 
 		sc.ToSendTransactionHashes = heightTxsMap
 		sc.ToSendTransactionsHeight = chainHeight - 1

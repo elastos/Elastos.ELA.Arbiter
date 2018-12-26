@@ -5,13 +5,14 @@ import (
 	"testing"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -50,29 +51,29 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 
 	programHash1, _ := common.Uint168FromAddress(address1)
 
-	input1 := Input{Previous: OutPoint{TxID: txId1, Index: 0}, Sequence: 0}
-	output1 := Output{AssetID: assetId, Value: amount1, OutputLock: 0, ProgramHash: common.Uint168{}}
-	input2 := Input{Previous: OutPoint{TxID: txId2, Index: 0}, Sequence: 0}
-	output2 := Output{AssetID: assetId, Value: amount2, OutputLock: 0, ProgramHash: *programHash1}
-	output3 := Output{AssetID: assetId, Value: amount5, OutputLock: 0, ProgramHash: *programHash1}
-	input4 := Input{Previous: OutPoint{TxID: txId2, Index: 0}, Sequence: 0}
-	output4 := Output{AssetID: assetId, Value: amount6, OutputLock: 0, ProgramHash: *programHash1}
+	input1 := types.Input{Previous: types.OutPoint{TxID: txId1, Index: 0}, Sequence: 0}
+	output1 := types.Output{AssetID: assetId, Value: amount1, OutputLock: 0, ProgramHash: common.Uint168{}}
+	input2 := types.Input{Previous: types.OutPoint{TxID: txId2, Index: 0}, Sequence: 0}
+	output2 := types.Output{AssetID: assetId, Value: amount2, OutputLock: 0, ProgramHash: *programHash1}
+	output3 := types.Output{AssetID: assetId, Value: amount5, OutputLock: 0, ProgramHash: *programHash1}
+	input4 := types.Input{Previous: types.OutPoint{TxID: txId2, Index: 0}, Sequence: 0}
+	output4 := types.Output{AssetID: assetId, Value: amount6, OutputLock: 0, ProgramHash: *programHash1}
 
 	addressUtxo1 := &store.AddressUTXO{Input: &input2, Amount: &amount1, GenesisBlockAddress: genesisAddress}
 	store.DbCache.UTXOStore.AddAddressUTXO(addressUtxo1)
 
 	//create transfer cross chain asset transaction
-	tx1 := &Transaction{
+	tx1 := &types.Transaction{
 		TxType:         8,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
 			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -81,17 +82,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction
-	tx2 := &Transaction{
+	tx2 := &types.Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
-		Payload: &PayloadWithdrawFromSideChain{
+		Payload: &payload.PayloadWithdrawFromSideChain{
 			BlockHeight:                10,
 			GenesisBlockAddress:        genesisAddress,
 			SideChainTransactionHashes: []common.Uint256{tx1.Hash()},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input2},
-		Outputs:    []*Output{&output2},
+		Inputs:     []*types.Input{&input2},
+		Outputs:    []*types.Output{&output2},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -103,17 +104,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	assert.NoError(t, err)
 
 	//create transfer cross chain asset transaction
-	tx1 = &Transaction{
+	tx1 = &types.Transaction{
 		TxType:         8,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
 			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -122,17 +123,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction with utxo is not from genesis address account
-	tx2 = &Transaction{
+	tx2 = &types.Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
-		Payload: &PayloadWithdrawFromSideChain{
+		Payload: &payload.PayloadWithdrawFromSideChain{
 			BlockHeight:                10,
 			GenesisBlockAddress:        genesisAddress,
 			SideChainTransactionHashes: []common.Uint256{tx1.Hash()},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input2},
-		Outputs:    []*Output{&output2},
+		Inputs:     []*types.Input{&input2},
+		Outputs:    []*types.Output{&output2},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -146,17 +147,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 
 	store.DbCache.UTXOStore.AddAddressUTXO(addressUtxo1)
 	//create transfer cross chain asset transaction with corss chain amount less than 0
-	tx1 = &Transaction{
+	tx1 = &types.Transaction{
 		TxType:         8,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
 			CrossChainAmounts:   []common.Fixed64{amount3},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -165,17 +166,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction
-	tx2 = &Transaction{
+	tx2 = &types.Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
-		Payload: &PayloadWithdrawFromSideChain{
+		Payload: &payload.PayloadWithdrawFromSideChain{
 			BlockHeight:                10,
 			GenesisBlockAddress:        genesisAddress,
 			SideChainTransactionHashes: []common.Uint256{tx1.Hash()},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input2},
-		Outputs:    []*Output{&output2},
+		Inputs:     []*types.Input{&input2},
+		Outputs:    []*types.Output{&output2},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -187,17 +188,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	assert.EqualError(t, err, "Check withdraw transaction failed, cross chain amount less than 0")
 
 	//create transfer cross chain asset transaction with corss chain amount more than output amount
-	tx1 = &Transaction{
+	tx1 = &types.Transaction{
 		TxType:         8,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
 			CrossChainAmounts:   []common.Fixed64{amount4},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -206,17 +207,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction
-	tx2 = &Transaction{
+	tx2 = &types.Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
-		Payload: &PayloadWithdrawFromSideChain{
+		Payload: &payload.PayloadWithdrawFromSideChain{
 			BlockHeight:                10,
 			GenesisBlockAddress:        genesisAddress,
 			SideChainTransactionHashes: []common.Uint256{tx1.Hash()},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input2},
-		Outputs:    []*Output{&output2},
+		Inputs:     []*types.Input{&input2},
+		Outputs:    []*types.Output{&output2},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -228,17 +229,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	assert.EqualError(t, err, "Check withdraw transaction failed, cross chain amount more than output amount")
 
 	//create transfer cross chain asset transaction
-	tx1 = &Transaction{
+	tx1 = &types.Transaction{
 		TxType:         8,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
 			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -247,17 +248,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction with cross chain count not equal withdraw output count
-	tx2 = &Transaction{
+	tx2 = &types.Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
-		Payload: &PayloadWithdrawFromSideChain{
+		Payload: &payload.PayloadWithdrawFromSideChain{
 			BlockHeight:                10,
 			GenesisBlockAddress:        genesisAddress,
 			SideChainTransactionHashes: []common.Uint256{tx1.Hash()},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input2},
-		Outputs:    []*Output{&output2, &output3},
+		Inputs:     []*types.Input{&input2},
+		Outputs:    []*types.Output{&output2, &output3},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -269,17 +270,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	assert.EqualError(t, err, "Check withdraw transaction failed, cross chain count not equal withdraw output count")
 
 	//create transfer cross chain asset transaction
-	tx1 = &Transaction{
+	tx1 = &types.Transaction{
 		TxType:         8,
 		PayloadVersion: 0,
-		Payload: &PayloadTransferCrossChainAsset{
+		Payload: &payload.PayloadTransferCrossChainAsset{
 			CrossChainAddresses: []string{address1},
 			OutputIndexes:       []uint64{0},
 			CrossChainAmounts:   []common.Fixed64{amount2},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input1},
-		Outputs:    []*Output{&output1},
+		Inputs:     []*types.Input{&input1},
+		Outputs:    []*types.Output{&output1},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,
@@ -288,17 +289,17 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	store.DbCache.SideChainStore.AddSideChainTx(&base.SideChainTransaction{tx1.Hash().String(), genesisAddress, tx1, 10})
 
 	//create withdraw transaction with input amount not equal output amount
-	tx2 = &Transaction{
+	tx2 = &types.Transaction{
 		TxType:         7,
 		PayloadVersion: 0,
-		Payload: &PayloadWithdrawFromSideChain{
+		Payload: &payload.PayloadWithdrawFromSideChain{
 			BlockHeight:                10,
 			GenesisBlockAddress:        genesisAddress,
 			SideChainTransactionHashes: []common.Uint256{tx1.Hash()},
 		},
 		Attributes: nil,
-		Inputs:     []*Input{&input4},
-		Outputs:    []*Output{&output4},
+		Inputs:     []*types.Input{&input4},
+		Outputs:    []*types.Output{&output4},
 		LockTime:   0,
 		Programs:   nil,
 		Fee:        0,

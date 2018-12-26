@@ -3,8 +3,8 @@ package cs
 import (
 	"io"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 const (
@@ -66,7 +66,7 @@ type SendLastArbiterUsedUTXOMessage struct {
 	Command        string
 	GenesisAddress string
 	Height         uint32
-	OutPoints      []core.OutPoint
+	OutPoints      []types.OutPoint
 	Nonce          string
 }
 
@@ -120,9 +120,9 @@ func (msg *SendLastArbiterUsedUTXOMessage) Deserialize(r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	var outPoints []core.OutPoint
+	var outPoints []types.OutPoint
 	for i := uint64(0); i < lenOutPoints; i++ {
-		var outPoint core.OutPoint
+		var outPoint types.OutPoint
 		err = outPoint.Deserialize(r)
 		if err != nil {
 			return err

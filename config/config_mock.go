@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/common"
 )
 
 func InitMockConfig() {
@@ -58,13 +58,13 @@ func InitMockConfig() {
 	Parameters.Configuration = &config.ConfigFile
 
 	for _, node := range Parameters.SideNodeList {
-		genesisBytes, err := HexStringToBytes(node.GenesisBlock)
+		genesisBytes, err := common.HexStringToBytes(node.GenesisBlock)
 		if err != nil {
 			return
 		}
-		reversedGenesisBytes := BytesReverse(genesisBytes)
-		reversedGenesisStr := BytesToHexString(reversedGenesisBytes)
-		genesisBlockHash, err := Uint256FromHexString(reversedGenesisStr)
+		reversedGenesisBytes := common.BytesReverse(genesisBytes)
+		reversedGenesisStr := common.BytesToHexString(reversedGenesisBytes)
+		genesisBlockHash, err := common.Uint256FromHexString(reversedGenesisStr)
 		if err != nil {
 			return
 		}

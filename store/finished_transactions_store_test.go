@@ -1,12 +1,13 @@
 package store
 
 import (
+	"bytes"
 	"encoding/json"
 	"testing"
 
-	"bytes"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA/core"
+	
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 func TestFinishedTxsDataStoreImpl_AddSucceedDepositTxs(t *testing.T) {
@@ -163,11 +164,11 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
 	txHash4 := "testHash4"
-	tx1 := core.Transaction{TxType: 0}
+	tx1 := types.Transaction{TxType: 0}
 	buf1 := new(bytes.Buffer)
 	tx1.Serialize(buf1)
 
-	tx2 := core.Transaction{TxType: 1}
+	tx2 := types.Transaction{TxType: 1}
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 
@@ -214,7 +215,7 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 		t.Error("Get withdraw transaction error.")
 	}
 
-	tx := new(core.Transaction)
+	tx := new(types.Transaction)
 	reader := bytes.NewReader(transactionBytes)
 	tx.Deserialize(reader)
 	if tx.TxType != 0 {
@@ -231,7 +232,7 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 		t.Error("Get withdraw transaction error.")
 	}
 
-	tx = new(core.Transaction)
+	tx = new(types.Transaction)
 	reader = bytes.NewReader(transactionBytes)
 	tx.Deserialize(reader)
 	if tx.TxType != 0 {
@@ -310,11 +311,11 @@ func TestFinishedTxsDataStoreImpl_GetWithdrawTxs(t *testing.T) {
 	txHash1 := "testHash1"
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
-	tx1 := core.Transaction{TxType: 0}
+	tx1 := types.Transaction{TxType: 0}
 	buf1 := new(bytes.Buffer)
 	tx1.Serialize(buf1)
 
-	tx2 := core.Transaction{TxType: 1}
+	tx2 := types.Transaction{TxType: 1}
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 

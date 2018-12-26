@@ -3,6 +3,7 @@ package examples
 import (
 	"bytes"
 	"fmt"
+	"github.com/elastos/Elastos.ELA/core/types"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
@@ -10,10 +11,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 func init() {
@@ -86,8 +87,8 @@ func ExampleSignCollectingOfTwoArbitrators() {
 	//let's suppose we already have a withdraw transaction(like tx4 referenced in withdraw_procedure_test)
 	strTx4 := "0700c80000002258516431444369364836324e5164575a51684a43526e72506e3773463943546a6155012f8b43ceeb8b0754f401389d556bcac3e2d907d8af32c0407b9ee13754d5fbac0100133535373730303637393139343737373934313001000000000000000000000000000000000000000000000000000000000000000000000000000002b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3e00f9700000000000000000021ca13da099f035e055107850fafe241ec040c8920b037db964a231458d2d6ffd5ea18944c4f90e63d547c5d3b9874df66a4ead0a3804d735302000000000000004b9194e833a95201b915d8c55b18c54a2bb7248cd800000000010047522103a5274a21aa242231a1a95f88d1508be31a782303becaedc99f0016c46d105d7f2103b8fbf8aa1eba7b7ccb7b4925a56ea71e487ea6fe0ec9c3ff0c725d3850a7b34f52af"
 
-	var tx4 *Transaction
-	tx4 = new(Transaction)
+	var tx4 *types.Transaction
+	tx4 = new(types.Transaction)
 	byteTx1, _ := common.HexStringToBytes(strTx4)
 	txReader := bytes.NewReader(byteTx1)
 	tx4.Deserialize(txReader)
