@@ -135,6 +135,16 @@ func init() {
 		os.Exit(1)
 	}
 
+	for _, side := range config.ConfigFile.SideNodeList {
+		side.PowChain = true
+	}
+
+	e = json.Unmarshal(file, &config)
+	if e != nil {
+		fmt.Printf("Unmarshal json file erro %v", e)
+		os.Exit(1)
+	}
+
 	Parameters.Configuration = &(config.ConfigFile)
 
 	var out bytes.Buffer
