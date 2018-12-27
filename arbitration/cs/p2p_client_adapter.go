@@ -192,6 +192,9 @@ func (c *p2pclient) AddMessageHash(msgHash common.Uint256) bool {
 }
 
 func (c *p2pclient) Broadcast(msg p2p.Message) {
+	log.Debug("[Broadcast] start")
+	defer log.Debug("[Broadcast] end")
+
 	log.Debug("Broadcast peers", c.server.ConnectedPeers())
 	c.server.BroadcastMessage(msg)
 }

@@ -127,6 +127,9 @@ func (dns *DistributedNodeServer) generateWithdrawProposal(transaction *Transact
 }
 
 func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error {
+	log.Debug("[Server][ReceiveProposalFeedback] start")
+	defer log.Debug("[Server][ReceiveProposalFeedback] end")
+
 	dns.tryInit()
 	dns.withdrawMux.Lock()
 	defer dns.withdrawMux.Unlock()
@@ -141,12 +144,12 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Lock()
 	if dns.unsolvedTransactions == nil {
 		dns.mux.Unlock()
-		return errors.New("Can not find proposal.")
+		return errors.New("Can not find proposal: unsolvedTransactions nil.")
 	}
 	txn, ok := dns.unsolvedTransactions[transactionItem.ItemContent.Hash()]
 	if !ok {
 		dns.mux.Unlock()
-		return errors.New("Can not find proposal.")
+		return errors.New("Can not find proposal: no unsolvedTransaction")
 	}
 	dns.mux.Unlock()
 

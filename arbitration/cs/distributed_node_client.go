@@ -38,6 +38,9 @@ func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
 }
 
 func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
+	log.Debug("[Client][OnReceivedProposal] start")
+	defer log.Debug("[Client][OnReceivedProposal] end")
+
 	transactionItem := &DistributedItem{}
 	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
 		return err

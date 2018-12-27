@@ -54,6 +54,9 @@ func (client *SideChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) err
 }
 
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
+	log.Debug("[ReceiveSendLastArbiterUsedUtxos] start")
+	defer log.Debug("[ReceiveSendLastArbiterUsedUtxos] end")
+
 	sc.withdrawMux.Lock()
 	defer sc.withdrawMux.Unlock()
 

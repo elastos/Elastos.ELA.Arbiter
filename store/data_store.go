@@ -112,14 +112,14 @@ type DataStoreSideChain interface {
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes() ([]string, error)
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
-	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
-	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error)
+	GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error)
+	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
 }
 
 type DataStoreImpl struct {
-	UTXOStore      DataStoreUTXOImpl
-	MainChainStore DataStoreMainChainImpl
-	SideChainStore DataStoreSideChainImpl
+	UTXOStore      DataStoreUTXO
+	MainChainStore DataStoreMainChain
+	SideChainStore DataStoreSideChain
 }
 
 type DataStoreUTXOImpl struct {
@@ -154,9 +154,9 @@ func OpenDataStore() (*DataStoreImpl, error) {
 		return nil, err
 	}
 	dataStore := &DataStoreImpl{
-		UTXOStore:      DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO},
-		MainChainStore: DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
-		SideChainStore: DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
+		UTXOStore:      &DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO},
+		MainChainStore: &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
+		SideChainStore: &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
 
 	// Handle system interrupt signals
 	dataStore.UTXOStore.catchSystemSignals()
@@ -493,6 +493,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 	for _, tx := range txs {
 		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
 		if err != nil {
+			log.Error("[AddSideChainTxs] err")
 			continue
 		}
 	}
