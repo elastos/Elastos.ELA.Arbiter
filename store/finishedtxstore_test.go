@@ -2,11 +2,8 @@ package store
 
 import (
 	"bytes"
-	"encoding/json"
 	"testing"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	
 	"github.com/elastos/Elastos.ELA/core/types"
 )
 
@@ -120,16 +117,9 @@ func TestFinishedTxsDataStoreImpl_GetDepositTxs(t *testing.T) {
 	genesisBlockAddress1 := "testAddress1"
 	genesisBlockAddress2 := "testAddress2"
 
-	info := base.TransactionInfo{}
-	depositTxBytes, err := json.Marshal(info)
-	if err != nil {
-		t.Error("Deposit transactionInfo to bytes failed.")
-	}
-
 	err = datastore.AddFailedDepositTxs(
 		[]string{txHash1, txHash1},
-		[]string{genesisBlockAddress1, genesisBlockAddress2},
-		[][]byte{depositTxBytes, depositTxBytes})
+		[]string{genesisBlockAddress1, genesisBlockAddress2})
 	if err != nil {
 		t.Error("Add deposit transaction error.")
 	}

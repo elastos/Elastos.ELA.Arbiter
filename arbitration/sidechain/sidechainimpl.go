@@ -60,6 +60,9 @@ func (sc *SideChainImpl) OnSendLastArbiterUsedUTXOMessage(id dpeer.PID, content 
 }
 
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []types.OutPoint) error {
+	log.Debug("[ReceiveSendLastArbiterUsedUtxos] start")
+	defer log.Debug("[ReceiveSendLastArbiterUsedUtxos] end")
+
 	sc.withdrawMux.Lock()
 	defer sc.withdrawMux.Unlock()
 
