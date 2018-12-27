@@ -54,6 +54,7 @@ type Configuration struct {
 	SideAuxPowFee                int           `json:"SideAuxPowFee"`
 	MinThreshold                 int           `json:"MinThreshold"`
 	DepositAmount                int           `json:"DepositAmount"`
+	WithdrawMajorityCount        int           `json:"WithdrawMajorityCount"`
 }
 
 type RpcConfig struct {

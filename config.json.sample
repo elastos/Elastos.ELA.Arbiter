@@ -38,6 +38,7 @@
     ],
     "MinThreshold": 10000000,
     "DepositAmount": 10000000,
+    "WithdrawMajorityCount": 3,
     "SyncInterval": 1000,
     "SideChainMonitorScanInterval": 1000,
     "ClearTransactionInterval": 60000,

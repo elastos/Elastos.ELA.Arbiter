@@ -3,25 +3,23 @@ package cs
 import (
 	"bytes"
 	"errors"
-	"github.com/elastos/Elastos.ELA/account"
-	"github.com/elastos/Elastos.ELA/core/contract"
-	"math"
 	"sync"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 const (
-	TransactionAgreementRatio = 0.667 //over 2/3 of arbitrators agree to unlock the redeem script
-
 	MCErrDoubleSpend          int64 = 45010
 	MCErrSidechainTxDuplicate int64 = 45012
 )
@@ -69,7 +67,7 @@ func CreateRedeemScript() ([]byte, error) {
 }
 
 func getTransactionAgreementArbitratorsCount() int {
-	return int(math.Ceil(float64(ArbitratorGroupSingleton.GetArbitratorsCount()) * TransactionAgreementRatio))
+	return config.Parameters.WithdrawMajorityCount
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
