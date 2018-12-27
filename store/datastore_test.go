@@ -39,7 +39,7 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{Payload: new(payload.WithdrawFromSideChain)}
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
 	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10}); err != nil {
@@ -92,7 +92,7 @@ func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{Payload: new(payload.WithdrawFromSideChain)}
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
 	err = datastore.AddSideChainTxs(
@@ -138,13 +138,13 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 
 	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
 
 	genesisBlockAddress2 := "testAddress2"
 	txHash2 := "testHash2"
-	tx2 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx2 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 
@@ -190,7 +190,7 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	genesisBlockAddress2 := "testAddress2"
 	txHash3 := "testHash3"
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
 	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10})
@@ -240,13 +240,13 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 	genesisBlockAddress2 := "testAddress2"
 	txHash3 := "testHash3"
 
-	tx1 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx1 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	buf1 := new(bytes.Buffer)
 	tx1.Serialize(buf1)
-	tx2 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx2 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
-	tx3 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx3 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	buf3 := new(bytes.Buffer)
 	tx3.Serialize(buf3)
 
@@ -291,7 +291,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	mp := new(bloom.MerkleProof)
 	if err := datastore.AddMainChainTx(&base.MainChainTransaction{txHash, genesisAddress, tx, mp}); err != nil {
 		t.Error("Add main chain transaction error.")
@@ -343,7 +343,7 @@ func TestDataStoreImpl_AddMainChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	mp := new(bloom.MerkleProof)
 	results, err := datastore.AddMainChainTxs(
 		[]*base.MainChainTransaction{
@@ -396,7 +396,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	txHash3 := "testHash3"
 	genesisAddress := "genesis"
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 	mp := new(bloom.MerkleProof)
 
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash1, genesisAddress, tx, mp})
@@ -458,7 +458,7 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	txHash3 := "testHash3"
 	genesisAddress := "genesis"
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.PayloadWithdrawFromSideChain)}
+	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
 
 	mp := new(bloom.MerkleProof)
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash1, genesisAddress, tx, mp})
