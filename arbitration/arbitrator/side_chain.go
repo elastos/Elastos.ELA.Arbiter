@@ -14,7 +14,7 @@ import (
 
 type SideChain interface {
 	base.AccountListener
-	base.P2PClientListener
+	base.SidechainMsgListener
 	SideChainNode
 
 	GetKey() string

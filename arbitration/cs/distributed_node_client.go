@@ -3,7 +3,6 @@ package cs
 import (
 	"bytes"
 	"errors"
-	"github.com/elastos/Elastos.ELA/core/contract"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
@@ -11,8 +10,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type DistributedNodeClient struct {
@@ -39,7 +40,7 @@ func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
 	return item.Sign(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
 }
 
-func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
+func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []byte) error {
 	transactionItem := &DistributedItem{}
 	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
 		return err
@@ -77,14 +78,14 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return err
 	}
 
-	if err := client.Feedback(transactionItem); err != nil {
+	if err := client.Feedback(id, transactionItem); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
+func (client *DistributedNodeClient) Feedback(id peer.PID, item *DistributedItem) error {
 	ar := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
 
@@ -104,17 +105,11 @@ func (client *DistributedNodeClient) Feedback(item *DistributedItem) error {
 		return errors.New("Send complaint failed.")
 	}
 
-	client.broadcast(messageReader.Bytes())
-	return nil
-}
-
-func (client *DistributedNodeClient) broadcast(message []byte) {
-	msg := &SignMessage{
+	P2PClientSingleton.SendMessageToPeer(id, &SignMessage{
 		Command: client.P2pCommand,
-		Content: message,
-	}
-	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
-	P2PClientSingleton.Broadcast(msg)
+		Content: messageReader.Bytes(),
+	})
+	return nil
 }
 
 func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {

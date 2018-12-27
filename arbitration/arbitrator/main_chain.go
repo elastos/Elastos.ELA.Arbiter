@@ -5,6 +5,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type MainChain interface {
@@ -20,7 +21,7 @@ type MainChain interface {
 }
 
 type MainChainClient interface {
-	OnReceivedProposal(content []byte) error
+	OnReceivedProposal(id peer.PID, content []byte) error
 }
 
 type MainChainFunc interface {

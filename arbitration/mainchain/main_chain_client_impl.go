@@ -2,23 +2,17 @@ package mainchain
 
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	"github.com/elastos/Elastos.ELA/p2p"
-	"github.com/elastos/Elastos.ELA/p2p/peer"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type MainChainClientImpl struct {
 	*cs.DistributedNodeClient
 }
 
-func (client *MainChainClientImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
-	if msg.CMD() != client.P2pCommand {
-		return nil
+func (client *MainChainClientImpl) OnReceivedSignMsg(id peer.PID, content []byte) {
+	if err := client.OnReceivedProposal(id, content); err != nil {
+		log.Error("[OnReceivedSignMsg] mainchain client received sign message error: ", err)
 	}
-
-	switch m := msg.(type) {
-	case *cs.SignMessage:
-		return client.OnReceivedProposal(m.Content)
-	}
-	return nil
 }

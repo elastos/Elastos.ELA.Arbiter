@@ -18,8 +18,7 @@ import (
 	"github.com/elastos/Elastos.ELA/core/contract/program"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
-	"github.com/elastos/Elastos.ELA/p2p"
-	"github.com/elastos/Elastos.ELA/p2p/peer"
+	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type MainChainImpl struct {
@@ -97,16 +96,10 @@ func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain arbitrat
 	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
-func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
-	if msg.CMD() != mc.P2pCommand {
-		return nil
+func (mc *MainChainImpl) OnReceivedSignMsg(id peer2.PID, content []byte) {
+	if err := mc.ReceiveProposalFeedback(content); err != nil {
+		log.Error("[OnReceivedSignMsg] mainchain received sign message error: ", err)
 	}
-
-	switch m := msg.(type) {
-	case *cs.SignMessage:
-		return mc.ReceiveProposalFeedback(m.Content)
-	}
-	return nil
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChain, withdrawInfo *base.WithdrawInfo,
@@ -312,6 +305,9 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 
 	// Update wallet height
 	currentHeight = store.DbCache.UTXOStore.CurrentHeight(block.Height)
+
+	cs.P2PClientSingleton.ChangeHeight(currentHeight)
+
 	return nil
 }
 
@@ -480,11 +476,11 @@ func InitMainChain(ar arbitrator.Arbitrator) error {
 	}
 
 	mainChainServer := &MainChainImpl{&cs.DistributedNodeServer{P2pCommand: cs.WithdrawCommand}}
-	cs.P2PClientSingleton.AddListener(mainChainServer)
+	cs.P2PClientSingleton.AddMainchainListener(mainChainServer)
 	currentArbitrator.SetMainChain(mainChainServer)
 
 	mainChainClient := &MainChainClientImpl{&cs.DistributedNodeClient{P2pCommand: cs.WithdrawCommand}}
-	cs.P2PClientSingleton.AddListener(mainChainClient)
+	cs.P2PClientSingleton.AddMainchainListener(mainChainClient)
 	currentArbitrator.SetMainChainClient(mainChainClient)
 
 	return nil

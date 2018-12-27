@@ -242,10 +242,6 @@ func (ar *ArbitratorImpl) ReceiveProposalFeedback(content []byte) error {
 	return ar.mainChainImpl.ReceiveProposalFeedback(content)
 }
 
-func (ar *ArbitratorImpl) OnReceivedProposal(content []byte) error {
-	return ar.mainChainClientImpl.OnReceivedProposal(content)
-}
-
 func (ar *ArbitratorImpl) GetChain(key string) (SideChain, bool) {
 	return ar.sideChainManagerImpl.GetChain(key)
 }

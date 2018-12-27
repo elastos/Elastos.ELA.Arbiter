@@ -19,8 +19,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
-	"github.com/elastos/Elastos.ELA/p2p"
-	"github.com/elastos/Elastos.ELA/p2p/peer"
+	dpeer "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type SideChainImpl struct {
@@ -38,19 +37,26 @@ type SideChainImpl struct {
 	ReceivedUsedUtxoMsgNumber uint32
 }
 
-func (client *SideChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
-	if msg.CMD() != cs.GetLastArbiterUsedUtxoCommand && msg.CMD() != cs.SendLastArbiterUsedUtxoCommand {
-		return nil
-	}
+func (sc *SideChainImpl) OnGetLastArbiterUsedUTXOMessage(id dpeer.PID, content []byte) {
+	buf := new(bytes.Buffer)
+	buf.Write(content)
+	msg := &cs.GetLastArbiterUsedUTXOMessage{}
+	msg.Deserialize(buf)
 
-	switch m := msg.(type) {
-	case *cs.GetLastArbiterUsedUTXOMessage:
-		return client.ReceiveGetLastArbiterUsedUtxos(m.Height, m.GenesisAddress)
-	case *cs.SendLastArbiterUsedUTXOMessage:
-		return client.ReceiveSendLastArbiterUsedUtxos(m.Height, m.GenesisAddress, m.OutPoints)
+	if err := sc.ReceiveGetLastArbiterUsedUtxos(id, msg.Height, msg.GenesisAddress); err != nil {
+		log.Error("[OnGetLastArbiterUsedUTXOMessage] sidechain get last arbiter used utxo message error: ", err)
 	}
+}
 
-	return nil
+func (sc *SideChainImpl) OnSendLastArbiterUsedUTXOMessage(id dpeer.PID, content []byte) {
+	buf := new(bytes.Buffer)
+	buf.Write(content)
+	msg := &cs.SendLastArbiterUsedUTXOMessage{}
+	msg.Deserialize(buf)
+
+	if err := sc.ReceiveSendLastArbiterUsedUtxos(msg.Height, msg.GenesisAddress, msg.OutPoints); err != nil {
+		log.Error("[OnGetLastArbiterUsedUTXOMessage] sidechain send last arbiter used utxo message error: ", err)
+	}
 }
 
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []types.OutPoint) error {
@@ -90,7 +96,7 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 	return nil
 }
 
-func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAddress string) error {
+func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(id dpeer.PID, height uint32, genesisAddress string) error {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	if sc.GetKey() == genesisAddress {
@@ -108,9 +114,7 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 				OutPoints:      sc.LastUsedOutPoints,
 				Nonce:          strconv.FormatInt(nonce, 10),
 			}
-			msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
-			cs.P2PClientSingleton.AddMessageHash(msgHash)
-			cs.P2PClientSingleton.Broadcast(msg)
+			cs.P2PClientSingleton.SendMessageToPeer(id, msg)
 
 			utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
 			if err != nil {
@@ -378,9 +382,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 			GenesisAddress: sc.GetKey(),
 			Height:         chainHeight - 1,
 			Nonce:          strconv.FormatInt(nonce, 10)}
-		msgHash := cs.P2PClientSingleton.GetMessageHash(msg)
-		cs.P2PClientSingleton.AddMessageHash(msgHash)
-		cs.P2PClientSingleton.Broadcast(msg)
+		cs.P2PClientSingleton.BroadcastMessage(msg)
 		log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
 	}
 

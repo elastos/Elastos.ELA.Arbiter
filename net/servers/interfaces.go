@@ -84,7 +84,7 @@ func checkParam(param map[string]interface{}, keys ...string) bool {
 
 func GetInfo(param Params) map[string]interface{} {
 	Info := struct {
-		Version                      int           `json:"version"`
+		Version                      uint32        `json:"version"`
 		SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
 		ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
 		MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`

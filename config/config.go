@@ -29,7 +29,7 @@ var (
 
 type Configuration struct {
 	Magic    uint32   `json:"Magic"`
-	Version  int      `json:"Version"`
+	Version  uint32   `json:"Version"`
 	SeedList []string `json:"SeedList"`
 	NodePort uint16   `json:"NodePort"`
 

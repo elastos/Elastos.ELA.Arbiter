@@ -77,8 +77,8 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 		Command: dns.P2pCommand,
 		Content: content,
 	}
-	P2PClientSingleton.AddMessageHash(P2PClientSingleton.GetMessageHash(msg))
-	P2PClientSingleton.Broadcast(msg)
+
+	P2PClientSingleton.BroadcastMessage(msg)
 	log.Info("[sendToArbitrator] Send withdraw transaction to arbtiers for multi sign")
 }
 

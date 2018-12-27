@@ -1,10 +1,14 @@
 package base
 
 import (
-	"github.com/elastos/Elastos.ELA/p2p"
-	"github.com/elastos/Elastos.ELA/p2p/peer"
+	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
-type P2PClientListener interface {
-	OnP2PReceived(peer *peer.Peer, msg p2p.Message) error
+type MainchainMsgListener interface {
+	OnReceivedSignMsg(id peer2.PID, content []byte)
+}
+
+type SidechainMsgListener interface {
+	OnGetLastArbiterUsedUTXOMessage(id peer2.PID, content []byte)
+	OnSendLastArbiterUsedUTXOMessage(id peer2.PID, content []byte)
 }

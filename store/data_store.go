@@ -14,6 +14,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
+	"github.com/elastos/Elastos.ELA/blockchain/interfaces"
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	_ "github.com/mattn/go-sqlite3"
@@ -116,10 +117,17 @@ type DataStoreSideChain interface {
 	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*types.Transaction, error)
 }
 
+//todo implement me
+type PeerStore interface {
+	GetDirectPeers() ([]*interfaces.DirectPeers, error)
+	SaveDirectPeers(peers []*interfaces.DirectPeers)
+}
+
 type DataStoreImpl struct {
 	UTXOStore      DataStoreUTXOImpl
 	MainChainStore DataStoreMainChainImpl
 	SideChainStore DataStoreSideChainImpl
+	PeerStore      PeerStore
 }
 
 type DataStoreUTXOImpl struct {

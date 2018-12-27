@@ -19,6 +19,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/elalog"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 var (
@@ -96,8 +97,15 @@ func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	}
 }
 
-func initP2P(dataDir string, arbitrator arbitrator.Arbitrator) error {
-	if err := cs.InitP2PClient(dataDir); err != nil {
+func initP2P(arbitrator arbitrator.Arbitrator) error {
+	pk, err := arbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	var id peer.PID
+	copy(id[:], pk)
+	if err := cs.InitP2PClient(id); err != nil {
 		return err
 	}
 
@@ -106,7 +114,7 @@ func initP2P(dataDir string, arbitrator arbitrator.Arbitrator) error {
 		return err
 	}
 	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
-		cs.P2PClientSingleton.AddListener(side)
+		cs.P2PClientSingleton.AddSidechainListener(side)
 	}
 
 	cs.P2PClientSingleton.Start()
@@ -145,12 +153,12 @@ func main() {
 		log.Fatal("Get password error.")
 		os.Exit(1)
 	}
-	wallet, err := wallet.Open(passwd)
+	w, err := wallet.Open(passwd)
 	if err != nil {
 		log.Fatal("error: open wallet failed, ", err)
 		os.Exit(1)
 	}
-	sideauxpow.CurrentWallet = wallet
+	sideauxpow.CurrentWallet = w
 
 	log.Info("5. Init arbitrator account.")
 	sideauxpow.SetMainAccountPassword(passwd)
@@ -160,7 +168,7 @@ func main() {
 	}
 
 	log.Info("6. Start arbitrator P2P networks.")
-	if err := initP2P(filepath.Join(config.DataPath, config.DataDir), currentArbitrator); err != nil {
+	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
@@ -185,7 +193,7 @@ func main() {
 	go currentArbitrator.CheckAndRemoveCrossChainTransactionsFromDBLoop()
 
 	log.Info("11. Start side chain account divide.")
-	go sideauxpow.SidechainAccountDivide(wallet)
+	go sideauxpow.SidechainAccountDivide(w)
 
 	select {}
 }
