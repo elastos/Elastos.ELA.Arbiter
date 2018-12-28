@@ -8,7 +8,7 @@ import (
 )
 
 type IllegalEvidenceMessage struct {
-	base.SidechainIllegalEvidence
+	base.SidechainIllegalData
 }
 
 func (i *IllegalEvidenceMessage) CMD() string {
@@ -20,9 +20,9 @@ func (i *IllegalEvidenceMessage) MaxLength() uint32 {
 }
 
 func (i *IllegalEvidenceMessage) Serialize(w io.Writer) error {
-	return i.SidechainIllegalEvidence.Serialize(w)
+	return i.SidechainIllegalData.Serialize(w)
 }
 
 func (i *IllegalEvidenceMessage) Deserialize(r io.Reader) error {
-	return i.SidechainIllegalEvidence.Deserialize(r)
+	return i.SidechainIllegalData.Deserialize(r)
 }

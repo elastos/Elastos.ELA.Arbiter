@@ -15,23 +15,45 @@ const (
 )
 
 type SidechainIllegalEvidence struct {
-	IllegalType types.IllegalDataType
-	Height      uint32
-	DataHash    common.Uint256
-	Signs       [][]byte
+	DataHash common.Uint256
+}
+
+type SidechainIllegalData struct {
+	IllegalType         types.IllegalDataType
+	Height              uint32
+	Evidence            SidechainIllegalEvidence
+	CompareEvidence     SidechainIllegalEvidence
+	GenesisBlockAddress string
+	Signs               [][]byte
 
 	hash *common.Uint256
 }
 
-func (s *SidechainIllegalEvidence) Type() types.IllegalDataType {
+func (s *SidechainIllegalEvidence) Serialize(w io.Writer) error {
+	if err := s.DataHash.Serialize(w); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SidechainIllegalEvidence) Deserialize(r io.Reader) error {
+	if err := s.DataHash.Deserialize(r); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SidechainIllegalData) Type() types.IllegalDataType {
 	return s.IllegalType
 }
 
-func (s *SidechainIllegalEvidence) GetBlockHeight() uint32 {
+func (s *SidechainIllegalData) GetBlockHeight() uint32 {
 	return s.Height
 }
 
-func (s *SidechainIllegalEvidence) Serialize(w io.Writer) error {
+func (s *SidechainIllegalData) SerializeUnsigned(w io.Writer) error {
 	if err := common.WriteUint8(w, byte(s.IllegalType)); err != nil {
 		return err
 	}
@@ -40,7 +62,23 @@ func (s *SidechainIllegalEvidence) Serialize(w io.Writer) error {
 		return err
 	}
 
-	if err := s.DataHash.Serialize(w); err != nil {
+	if err := s.Evidence.Serialize(w); err != nil {
+		return err
+	}
+
+	if err := s.CompareEvidence.Serialize(w); err != nil {
+		return err
+	}
+
+	if err := common.WriteVarString(w, s.GenesisBlockAddress); err != nil{
+		return err
+	}
+
+	return nil
+}
+
+func (s *SidechainIllegalData) Serialize(w io.Writer) error {
+	if err := s.SerializeUnsigned(w); err != nil {
 		return err
 	}
 
@@ -56,7 +94,7 @@ func (s *SidechainIllegalEvidence) Serialize(w io.Writer) error {
 	return nil
 }
 
-func (s *SidechainIllegalEvidence) Deserialize(r io.Reader) error {
+func (s *SidechainIllegalData) DeserializeUnsigned(r io.Reader) error {
 	var err error
 
 	var illegalType uint8
@@ -69,7 +107,24 @@ func (s *SidechainIllegalEvidence) Deserialize(r io.Reader) error {
 		return err
 	}
 
-	if err = s.DataHash.Deserialize(r); err != nil {
+	if err = s.Evidence.Deserialize(r); err != nil {
+		return err
+	}
+
+	if err = s.CompareEvidence.Deserialize(r); err != nil {
+		return err
+	}
+
+	if s.GenesisBlockAddress, err = common.ReadVarString(r); err != nil{
+		return err
+	}
+
+	return nil
+}
+
+func (s *SidechainIllegalData) Deserialize(r io.Reader) error {
+	var err error
+	if err = s.DeserializeUnsigned(r); err != nil {
 		return err
 	}
 
@@ -88,7 +143,7 @@ func (s *SidechainIllegalEvidence) Deserialize(r io.Reader) error {
 	return nil
 }
 
-func (s *SidechainIllegalEvidence) Hash() common.Uint256 {
+func (s *SidechainIllegalData) Hash() common.Uint256 {
 	if s.hash == nil {
 		buf := new(bytes.Buffer)
 		s.Serialize(buf)
