@@ -5,14 +5,7 @@ import (
 	"errors"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/store"
-
-	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
-	"github.com/elastos/Elastos.ELA/core/types"
-	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
@@ -50,28 +43,8 @@ func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []b
 		return nil
 	}
 
-	payloadWithdraw, ok := transactionItem.ItemContent.Payload.(*payload.PayloadWithdrawFromSideChain)
-	if !ok {
-		return errors.New("Unknown payload type.")
-	}
-
-	err := checkWithdrawTransaction(transactionItem.ItemContent, client)
-	if err != nil {
+	if err := transactionItem.ItemContent.Check(client); err != nil {
 		return err
-	}
-
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	sc, ok := currentArbitrator.GetSideChainManager().GetChain(payloadWithdraw.GenesisBlockAddress)
-	if !ok {
-		return errors.New("Get side chain from GenesisBlockAddress failed")
-	}
-
-	if payloadWithdraw.BlockHeight > sc.GetLastUsedUtxoHeight() {
-		var outPoints []types.OutPoint
-		for _, input := range transactionItem.ItemContent.Inputs {
-			outPoints = append(outPoints, input.Previous)
-		}
-		sc.AddLastUsedOutPoints(outPoints)
 	}
 
 	if err := client.SignProposal(transactionItem); err != nil {
@@ -105,143 +78,8 @@ func (client *DistributedNodeClient) Feedback(id peer.PID, item *DistributedItem
 		return errors.New("Send complaint failed.")
 	}
 
-	P2PClientSingleton.SendMessageToPeer(id, &SignMessage{
+	return P2PClientSingleton.SendMessageToPeer(id, &SignMessage{
 		Command: client.P2pCommand,
 		Content: messageReader.Bytes(),
 	})
-	return nil
-}
-
-func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
-	payloadWithdraw, ok := txn.Payload.(*payload.PayloadWithdrawFromSideChain)
-	if !ok {
-		return errors.New("Check withdraw transaction failed, unknown payload type")
-	}
-
-	sideChain, exchangeRate, err := clientFunc.GetSideChainAndExchangeRate(payloadWithdraw.GenesisBlockAddress)
-	if err != nil {
-		return err
-	}
-
-	//check genesis address
-	var transactionHashes []string
-	for _, hash := range payloadWithdraw.SideChainTransactionHashes {
-		transactionHashes = append(transactionHashes, hash.String())
-	}
-
-	var txs []*base.WithdrawTx
-	sideChainTxs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashesAndGenesisAddress(
-		transactionHashes, payloadWithdraw.GenesisBlockAddress)
-	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
-		log.Info("[checkWithdrawTransaction], need to get side chain transaction from rpc")
-		for _, txHash := range payloadWithdraw.SideChainTransactionHashes {
-			tx, err := sideChain.GetWithdrawTransaction(txHash.String())
-			if err != nil {
-				return errors.New("[checkWithdrawTransaction] failed, unknown side chain transachtions")
-			}
-
-			txid, err := common.Uint256FromHexString(tx.TxID)
-			if err != nil {
-				return errors.New("[checkWithdrawTransaction] failed, invalid txid")
-			}
-
-			var withdrawAssets []*base.WithdrawAsset
-			for _, cs := range tx.CrossChainAssets {
-				csAmount, err := common.StringToFixed64(cs.CrossChainAmount)
-				if err != nil {
-					return errors.New("[checkWithdrawTransaction] invlaid cross chain amount in tx")
-				}
-				opAmount, err := common.StringToFixed64(cs.OutputAmount)
-				if err != nil {
-					return errors.New("[checkWithdrawTransaction] invlaid output amount in tx")
-				}
-				withdrawAssets = append(withdrawAssets, &base.WithdrawAsset{
-					TargetAddress:    cs.CrossChainAddress,
-					Amount:           opAmount,
-					CrossChainAmount: csAmount,
-				})
-			}
-
-			txs = append(txs, &base.WithdrawTx{
-				Txid: txid,
-				WithdrawInfo: &base.WithdrawInfo{
-					WithdrawAssets: withdrawAssets,
-				},
-			})
-		}
-	} else {
-		txs = sideChainTxs
-	}
-
-	utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(payloadWithdraw.GenesisBlockAddress)
-	if err != nil {
-		return errors.New("Get spender's UTXOs failed")
-	}
-
-	//check inputs
-	var inputTotalAmount common.Fixed64
-	for _, input := range txn.Inputs {
-		isContained := false
-		for _, utxo := range utxos {
-			if utxo.Input.IsEqual(*input) {
-				isContained = true
-				inputTotalAmount += *utxo.Amount
-				break
-			}
-		}
-		if !isContained {
-			return errors.New("Check withdraw transaction failed, utxo is not from genesis address account")
-		}
-	}
-
-	//check outputs and fee
-	var outputTotalAmount common.Fixed64
-	for _, output := range txn.Outputs {
-		outputTotalAmount += output.Value
-	}
-
-	var totalFee common.Fixed64
-	var oriOutputAmount common.Fixed64
-	var totalCrossChainCount int
-	for _, tx := range txs {
-		for _, w := range tx.WithdrawInfo.WithdrawAssets {
-
-			if *w.CrossChainAmount < 0 || *w.Amount <= 0 || *w.CrossChainAmount >= *w.Amount {
-				return errors.New("Check withdraw transaction failed, cross chain amount less than 0")
-			}
-			oriOutputAmount += common.Fixed64(float64(*w.CrossChainAmount) / exchangeRate)
-			totalFee += common.Fixed64(float64(*w.Amount-*w.CrossChainAmount) / exchangeRate)
-		}
-		totalCrossChainCount += len(tx.WithdrawInfo.WithdrawAssets)
-	}
-
-	if inputTotalAmount != outputTotalAmount+totalFee {
-		log.Info("inputTotalAmount-", inputTotalAmount, " outputTotalAmount-", outputTotalAmount, " totalFee-", totalFee)
-		return errors.New("Check withdraw transaction failed, input amount not equal output amount")
-	}
-
-	//check exchange rate
-	genesisBlockProgramHash, err := common.Uint168FromAddress(payloadWithdraw.GenesisBlockAddress)
-	if err != nil {
-		return errors.New("Check withdraw transaction failed, genesis block address to program hash failed")
-	}
-	var withdrawOutputAmount common.Fixed64
-	var totalWithdrawOutputCount int
-	for _, output := range txn.Outputs {
-		if output.ProgramHash != *genesisBlockProgramHash {
-			withdrawOutputAmount += output.Value
-			totalWithdrawOutputCount++
-		}
-	}
-
-	if totalCrossChainCount != totalWithdrawOutputCount {
-		return errors.New("Check withdraw transaction failed, cross chain count not equal withdraw output count")
-	}
-
-	if oriOutputAmount != withdrawOutputAmount {
-		log.Info("oriOutputAmount-", oriOutputAmount, " withdrawOutputAmount-", withdrawOutputAmount)
-		return errors.New("Check withdraw transaction failed, exchange rate verify failed")
-	}
-
-	return nil
 }

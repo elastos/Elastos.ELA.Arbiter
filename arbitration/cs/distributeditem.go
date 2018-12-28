@@ -3,7 +3,6 @@ package cs
 import (
 	"bytes"
 	"errors"
-	"github.com/elastos/Elastos.ELA/core/contract"
 	"io"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -11,17 +10,25 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
-	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
-const MaxReedemScriptDataSize = 1000
+type DistributeContentType byte
+
+const (
+	MaxReedemScriptDataSize = 1000
+
+	TxDistribute      DistributeContentType = 0x00
+	IllegalDistribute DistributeContentType = 0x01
+)
 
 type DistributedItem struct {
 	TargetArbitratorPublicKey   *crypto.PublicKey
 	TargetArbitratorProgramHash *common.Uint168
-	ItemContent                 *types.Transaction
+	Type                        DistributeContentType
+	ItemContent                 base.DistributedContent
 
 	redeemScript []byte
 	signedData   []byte
@@ -128,6 +135,9 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 	if err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
 		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
+	if err := common.WriteUint8(w, byte(item.Type)); err != nil {
+		return err
+	}
 	if err := item.ItemContent.Serialize(w); err != nil {
 		return err
 	}
@@ -155,10 +165,19 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		return errors.New("TargetArbitratorProgramHash deserialization failed.")
 	}
 
-	item.ItemContent = nil
-	item.ItemContent = new(types.Transaction)
-	if err = item.ItemContent.Deserialize(r); err != nil {
-		return errors.New("RawTransaction deserialization failed.")
+	contentType, err := common.ReadUint8(r)
+	if err != nil {
+		return err
+	}
+	item.Type = DistributeContentType(contentType)
+
+	switch item.Type {
+	case TxDistribute:
+		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
+		if err = item.ItemContent.Deserialize(r); err != nil {
+			return errors.New("RawTransaction deserialization failed.")
+		}
+	case IllegalDistribute:
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxReedemScriptDataSize, "redeem script")
@@ -174,11 +193,6 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	item.signedData = signedData
 
 	return nil
-}
-
-func (item *DistributedItem) isForComplain() bool {
-	//todo judge if raw transaction is for complain (by payload)
-	return false
 }
 
 func (item *DistributedItem) createMultiSignRedeemScript() error {
@@ -267,29 +281,27 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		sign := signedData[1:]
 		targetPk := item.TargetArbitratorPublicKey
 
-		if !item.isForComplain() {
-			withdrawPayload, ok := item.ItemContent.Payload.(*payload.PayloadWithdrawFromSideChain)
-			if !ok {
-				return errors.New("Invalid payload type.")
-			}
-			groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(withdrawPayload.BlockHeight)
-			if err != nil {
-				return err
-			}
+		blockHeight, err := item.ItemContent.CurrentBlockHeight()
+		if err != nil {
+			return err
+		}
+		groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(blockHeight)
+		if err != nil {
+			return err
+		}
 
-			onDutyArbitratorPk, err :=
-				base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
-			if err != nil {
-				return err
-			}
+		onDutyArbitratorPk, err :=
+			base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
+		if err != nil {
+			return err
+		}
 
-			if !crypto.Equal(targetPk, onDutyArbitratorPk) {
-				return errors.New("Can not sign without current arbitrator's signing.")
-			}
+		if !crypto.Equal(targetPk, onDutyArbitratorPk) {
+			return errors.New("Can not sign without current arbitrator's signing.")
 		}
 
 		buf := new(bytes.Buffer)
-		err := item.ItemContent.SerializeUnsigned(buf)
+		err = item.ItemContent.SerializeUnsigned(buf)
 		if err != nil {
 			return err
 		}
