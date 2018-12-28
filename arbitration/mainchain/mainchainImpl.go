@@ -47,7 +47,7 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() error {
 		}
 
 		hasSideChainInMap := false
-		for k, _ := range allSideChainTxHashes {
+		for k := range allSideChainTxHashes {
 			if k == sc {
 				hasSideChainInMap = true
 				break
