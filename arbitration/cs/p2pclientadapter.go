@@ -26,6 +26,7 @@ const (
 	//len of message need to less than 12
 	WithdrawCommand                = "withdraw"
 	ComplainCommand                = "complain"
+	IllegalEvidence                = "illegal"
 	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
 	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
 )
@@ -175,6 +176,15 @@ func (n *arbitratorsNetwork) processMessage(msgItem *messageItem) {
 		if processed {
 			for _, v := range n.mainchainListeners {
 				v.OnReceivedSignMsg(msgItem.ID, withdraw.Content)
+			}
+		}
+	case IllegalEvidence:
+		illegal, processed := m.(*IllegalEvidenceMessage)
+		if processed {
+			for _, v := range n.mainchainListeners {
+				content := new(bytes.Buffer)
+				illegal.Serialize(content)
+				v.OnReceivedIllegalEvidenceMsg(msgItem.ID, content.Bytes())
 			}
 		}
 	case ComplainCommand:

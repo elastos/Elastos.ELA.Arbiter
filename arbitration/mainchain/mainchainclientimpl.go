@@ -16,3 +16,7 @@ func (client *MainChainClientImpl) OnReceivedSignMsg(id peer.PID, content []byte
 		log.Error("[OnReceivedSignMsg] mainchain client received sign message error: ", err)
 	}
 }
+
+func (client *MainChainClientImpl) OnReceivedIllegalEvidenceMsg(id peer.PID, content []byte) {
+	//todo complete me
+}

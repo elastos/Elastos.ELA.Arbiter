@@ -102,6 +102,10 @@ func (mc *MainChainImpl) OnReceivedSignMsg(id peer2.PID, content []byte) {
 	}
 }
 
+func (mc *MainChainImpl) OnReceivedIllegalEvidenceMsg(id peer2.PID, content []byte) {
+	//todo complete me
+}
+
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChain, withdrawInfo *base.WithdrawInfo,
 	sideChainTransactionHashes []string, mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 

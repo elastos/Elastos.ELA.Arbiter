@@ -6,6 +6,7 @@ import (
 
 type MainchainMsgListener interface {
 	OnReceivedSignMsg(id peer2.PID, content []byte)
+	OnReceivedIllegalEvidenceMsg(id peer2.PID, content []byte)
 }
 
 type SidechainMsgListener interface {
