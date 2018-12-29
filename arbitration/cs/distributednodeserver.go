@@ -5,8 +5,8 @@ import (
 	"errors"
 	"sync"
 
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
@@ -24,8 +24,7 @@ const (
 type DistributedNodeServer struct {
 	mux              *sync.Mutex
 	withdrawMux      *sync.Mutex
-	P2pCommand       string
-	unsolvedContents map[common.Uint256]DistributedContent
+	unsolvedContents map[common.Uint256]base.DistributedContent
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -36,11 +35,11 @@ func (dns *DistributedNodeServer) tryInit() {
 		dns.withdrawMux = new(sync.Mutex)
 	}
 	if dns.unsolvedContents == nil {
-		dns.unsolvedContents = make(map[common.Uint256]DistributedContent)
+		dns.unsolvedContents = make(map[common.Uint256]base.DistributedContent)
 	}
 }
 
-func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]DistributedContent {
+func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]base.DistributedContent {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 	return dns.unsolvedContents
@@ -48,14 +47,14 @@ func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]Dist
 
 func CreateRedeemScript() ([]byte, error) {
 	var publicKeys []*crypto.PublicKey
-	for _, arStr := range ArbitratorGroupSingleton.GetAllArbitrators() {
-		temp, err := PublicKeyFromString(arStr)
+	for _, arStr := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
+		temp, err := base.PublicKeyFromString(arStr)
 		if err != nil {
 			return nil, err
 		}
 		publicKeys = append(publicKeys, temp)
 	}
-	redeemScript, err := CreateWithdrawRedeemScript(
+	redeemScript, err := base.CreateWithdrawRedeemScript(
 		getTransactionAgreementArbitratorsCount(), publicKeys)
 	if err != nil {
 		return nil, err
@@ -68,8 +67,7 @@ func getTransactionAgreementArbitratorsCount() int {
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
-	msg := &SignMessage{
-		Command: dns.P2pCommand,
+	msg := &DistributedItemMessage{
 		Content: content,
 	}
 
@@ -79,7 +77,7 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transaction) error {
 
-	proposal, err := dns.generateWithdrawProposal(&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
+	proposal, err := dns.generateDistributedProposal(&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
 	}
@@ -89,10 +87,22 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transacti
 	return nil
 }
 
-func (dns *DistributedNodeServer) generateWithdrawProposal(itemContent DistributedContent, itemFunc DistrubutedItemFunc) ([]byte, error) {
+func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *base.SidechainIllegalData) error {
+
+	proposal, err := dns.generateDistributedProposal(&IllegalDistributedContent{Evidence: data}, &DistrubutedItemFuncImpl{})
+	if err != nil {
+		return err
+	}
+
+	dns.sendToArbitrator(proposal)
+
+	return nil
+}
+
+func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.DistributedContent, itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
-	currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
 	if err != nil {
 		return nil, err

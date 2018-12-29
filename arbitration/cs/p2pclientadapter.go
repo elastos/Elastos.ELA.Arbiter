@@ -24,9 +24,7 @@ var P2PClientSingleton *arbitratorsNetwork
 
 const (
 	//len of message need to less than 12
-	WithdrawCommand                = "withdraw"
-	ComplainCommand                = "complain"
-	IllegalEvidence                = "illegal"
+	DistributeItemCommand          = "disitem"
 	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
 	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
 )
@@ -171,23 +169,13 @@ func (n *arbitratorsNetwork) handleMessage(pid peer.PID, msg elap2p.Message) {
 func (n *arbitratorsNetwork) processMessage(msgItem *messageItem) {
 	m := msgItem.Message
 	switch m.CMD() {
-	case WithdrawCommand:
-		withdraw, processed := m.(*SignMessage)
+	case DistributeItemCommand:
+		withdraw, processed := m.(*DistributedItemMessage)
 		if processed {
 			for _, v := range n.mainchainListeners {
 				v.OnReceivedSignMsg(msgItem.ID, withdraw.Content)
 			}
 		}
-	case IllegalEvidence:
-		illegal, processed := m.(*IllegalEvidenceMessage)
-		if processed {
-			for _, v := range n.mainchainListeners {
-				content := new(bytes.Buffer)
-				illegal.Serialize(content)
-				v.OnReceivedIllegalEvidenceMsg(msgItem.ID, content.Bytes())
-			}
-		}
-	case ComplainCommand:
 	case GetLastArbiterUsedUtxoCommand:
 		getUtxo, processed := m.(*GetLastArbiterUsedUTXOMessage)
 		if processed {
@@ -335,10 +323,8 @@ func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 
 func makeEmptyMessage(cmd string) (message elap2p.Message, err error) {
 	switch cmd {
-	case WithdrawCommand:
-		message = &SignMessage{Command: WithdrawCommand}
-	case ComplainCommand:
-		message = &SignMessage{Command: ComplainCommand}
+	case DistributeItemCommand:
+		message = &DistributedItemMessage{}
 	case GetLastArbiterUsedUtxoCommand:
 		message = &GetLastArbiterUsedUTXOMessage{Command: GetLastArbiterUsedUtxoCommand}
 	case SendLastArbiterUsedUtxoCommand:

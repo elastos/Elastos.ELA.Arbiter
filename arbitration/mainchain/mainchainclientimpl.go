@@ -13,10 +13,6 @@ type MainChainClientImpl struct {
 
 func (client *MainChainClientImpl) OnReceivedSignMsg(id peer.PID, content []byte) {
 	if err := client.OnReceivedProposal(id, content); err != nil {
-		log.Error("[OnReceivedSignMsg] mainchain client received sign message error: ", err)
+		log.Error("[OnReceivedSignMsg] mainchain client received distributed item message error: ", err)
 	}
-}
-
-func (client *MainChainClientImpl) OnReceivedIllegalEvidenceMsg(id peer.PID, content []byte) {
-	//todo complete me
 }

@@ -10,7 +10,6 @@ import (
 )
 
 type DistributedNodeClient struct {
-	P2pCommand string
 }
 
 type DistributedNodeClientFunc interface {
@@ -78,8 +77,7 @@ func (client *DistributedNodeClient) Feedback(id peer.PID, item *DistributedItem
 		return errors.New("Send complaint failed.")
 	}
 
-	return P2PClientSingleton.SendMessageToPeer(id, &SignMessage{
-		Command: client.P2pCommand,
+	return P2PClientSingleton.SendMessageToPeer(id, &DistributedItemMessage{
 		Content: messageReader.Bytes(),
 	})
 }

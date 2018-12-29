@@ -39,7 +39,7 @@ func (monitor *SideChainAccountMonitorImpl) RemoveListener(account string) error
 	}
 
 	if _, ok := monitor.accountListenerMap[account]; !ok {
-		return errors.New("Do not exist listener.")
+		return errors.New("do not exist listener")
 	}
 	delete(monitor.accountListenerMap, account)
 	return nil
@@ -52,10 +52,23 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*base.With
 
 	item, ok := monitor.accountListenerMap[genesisBlockAddress]
 	if !ok {
-		return errors.New("Fired unknown listener.")
+		return errors.New("fired unknown listener")
 	}
 
 	return item.OnUTXOChanged(txinfos, blockHeight)
+}
+
+func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *base.SidechainIllegalData) error {
+	if monitor.accountListenerMap == nil {
+		return nil
+	}
+
+	item, ok := monitor.accountListenerMap[evidence.GenesisBlockAddress]
+	if !ok {
+		return errors.New("fired unknown listener")
+	}
+
+	return item.OnIllegalEvidenceFound(evidence)
 }
 
 func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
@@ -68,13 +81,16 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				if currentHeight >= 6 {
 					transactions, err := rpc.GetWithdrawTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
 					if err != nil {
-						log.Error("Get destoryed transaction at height:", currentHeight+1-6, "failed\n"+
+						log.Error("get destroyed transaction at height:", currentHeight+1-6, "failed\n"+
 							"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
 							"error:", err)
 						break
 					}
 					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
 				}
+
+				//todo call fireIllegalEvidenceFound if found illegal evidence from sidechain rpc
+
 				// Update wallet height
 				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight+1)
 				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)

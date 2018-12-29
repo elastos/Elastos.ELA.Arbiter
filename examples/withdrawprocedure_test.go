@@ -70,7 +70,7 @@ func ExampleNormalWithdraw() {
 	//let's suppose we get the object of current on duty arbitrator
 	arbitrator := arbitrator.ArbitratorImpl{}
 	mc := &mainchain.MainChainImpl{
-		&cs.DistributedNodeServer{P2pCommand: cs.WithdrawCommand},
+		&cs.DistributedNodeServer{},
 	}
 	arbitrator.SetMainChain(mc)
 	ArbitratorGroupSingleton.InitArbitratorsByStrings(

@@ -69,8 +69,8 @@ func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisA
 	ready := sc.Ready
 	txs := sc.ToSendTransactionHashes
 	sc.mux.Unlock()
-	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, scKey", scKey, "genesisAddress:", genesisAddress)
-	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
+	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received message, scKey", scKey, "genesisAddress:", genesisAddress)
+	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received message, received height:", height, "my height:", sc.LastUsedUtxoHeight)
 	if scKey == genesisAddress && scHeight <= height {
 		sc.mux.Lock()
 		sc.ReceivedUsedUtxoMsgNumber++
@@ -100,7 +100,7 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(id dpeer.PID, height uin
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	if sc.GetKey() == genesisAddress {
-		log.Info("[ReceiveGetLastArbiterUsedUtxos] Received mssage, need height:", height, "my height:", sc.LastUsedUtxoHeight)
+		log.Info("[ReceiveGetLastArbiterUsedUtxos] Received message, need height:", height, "my height:", sc.LastUsedUtxoHeight)
 		if sc.LastUsedUtxoHeight >= height {
 			var number = make([]byte, 8)
 			var nonce int64
@@ -221,10 +221,10 @@ func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 func (sc *SideChainImpl) GetExchangeRate() (float64, error) {
 	con := sc.getCurrentConfig()
 	if con == nil {
-		return 0, errors.New("Get exchange rate failed, side chain has no config")
+		return 0, errors.New("get exchange rate failed, side chain has no config")
 	}
 	if sc.getCurrentConfig().ExchangeRate <= 0 {
-		return 0, errors.New("Get exchange rate failed, invalid exchange rate")
+		return 0, errors.New("get exchange rate failed, invalid exchange rate")
 	}
 
 	return sc.getCurrentConfig().ExchangeRate, nil
@@ -284,6 +284,11 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*base.WithdrawTx, blockHeight u
 	}
 
 	log.Info("[OnUTXOChanged] Find ", len(txs), "withdraw transaction, add into dbcache")
+	return nil
+}
+
+func (sc *SideChainImpl) OnIllegalEvidenceFound(evidence *base.SidechainIllegalData) error {
+	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().BroadcastSidechainIllegalData(evidence)
 	return nil
 }
 

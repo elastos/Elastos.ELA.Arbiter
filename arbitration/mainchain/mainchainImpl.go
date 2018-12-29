@@ -98,12 +98,8 @@ func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain arbitrat
 
 func (mc *MainChainImpl) OnReceivedSignMsg(id peer2.PID, content []byte) {
 	if err := mc.ReceiveProposalFeedback(content); err != nil {
-		log.Error("[OnReceivedSignMsg] mainchain received sign message error: ", err)
+		log.Error("[OnReceivedSignMsg] mainchain received distributed item message error: ", err)
 	}
-}
-
-func (mc *MainChainImpl) OnReceivedIllegalEvidenceMsg(id peer2.PID, content []byte) {
-	//todo complete me
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChain, withdrawInfo *base.WithdrawInfo,
@@ -479,11 +475,11 @@ func InitMainChain(ar arbitrator.Arbitrator) error {
 		return errors.New("Unknown arbitrator type.")
 	}
 
-	mainChainServer := &MainChainImpl{&cs.DistributedNodeServer{P2pCommand: cs.WithdrawCommand}}
+	mainChainServer := &MainChainImpl{&cs.DistributedNodeServer{}}
 	cs.P2PClientSingleton.AddMainchainListener(mainChainServer)
 	currentArbitrator.SetMainChain(mainChainServer)
 
-	mainChainClient := &MainChainClientImpl{&cs.DistributedNodeClient{P2pCommand: cs.WithdrawCommand}}
+	mainChainClient := &MainChainClientImpl{&cs.DistributedNodeClient{}}
 	cs.P2PClientSingleton.AddMainchainListener(mainChainClient)
 	currentArbitrator.SetMainChainClient(mainChainClient)
 

@@ -50,6 +50,8 @@ type Arbitrator interface {
 	BroadcastWithdrawProposal(txns []*types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
+	BroadcastSidechainIllegalData(data *SidechainIllegalData)
+
 	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
 
@@ -219,6 +221,12 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*types.Transaction) {
 		if err != nil {
 			log.Warn(err.Error())
 		}
+	}
+}
+
+func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *SidechainIllegalData) {
+	if err := ar.mainChainImpl.BroadcastSidechainIllegalData(data); err != nil {
+		log.Warn(err.Error())
 	}
 }
 

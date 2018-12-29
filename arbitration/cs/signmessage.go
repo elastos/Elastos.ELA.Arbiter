@@ -7,24 +7,23 @@ import (
 	"github.com/elastos/Elastos.ELA/p2p/msg"
 )
 
-type SignMessage struct {
-	Command string
+type DistributedItemMessage struct {
 	Content []byte
 }
 
-func (s *SignMessage) CMD() string {
-	return s.Command
+func (s *DistributedItemMessage) CMD() string {
+	return DistributeItemCommand
 }
 
-func (s *SignMessage) MaxLength() uint32 {
+func (s *DistributedItemMessage) MaxLength() uint32 {
 	return msg.MaxBlockSize
 }
 
-func (s *SignMessage) Serialize(w io.Writer) error {
+func (s *DistributedItemMessage) Serialize(w io.Writer) error {
 	return common.WriteVarBytes(w, s.Content)
 }
 
-func (s *SignMessage) Deserialize(r io.Reader) error {
+func (s *DistributedItemMessage) Deserialize(r io.Reader) error {
 	content, err := common.ReadVarBytes(r, msg.MaxBlockSize, "Content")
 	if err != nil {
 		return err
