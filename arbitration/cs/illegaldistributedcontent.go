@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type IllegalDistributedContent struct {
-	Evidence *base.SidechainIllegalData
+	Evidence *types.SidechainIllegalData
 
 	hash *common.Uint256
 }

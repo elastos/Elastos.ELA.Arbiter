@@ -13,6 +13,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type SideChainAccountMonitorImpl struct {
@@ -58,7 +59,7 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*base.With
 	return item.OnUTXOChanged(txinfos, blockHeight)
 }
 
-func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *base.SidechainIllegalData) error {
+func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *types.SidechainIllegalData) error {
 	if monitor.accountListenerMap == nil {
 		return nil
 	}

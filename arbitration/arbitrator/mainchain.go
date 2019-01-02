@@ -13,7 +13,7 @@ type MainChain interface {
 		sideChainTransactionHashes []string, mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
-	BroadcastSidechainIllegalData(data *base.SidechainIllegalData) error
+	BroadcastSidechainIllegalData(data *types.SidechainIllegalData) error
 	ReceiveProposalFeedback(content []byte) error
 
 	SyncMainChainCachedTxs() error

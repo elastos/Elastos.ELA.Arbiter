@@ -87,7 +87,7 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transacti
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *base.SidechainIllegalData) error {
+func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *types.SidechainIllegalData) error {
 
 	proposal, err := dns.generateDistributedProposal(&IllegalDistributedContent{Evidence: data}, &DistrubutedItemFuncImpl{})
 	if err != nil {

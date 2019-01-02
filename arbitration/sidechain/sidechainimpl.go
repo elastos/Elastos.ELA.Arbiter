@@ -287,7 +287,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*base.WithdrawTx, blockHeight u
 	return nil
 }
 
-func (sc *SideChainImpl) OnIllegalEvidenceFound(evidence *base.SidechainIllegalData) error {
+func (sc *SideChainImpl) OnIllegalEvidenceFound(evidence *types.SidechainIllegalData) error {
 	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().BroadcastSidechainIllegalData(evidence)
 	return nil
 }
