@@ -102,6 +102,7 @@ out:
 		select {
 		case p := <-c.newPeers:
 			log.Debugf("p2pclient new peer %v", p)
+			peers[p] = struct{}{}
 			p.AddMessageFunc(c.handleMessage)
 
 		case p := <-c.donePeers:
@@ -111,6 +112,7 @@ out:
 				continue
 			}
 
+			delete(peers, p)
 			log.Debugf("p2pclient done peer %v", p)
 
 		case <-c.quit:
@@ -192,11 +194,13 @@ func (c *p2pclient) AddMessageHash(msgHash common.Uint256) bool {
 }
 
 func (c *p2pclient) Broadcast(msg p2p.Message) {
-	log.Debug("[Broadcast] start")
-	defer log.Debug("[Broadcast] end")
+	log.Debug("[Broadcast] msg:", msg.CMD())
 
-	log.Debug("Broadcast peers", c.server.ConnectedPeers())
-	c.server.BroadcastMessage(msg)
+	go func() {
+		log.Debug("Broadcast peers", c.server.ConnectedPeers())
+		c.server.BroadcastMessage(msg)
+	}()
+
 }
 
 func (c *p2pclient) handleMessage(peer *peer.Peer, msg p2p.Message) {
