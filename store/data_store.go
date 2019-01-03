@@ -14,8 +14,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+	. "github.com/elastos/Elastos.ELA/common"
+	. "github.com/elastos/Elastos.ELA/core/types"
 	_ "github.com/mattn/go-sqlite3"
 )
 

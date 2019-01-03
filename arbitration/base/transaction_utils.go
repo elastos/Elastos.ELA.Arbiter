@@ -5,21 +5,22 @@ import (
 	"errors"
 	"strings"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	. "github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 const (
 	DESTROY_ADDRESS = "0000000000000000000000000000000000"
 )
 
-func PublicKeyFromString(str string) (*PublicKey, error) {
+func PublicKeyFromString(str string) (*crypto.PublicKey, error) {
 	keyBytes, err := HexStringToBytes(strings.TrimSpace(str))
 	if err != nil {
 		return nil, err
 	}
-	publicKey, err := DecodePoint(keyBytes)
+	publicKey, err := crypto.DecodePoint(keyBytes)
 	if err != nil {
 		return nil, err
 	}
@@ -27,16 +28,12 @@ func PublicKeyFromString(str string) (*PublicKey, error) {
 	return publicKey, nil
 }
 
-func StandardAcccountPublicKeyToProgramHash(key *PublicKey) (*Uint168, error) {
-	targetRedeemScript, err := CreateStandardRedeemScript(key)
+func StandardAcccountPublicKeyToProgramHash(key *crypto.PublicKey) (*Uint168, error) {
+	c, err := contract.CreateStandardContractByPubKey(key)
 	if err != nil {
 		return nil, err
 	}
-	targetProgramHash, err := ToProgramHash(targetRedeemScript)
-	if err != nil {
-		return nil, err
-	}
-	return targetProgramHash, err
+	return c.ToProgramHash()
 }
 
 func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (int, error) {
@@ -47,21 +44,21 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (
 		param = []byte{}
 	} else {
 		// Check if singer already signed
-		publicKeys, err := ParseCrossChainScript(txn.Programs[0].Code)
+		publicKeys, err := crypto.ParseCrossChainScript(txn.Programs[0].Code)
 		if err != nil {
 			return 0, err
 		}
 		buf := new(bytes.Buffer)
 		txn.Serialize(buf)
-		for i := 0; i < len(param); i += SignatureScriptLength {
+		for i := 0; i < len(param); i += crypto.SignatureScriptLength {
 			// Remove length byte
-			sign := param[i : i+SignatureScriptLength][1:]
+			sign := param[i : i+crypto.SignatureScriptLength][1:]
 			publicKey := publicKeys[signerIndex][1:]
-			pubKey, err := DecodePoint(publicKey)
+			pubKey, err := crypto.DecodePoint(publicKey)
 			if err != nil {
 				return 0, err
 			}
-			err = Verify(*pubKey, buf.Bytes(), sign)
+			err = crypto.Verify(*pubKey, buf.Bytes(), sign)
 			if err == nil {
 				return 0, errors.New("signer already signed")
 			}
@@ -73,7 +70,7 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *Transaction) (
 	buf.Write(newSign)
 
 	txn.Programs[0].Parameter = buf.Bytes()
-	return len(txn.Programs[0].Parameter) / (SignatureScriptLength - 1), nil
+	return len(txn.Programs[0].Parameter) / (crypto.SignatureScriptLength - 1), nil
 }
 
 func GetHeightTransactionHashesMap(txs []string, blockHeights []uint32) map[uint32][]string {
@@ -139,5 +136,5 @@ func genesisProgramHash(genesisHash Uint256) (*Uint168, error) {
 	buf.Write(genesisHash.Bytes())
 	buf.WriteByte(byte(CROSSCHAIN))
 
-	return ToProgramHash(buf.Bytes())
+	return ToProgramHash(PrefixCrossChain, buf.Bytes()), nil
 }

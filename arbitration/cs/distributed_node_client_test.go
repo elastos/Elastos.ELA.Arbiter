@@ -10,8 +10,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	. "github.com/elastos/Elastos.ELA/core/types"
 	"github.com/stretchr/testify/assert"
 )
 

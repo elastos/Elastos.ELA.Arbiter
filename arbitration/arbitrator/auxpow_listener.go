@@ -10,9 +10,10 @@ import (
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SPV/interface/iutil"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
-	ela "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	ela "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/p2p/msg"
 )
 
 type AuxpowListener struct {
@@ -96,14 +97,14 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 	}
 
 	// send submit block
-	payload, ok := task.tx.Payload.(*ela.PayloadSideChainPow)
+	p, ok := task.tx.Payload.(*payload.PayloadSideChainPow)
 	if !ok {
 		log.Error("Invalid payload type.")
 		return
 	}
-	blockhashString := payload.SideBlockHash.String()
-	genesishashString := payload.SideGenesisHash.String()
-	blockHeight := payload.BlockHeight
+	blockhashString := p.SideBlockHash.String()
+	genesishashString := p.SideGenesisHash.String()
+	blockHeight := p.BlockHeight
 
 	sideAuxpowData := sideAuxpowBuf.Bytes()
 	sideAuxpowString := common.BytesToHexString(sideAuxpowData)
@@ -143,13 +144,13 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 		return
 	}
 
-	sideChain.UpdateLastNotifySideMiningHeight(payload.SideGenesisHash)
+	sideChain.UpdateLastNotifySideMiningHeight(p.SideGenesisHash)
 	err = sideChain.SubmitAuxpow(genesishashString, blockhashString, sideAuxpowString)
 	if err != nil {
 		log.Error("[Notify-Auxpow] Submit SideAuxpow error: ", err)
 		return
 	}
-	sideChain.UpdateLastSubmitAuxpowHeight(payload.SideGenesisHash)
+	sideChain.UpdateLastSubmitAuxpowHeight(p.SideGenesisHash)
 }
 
 func (l *AuxpowListener) start() {

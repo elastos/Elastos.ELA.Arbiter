@@ -11,12 +11,12 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/server"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/msg"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
+	"github.com/elastos/Elastos.ELA/p2p/server"
 )
 
 var P2PClientSingleton *p2pclient
@@ -236,9 +236,9 @@ func makeEmptyMessage(cmd string) (message p2p.Message, err error) {
 	case p2p.CmdNotFound:
 		message = new(msg.NotFound)
 	case p2p.CmdTx:
-		message = msg.NewTx(new(core.Transaction))
+		message = msg.NewTx(new(types.Transaction))
 	case p2p.CmdMerkleBlock:
-		message = msg.NewMerkleBlock(new(core.Header))
+		message = msg.NewMerkleBlock(new(types.Header))
 	case p2p.CmdReject:
 		message = new(msg.Reject)
 	case WithdrawCommand:

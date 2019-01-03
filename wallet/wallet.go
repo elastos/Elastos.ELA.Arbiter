@@ -8,13 +8,16 @@ import (
 	"math/rand"
 	"strconv"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/account"
+	. "github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 type Transfer struct {
@@ -113,7 +116,7 @@ func (wallet *WalletImpl) CreateLockedTransaction(txType TransactionType, txPayl
 
 func (wallet *WalletImpl) CreateMultiOutputTransaction(fromAddress string, fee *Fixed64, redeemScript []byte, currentHeight uint32, outputs ...*Transfer) (*Transaction, error) {
 	txType := TransferAsset
-	txPayload := &PayloadTransferAsset{}
+	txPayload := &payload.PayloadTransferAsset{}
 	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, redeemScript, uint32(0), currentHeight, outputs...)
 }
 
@@ -293,7 +296,7 @@ func (wallet *WalletImpl) Sign(name string, password []byte, txn *Transaction) (
 func (wallet *WalletImpl) signStandardTransaction(password []byte, txn *Transaction) (*Transaction, error) {
 	code := txn.Programs[0].Code
 	// Get signer
-	programHash, err := crypto.GetSigner(code)
+	programHash := ToProgramHash(STANDARD, code)
 	// Check if current user is a valid signer
 	if *programHash != *wallet.Keystore.GetProgramHash() {
 		return nil, errors.New("[Wallet], Invalid signer")
@@ -318,13 +321,13 @@ func (wallet *WalletImpl) signMultiSignTransaction(password []byte, txn *Transac
 	param := txn.Programs[0].Parameter
 	// Check if current user is a valid signer
 	var signerIndex = -1
-	programHashes, err := crypto.GetCrossChainSigners(code)
+	programHashes, err := account.GetCorssChainSigners(code)
 	if err != nil {
 		return nil, err
 	}
 	userProgramHash := wallet.Keystore.GetProgramHash()
 	for i, programHash := range programHashes {
-		if *userProgramHash == *programHash {
+		if userProgramHash.ToCodeHash().IsEqual(*programHash) {
 			signerIndex = i
 			break
 		}
@@ -370,7 +373,7 @@ func (wallet *WalletImpl) newTransaction(txType TransactionType, txPayload Paylo
 	attributes := make([]*Attribute, 0)
 	attributes = append(attributes, &txAttr)
 	// Create program
-	var program = &Program{redeemScript, nil}
+	var p = &program.Program{redeemScript, nil}
 	// Create transaction
 	return &Transaction{
 		TxType:     txType,
@@ -378,7 +381,7 @@ func (wallet *WalletImpl) newTransaction(txType TransactionType, txPayload Paylo
 		Attributes: attributes,
 		Inputs:     inputs,
 		Outputs:    outputs,
-		Programs:   []*Program{program},
+		Programs:   []*program.Program{p},
 		LockTime:   currentHeight - 1,
 	}
 }

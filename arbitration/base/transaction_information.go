@@ -5,8 +5,8 @@ import (
 	"io"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type WithdrawAsset struct {
@@ -25,14 +25,14 @@ type WithdrawTx struct {
 }
 
 type SpvTransaction struct {
-	MainChainTransaction *core.Transaction
+	MainChainTransaction *types.Transaction
 	Proof                *bloom.MerkleProof
 }
 
 type MainChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
-	Transaction         *core.Transaction
+	Transaction         *types.Transaction
 	Proof               *bloom.MerkleProof
 }
 

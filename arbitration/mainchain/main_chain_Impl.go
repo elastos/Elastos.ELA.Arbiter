@@ -14,10 +14,12 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
-	. "github.com/elastos/Elastos.ELA/core"
+	. "github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 type MainChainImpl struct {
@@ -245,11 +247,11 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		txHashes = append(txHashes, *txHash)
 	}
 
-	txPayload := &PayloadWithdrawFromSideChain{
+	txPayload := &payload.PayloadWithdrawFromSideChain{
 		BlockHeight:                chainHeight,
 		GenesisBlockAddress:        withdrawBank,
 		SideChainTransactionHashes: txHashes}
-	program := &Program{redeemScript, nil}
+	p := &program.Program{redeemScript, nil}
 
 	// Create attributes
 	txAttr := NewAttribute(Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
@@ -262,7 +264,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		Attributes: attributes,
 		Inputs:     txInputs,
 		Outputs:    txOutputs,
-		Programs:   []*Program{program},
+		Programs:   []*program.Program{p},
 		LockTime:   uint32(0),
 	}, nil
 }

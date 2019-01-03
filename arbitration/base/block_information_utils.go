@@ -6,19 +6,21 @@ import (
 	"errors"
 
 	"github.com/elastos/Elastos.ELA.SideChain/types"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/auxpow"
-	. "github.com/elastos/Elastos.ELA/core"
+	. "github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	elat "github.com/elastos/Elastos.ELA/core/types"
+	elap "github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 var SystemAssetId = getSystemAssetId()
 
 func getSystemAssetId() Uint256 {
-	systemToken := &Transaction{
-		TxType:         RegisterAsset,
+	systemToken := &elat.Transaction{
+		TxType:         elat.RegisterAsset,
 		PayloadVersion: 0,
-		Payload: &PayloadRegisterAsset{
-			Asset: Asset{
+		Payload: &elap.PayloadRegisterAsset{
+			Asset: elap.Asset{
 				Name:      "ELA",
 				Precision: 0x08,
 				AssetType: 0x00,
@@ -26,19 +28,19 @@ func getSystemAssetId() Uint256 {
 			Amount:     0 * 100000000,
 			Controller: Uint168{},
 		},
-		Attributes: []*Attribute{},
-		Inputs:     []*Input{},
-		Outputs:    []*Output{},
-		Programs:   []*Program{},
+		Attributes: []*elat.Attribute{},
+		Inputs:     []*elat.Input{},
+		Outputs:    []*elat.Output{},
+		Programs:   []*program.Program{},
 	}
 	return systemToken.Hash()
 }
 
-func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
+func PayloadInfoToTransPayload(plInfo PayloadInfo) (elat.Payload, error) {
 
 	switch object := plInfo.(type) {
 	case *RegisterAssetInfo:
-		obj := new(PayloadRegisterAsset)
+		obj := new(elap.PayloadRegisterAsset)
 		obj.Asset = *object.Asset
 		amount, err := StringToFixed64(object.Amount)
 		if err != nil {
@@ -53,7 +55,7 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		obj.Controller = *controller
 		return obj, nil
 	case *TransferAssetInfo:
-		return new(PayloadTransferAsset), nil
+		return new(elap.PayloadTransferAsset), nil
 	case *RechargeToSideChainInfoV0:
 		obj := new(types.PayloadRechargeToSideChain)
 		proofBytes, err := HexStringToBytes(object.Proof)
@@ -76,7 +78,7 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		obj.MainChainTransactionHash = *hash
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
-		obj := new(PayloadTransferCrossChainAsset)
+		obj := new(elap.PayloadTransferCrossChainAsset)
 		obj.CrossChainAddresses = make([]string, 0)
 		obj.OutputIndexes = make([]uint64, 0)
 		obj.CrossChainAmounts = make([]Fixed64, 0)
@@ -95,17 +97,17 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 	return nil, errors.New("Invalid payload type.")
 }
 
-func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
+func (txInfo *TransactionInfo) ToTransaction() (*elat.Transaction, error) {
 
 	txPaload, err := PayloadInfoToTransPayload(txInfo.Payload)
 	if err != nil {
 		return nil, err
 	}
 
-	var txAttribute []*Attribute
+	var txAttribute []*elat.Attribute
 	for _, att := range txInfo.Attributes {
 		var attData []byte
-		if att.Usage == Nonce {
+		if att.Usage == elat.Nonce {
 			attData = []byte(att.Data)
 		} else {
 			attData, err = HexStringToBytes(att.Data)
@@ -113,14 +115,14 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 				return nil, err
 			}
 		}
-		txAttr := &Attribute{
+		txAttr := &elat.Attribute{
 			Usage: att.Usage,
 			Data:  attData,
 		}
 		txAttribute = append(txAttribute, txAttr)
 	}
 
-	var txUTXOTxInput []*Input
+	var txUTXOTxInput []*elat.Input
 	for _, input := range txInfo.Inputs {
 		txID, err := HexStringToBytes(input.TxID)
 		if err != nil {
@@ -130,8 +132,8 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		utxoInput := &Input{
-			Previous: OutPoint{
+		utxoInput := &elat.Input{
+			Previous: elat.OutPoint{
 				TxID:  *referID,
 				Index: input.VOut,
 			},
@@ -140,7 +142,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txUTXOTxInput = append(txUTXOTxInput, utxoInput)
 	}
 
-	var txOutputs []*Output
+	var txOutputs []*elat.Output
 	for _, output := range txInfo.Outputs {
 		value, err := StringToFixed64(output.Value)
 		if err != nil {
@@ -155,7 +157,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 				return nil, err
 			}
 		}
-		output := &Output{
+		output := &elat.Output{
 			AssetID:     SystemAssetId,
 			Value:       *value,
 			OutputLock:  output.OutputLock,
@@ -164,7 +166,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		txOutputs = append(txOutputs, output)
 	}
 
-	var txPrograms []*Program
+	var txPrograms []*program.Program
 	for _, pgrm := range txInfo.Programs {
 		code, err := HexStringToBytes(pgrm.Code)
 		if err != nil {
@@ -174,14 +176,14 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 		if err != nil {
 			return nil, err
 		}
-		txProgram := &Program{
+		txProgram := &program.Program{
 			Code:      code,
 			Parameter: parameter,
 		}
 		txPrograms = append(txPrograms, txProgram)
 	}
 
-	txTransaction := &Transaction{
+	txTransaction := &elat.Transaction{
 		TxType:         txInfo.TxType,
 		PayloadVersion: txInfo.PayloadVersion,
 		Payload:        txPaload,
@@ -193,7 +195,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 	return txTransaction, nil
 }
 
-func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
+func GetBlockHeader(blInfo *BlockInfo) (*elat.Header, error) {
 
 	previousBytes, err := HexStringToBytes(blInfo.PreviousBlockHash)
 	if err != nil {
@@ -224,7 +226,7 @@ func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
 		return nil, err
 	}
 
-	return &Header{
+	return &elat.Header{
 		Version:    blInfo.Version,
 		Previous:   *previous,
 		MerkleRoot: *merkleRoot,
@@ -236,14 +238,14 @@ func GetBlockHeader(blInfo *BlockInfo) (*Header, error) {
 	}, nil
 }
 
-func (blInfo *BlockInfo) ToBlock() (*Block, error) {
+func (blInfo *BlockInfo) ToBlock() (*elat.Block, error) {
 
 	header, err := GetBlockHeader(blInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	var transactions []*Transaction
+	var transactions []*elat.Transaction
 	for _, txInfo := range blInfo.Tx {
 		switch txInfo.(type) {
 		case *TransactionInfo:
@@ -264,7 +266,7 @@ func (blInfo *BlockInfo) ToBlock() (*Block, error) {
 		}
 	}
 
-	return &Block{
+	return &elat.Block{
 		Header:       *header,
 		Transactions: transactions,
 	}, nil

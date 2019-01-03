@@ -1,8 +1,9 @@
 package base
 
 import (
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type ProgramInfo struct {
@@ -11,18 +12,18 @@ type ProgramInfo struct {
 }
 
 type TxoutputMap struct {
-	Key   Uint256
+	Key   common.Uint256
 	Txout []OutputInfo
 }
 
 type AmountMap struct {
-	Key   Uint256
-	Value Fixed64
+	Key   common.Uint256
+	Value common.Fixed64
 }
 
 type AttributeInfo struct {
-	Usage AttributeUsage `json:"usage"`
-	Data  string         `json:"data"`
+	Usage types.AttributeUsage `json:"usage"`
+	Data  string               `json:"data"`
 }
 
 type InputInfo struct {
@@ -39,23 +40,23 @@ type OutputInfo struct {
 }
 
 type TransactionInfo struct {
-	TxId           string          `json:"txid"`
-	Hash           string          `json:"hash"`
-	Size           uint32          `json:"size"`
-	VSize          uint32          `json:"vsize"`
-	Version        uint32          `json:"version"`
-	LockTime       uint32          `json:"locktime"`
-	Inputs         []InputInfo     `json:"vin"`
-	Outputs        []OutputInfo    `json:"vout"`
-	BlockHash      string          `json:"blockhash"`
-	Confirmations  uint32          `json:"confirmations"`
-	Time           uint32          `json:"time"`
-	BlockTime      uint32          `json:"blocktime"`
-	TxType         TransactionType `json:"type"`
-	PayloadVersion byte            `json:"payloadversion"`
-	Payload        PayloadInfo     `json:"payload"`
-	Attributes     []AttributeInfo `json:"attributes"`
-	Programs       []ProgramInfo   `json:"programs"`
+	TxId           string                `json:"txid"`
+	Hash           string                `json:"hash"`
+	Size           uint32                `json:"size"`
+	VSize          uint32                `json:"vsize"`
+	Version        uint32                `json:"version"`
+	LockTime       uint32                `json:"locktime"`
+	Inputs         []InputInfo           `json:"vin"`
+	Outputs        []OutputInfo          `json:"vout"`
+	BlockHash      string                `json:"blockhash"`
+	Confirmations  uint32                `json:"confirmations"`
+	Time           uint32                `json:"time"`
+	BlockTime      uint32                `json:"blocktime"`
+	TxType         types.TransactionType `json:"type"`
+	PayloadVersion byte                  `json:"payloadversion"`
+	Payload        PayloadInfo           `json:"payload"`
+	Attributes     []AttributeInfo       `json:"attributes"`
+	Programs       []ProgramInfo         `json:"programs"`
 }
 
 type BlockInfo struct {
@@ -84,7 +85,7 @@ type PayloadInfo interface {
 }
 
 type RegisterAssetInfo struct {
-	Asset      *Asset
+	Asset      *payload.Asset
 	Amount     string
 	Controller string
 }

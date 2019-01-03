@@ -3,8 +3,8 @@ package mainchain
 import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 type MainChainClientImpl struct {

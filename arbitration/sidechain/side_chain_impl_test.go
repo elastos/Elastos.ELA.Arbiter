@@ -12,9 +12,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	abtor "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/bloom"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	. "github.com/elastos/Elastos.ELA/core/types"
 )
 
 func TestClientInit(t *testing.T) {

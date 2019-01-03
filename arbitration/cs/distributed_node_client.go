@@ -9,8 +9,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	ela "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	ela "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type DistributedNodeClient struct {
@@ -50,7 +51,7 @@ func (client *DistributedNodeClient) OnReceivedProposal(content []byte) error {
 		return nil
 	}
 
-	payloadWithdraw, ok := transactionItem.ItemContent.Payload.(*ela.PayloadWithdrawFromSideChain)
+	payloadWithdraw, ok := transactionItem.ItemContent.Payload.(*payload.PayloadWithdrawFromSideChain)
 	if !ok {
 		return errors.New("Unknown payload type.")
 	}
@@ -115,7 +116,7 @@ func (client *DistributedNodeClient) broadcast(message []byte) {
 }
 
 func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeClientFunc) error {
-	payloadWithdraw, ok := txn.Payload.(*ela.PayloadWithdrawFromSideChain)
+	payloadWithdraw, ok := txn.Payload.(*payload.PayloadWithdrawFromSideChain)
 	if !ok {
 		return errors.New("Check withdraw transaction failed, unknown payload type")
 	}

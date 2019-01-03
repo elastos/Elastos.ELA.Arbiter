@@ -1,6 +1,6 @@
 package wallet
 
-import . "github.com/elastos/Elastos.ELA.Utility/common"
+import . "github.com/elastos/Elastos.ELA/common"
 
 const (
 	TypeMaster = 0

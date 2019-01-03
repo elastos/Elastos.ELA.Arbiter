@@ -1,7 +1,7 @@
 package complain
 
 import (
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA/common"
 )
 
 type ComplainItem struct {

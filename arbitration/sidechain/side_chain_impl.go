@@ -17,10 +17,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/p2p"
+	"github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 type SideChainImpl struct {
@@ -31,7 +31,7 @@ type SideChainImpl struct {
 	CurrentConfig *config.SideNodeConfig
 
 	LastUsedUtxoHeight        uint32
-	LastUsedOutPoints         []core.OutPoint
+	LastUsedOutPoints         []types.OutPoint
 	ToSendTransactionHashes   map[uint32][]string
 	ToSendTransactionsHeight  uint32
 	Ready                     bool
@@ -53,7 +53,7 @@ func (client *SideChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) err
 	return nil
 }
 
-func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
+func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []types.OutPoint) error {
 	log.Debug("[ReceiveSendLastArbiterUsedUtxos] start")
 	defer log.Debug("[ReceiveSendLastArbiterUsedUtxos] end")
 
@@ -119,7 +119,7 @@ func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(height uint32, genesisAd
 			if err != nil {
 				return err
 			}
-			var newOutPoints []core.OutPoint
+			var newOutPoints []types.OutPoint
 			for _, op := range sc.LastUsedOutPoints {
 				isContained := false
 				for _, utxo := range utxos {
@@ -156,13 +156,13 @@ func (sc *SideChainImpl) SetLastUsedUtxoHeight(height uint32) {
 	sc.LastUsedUtxoHeight = height
 }
 
-func (sc *SideChainImpl) GetLastUsedOutPoints() []core.OutPoint {
+func (sc *SideChainImpl) GetLastUsedOutPoints() []types.OutPoint {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	return sc.LastUsedOutPoints
 }
 
-func (sc *SideChainImpl) AddLastUsedOutPoints(ops []core.OutPoint) {
+func (sc *SideChainImpl) AddLastUsedOutPoints(ops []types.OutPoint) {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 	for _, op := range ops {
@@ -178,10 +178,10 @@ func (sc *SideChainImpl) AddLastUsedOutPoints(ops []core.OutPoint) {
 	}
 }
 
-func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []core.OutPoint) {
+func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []types.OutPoint) {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
-	var newOutPoints []core.OutPoint
+	var newOutPoints []types.OutPoint
 	for _, outPoint := range sc.LastUsedOutPoints {
 		isContained := false
 		for _, op := range ops {
@@ -200,7 +200,7 @@ func (sc *SideChainImpl) ClearLastUsedOutPoints() {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
 
-	sc.LastUsedOutPoints = make([]core.OutPoint, 0)
+	sc.LastUsedOutPoints = make([]types.OutPoint, 0)
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {

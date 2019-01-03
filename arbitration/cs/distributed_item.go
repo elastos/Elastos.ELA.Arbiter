@@ -8,9 +8,11 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	. "github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	. "github.com/elastos/Elastos.ELA/crypto"
 )
 
 const MaxReedemScriptDataSize = 1000
@@ -56,11 +58,11 @@ func (item *DistributedItem) Sign(arbitrator Arbitrator, isFeedback bool, itemFu
 		return err
 	}
 
-	userRedeemScript, err := CreateStandardRedeemScript(arbitrator.GetPublicKey())
+	c, err := contract.CreateStandardContractByPubKey(arbitrator.GetPublicKey())
 	if err != nil {
 		return err
 	}
-	userProgramHash, err := ToProgramHash(userRedeemScript)
+	userProgramHash, err := c.ToProgramHash()
 	if err != nil {
 		return err
 	}
@@ -196,8 +198,7 @@ func (item *DistributedItem) getMultiSignSigners() ([]*Uint168, error) {
 
 	var signers []*Uint168
 	for _, script := range scripts {
-		script = append(script, STANDARD)
-		hash, _ := ToProgramHash(script)
+		hash := ToProgramHash(STANDARD, script)
 		signers = append(signers, hash)
 	}
 
@@ -265,7 +266,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		targetPk := item.TargetArbitratorPublicKey
 
 		if !item.isForComplain() {
-			withdrawPayload, ok := item.ItemContent.Payload.(*PayloadWithdrawFromSideChain)
+			withdrawPayload, ok := item.ItemContent.Payload.(*payload.PayloadWithdrawFromSideChain)
 			if !ok {
 				return errors.New("Invalid payload type.")
 			}

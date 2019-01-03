@@ -7,7 +7,7 @@ import (
 	"os"
 	"sync"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA/common"
 )
 
 const (
@@ -26,9 +26,14 @@ type KeystoreFile struct {
 	PrivateKeyEncrypted string
 }
 
+func fileExisted(filename string) bool {
+	_, err := os.Stat(filename)
+	return err == nil || os.IsExist(err)
+}
+
 func CreateKeystoreFile(name string) (*KeystoreFile, error) {
 
-	if FileExisted(name) {
+	if fileExisted(name) {
 		return nil, errors.New("key store file already exist")
 	}
 

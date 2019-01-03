@@ -7,9 +7,9 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	. "github.com/elastos/Elastos.ELA/core"
-	ela "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	ela "github.com/elastos/Elastos.ELA/core/types"
 )
 
 type DepositListener struct {

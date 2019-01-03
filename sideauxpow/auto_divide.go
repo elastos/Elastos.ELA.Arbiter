@@ -11,9 +11,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	walt "github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	ela "github.com/elastos/Elastos.ELA/core"
+	. "github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
+	ela "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 type SideChainPowAccount struct {
@@ -74,13 +75,13 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 
 	from := keystore.Address()
 
-	script, err := crypto.CreateStandardRedeemScript(keystore.GetPublicKey())
+	c, err := contract.CreateStandardContractByPubKey(keystore.GetPublicKey())
 	if err != nil {
 		return err
 	}
 
 	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
+	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, c.Code, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
 	if err != nil {
 		return errors.New("create divide transaction failed: " + err.Error())
 	}

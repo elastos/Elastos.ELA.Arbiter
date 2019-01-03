@@ -9,7 +9,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type SideChain interface {
@@ -22,9 +22,9 @@ type SideChain interface {
 
 	SetLastUsedUtxoHeight(height uint32)
 	GetLastUsedUtxoHeight() uint32
-	GetLastUsedOutPoints() []core.OutPoint
-	AddLastUsedOutPoints(ops []core.OutPoint)
-	RemoveLastUsedOutPoints(ops []core.OutPoint)
+	GetLastUsedOutPoints() []types.OutPoint
+	AddLastUsedOutPoints(ops []types.OutPoint)
+	RemoveLastUsedOutPoints(ops []types.OutPoint)
 	ClearLastUsedOutPoints()
 
 	GetExistDepositTransactions(txs []string) ([]string, error)

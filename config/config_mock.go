@@ -5,7 +5,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA/common"
 )
 
 func InitMockConfig() {

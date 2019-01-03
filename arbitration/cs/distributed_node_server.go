@@ -11,9 +11,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/account"
+	"github.com/elastos/Elastos.ELA/common"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 const (
@@ -154,13 +156,13 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Unlock()
 
 	var signerIndex = -1
-	programHashes, err := crypto.GetCrossChainSigners(txn.Programs[0].Code)
+	programHashes, err := account.GetCorssChainSigners(txn.Programs[0].Code)
 	if err != nil {
 		return err
 	}
 	userProgramHash := transactionItem.TargetArbitratorProgramHash
 	for i, programHash := range programHashes {
-		if *userProgramHash == *programHash {
+		if userProgramHash.ToCodeHash().IsEqual(*programHash) {
 			signerIndex = i
 			break
 		}
@@ -179,7 +181,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		delete(dns.unsolvedTransactions, txn.Hash())
 		dns.mux.Unlock()
 
-		withdrawPayload, ok := txn.Payload.(*PayloadWithdrawFromSideChain)
+		withdrawPayload, ok := txn.Payload.(*payload.PayloadWithdrawFromSideChain)
 		if !ok {
 			return errors.New("Received proposal feed back but withdraw transaction has invalid payload")
 		}

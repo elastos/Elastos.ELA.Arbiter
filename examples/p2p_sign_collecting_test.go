@@ -10,16 +10,17 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	. "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/common"
+	. "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 func init() {
 	config.InitMockConfig()
 	arbitrator.Init()
-	log.Init(log.Path, log.Stdout)
+	log.Init("logs_test", 1, 20, 200)
 }
 
 type TestDistrubutedItemFunc struct {

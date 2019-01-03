@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -15,10 +16,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	ela "github.com/elastos/Elastos.ELA/core"
-	"sync"
+	. "github.com/elastos/Elastos.ELA/common"
+	ela "github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 var (
@@ -145,14 +146,14 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 
 	log.Info("sideGenesisHash:", sideGenesisHash, "sideBlockHash:", sideBlockHash)
 	// Create payload
-	txPayload := &ela.PayloadSideChainPow{
+	txPayload := &payload.PayloadSideChainPow{
 		BlockHeight:     sideAuxBlock.Height,
 		SideBlockHash:   *sideBlockHash,
 		SideGenesisHash: *sideGenesisHash,
 	}
 
 	buf := new(bytes.Buffer)
-	txPayload.Serialize(buf, ela.SideChainPowPayloadVersion)
+	txPayload.Serialize(buf, payload.SideChainPowPayloadVersion)
 	txPayload.SignedData, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
 	if err != nil {
 		return err

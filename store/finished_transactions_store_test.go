@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 func TestFinishedTxsDataStoreImpl_AddSucceedDepositTxs(t *testing.T) {

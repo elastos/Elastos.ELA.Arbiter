@@ -11,7 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	. "github.com/elastos/Elastos.ELA/common"
 )
 
 func SubmitComplain(param Params) map[string]interface{} {
