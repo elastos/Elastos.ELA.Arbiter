@@ -5,24 +5,30 @@ import (
 	"database/sql"
 	"math"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 	_ "github.com/mattn/go-sqlite3"
 )
 
+var (
+	DBDocumentNAME  = filepath.Join(config.DataPath, config.DataDir, "arbiter")
+	DBNameUTXO      = filepath.Join(DBDocumentNAME, "chainUTXOCache.db")
+	DBNameMainChain = filepath.Join(DBDocumentNAME, "mainChainCache.db")
+	DBNameSideChain = filepath.Join(DBDocumentNAME, "sideChainCache.db")
+)
+
 const (
-	DriverName      = "sqlite3"
-	DBDocumentNAME  = "./DBCache"
-	DBNameUTXO      = "./DBCache/chainUTXOCache.db"
-	DBNameMainChain = "./DBCache/mainChainCache.db"
-	DBNameSideChain = "./DBCache/sideChainCache.db"
+	DriverName = "sqlite3"
+
 	QueryHeightCode = 0
 	ResetHeightCode = math.MaxUint32
 )
@@ -106,14 +112,14 @@ type DataStoreSideChain interface {
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes() ([]string, error)
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
-	GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error)
-	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error)
+	GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error)
+	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
 }
 
 type DataStoreImpl struct {
-	UTXOStore      DataStoreUTXOImpl
-	MainChainStore DataStoreMainChainImpl
-	SideChainStore DataStoreSideChainImpl
+	UTXOStore      DataStoreUTXO
+	MainChainStore DataStoreMainChain
+	SideChainStore DataStoreSideChain
 }
 
 type DataStoreUTXOImpl struct {
@@ -148,9 +154,9 @@ func OpenDataStore() (*DataStoreImpl, error) {
 		return nil, err
 	}
 	dataStore := &DataStoreImpl{
-		UTXOStore:      DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO},
-		MainChainStore: DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
-		SideChainStore: DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
+		UTXOStore:      &DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO},
+		MainChainStore: &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
+		SideChainStore: &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
 
 	// Handle system interrupt signals
 	dataStore.UTXOStore.catchSystemSignals()
@@ -200,10 +206,13 @@ func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
 }
 
 func initUTXODB() (*sql.DB, error) {
-	err := CheckAndCreateDocument(DBDocumentNAME)
-	if err != nil {
-		log.Error("Create DBCache doucument error:", err)
-		return nil, err
+	arbiterPath := filepath.Join(config.DataPath, config.DataDir, "arbiter")
+	if _, err := os.Stat(arbiterPath); os.IsNotExist(err) {
+		cmd := exec.Command("mkdir", "-p", arbiterPath)
+		if err = cmd.Run(); err != nil {
+			log.Errorf("Create arbiter db dir error: %s\n", err)
+			return nil, err
+		}
 	}
 	db, err := sql.Open(DriverName, DBNameUTXO)
 	if err != nil {
@@ -482,12 +491,9 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 
 	// Do insert
 	for _, tx := range txs {
-		// Serialize transaction
-		buf := new(bytes.Buffer)
-		tx.Transaction.Serialize(buf)
-
-		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, buf.Bytes(), tx.BlockHeight)
+		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
 		if err != nil {
+			log.Error("[AddSideChainTxs] err")
 			continue
 		}
 	}
@@ -506,12 +512,8 @@ func (store *DataStoreSideChainImpl) AddSideChainTx(tx *base.SideChainTransactio
 	}
 	defer stmt.Close()
 
-	// Serialize transaction
-	buf := new(bytes.Buffer)
-	tx.Transaction.Serialize(buf)
-
 	// Do insert
-	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, buf.Bytes(), tx.BlockHeight)
+	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
 	if err != nil {
 		return err
 	}
@@ -601,11 +603,11 @@ func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights(genesisBl
 	return txHashes, blockHeights, nil
 }
 
-func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*Transaction, error) {
+func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	var txs []*Transaction
+	var txs []*base.WithdrawTx
 	var buf bytes.Buffer
 	buf.WriteString("SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash IN (")
 	hashesLen := len(transactionHashes)
@@ -634,20 +636,20 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 			return nil, err
 		}
 
-		var tx Transaction
+		tx := new(base.WithdrawTx)
 		reader := bytes.NewReader(transactionBytes)
 		tx.Deserialize(reader)
-		txs = append(txs, &tx)
+		txs = append(txs, tx)
 
 	}
 	return txs, nil
 }
 
-func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*Transaction, error) {
+func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	var txs []*Transaction
+	var txs []*base.WithdrawTx
 	for _, txHash := range transactionHashes {
 		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
 		if err != nil {
@@ -662,11 +664,11 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(
 				return nil, err
 			}
 
-			var tx Transaction
+			tx := new(base.WithdrawTx)
 			reader := bytes.NewReader(transactionBytes)
 			tx.Deserialize(reader)
 
-			txs = append(txs, &tx)
+			txs = append(txs, tx)
 		}
 		rows.Close()
 	}
@@ -769,7 +771,8 @@ func (store *DataStoreMainChainImpl) HasMainChainTx(transactionHash, genesisBloc
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHash, genesisBlockAddress)
+	sql := `SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`
+	rows, err := store.Query(sql, transactionHash, genesisBlockAddress)
 	if err != nil {
 		return false, err
 	}
@@ -851,7 +854,8 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof FROM MainChainTxs`)
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
+ 									TransactionData, MerkleProof FROM MainChainTxs`)
 	if err != nil {
 		return nil, err
 	}
@@ -876,19 +880,22 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 		reader = bytes.NewReader(merkleProofBytes)
 		mp.Deserialize(reader)
 
-		txs = append(txs, &base.MainChainTransaction{txHash, genesisAddress, &tx, &mp})
+		txs = append(txs, &base.MainChainTransaction{txHash,
+			genesisAddress, &tx, &mp})
 	}
 	return txs, nil
 }
 
-func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.SpvTransaction, error) {
+func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes []string,
+	genesisBlockAddresses string) ([]*base.SpvTransaction, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
 	var spvTxs []*base.SpvTransaction
 
+	sql := `SELECT TransactionData, MerkleProof FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	for i := 0; i < len(transactionHashes); i++ {
-		rows, err := store.Query(`SELECT MainChainTxs.TransactionData, MainChainTxs.MerkleProof FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHashes[i], genesisBlockAddresses)
+		rows, err := store.Query(sql, transactionHashes[i], genesisBlockAddresses)
 		if err != nil {
 			return nil, err
 		}

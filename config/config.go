@@ -8,7 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/elastos/Elastos.ELA.SideChain/common"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -19,6 +20,11 @@ const (
 var (
 	Version    string
 	Parameters configParams
+
+	DataPath = "elastos_arbiter"
+	DataDir  = "data"
+	SpvDir   = "spv"
+	LogDir   = "logs"
 )
 
 type Configuration struct {
@@ -33,9 +39,12 @@ type Configuration struct {
 	SyncInterval  time.Duration `json:"SyncInterval"`
 	HttpJsonPort  int           `json:"HttpJsonPort"`
 	HttpRestPort  uint16        `json:"HttpRestPort"`
-	PrintLevel    int           `json:"PrintLevel"`
-	SpvPrintLevel int           `json:"SpvPrintLevel"`
-	MaxLogSize    int64         `json:"MaxLogSize"`
+	PrintLevel    uint8         `json:"PrintLevel"`
+	SPVPrintLevel uint8         `json:"SPVPrintLevel"`
+	LogPath       string        `json:"LogPath"`
+	SPVLogPath    string        `json:"SpvLogPath"`
+	MaxLogsSize   int64         `json:"MaxLogsSize"`
+	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
 	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
 	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
@@ -55,6 +64,7 @@ type RpcConfig struct {
 type MainNodeConfig struct {
 	Rpc               *RpcConfig `json:"Rpc"`
 	SpvSeedList       []string   `json:"SpvSeedList""`
+	DefaultPort       uint16     `json:"DefaultPort"`
 	Magic             uint32     `json:"Magic"`
 	MinOutbound       int        `json:"MinOutbound"`
 	MaxConnections    int        `json:"MaxConnections"`
@@ -69,6 +79,7 @@ type SideNodeConfig struct {
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
 	PayToAddr           string  `json:"PayToAddr"`
+	PowChain            bool    `json:"PowChain"`
 }
 
 type ConfigFile struct {
@@ -88,7 +99,7 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	return nil, false
 }
 
-func Init() {
+func init() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)
@@ -106,8 +117,7 @@ func Init() {
 			HttpJsonPort:                 20536,
 			HttpRestPort:                 20534,
 			PrintLevel:                   1,
-			SpvPrintLevel:                1,
-			MaxLogSize:                   0,
+			SPVPrintLevel:                1,
 			SyncInterval:                 1000,
 			SideChainMonitorScanInterval: 1000,
 			ClearTransactionInterval:     60000,
@@ -125,6 +135,16 @@ func Init() {
 		os.Exit(1)
 	}
 
+	for _, side := range config.ConfigFile.SideNodeList {
+		side.PowChain = true
+	}
+
+	e = json.Unmarshal(file, &config)
+	if e != nil {
+		fmt.Printf("Unmarshal json file erro %v", e)
+		os.Exit(1)
+	}
+
 	Parameters.Configuration = &(config.ConfigFile)
 
 	var out bytes.Buffer
@@ -133,7 +153,6 @@ func Init() {
 		fmt.Printf("Config file error: %v\n", e)
 		os.Exit(1)
 	}
-	fmt.Println(out.String())
 
 	if Parameters.Configuration.MainNode == nil {
 		fmt.Printf("Need to set main node in config file\n")
@@ -158,7 +177,7 @@ func Init() {
 			fmt.Printf("Side node genesis block hash reverse error: %v\n", e)
 			return
 		}
-		address, err := common.GetGenesisAddress(*genesisBlockHash)
+		address, err := base.GetGenesisAddress(*genesisBlockHash)
 		if err != nil {
 			fmt.Printf("Side node genesis block hash to address error: %v\n", e)
 			return

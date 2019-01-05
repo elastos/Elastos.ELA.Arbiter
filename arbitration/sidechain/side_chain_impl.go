@@ -17,9 +17,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SPV/net"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 	"github.com/elastos/Elastos.ELA/core"
 )
 
@@ -38,7 +38,7 @@ type SideChainImpl struct {
 	ReceivedUsedUtxoMsgNumber uint32
 }
 
-func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+func (client *SideChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
 	if msg.CMD() != cs.GetLastArbiterUsedUtxoCommand && msg.CMD() != cs.SendLastArbiterUsedUtxoCommand {
 		return nil
 	}
@@ -54,18 +54,29 @@ func (client *SideChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) erro
 }
 
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
+	log.Debug("[ReceiveSendLastArbiterUsedUtxos] start")
+	defer log.Debug("[ReceiveSendLastArbiterUsedUtxos] end")
+
 	sc.withdrawMux.Lock()
 	defer sc.withdrawMux.Unlock()
 
 	sc.mux.Lock()
+	scKey := sc.GetKey()
+	scHeight := sc.ToSendTransactionsHeight
+	ready := sc.Ready
+	txs := sc.ToSendTransactionHashes
+	sc.mux.Unlock()
+	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, scKey", scKey, "genesisAddress:", genesisAddress)
 	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received mssage, received height:", height, "my height:", sc.LastUsedUtxoHeight)
-	if sc.GetKey() == genesisAddress && sc.ToSendTransactionsHeight <= height {
+	if scKey == genesisAddress && scHeight <= height {
+		sc.mux.Lock()
 		sc.ReceivedUsedUtxoMsgNumber++
+		msgNum := sc.ReceivedUsedUtxoMsgNumber
 		sc.mux.Unlock()
 		sc.AddLastUsedOutPoints(outPoints)
 		sc.SetLastUsedUtxoHeight(height)
-		if sc.Ready && sc.ReceivedUsedUtxoMsgNumber >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
-			for _, v := range sc.ToSendTransactionHashes {
+		if ready && msgNum >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
+			for _, v := range txs {
 				err := sc.CreateAndBroadcastWithdrawProposal(v)
 				if err != nil {
 					log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
@@ -185,6 +196,13 @@ func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []core.OutPoint) {
 	sc.LastUsedOutPoints = newOutPoints
 }
 
+func (sc *SideChainImpl) ClearLastUsedOutPoints() {
+	sc.mux.Lock()
+	defer sc.mux.Unlock()
+
+	sc.LastUsedOutPoints = make([]core.OutPoint, 0)
+}
+
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()
@@ -219,15 +237,20 @@ func (sc *SideChainImpl) GetBlockByHeight(height uint32) (*BlockInfo, error) {
 	return rpc.GetBlockByHeight(height, sc.getCurrentConfig().Rpc)
 }
 
-func (sc *SideChainImpl) SendTransaction(info *TransactionInfo) (rpc.Response, error) {
+func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, error) {
 	log.Info("[Rpc-sendtransactioninfo] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	response, err := rpc.CallAndUnmarshalResponse("sendtransactioninfo",
-		rpc.Param("info", info), sc.CurrentConfig.Rpc)
+	response, err := rpc.CallAndUnmarshalResponse("sendrechargetransaction", rpc.Param("txid", txHash.String()), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
+	log.Info("[Rpc-sendtransactioninfo] Deposit transaction finished")
 
-	log.Info("response:", response)
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else {
+		log.Info("response:", response)
+	}
+
 	return response, nil
 }
 
@@ -235,22 +258,22 @@ func (sc *SideChainImpl) GetAccountAddress() string {
 	return sc.GetKey()
 }
 
-func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight uint32) error {
+func (sc *SideChainImpl) OnUTXOChanged(txinfos []*WithdrawTx, blockHeight uint32) error {
 	if len(txinfos) == 0 {
-		return errors.New("OnUTXOChanged received txinfos, but size is 0")
+		return errors.New("[OnUTXOChanged] received txinfos, but size is 0")
 	}
 
 	var txs []*SideChainTransaction
 	for _, txinfo := range txinfos {
-		txn, err := txinfo.ToTransaction()
-		if err != nil {
-			return err
+		buf := new(bytes.Buffer)
+		if err := txinfo.Serialize(buf); err != nil {
+			return errors.New("[OnUTXOChanged] received txinfos, but have invalid tx," + err.Error())
 		}
 
 		txs = append(txs, &SideChainTransaction{
-			TransactionHash:     txinfo.Hash,
+			TransactionHash:     txinfo.Txid.String(),
 			GenesisBlockAddress: sc.GetKey(),
-			Transaction:         txn,
+			Transaction:         buf.Bytes(),
 			BlockHeight:         blockHeight,
 		})
 	}
@@ -264,7 +287,12 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*TransactionInfo, blockHeight u
 }
 
 func (sc *SideChainImpl) StartSideChainMining() {
-	sideauxpow.StartSideChainMining(sc.CurrentConfig)
+	if sc.CurrentConfig.PowChain {
+		log.Info("[OnDutyChanged] Start side chain mining: genesis address [", sc.Key, "]")
+		sideauxpow.StartSideChainMining(sc.CurrentConfig)
+	} else {
+		log.Debug("[StartSideChainMining] side chain is not pow chain, no need to mining")
+	}
 }
 
 func (sc *SideChainImpl) SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) error {
@@ -287,111 +315,52 @@ func (sc *SideChainImpl) GetExistDepositTransactions(txs []string) ([]string, er
 	return receivedTxs, nil
 }
 
-func (sc *SideChainImpl) GetTransactionByHash(txHash string) (*core.Transaction, error) {
+func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*WithdrawTxInfo, error) {
 	txInfo, err := rpc.GetTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
 	if err != nil {
 		return nil, err
 	}
 
-	tx, err := txInfo.ToTransaction()
-	if err != nil {
-		return nil, err
-	}
-
-	return tx, nil
+	return txInfo, nil
 }
 
-func (sc *SideChainImpl) CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error) {
-	var txOutputs []OutputInfo // The outputs in transaction
-
-	exchangeRate, err := sc.GetExchangeRate()
-	if err != nil {
-		return nil, err
-	}
-	for i := 0; i < len(spvTx.DepositInfo.TargetAddress); i++ {
-		txOutput := OutputInfo{
-			Value:      common.Fixed64(float64(spvTx.DepositInfo.CrossChainAmounts[i]) * exchangeRate).String(),
-			Address:    spvTx.DepositInfo.TargetAddress[i],
-			OutputLock: uint32(0),
-		}
-		txOutputs = append(txOutputs, txOutput)
-	}
-
-	spvInfo := new(bytes.Buffer)
-	err = spvTx.Proof.Serialize(spvInfo)
-	if err != nil {
-		return nil, err
-	}
-
-	transactionBuf := new(bytes.Buffer)
-	err = spvTx.MainChainTransaction.Serialize(transactionBuf)
-	if err != nil {
-		return nil, err
-	}
-
-	// Create payload
-	txPayloadInfo := new(RechargeToSideChainInfo)
-	txPayloadInfo.Proof = common.BytesToHexString(spvInfo.Bytes())
-	txPayloadInfo.MainChainTransaction = common.BytesToHexString(transactionBuf.Bytes())
-
-	// Create attributes
-	var number = make([]byte, 8)
-	var nonce int64
-	rand.Read(number)
-	binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
-
-	txAttr := AttributeInfo{core.Nonce, strconv.FormatInt(nonce, 10)}
-	attributesInfo := make([]AttributeInfo, 0)
-	attributesInfo = append(attributesInfo, txAttr)
-
-	// Create program
-	return &TransactionInfo{
-		TxType:     core.RechargeToSideChain,
-		Payload:    txPayloadInfo,
-		Attributes: attributesInfo,
-		Inputs:     []InputInfo{},
-		Outputs:    txOutputs,
-		LockTime:   uint32(0),
-	}, nil
-}
-
-func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txn []*core.Transaction) (*WithdrawInfo, error) {
+func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txs []*WithdrawTx) (*WithdrawInfo, error) {
 	result := new(WithdrawInfo)
-	for _, tx := range txn {
-		payloadObj, ok := tx.Payload.(*core.PayloadTransferCrossChainAsset)
-		if !ok {
-			return nil, errors.New("Invalid payload")
-		}
-		for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
-			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddresses[i])
-			result.Amount = append(result.Amount, tx.Outputs[payloadObj.OutputIndexes[i]].Value)
-			result.CrossChainAmounts = append(result.CrossChainAmounts, payloadObj.CrossChainAmounts[i])
+	for _, tx := range txs {
+		for _, withdraw := range tx.WithdrawInfo.WithdrawAssets {
+			result.WithdrawAssets = append(result.WithdrawAssets, withdraw)
 		}
 	}
 	return result, nil
 }
 
-func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
+func (sc *SideChainImpl) SendCachedWithdrawTxs() {
+	log.Info("[SendCachedWithdrawTxs] start")
+	defer log.Info("[SendCachedWithdrawTxs] end")
+
 	txHashes, blockHeights, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 	if err != nil {
-		return err
+		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+		return
 	}
 
 	if len(txHashes) == 0 {
 		log.Info("No cached withdraw transaction need to send")
-		return nil
+		return
 	}
 
 	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
 	if err != nil {
-		return err
+		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+		return
 	}
 
 	unsolvedTxs, unsolvedBlockHeights := SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
 
 	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
-		return err
+		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+		return
 	}
 
 	if len(unsolvedTxs) != 0 {
@@ -421,16 +390,16 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() error {
 	if len(receivedTxs) != 0 {
 		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
 		if err != nil {
-			return err
+			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+			return
 		}
 
 		err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(receivedTxs)
 		if err != nil {
-			return err
+			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+			return
 		}
 	}
-
-	return nil
 }
 
 func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) error {

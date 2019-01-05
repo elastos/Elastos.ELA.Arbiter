@@ -11,8 +11,8 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	elaCore "github.com/elastos/Elastos.ELA/core"
 )
 
 type Response struct {
@@ -23,7 +23,6 @@ type Response struct {
 }
 
 type Error struct {
-	ID      int64  `json:"id"`
 	Code    int64  `json:"code"`
 	Message string `json:"message"`
 }
@@ -31,12 +30,6 @@ type Error struct {
 type ArbitratorGroupInfo struct {
 	OnDutyArbitratorIndex int
 	Arbitrators           []string
-}
-
-type BlockTransactions struct {
-	Hash         string
-	Height       uint32
-	Transactions []*TransactionInfo
 }
 
 func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error) {
@@ -55,7 +48,10 @@ func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	return uint32(result.(float64)) - 1, nil
+	if count, ok := result.(float64); ok {
+		return uint32(count) - 1, nil
+	}
+	return 0, errors.New("[GetCurrentHeight] invalid count")
 }
 
 func GetBlockByHeight(height uint32, config *config.RpcConfig) (*BlockInfo, error) {
@@ -88,27 +84,22 @@ func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*BlockInfo,
 	return block, nil
 }
 
-func GetDestroyedTransactionByHeight(height uint32, config *config.RpcConfig) (*BlockTransactions, error) {
-	resp, err := CallAndUnmarshal("getdestroyedtransactions", Param("height", height), config)
+func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]*WithdrawTxInfo, error) {
+	resp, err := CallAndUnmarshal("getwithdrawtransactionsbyheight", Param("height", height), config)
 	if err != nil {
 		return nil, err
 	}
-	transactions := UnmarshalCrossChainTransactions(resp)
-	log.Debug("[getdestorytransactions] len transactions:", len(transactions.Transactions), "transactions:", transactions)
-
-	return transactions, nil
-}
-
-func IsTransactionExist(transactionHash string, config *config.RpcConfig) (bool, error) {
-	_, err := CallAndUnmarshal("getrawtransaction", Param("txid", transactionHash), config)
-	if err != nil {
-		return false, err
+	txs := make([]*WithdrawTxInfo, 0)
+	if err = Unmarshal(&resp, &txs); err != nil {
+		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
+		return nil, err
 	}
+	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs), "transactions:", txs)
 
-	return true, nil
+	return txs, nil
 }
 
-func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*TransactionInfo, error) {
+func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*WithdrawTxInfo, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
 		return nil, err
@@ -116,13 +107,13 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	reversedHashBytes := common.BytesReverse(hashBytes)
 	reversedHashStr := common.BytesToHexString(reversedHashBytes)
 
-	result, err := CallAndUnmarshal("gettransactioninfo", Param("txid", reversedHashStr), config)
+	result, err := CallAndUnmarshal("getwithdrawtransaction", Param("txid", reversedHashStr), config)
 	if err != nil {
 		return nil, err
 	}
 
-	tx := &TransactionInfo{}
-	Unmarshal(&result, &tx)
+	tx := &WithdrawTxInfo{}
+	Unmarshal(&result, tx)
 
 	return tx, nil
 }
@@ -145,7 +136,9 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 }
 
 func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
-	result, err := CallAndUnmarshal("getexistdeposittransactions", Param("txs", txs), config)
+	parameter := make(map[string][]string)
+	parameter["txs"] = txs
+	result, err := CallAndUnmarshals("getexistdeposittransactions", parameter, config)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +174,7 @@ func Call(method string, params map[string]string, config *config.RpcConfig) ([]
 
 	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
 	if err != nil {
-		log.Info("POST requset err:", err)
+		log.Debug("POST requset err:", err)
 		return nil, err
 	}
 	defer resp.Body.Close()
@@ -219,24 +212,29 @@ func Calls(method string, params map[string][]string, config *config.RpcConfig) 
 	return body, nil
 }
 
-func UnmarshalCrossChainTransactions(resp interface{}) *BlockTransactions {
-	transactions := &BlockTransactions{}
-	Unmarshal(&resp, transactions)
-
-	var resultTransactions []*TransactionInfo
-	for _, txInfo := range transactions.Transactions {
-		var assetInfo PayloadInfo
-		if txInfo.TxType == elaCore.TransferCrossChainAsset {
-			assetInfo = &TransferCrossChainAssetInfo{}
-			err := Unmarshal(&txInfo.Payload, assetInfo)
-			if err == nil {
-				txInfo.Payload = assetInfo
-			}
-			resultTransactions = append(resultTransactions, txInfo)
-		}
+func CallTx(method string, params map[string]TransactionInfo, config *config.RpcConfig) ([]byte, error) {
+	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
+	data, err := json.Marshal(map[string]interface{}{
+		"method": method,
+		"params": params,
+	})
+	if err != nil {
+		return nil, err
 	}
-	transactions.Transactions = resultTransactions
-	return transactions
+
+	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
+	if err != nil {
+		log.Info("POST requset err:", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return body, nil
 }
 
 func CallAndUnmarshal(method string, params map[string]string, config *config.RpcConfig) (interface{}, error) {
@@ -277,8 +275,57 @@ func CallAndUnmarshals(method string, params map[string][]string, config *config
 	return resp.Result, nil
 }
 
+func CallAndUnmarshalTx(method string, params map[string]TransactionInfo, config *config.RpcConfig) (interface{}, error) {
+	body, err := CallTx(method, params, config)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := Response{}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return string(body), nil
+	}
+
+	if resp.Error != nil {
+		return nil, errors.New(resp.Error.Message)
+	}
+
+	return resp.Result, nil
+}
+
 func CallAndUnmarshalResponse(method string, params map[string]string, config *config.RpcConfig) (Response, error) {
 	body, err := Call(method, params, config)
+	if err != nil {
+		return Response{}, err
+	}
+
+	resp := Response{}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return Response{}, err
+	}
+
+	return resp, nil
+}
+
+func CallAndUnmarshalsResponse(method string, params map[string][]string, config *config.RpcConfig) (Response, error) {
+	body, err := Calls(method, params, config)
+	if err != nil {
+		return Response{}, err
+	}
+
+	resp := Response{}
+	err = json.Unmarshal(body, &resp)
+	if err != nil {
+		return Response{}, err
+	}
+
+	return resp, nil
+}
+
+func CallAndUnmarshalTxResponse(method string, params map[string]TransactionInfo, config *config.RpcConfig) (Response, error) {
+	body, err := CallTx(method, params, config)
 	if err != nil {
 		return Response{}, err
 	}

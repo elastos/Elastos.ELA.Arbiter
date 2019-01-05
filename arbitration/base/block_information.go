@@ -93,9 +93,13 @@ type CoinbaseInfo struct {
 	CoinbaseData string
 }
 
-type RechargeToSideChainInfo struct {
+type RechargeToSideChainInfoV0 struct {
 	Proof                string
 	MainChainTransaction string
+}
+
+type RechargeToSideChainInfoV1 struct {
+	MainChainTransactionHash string `json:"mainchaintxhash"`
 }
 
 type CrossChainAssetInfo struct {
@@ -119,4 +123,15 @@ type UTXOInfo struct {
 	Amount        string `json:"amount"`
 	Confirmations uint32 `json:"confirmations"`
 	OutputLock    uint32 `json:"OutputLock"`
+}
+
+type WithdrawOutputInfo struct {
+	CrossChainAddress string `json:"crosschainaddress"`
+	CrossChainAmount  string `json:"crosschainamount"`
+	OutputAmount      string `json:"outputamount"`
+}
+
+type WithdrawTxInfo struct {
+	TxID             string                `json:"txid"`
+	CrossChainAssets []*WithdrawOutputInfo `json:"crosschainassets"`
 }

@@ -5,12 +5,34 @@ import (
 	"encoding/json"
 	"errors"
 
-	"github.com/elastos/Elastos.ELA.SPV/spvwallet"
-	sc "github.com/elastos/Elastos.ELA.SideChain/core"
+	"github.com/elastos/Elastos.ELA.SideChain/types"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA/auxpow"
 	. "github.com/elastos/Elastos.ELA/core"
 )
+
+var SystemAssetId = getSystemAssetId()
+
+func getSystemAssetId() Uint256 {
+	systemToken := &Transaction{
+		TxType:         RegisterAsset,
+		PayloadVersion: 0,
+		Payload: &PayloadRegisterAsset{
+			Asset: Asset{
+				Name:      "ELA",
+				Precision: 0x08,
+				AssetType: 0x00,
+			},
+			Amount:     0 * 100000000,
+			Controller: Uint168{},
+		},
+		Attributes: []*Attribute{},
+		Inputs:     []*Input{},
+		Outputs:    []*Output{},
+		Programs:   []*Program{},
+	}
+	return systemToken.Hash()
+}
 
 func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 
@@ -32,8 +54,8 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 		return obj, nil
 	case *TransferAssetInfo:
 		return new(PayloadTransferAsset), nil
-	case *RechargeToSideChainInfo:
-		obj := new(sc.PayloadRechargeToSideChain)
+	case *RechargeToSideChainInfoV0:
+		obj := new(types.PayloadRechargeToSideChain)
 		proofBytes, err := HexStringToBytes(object.Proof)
 		if err != nil {
 			return nil, err
@@ -44,6 +66,14 @@ func PayloadInfoToTransPayload(plInfo PayloadInfo) (Payload, error) {
 			return nil, err
 		}
 		obj.MainChainTransaction = transactionBytes
+		return obj, nil
+	case *RechargeToSideChainInfoV1:
+		obj := new(types.PayloadRechargeToSideChain)
+		hash, err := Uint256FromHexString(object.MainChainTransactionHash)
+		if err != nil {
+			return nil, err
+		}
+		obj.MainChainTransactionHash = *hash
 		return obj, nil
 	case *TransferCrossChainAssetInfo:
 		obj := new(PayloadTransferCrossChainAsset)
@@ -126,7 +156,7 @@ func (txInfo *TransactionInfo) ToTransaction() (*Transaction, error) {
 			}
 		}
 		output := &Output{
-			AssetID:     spvwallet.SystemAssetId,
+			AssetID:     SystemAssetId,
 			Value:       *value,
 			OutputLock:  output.OutputLock,
 			ProgramHash: *programHash,

@@ -1,13 +1,14 @@
 package store
 
 import (
+	"bytes"
 	"os"
 	"testing"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 
-	"github.com/elastos/Elastos.ELA/bloom"
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -38,7 +39,9 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 	}
 
 	tx := &Transaction{Payload: new(PayloadWithdrawFromSideChain)}
-	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, tx, 10}); err != nil {
+	buf := new(bytes.Buffer)
+	tx.Serialize(buf)
+	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10}); err != nil {
 		t.Error("Add side chain transaction error.")
 	}
 
@@ -89,11 +92,13 @@ func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
 	}
 
 	tx := &Transaction{Payload: new(PayloadWithdrawFromSideChain)}
+	buf := new(bytes.Buffer)
+	tx.Serialize(buf)
 	err = datastore.AddSideChainTxs(
 		[]*base.SideChainTransaction{
-			&base.SideChainTransaction{txHash1, genesisBlockAddress1, tx, 10},
-			&base.SideChainTransaction{txHash2, genesisBlockAddress2, tx, 10},
-			&base.SideChainTransaction{txHash3, genesisBlockAddress3, tx, 10},
+			&base.SideChainTransaction{txHash1, genesisBlockAddress1, buf.Bytes(), 10},
+			&base.SideChainTransaction{txHash2, genesisBlockAddress2, buf.Bytes(), 10},
+			&base.SideChainTransaction{txHash3, genesisBlockAddress3, buf.Bytes(), 10},
 		})
 	if err != nil {
 		t.Error("Add side chain transaction error.")
@@ -133,13 +138,17 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
 	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	buf := new(bytes.Buffer)
+	tx.Serialize(buf)
 
 	genesisBlockAddress2 := "testAddress2"
 	txHash2 := "testHash2"
 	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	buf2 := new(bytes.Buffer)
+	tx2.Serialize(buf2)
 
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, tx, 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress2, tx2, 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress2, buf2.Bytes(), 10})
 
 	if ok, err := datastore.HasSideChainTx(txHash); !ok || err != nil {
 		t.Error("Should have specified transaction.")
@@ -181,10 +190,12 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 	txHash3 := "testHash3"
 
 	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, tx, 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress, tx, 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, tx, 11})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, tx, 11})
+	buf := new(bytes.Buffer)
+	tx.Serialize(buf)
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress, buf.Bytes(), 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, buf.Bytes(), 11})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, buf.Bytes(), 11})
 
 	txHashes, err := datastore.GetAllSideChainTxHashes()
 	if err != nil {
@@ -229,16 +240,22 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 	txHash3 := "testHash3"
 
 	tx1 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	buf1 := new(bytes.Buffer)
+	tx1.Serialize(buf1)
 	tx2 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	buf2 := new(bytes.Buffer)
+	tx2.Serialize(buf2)
 	tx3 := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
+	buf3 := new(bytes.Buffer)
+	tx3.Serialize(buf3)
 
 	tx1.LockTime = 1
 	tx2.LockTime = 2
 	tx3.LockTime = 3
 
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, tx1, 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress, tx2, 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, tx3, 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf1.Bytes(), 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress, buf2.Bytes(), 10})
+	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, buf3.Bytes(), 10})
 
 	var txHashes []string
 	txHashes = append(txHashes, txHash)
@@ -251,11 +268,6 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 	}
 	if len(txs) != 3 {
 		t.Error("Get all side chain transactions error.")
-	}
-	for _, tx := range txs {
-		if tx.LockTime != 1 && tx.LockTime != 2 && tx.LockTime != 3 {
-			t.Error("Get all side chain transactions error.")
-		}
 	}
 
 	datastore.ResetDataStore()
@@ -448,7 +460,6 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	tx := &Transaction{TxType: WithdrawFromSideChain, Payload: new(PayloadWithdrawFromSideChain)}
 
 	mp := new(bloom.MerkleProof)
-
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash1, genesisAddress, tx, mp})
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash2, genesisAddress, tx, mp})
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash3, genesisAddress, tx, mp})

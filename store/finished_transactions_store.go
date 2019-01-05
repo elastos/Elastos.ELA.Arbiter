@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"errors"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -12,9 +13,7 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-const (
-	FinishedTxsDBName = "./DBCache/finishedTxs.db"
-)
+var FinishedTxsDBName = filepath.Join(DBDocumentNAME, "finishedTxs.db")
 
 const (
 	//TransactionHash: tx3
@@ -24,7 +23,6 @@ const (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
 				GenesisBlockAddress VARCHAR(34),
-				TransactionData BLOB,
 				Succeed BOOLEAN,
 				RecordTime TEXT,
 				UNIQUE (TransactionHash, GenesisBlockAddress)
@@ -48,7 +46,7 @@ var (
 )
 
 type FinishedTransactionsDataStore interface {
-	AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte) error
+	AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string) error
 	AddSucceedDepositTxs(transactionHashes, genesisBlockAddresses []string) error
 	HasDepositTx(transactionHash string, genesisBlockAddress string) (bool, error)
 	GetDepositTxByHash(transactionHash string) ([]bool, []string, error)
@@ -138,7 +136,7 @@ func (store *FinishedTxsDataStoreImpl) ResetDataStore() error {
 	return nil
 }
 
-func (store *FinishedTxsDataStoreImpl) AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string, transactionInfoBytes [][]byte) error {
+func (store *FinishedTxsDataStoreImpl) AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
@@ -149,7 +147,7 @@ func (store *FinishedTxsDataStoreImpl) AddFailedDepositTxs(transactionHashes, ge
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO DepositTransactions(TransactionHash, GenesisBlockAddress, TransactionData, Succeed, RecordTime) values(?,?,?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO DepositTransactions(TransactionHash, GenesisBlockAddress, Succeed, RecordTime) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -157,7 +155,7 @@ func (store *FinishedTxsDataStoreImpl) AddFailedDepositTxs(transactionHashes, ge
 
 	// Do insert
 	for i := 0; i < len(transactionHashes); i++ {
-		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], transactionInfoBytes[i], false, time.Now().Format("2006-01-02_15.04.05"))
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], false, time.Now().Format("2006-01-02_15.04.05"))
 		if err != nil {
 			continue
 		}
@@ -340,9 +338,8 @@ func (store *FinishedTxsDataStoreImpl) AddSucceedWithdrawTxs(transactionHashes [
 
 	// Do insert
 	for _, txHash := range transactionHashes {
-		_, err = stmt.Exec(txHash, 0, true, time.Now().Format("2006-01-02_15.04.05"))
-		if err != nil {
-			return err
+		if _, err := stmt.Exec(txHash, 0, true, time.Now().Format("2006-01-02_15.04.05")); err != nil {
+			log.Error("[AddSucceedWithdrawTxs] txHash:", txHash, "err:", err.Error())
 		}
 	}
 	return nil

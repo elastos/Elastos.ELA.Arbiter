@@ -14,11 +14,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SPV/net"
-	spvWallet "github.com/elastos/Elastos.ELA.SPV/spvwallet"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
-	"github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
@@ -26,14 +24,17 @@ type MainChainImpl struct {
 	*DistributedNodeServer
 }
 
-func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error) {
+func (mc *MainChainImpl) SyncMainChainCachedTxs() error {
+	log.Info("[SyncMainChainCachedTxs] start")
+	defer log.Info("[SyncMainChainCachedTxs] end")
+
 	txs, err := DbCache.MainChainStore.GetAllMainChainTxs()
 	if err != nil {
-		return nil, err
+		return errors.New("[SyncMainChainCachedTxs]" + err.Error())
 	}
 
 	if len(txs) == 0 {
-		return nil, errors.New("No main chain tx in dbcache")
+		return errors.New("[SyncMainChainCachedTxs] No main chain tx in dbcache")
 	}
 
 	allSideChainTxHashes := make(map[SideChain][]string, 0)
@@ -58,33 +59,43 @@ func (mc *MainChainImpl) SyncMainChainCachedTxs() (map[SideChain][]string, error
 		}
 	}
 
-	result := make(map[SideChain][]string, 0)
 	for k, v := range allSideChainTxHashes {
-		receivedTxs, err := k.GetExistDepositTransactions(v)
-		if err != nil {
-			log.Warn("[SyncMainChainCachedTxs] Get exist deposit transactions failed")
-			continue
-		}
-		unsolvedTxs := SubstractTransactionHashes(v, receivedTxs)
-		result[k] = unsolvedTxs
-		var addresses []string
-		for i := 0; i < len(receivedTxs); i++ {
-			addresses = append(addresses, k.GetKey())
-		}
-		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
-		if err != nil {
-			return nil, err
-		}
-		err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
-		if err != nil {
-			log.Error("Add succeed deposit transactions into finished db failed")
-		}
+		go mc.createAndSendDepositTransactionsInDB(k, v)
 	}
 
-	return result, err
+	return nil
 }
 
-func (mc *MainChainImpl) OnP2PReceived(peer *net.Peer, msg p2p.Message) error {
+func (mc *MainChainImpl) createAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
+	receivedTxs, err := sideChain.GetExistDepositTransactions(txHashes)
+	if err != nil {
+		log.Warn("[SyncMainChainCachedTxs] Get exist deposit transactions failed, err:", err.Error())
+		return
+	}
+	unsolvedTxs := SubstractTransactionHashes(txHashes, receivedTxs)
+	var addresses []string
+	for i := 0; i < len(receivedTxs); i++ {
+		addresses = append(addresses, sideChain.GetKey())
+	}
+	err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, addresses)
+	if err != nil {
+		log.Warn("[SyncMainChainCachedTxs] Remove main chain txs failed, err:", err.Error())
+	}
+	err = FinishedTxsDbCache.AddSucceedDepositTxs(receivedTxs, addresses)
+	if err != nil {
+		log.Error("[SyncMainChainCachedTxs] Add succeed deposit transactions into finished db failed, err:", err.Error())
+	}
+
+	spvTxs, err := DbCache.MainChainStore.GetMainChainTxsFromHashes(unsolvedTxs, sideChain.GetKey())
+	if err != nil {
+		log.Error("[SyncMainChainCachedTxs] Get main chain txs from hashes failed, err:", err.Error())
+		return
+	}
+
+	ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, sideChain.GetKey())
+}
+
+func (mc *MainChainImpl) OnP2PReceived(peer *peer.Peer, msg p2p.Message) error {
 	if msg.CMD() != mc.P2pCommand {
 		return nil
 	}
@@ -109,23 +120,22 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	// Create transaction outputs
 	var txOutputs []*Output
 	// Check if from address is valid
-	assetID := spvWallet.SystemAssetId
-	for i := 0; i < len(withdrawInfo.TargetAddress); i++ {
-		programhash, err := Uint168FromAddress(withdrawInfo.TargetAddress[i])
+	assetID := SystemAssetId
+	for _, withdraw := range withdrawInfo.WithdrawAssets {
+		programhash, err := Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
 			return nil, err
 		}
 		txOutput := &Output{
 			AssetID:     Uint256(assetID),
 			ProgramHash: *programhash,
-			Value:       Fixed64(float64(withdrawInfo.CrossChainAmounts[i]) / exchangeRate),
+			Value:       Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
 			OutputLock:  0,
 		}
 		txOutputs = append(txOutputs, txOutput)
-		totalOutputAmount += Fixed64(float64(withdrawInfo.Amount[i]) / exchangeRate)
+		totalOutputAmount += Fixed64(float64(*withdraw.Amount) / exchangeRate)
 	}
 
-	var txInputs []*Input
 	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
 	if err != nil {
 		return nil, err
@@ -135,6 +145,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	ops := sideChain.GetLastUsedOutPoints()
 
 	var realAvailableUtxos []*AddressUTXO
+	var unavailableUtxos []*AddressUTXO
 	for _, utxo := range availableUTXOs {
 		isUsed := false
 		for _, ops := range ops {
@@ -144,10 +155,13 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		}
 		if !isUsed {
 			realAvailableUtxos = append(realAvailableUtxos, utxo)
+		} else {
+			unavailableUtxos = append(unavailableUtxos, utxo)
 		}
 	}
 
 	// Create transaction inputs
+	var txInputs []*Input
 	for _, utxo := range realAvailableUtxos {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -161,7 +175,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 				return nil, err
 			}
 			change := &Output{
-				AssetID:     Uint256(spvWallet.SystemAssetId),
+				AssetID:     Uint256(SystemAssetId),
 				Value:       Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
@@ -172,11 +186,33 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 		}
 	}
 
-	var newUsedUtxos []core.OutPoint
-	for _, input := range txInputs {
-		newUsedUtxos = append(newUsedUtxos, input.Previous)
+	//if available utxo is not enough, try to use unavailable utxos from biggest one
+	if totalOutputAmount > 0 && len(unavailableUtxos) != 0 {
+		for i := len(unavailableUtxos) - 1; i >= 0; i++ {
+			utxo := unavailableUtxos[i]
+			txInputs = append(txInputs, utxo.Input)
+			if *utxo.Amount < totalOutputAmount {
+				totalOutputAmount -= *utxo.Amount
+			} else if *utxo.Amount == totalOutputAmount {
+				totalOutputAmount = 0
+				break
+			} else if *utxo.Amount > totalOutputAmount {
+				programHash, err := Uint168FromAddress(withdrawBank)
+				if err != nil {
+					return nil, err
+				}
+				change := &Output{
+					AssetID:     Uint256(SystemAssetId),
+					Value:       Fixed64(*utxo.Amount - totalOutputAmount),
+					OutputLock:  uint32(0),
+					ProgramHash: *programHash,
+				}
+				txOutputs = append(txOutputs, change)
+				totalOutputAmount = 0
+				break
+			}
+		}
 	}
-	sideChain.AddLastUsedOutPoints(newUsedUtxos)
 
 	if totalOutputAmount > 0 {
 		return nil, errors.New("Available token is not enough")
@@ -231,31 +267,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain SideChain, withdraw
 	}, nil
 }
 
-func (mc *MainChainImpl) ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error) {
-	result := new(DepositInfo)
-	payloadObj, ok := txn.Payload.(*PayloadTransferCrossChainAsset)
-	if !ok {
-		return nil, errors.New("Invalid payload")
-	}
-	if len(txn.Outputs) == 0 {
-		return nil, errors.New("Invalid TransferCrossChainAsset payload, outputs is null")
-	}
-	programHash, err := Uint168FromAddress(genesisAddress)
-	if err != nil {
-		return nil, errors.New("Invalid genesis address")
-	}
-	result.MainChainProgramHash = *programHash
-	for i := 0; i < len(payloadObj.CrossChainAddresses); i++ {
-		if txn.Outputs[payloadObj.OutputIndexes[i]].ProgramHash == result.MainChainProgramHash {
-			result.TargetAddress = append(result.TargetAddress, payloadObj.CrossChainAddresses[i])
-			result.Amount = append(result.Amount, txn.Outputs[payloadObj.OutputIndexes[i]].Value)
-			result.CrossChainAmounts = append(result.CrossChainAmounts, payloadObj.CrossChainAmounts[i])
-		}
-	}
-
-	return result, nil
-}
-
 func (mc *MainChainImpl) SyncChainData() {
 	var chainHeight uint32
 	var currentHeight uint32
@@ -264,21 +275,42 @@ func (mc *MainChainImpl) SyncChainData() {
 	for {
 		chainHeight, currentHeight, needSync = mc.needSyncBlocks()
 		if !needSync {
+			log.Debug("No need sync, chain height:", chainHeight, "current height:", currentHeight)
 			break
 		}
+		log.Info("[arbitrator] Main chain height: ", chainHeight)
 
-		for currentHeight <= chainHeight {
-			block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+		//sync genesis block
+		if currentHeight == 0 {
+			err := mc.syncAndProcessBlock(currentHeight)
 			if err != nil {
+				log.Error("get genesis block failed, chainHeight:", chainHeight)
 				break
 			}
-			mc.processBlock(block, currentHeight)
+		}
 
-			// Update wallet height
-			currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height + 1)
-			log.Info("[arbitrator] Main chain height: ", block.Height)
+		for currentHeight < chainHeight {
+			err := mc.syncAndProcessBlock(currentHeight + 1)
+			if err != nil {
+				log.Error("get block by height failed, chain height:", chainHeight,
+					"current height:", currentHeight+1, "err:", err.Error())
+				break
+			}
+			currentHeight += 1
 		}
 	}
+}
+
+func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
+	block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return err
+	}
+	mc.processBlock(block, currentHeight)
+
+	// Update wallet height
+	currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height)
+	return nil
 }
 
 func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
@@ -290,7 +322,7 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 
 	currentHeight := DbCache.UTXOStore.CurrentHeight(QueryHeightCode)
 
-	if currentHeight >= chainHeight+1 {
+	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
 	}
 
@@ -322,6 +354,7 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 }
 
 func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
+	log.Info("[processBlock] block height:", block.Height, "current height:", height)
 	sideChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
 	// Add UTXO to wallet address from transaction outputs
 	for _, txnInfo := range block.Tx {
@@ -372,22 +405,11 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 				Sequence: input.Sequence,
 			}
 			DbCache.UTXOStore.DeleteUTXO(txInput)
-
-			for _, sc := range sideChains {
-				var containedOps []OutPoint
-				for _, op := range sc.GetLastUsedOutPoints() {
-					if op.IsEqual(outPoint) {
-						containedOps = append(containedOps, op)
-					}
-				}
-				if len(containedOps) != 0 {
-					sc.RemoveLastUsedOutPoints(containedOps)
-				}
-			}
 		}
 	}
 
 	for _, sc := range sideChains {
+		sc.ClearLastUsedOutPoints()
 		sc.SetLastUsedUtxoHeight(height)
 		log.Info("Side chain [", sc.GetKey(), "] SetLastUsedUtxoHeight ", height)
 	}
@@ -429,11 +451,11 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	for k, v := range allSideChainTxHashes {
 		receivedTxs, err := k.GetExistDepositTransactions(v)
 		if err != nil {
-			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get exist deposit transactions failed.")
+			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get exist deposit transactions failed:", err.Error())
 			continue
 		}
 		finalGenesisAddresses := make([]string, 0)
-		for i := 0; i < len(finalGenesisAddresses); i++ {
+		for i := 0; i < len(receivedTxs); i++ {
 			finalGenesisAddresses = append(finalGenesisAddresses, k.GetKey())
 		}
 		err = DbCache.MainChainStore.RemoveMainChainTxs(receivedTxs, finalGenesisAddresses)

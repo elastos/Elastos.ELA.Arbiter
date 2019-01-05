@@ -1,18 +1,20 @@
 package: github.com/elastos/Elastos.ELA.Arbiter
 import:
 - package: github.com/elastos/Elastos.ELA.Utility
-  version: dev
+  version: ecd37b1aff1e0ea6286b7ddffb9b48d250c9c90e
 - package: github.com/elastos/Elastos.ELA
-  version: release_v0.2.0
+  version: b74a971f9e30e4a46bfbc997974cec045e5d00c6
 - package: github.com/elastos/Elastos.ELA.SPV
-  version: dev
+  version: 5c5ed81a1ec12a4056c372b7b2606d845f504159
 - package: github.com/elastos/Elastos.ELA.SideChain
-  version: release_v0.0.1
+  version: fe590d15c7312bdd51c46c2fdc15557d91fb1082
 - package: github.com/howeyc/gopass
 - package: github.com/itchyny/base58-go
 - package: github.com/mattn/go-sqlite3
 - package: github.com/stretchr/testify/assert
 - package: github.com/golang/crypto
+- package: github.com/syndtr/goleveldb/leveldb
+- package: github.com/golang/snappy
   subpackages:
   - ripemd160
   - ssh/terminal

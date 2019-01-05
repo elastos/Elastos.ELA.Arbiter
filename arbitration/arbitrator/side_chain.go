@@ -25,11 +25,11 @@ type SideChain interface {
 	GetLastUsedOutPoints() []core.OutPoint
 	AddLastUsedOutPoints(ops []core.OutPoint)
 	RemoveLastUsedOutPoints(ops []core.OutPoint)
+	ClearLastUsedOutPoints()
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
-	CreateDepositTransaction(spvTx *SpvTransaction) (*TransactionInfo, error)
 
-	GetTransactionByHash(txHash string) (*core.Transaction, error)
+	GetWithdrawTransaction(txHash string) (*WithdrawTxInfo, error)
 }
 
 type SideChainManager interface {

@@ -2,8 +2,7 @@ package arbitrator
 
 import (
 	"bytes"
-	"encoding/binary"
-	"encoding/json"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -15,10 +14,14 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	scError "github.com/elastos/Elastos.ELA.SideChain/errors"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 	. "github.com/elastos/Elastos.ELA/core"
+)
+
+const (
+	SCErrDoubleSpend          int64 = 45010
+	SCErrMainchainTxDuplicate int64 = 45013
 )
 
 var SpvService SPVService
@@ -39,10 +42,7 @@ type Arbitrator interface {
 	StartSpvModule(passwd []byte) error
 
 	//deposit
-	ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error)
-	CreateDepositTransactions(spvTxs []*SpvTransaction) map[*TransactionInfo]*DepositTxInfo
-	SendDepositTransactions(transactionInfoMap map[*TransactionInfo]*DepositTxInfo)
-	CreateAndSendDepositTransactions(spvTxs []*SpvTransaction, genesisAddresses string)
+	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
 
 	//withdraw
 	CreateWithdrawTransactions(
@@ -88,23 +88,28 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 	if onDuty {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
-		//send deposit transaction
-		depositTxs, err := ar.mainChainImpl.SyncMainChainCachedTxs()
-		if err != nil {
-			log.Warn(err)
-		}
-		for sideChain, txHashes := range depositTxs {
-			ar.CreateAndSendDepositTransactionsInDB(sideChain, txHashes)
-		}
-		//send withdraw transaction
-		for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
-			sc.SendCachedWithdrawTxs()
-		}
-		//send side chain pow transaction
-		ar.sideChainManagerImpl.StartSideChainMining()
+		ar.ProcessDepositTransactions()
+		ar.processWithdrawTransactions()
+		ar.ProcessSideChainPowTransaction()
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
 	}
+}
+
+func (ar *ArbitratorImpl) ProcessDepositTransactions() {
+	if err := ar.mainChainImpl.SyncMainChainCachedTxs(); err != nil {
+		log.Warn(err)
+	}
+}
+
+func (ar *ArbitratorImpl) processWithdrawTransactions() {
+	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+		go sc.SendCachedWithdrawTxs()
+	}
+}
+
+func (ar *ArbitratorImpl) ProcessSideChainPowTransaction() {
+	ar.sideChainManagerImpl.StartSideChainMining()
 }
 
 func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
@@ -146,89 +151,52 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfo *WithdrawInfo,
 	return result
 }
 
-func (ar *ArbitratorImpl) ParseUserDepositTransactionInfo(txn *Transaction, genesisAddress string) (*DepositInfo, error) {
-	depositInfo, err := ar.mainChainImpl.ParseUserDepositTransactionInfo(txn, genesisAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	return depositInfo, nil
-}
-
 type DepositTxInfo struct {
 	mainChainTxHash string
 	sideChain       SideChain
 }
 
-func (ar *ArbitratorImpl) CreateDepositTransactions(spvTxs []*SpvTransaction) map[*TransactionInfo]*DepositTxInfo {
-	result := make(map[*TransactionInfo]*DepositTxInfo, 0)
-
-	for i := 0; i < len(spvTxs); i++ {
-		addr, err := spvTxs[i].DepositInfo.MainChainProgramHash.ToAddress()
-		if err != nil {
-			log.Warn("Invalid deposit program hash")
-			return nil
-		}
-		sideChain, ok := ar.GetChain(addr)
-		if !ok {
-			log.Warn("Invalid deposit address")
-			return nil
-		}
-
-		txInfo, err := sideChain.CreateDepositTransaction(spvTxs[i])
-		if err != nil {
-			log.Warn("Create deposit transaction failed")
-			return nil
-		}
-
-		result[txInfo] = &DepositTxInfo{
-			mainChainTxHash: spvTxs[i].MainChainTransaction.Hash().String(),
-			sideChain:       sideChain,
-		}
-	}
-
-	return result
-}
-
-func (ar *ArbitratorImpl) SendDepositTransactions(transactionInfoMap map[*TransactionInfo]*DepositTxInfo) {
-	var failedTxInfos []*TransactionInfo
-	var failedDepositTxBytes [][]byte
+func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string) {
 	var failedMainChainTxHashes []string
 	var failedGenesisAddresses []string
 	var succeedMainChainTxHashes []string
 	var succeedGenesisAddresses []string
-	for txInfo, depositTxInfo := range transactionInfoMap {
-		resp, err := depositTxInfo.sideChain.SendTransaction(txInfo)
-		if err != nil || resp.Error != nil && scError.ErrCode(resp.Code) != scError.ErrDoubleSpend {
-			log.Warn("Send deposit transaction failed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
-			depositTxBytes, err := json.Marshal(txInfo)
-			if err != nil {
-				log.Error("Deposit transactionInfo to bytes failed")
-				continue
-			}
-			failedTxInfos = append(failedTxInfos, txInfo)
-			failedDepositTxBytes = append(failedDepositTxBytes, depositTxBytes)
-			failedMainChainTxHashes = append(failedMainChainTxHashes, depositTxInfo.mainChainTxHash)
-			failedGenesisAddresses = append(failedGenesisAddresses, depositTxInfo.sideChain.GetKey())
-		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && scError.ErrCode(resp.Code) == scError.ErrMainchainTxDuplicate {
+	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+	if !ok {
+		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		return
+	}
+	for _, tx := range spvTxs {
+		hash := tx.MainChainTransaction.Hash()
+		resp, err := sideChain.SendTransaction(&hash)
+		if err != nil || resp.Error != nil && resp.Code != SCErrDoubleSpend {
+			log.Warn("Send deposit transaction failed, move to finished db, main chain tx hash:", hash.String())
+			failedMainChainTxHashes = append(failedMainChainTxHashes, hash.String())
+			failedGenesisAddresses = append(failedGenesisAddresses, genesisAddress)
+		} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && resp.Code == SCErrMainchainTxDuplicate {
 			if resp.Error != nil {
-				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
+				log.Info("Send deposit found transaction has been processed, move to finished db, main chain tx hash:", hash.String())
 			} else {
-				log.Info("Send deposit transaction succeed, move to finished db, main chain tx hash:", depositTxInfo.mainChainTxHash)
+				log.Info("Send deposit transaction succeed, move to finished db, main chain tx hash:", hash.String())
+				if txHash, ok := resp.Result.(string); ok {
+					log.Info("Send deposit transaction succeed, move to finished db, side chain tx hash:", txHash)
+				} else {
+					log.Info("Send deposit transaction, received invalid response")
+				}
 			}
-			succeedMainChainTxHashes = append(succeedMainChainTxHashes, depositTxInfo.mainChainTxHash)
-			succeedGenesisAddresses = append(succeedGenesisAddresses, depositTxInfo.sideChain.GetKey())
+			succeedMainChainTxHashes = append(succeedMainChainTxHashes, hash.String())
+			succeedGenesisAddresses = append(succeedGenesisAddresses, genesisAddress)
 		} else {
-			log.Warn("Send deposit transaction failed, need to resend, main chain tx hash:", depositTxInfo.mainChainTxHash)
+			log.Warn("Send deposit transaction failed, need to resend, main chain tx hash:", hash.String())
 		}
 	}
 
-	for i := 0; i < len(failedTxInfos); i++ {
+	for i := 0; i < len(failedMainChainTxHashes); i++ {
 		err := store.DbCache.MainChainStore.RemoveMainChainTxs(failedMainChainTxHashes, failedGenesisAddresses)
 		if err != nil {
 			log.Warn("Remove faild transaction from db failed")
 		}
-		err = store.FinishedTxsDbCache.AddFailedDepositTxs(failedMainChainTxHashes, failedGenesisAddresses, failedDepositTxBytes)
+		err = store.FinishedTxsDbCache.AddFailedDepositTxs(failedMainChainTxHashes, failedGenesisAddresses)
 		if err != nil {
 			log.Warn("Add faild transaction to finished db failed")
 		}
@@ -317,14 +285,21 @@ func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
 }
 
 func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
-	publicKey := ar.Keystore.MainAccount().PublicKey()
-	publicKeyBytes, err := publicKey.EncodePoint(true)
-	if err != nil {
-		return err
+	spvCfg := &Config{
+		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
+		Magic:          config.Parameters.MainNode.Magic,
+		Foundation:     config.Parameters.MainNode.FoundationAddress,
+		SeedList:       config.Parameters.MainNode.SpvSeedList,
+		DefaultPort:    config.Parameters.MainNode.DefaultPort,
+		MinOutbound:    config.Parameters.MainNode.MinOutbound,
+		MaxConnections: config.Parameters.MainNode.MaxConnections,
+		OnRollback:     nil, // Not implemented yet
 	}
 
-	SpvService, err = NewSPVService(config.Parameters.MainNode.Magic, config.Parameters.MainNode.FoundationAddress, binary.LittleEndian.Uint64(publicKeyBytes),
-		config.Parameters.MainNode.SpvSeedList, config.Parameters.MainNode.MinOutbound, config.Parameters.MainNode.MaxConnections)
+	log.Info("[StartSpvModule] new spv service:", spvCfg)
+
+	var err error
+	SpvService, err = NewSPVService(spvCfg)
 	if err != nil {
 		return err
 	}
@@ -334,10 +309,18 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		if err != nil {
 			return err
 		}
-		err = SpvService.RegisterTransactionListener(&AuxpowListener{ListenAddress: keystore.Address()})
-		if err != nil {
-			return err
+
+		if sideNode.PowChain {
+			log.Info("[StartSpvModule] register auxpow listener:", keystore.Address())
+			auxpowListener := &AuxpowListener{ListenAddress: keystore.Address()}
+			auxpowListener.start()
+			err = SpvService.RegisterTransactionListener(auxpowListener)
+			if err != nil {
+				return err
+			}
 		}
+
+		log.Info("[StartSpvModule] register dposit listener:", sideNode.GenesisBlockAddress)
 		dpListener := &DepositListener{ListenAddress: sideNode.GenesisBlockAddress}
 		dpListener.start()
 		err = SpvService.RegisterTransactionListener(dpListener)
@@ -346,11 +329,7 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 		}
 	}
 
-	go func() {
-		if err = SpvService.Start(); err != nil {
-			log.Error("spvService start failed ：", err)
-		}
-	}()
+	go SpvService.Start()
 
 	return nil
 }
@@ -363,32 +342,6 @@ func (ar *ArbitratorImpl) convertToTransactionContent(txn *Transaction) (string,
 	}
 	content := common.BytesToHexString(buf.Bytes())
 	return content, nil
-}
-
-func (ar *ArbitratorImpl) CreateAndSendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string) {
-	var txs []*SpvTransaction
-	var finalTxHashes []string
-	for i := 0; i < len(spvTxs); i++ {
-		depositInfo, err := ar.ParseUserDepositTransactionInfo(spvTxs[i].MainChainTransaction, genesisAddress)
-		if err != nil {
-			log.Error(err)
-			continue
-		}
-		txs = append(txs, &SpvTransaction{spvTxs[i].MainChainTransaction, spvTxs[i].Proof, depositInfo})
-		finalTxHashes = append(finalTxHashes, spvTxs[i].MainChainTransaction.Hash().String())
-	}
-
-	transactionInfoMap := ar.CreateDepositTransactions(txs)
-	ar.SendDepositTransactions(transactionInfoMap)
-}
-
-func (ar *ArbitratorImpl) CreateAndSendDepositTransactionsInDB(sideChain SideChain, txHashes []string) {
-	spvTxs, err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes(txHashes, sideChain.GetKey())
-	if err != nil {
-		return
-	}
-
-	ar.CreateAndSendDepositTransactions(spvTxs, sideChain.GetKey())
 }
 
 func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {

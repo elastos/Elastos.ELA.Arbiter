@@ -10,7 +10,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
-	spvLog "github.com/elastos/Elastos.ELA.SPV/log"
 	"github.com/elastos/Elastos.ELA.Utility/crypto"
 )
 
@@ -64,19 +63,22 @@ func (group *ArbitratorGroupImpl) InitArbitrators() error {
 
 func (group *ArbitratorGroupImpl) InitArbitratorsByStrings(arbiters []string, onDutyIndex int) {
 	group.mux.Lock()
+	defer group.mux.Unlock()
+
 	group.arbitrators = arbiters
 	group.onDutyArbitratorIndex = onDutyIndex
-	group.mux.Unlock()
 }
 
 func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	currentTime := uint64(time.Now().UnixNano())
-	if group.lastSyncTime != nil && currentTime*uint64(time.Millisecond) < group.timeoutLimit {
+	if group.lastSyncTime != nil && (currentTime-*group.lastSyncTime)*uint64(time.Millisecond) < group.timeoutLimit {
+		log.Info("[SyncFromMainNode] less than timeout limit")
 		return nil
 	}
 
 	height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
+		log.Info("[SyncFromMainNode] rpc get current height failed")
 		return err
 	}
 
@@ -89,6 +91,7 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 
 	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
 	if err != nil {
+		log.Info("[SyncFromMainNode] get arbitrator group info failed")
 		return err
 	}
 
@@ -108,7 +111,6 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	}
 
 	group.CheckOnDutyStatus()
-
 	return nil
 }
 
@@ -180,5 +182,5 @@ func Init() {
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 
-	spvLog.Init(config.Parameters.SpvPrintLevel, 20, 1024)
+	//spvLog.Init(config.Parameters.SPVPrintLevel, 20, 1024)
 }

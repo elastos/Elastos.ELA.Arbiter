@@ -13,6 +13,8 @@ import (
 	. "github.com/elastos/Elastos.ELA/core"
 )
 
+const MaxReedemScriptDataSize = 1000
+
 type DistributedItem struct {
 	TargetArbitratorPublicKey   *PublicKey
 	TargetArbitratorProgramHash *Uint168
@@ -137,7 +139,7 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 }
 
 func (item *DistributedItem) Deserialize(r io.Reader) error {
-	publickeyBytes, err := ReadVarBytes(r)
+	publickeyBytes, err := ReadVarBytes(r, PublicKeyScriptLength, "publickey bytes")
 	if err != nil {
 		return errors.New("TargetArbitratorPublicKey deserialization failed.")
 	}
@@ -156,13 +158,13 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		return errors.New("RawTransaction deserialization failed.")
 	}
 
-	redeemScript, err := ReadVarBytes(r)
+	redeemScript, err := ReadVarBytes(r, MaxReedemScriptDataSize, "redeem script")
 	if err != nil {
 		return errors.New("redeemScript deserialization failed.")
 	}
 	item.redeemScript = redeemScript
 
-	signedData, err := ReadVarBytes(r)
+	signedData, err := ReadVarBytes(r, SignatureScriptLength*2, "signed data")
 	if err != nil {
 		return errors.New("signedData deserialization failed.")
 	}

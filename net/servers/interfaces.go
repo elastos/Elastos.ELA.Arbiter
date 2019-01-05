@@ -4,13 +4,13 @@ import (
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/complain"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	. "github.com/elastos/Elastos.ELA.Arbiter/errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	. "github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA.SideChain/common"
 	. "github.com/elastos/Elastos.ELA.Utility/common"
 )
 
@@ -122,15 +122,15 @@ func GetSideMiningInfo(param Params) map[string]interface{} {
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
-	lastSendSideMiningHeight, ok := sideauxpow.LastSendSideMiningHeightMap[*genesisBlockHash]
+	lastSendSideMiningHeight, ok := sideauxpow.GetLastSendSideMiningHeight(genesisBlockHash)
 	if !ok {
 		return ResponsePack(InvalidParams, "genesis block hash not matched")
 	}
-	lastNotifySideMiningHeight, ok := sideauxpow.LastNotifySideMiningHeightMap[*genesisBlockHash]
+	lastNotifySideMiningHeight, ok := sideauxpow.GetLastNotifySideMiningHeight(genesisBlockHash)
 	if !ok {
 		return ResponsePack(InvalidParams, "genesis block hash not matched")
 	}
-	lastSubmitAuxpowHeight, ok := sideauxpow.LastSubmitAuxpowHeightMap[*genesisBlockHash]
+	lastSubmitAuxpowHeight, ok := sideauxpow.GetLastSubmitAuxpowHeight(genesisBlockHash)
 	if !ok {
 		return ResponsePack(InvalidParams, "genesis block hash not matched")
 	}
@@ -147,7 +147,7 @@ func GetSideMiningInfo(param Params) map[string]interface{} {
 }
 
 func GetMainChainBlockHeight(param Params) map[string]interface{} {
-	return ResponsePack(Success, DbCache.UTXOStore.CurrentHeight(0)-1)
+	return ResponsePack(Success, DbCache.UTXOStore.CurrentHeight(0))
 }
 
 func GetSideChainBlockHeight(param Params) map[string]interface{} {
@@ -165,12 +165,12 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
-	address, err := common.GetGenesisAddress(*genesisBlockHash)
+	address, err := base.GetGenesisAddress(*genesisBlockHash)
 	if err != nil {
 		return ResponsePack(InvalidParams, "invalid genesis block hash")
 	}
 
-	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0)-1)
+	return ResponsePack(Success, DbCache.SideChainStore.CurrentSideHeight(address, 0))
 }
 
 func GetFinishedDepositTxs(param Params) map[string]interface{} {
@@ -224,7 +224,7 @@ func GetGitVersion(param Params) map[string]interface{} {
 }
 
 func GetSPVHeight(param Params) map[string]interface{} {
-	bestHeader, err := arbitrator.SpvService.HeaderStore().GetBestHeader()
+	bestHeader, err := arbitrator.SpvService.HeaderStore().GetBest()
 	if err != nil {
 		return ResponsePack(InternalError, "get spv best header failed")
 	}

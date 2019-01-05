@@ -6,16 +6,19 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.SPV/interface/iutil"
 	"github.com/elastos/Elastos.ELA.SideChain/auxpow"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
-	"github.com/elastos/Elastos.ELA/bloom"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
 
 type AuxpowListener struct {
 	ListenAddress string
+
+	notifyQueue chan *notifyTask
 }
 
 func (l *AuxpowListener) Address() string {
@@ -30,23 +33,28 @@ func (l *AuxpowListener) Flags() uint64 {
 	return spv.FlagNotifyInSyncing
 }
 
-func (l *AuxpowListener) Rollback(height uint32) {
-
-}
+func (l *AuxpowListener) Rollback(height uint32) {}
 
 func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx ela.Transaction) {
-	// Submit transaction receipt
-	defer SpvService.SubmitTransactionReceipt(id, tx.Hash())
+	l.notifyQueue <- &notifyTask{id, &proof, &tx}
+	log.Info("[Notify-Auxpow][", l.ListenAddress, "] find side aux pow transaction, hash:", tx.Hash().String())
+	err := SpvService.SubmitTransactionReceipt(id, tx.Hash())
+	if err != nil {
+		return
+	}
+}
 
-	log.Info("[Notify-Auxpow] Receive side chain pow transaction, hash:", tx.Hash().String())
-	err := SpvService.VerifyTransaction(proof, tx)
+func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
+	task := tasks[len(tasks)-1]
+	log.Info("[Notify-ProcessNotifyData][", l.ListenAddress, "] process hash:", task.tx.Hash().String(), "len tasks:", len(tasks))
+	err := SpvService.VerifyTransaction(*task.proof, *task.tx)
 	if err != nil {
 		log.Error("Verify transaction error: ", err)
 		return
 	}
 
 	// Get Header from main chain
-	header, err := SpvService.HeaderStore().GetHeader(&proof.BlockHash)
+	header, err := SpvService.HeaderStore().Get(&task.proof.BlockHash)
 	if err != nil {
 		log.Error("can not get block from main chain")
 		return
@@ -54,25 +62,30 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 
 	// Check if merkleroot is match
 	merkleBlock := msg.MerkleBlock{
-		Header:       &header.Header,
-		Transactions: proof.Transactions,
-		Hashes:       proof.Hashes,
-		Flags:        proof.Flags,
+		Header:       header.BlockHeader,
+		Transactions: task.proof.Transactions,
+		Hashes:       task.proof.Hashes,
+		Flags:        task.proof.Flags,
 	}
 
-	txId := tx.Hash()
+	txId := task.tx.Hash()
 	merkleBranch, err := bloom.GetTxMerkleBranch(merkleBlock, &txId)
 	if err != nil {
 		log.Error("can not get merkle branch")
 		return
 	}
 
+	elaHeader, ok := header.BlockHeader.(*iutil.Header)
+	if !ok {
+		log.Error("invalid block header")
+		return
+	}
 	// sideAuxpow serilze
 	sideAuxpow := auxpow.SideAuxPow{
 		SideAuxMerkleBranch: merkleBranch.Branches,
 		SideAuxMerkleIndex:  merkleBranch.Index,
-		SideAuxBlockTx:      tx,
-		MainBlockHeader:     header.Header,
+		SideAuxBlockTx:      *task.tx,
+		MainBlockHeader:     *elaHeader.Header,
 	}
 
 	sideAuxpowBuf := bytes.NewBuffer([]byte{})
@@ -83,7 +96,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 	}
 
 	// send submit block
-	payload, ok := tx.Payload.(*ela.PayloadSideChainPow)
+	payload, ok := task.tx.Payload.(*ela.PayloadSideChainPow)
 	if !ok {
 		log.Error("Invalid payload type.")
 		return
@@ -97,9 +110,11 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 
 	var sideChain SideChain
 	for _, sideNode := range config.Parameters.SideNodeList {
-		log.Info("Side node genesis block:", sideNode.GenesisBlock, "side aux pow tx genesis hash:", genesishashString)
+		log.Info("Side node genesis block:", sideNode.GenesisBlock,
+			"side aux pow tx genesis hash:", genesishashString)
 		if sideNode.GenesisBlock == genesishashString {
-			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
+			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().
+				GetSideChainManager().GetChain(sideNode.GenesisBlockAddress)
 			if ok {
 				currentHeight, err := sc.GetCurrentHeight()
 				if err != nil {
@@ -109,7 +124,8 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 				if currentHeight == blockHeight {
 					sideChain = sc
 				} else {
-					log.Warn("No need to submit auxpow, current side chain height:", currentHeight, " block height:", blockHeight)
+					log.Warn("No need to submit auxpow, current side chain height:",
+						currentHeight, " block height:", blockHeight)
 					return
 				}
 			}
@@ -134,4 +150,33 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx e
 		return
 	}
 	sideChain.UpdateLastSubmitAuxpowHeight(payload.SideGenesisHash)
+}
+
+func (l *AuxpowListener) start() {
+	l.notifyQueue = make(chan *notifyTask, 10000)
+	go func() {
+		var tasks []*notifyTask
+		for {
+			select {
+			case data, ok := <-l.notifyQueue:
+				if ok {
+					tasks = append(tasks, data)
+					if len(tasks) >= 10000 {
+						l.ProcessNotifyData(tasks)
+						tasks = make([]*notifyTask, 0)
+					}
+				}
+			default:
+				if len(tasks) > 0 {
+					//only deal with the last one task
+					l.ProcessNotifyData(tasks)
+					tasks = make([]*notifyTask, 0)
+				}
+				data, ok := <-l.notifyQueue
+				if ok {
+					tasks = append(tasks, data)
+				}
+			}
+		}
+	}()
 }

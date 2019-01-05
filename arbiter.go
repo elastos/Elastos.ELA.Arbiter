@@ -1,7 +1,9 @@
 package main
 
 import (
+	"io"
 	"os"
+	"path/filepath"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
@@ -14,11 +16,69 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
+
+	"github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA.Utility/elalog"
+)
+
+var (
+	LogsPath             = filepath.Join(config.DataPath, config.LogDir)
+	ArbiterLogOutputPath = filepath.Join(LogsPath, "arbiter")
+	SpvLogOutputPath     = filepath.Join(LogsPath, "spv")
+)
+
+const (
+	defaultSpvMaxPerLogFileSize int64 = elalog.MBSize * 20
+	defaultSpvMaxLogsFolderSize int64 = elalog.GBSize * 2
+
+	defaultArbiterMaxPerLogFileSize int64 = 20
+	defaultArbiterMaxLogsFolderSize int64 = 2 * 1024
 )
 
 func init() {
-	config.Init()
-	log.Init(log.Path, log.Stdout)
+	spvMaxPerLogFileSize := defaultSpvMaxPerLogFileSize
+	spvMaxLogsFolderSize := defaultSpvMaxLogsFolderSize
+	if config.Parameters.MaxPerLogSize > 0 {
+		spvMaxPerLogFileSize = int64(config.Parameters.MaxPerLogSize) * elalog.MBSize
+	}
+	if config.Parameters.MaxLogsSize > 0 {
+		spvMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize) * elalog.MBSize
+	}
+	spvLogPath := SpvLogOutputPath
+	if config.Parameters.SPVLogPath != "" {
+		spvLogPath = config.Parameters.SPVLogPath
+	}
+	fileWriter := elalog.NewFileWriter(
+		spvLogPath,
+		spvMaxPerLogFileSize,
+		spvMaxLogsFolderSize,
+	)
+	logWriter := io.MultiWriter(os.Stdout, fileWriter)
+	level := elalog.Level(config.Parameters.SPVPrintLevel)
+	backend := elalog.NewBackend(logWriter, elalog.Llongfile)
+
+	spvslog := backend.Logger("SPVS", level)
+	_interface.UseLogger(spvslog)
+
+	arbiterMaxPerLogFileSize := defaultArbiterMaxPerLogFileSize
+	arbiterMaxLogsFolderSize := defaultArbiterMaxLogsFolderSize
+	if config.Parameters.MaxPerLogSize > 0 {
+		arbiterMaxPerLogFileSize = int64(config.Parameters.MaxPerLogSize)
+	}
+	if config.Parameters.MaxLogsSize > 0 {
+		arbiterMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize)
+	}
+
+	arbiterLogPath := ArbiterLogOutputPath
+	if config.Parameters.LogPath != "" {
+		arbiterLogPath = config.Parameters.LogPath
+	}
+	log.Init(
+		arbiterLogPath,
+		config.Parameters.PrintLevel,
+		arbiterMaxPerLogFileSize,
+		arbiterMaxLogsFolderSize,
+	)
 
 	arbitrator.Init()
 	sidechain.Init()
@@ -36,8 +96,8 @@ func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	}
 }
 
-func initP2P(arbitrator arbitrator.Arbitrator) error {
-	if err := cs.InitP2PClient(arbitrator); err != nil {
+func initP2P(dataDir string, arbitrator arbitrator.Arbitrator) error {
+	if err := cs.InitP2PClient(dataDir); err != nil {
 		return err
 	}
 
@@ -100,7 +160,7 @@ func main() {
 	}
 
 	log.Info("6. Start arbitrator P2P networks.")
-	if err := initP2P(currentArbitrator); err != nil {
+	if err := initP2P(filepath.Join(config.DataPath, config.DataDir), currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}

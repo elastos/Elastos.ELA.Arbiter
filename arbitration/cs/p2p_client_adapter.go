@@ -2,7 +2,6 @@ package cs
 
 import (
 	"bytes"
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"sync"
@@ -12,17 +11,20 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
-	spvI "github.com/elastos/Elastos.ELA.SPV/interface"
-	spvnet "github.com/elastos/Elastos.ELA.SPV/net"
-	"github.com/elastos/Elastos.ELA.SPV/sdk"
 	"github.com/elastos/Elastos.ELA.Utility/common"
 	"github.com/elastos/Elastos.ELA.Utility/p2p"
 	"github.com/elastos/Elastos.ELA.Utility/p2p/msg"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
+	"github.com/elastos/Elastos.ELA.Utility/p2p/server"
+	"github.com/elastos/Elastos.ELA/core"
 )
 
-var (
-	P2PClientSingleton *P2PClientAdapter
-	spvP2PClient       spvI.P2PClient
+var P2PClientSingleton *p2pclient
+
+const (
+	OpenService        = 1 << 2
+	messageStoreHeight = 5
+	defaultMaxPeers    = 12
 )
 
 const (
@@ -31,76 +33,139 @@ const (
 	ComplainCommand                = "complain"
 	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
 	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
-
-	MessageStoreHeight = 5
 )
 
-type P2PClientAdapter struct {
+type p2pclient struct {
+	server    server.IServer
 	listeners []base.P2PClientListener
 
-	messageHashes map[common.Uint256]uint32
 	cacheLock     sync.Mutex
+	messageHashes map[common.Uint256]uint32
+
+	newPeers  chan *peer.Peer
+	donePeers chan *peer.Peer
+	quit      chan struct{}
 }
 
-func InitP2PClient(arbitrator Arbitrator) error {
-
-	magic := config.Parameters.Magic
-	seedList := config.Parameters.SeedList
-
-	spvP2PClient = spvI.NewP2PClient(magic, 80000, seedList, config.Parameters.MinOutbound, config.Parameters.MaxConnections)
-	P2PClientSingleton = &P2PClientAdapter{
+func InitP2PClient(dataDir string) error {
+	maxPeers := config.Parameters.MaxConnections
+	if maxPeers <= 0 {
+		maxPeers = defaultMaxPeers
+	}
+	a := p2pclient{
 		messageHashes: make(map[common.Uint256]uint32, 0),
+		newPeers:      make(chan *peer.Peer, maxPeers),
+		donePeers:     make(chan *peer.Peer, maxPeers),
+	}
+	// Initiate P2P server configuration
+	serverCfg := server.NewDefaultConfig(
+		config.Parameters.Magic,
+		p2p.EIP001Version,
+		OpenService,
+		config.Parameters.NodePort,
+		config.Parameters.SeedList,
+		[]string{fmt.Sprint(":", config.Parameters.NodePort)},
+		a.newPeer, a.donePeer,
+		makeEmptyMessage,
+		func() uint64 { return uint64(0) },
+	)
+	serverCfg.DataDir = dataDir
+	serverCfg.MaxPeers = maxPeers
+	log.Info("server config:", serverCfg)
+
+	var err error
+	a.server, err = server.NewServer(serverCfg)
+	if err != nil {
+		return err
 	}
 
-	spvP2PClient.InitLocalPeer(P2PClientSingleton.InitLocalPeer)
-	spvP2PClient.SetMessageHandler(P2PClientSingleton.newSpvMessageHandler)
+	P2PClientSingleton = &a
 
 	return nil
 }
 
-func (adapter *P2PClientAdapter) newSpvMessageHandler() spvnet.MessageHandler {
-	return P2PClientSingleton
+func (c *p2pclient) newPeer(peer server.IPeer) {
+	c.newPeers <- peer.ToPeer()
 }
 
-func (adapter *P2PClientAdapter) tryInit() {
-	if adapter.listeners == nil {
-		adapter.listeners = make([]base.P2PClientListener, 0)
+func (c *p2pclient) donePeer(peer server.IPeer) {
+	c.donePeers <- peer.ToPeer()
+}
+
+// peerHandler handles new peers and done peers from P2P server.
+// When comes new peer, create a spv peer warpper for it
+func (c *p2pclient) peerHandler() {
+	peers := make(map[*peer.Peer]struct{})
+
+out:
+	for {
+		select {
+		case p := <-c.newPeers:
+			log.Debugf("p2pclient new peer %v", p)
+			peers[p] = struct{}{}
+			p.AddMessageFunc(c.handleMessage)
+
+		case p := <-c.donePeers:
+			_, ok := peers[p]
+			if !ok {
+				log.Errorf("unknown done peer %v", p)
+				continue
+			}
+
+			delete(peers, p)
+			log.Debugf("p2pclient done peer %v", p)
+
+		case <-c.quit:
+			break out
+		}
+	}
+
+	// Drain any wait channels before we go away so we don't leave something
+	// waiting for us.
+cleanup:
+	for {
+		select {
+		case <-c.newPeers:
+		case <-c.donePeers:
+		default:
+			break cleanup
+		}
+	}
+	log.Debug("Service peers handler done")
+}
+
+func (c *p2pclient) tryInit() {
+	if c.listeners == nil {
+		c.listeners = make([]base.P2PClientListener, 0)
 	}
 }
 
-func (adapter *P2PClientAdapter) Start() {
-	spvP2PClient.Start()
+func (c *p2pclient) Start() {
+	c.server.Start()
+	go c.peerHandler()
 }
 
-func (adapter *P2PClientAdapter) InitLocalPeer(peer *spvnet.Peer) {
-	publicKey := ArbitratorGroupSingleton.GetCurrentArbitrator().GetPublicKey()
-	publicKeyBytes, _ := publicKey.EncodePoint(true)
-	clientId := binary.LittleEndian.Uint64(publicKeyBytes)
-	port := config.Parameters.NodePort
-
-	peer.SetVersion(uint32(10007))
-	peer.SetServices(uint64(4))
-	peer.SetID(clientId)
-	peer.SetPort(port)
-	peer.SetRelay(uint8(1))
+func (c *p2pclient) Stop() {
+	c.server.Stop()
+	close(c.quit)
 }
 
-func (adapter *P2PClientAdapter) AddListener(listener base.P2PClientListener) {
-	adapter.tryInit()
-	adapter.listeners = append(adapter.listeners, listener)
+func (c *p2pclient) AddListener(listener base.P2PClientListener) {
+	c.tryInit()
+	c.listeners = append(c.listeners, listener)
 }
 
-func (adapter *P2PClientAdapter) GetMessageHash(msg p2p.Message) common.Uint256 {
+func (c *p2pclient) GetMessageHash(msg p2p.Message) common.Uint256 {
 	buf := new(bytes.Buffer)
 	msg.Serialize(buf)
 	msgHash := common.Sha256D(buf.Bytes())
 	return msgHash
 }
 
-func (adapter *P2PClientAdapter) ExistMessageHash(msgHash common.Uint256) bool {
-	adapter.cacheLock.Lock()
-	defer adapter.cacheLock.Unlock()
-	for k, _ := range adapter.messageHashes {
+func (c *p2pclient) ExistMessageHash(msgHash common.Uint256) bool {
+	c.cacheLock.Lock()
+	defer c.cacheLock.Unlock()
+	for k := range c.messageHashes {
 		if k == msgHash {
 			return true
 		}
@@ -108,58 +173,74 @@ func (adapter *P2PClientAdapter) ExistMessageHash(msgHash common.Uint256) bool {
 	return false
 }
 
-func (adapter *P2PClientAdapter) AddMessageHash(msgHash common.Uint256) bool {
-	adapter.cacheLock.Lock()
-	defer adapter.cacheLock.Unlock()
+func (c *p2pclient) AddMessageHash(msgHash common.Uint256) bool {
+	c.cacheLock.Lock()
+	defer c.cacheLock.Unlock()
 	currentMainChainHeight := *ArbitratorGroupSingleton.GetCurrentHeight()
-	adapter.messageHashes[msgHash] = currentMainChainHeight
+	c.messageHashes[msgHash] = currentMainChainHeight
 
 	//delete message height 5 less than current main chain height
 	var needToDeleteMessages []common.Uint256
-	for k, v := range adapter.messageHashes {
-		if currentMainChainHeight > MessageStoreHeight && v < currentMainChainHeight-MessageStoreHeight {
+	for k, v := range c.messageHashes {
+		if currentMainChainHeight > messageStoreHeight && v < currentMainChainHeight-messageStoreHeight {
 			needToDeleteMessages = append(needToDeleteMessages, k)
 		}
 	}
 	for _, msg := range needToDeleteMessages {
-		delete(adapter.messageHashes, msg)
+		delete(c.messageHashes, msg)
 	}
 
 	return false
 }
 
-func (adapter *P2PClientAdapter) Broadcast(msg p2p.Message) {
-	spvP2PClient.PeerManager().Broadcast(msg)
+func (c *p2pclient) Broadcast(msg p2p.Message) {
+	log.Debug("[Broadcast] msg:", msg.CMD())
+
+	go func() {
+		log.Debug("Broadcast peers", c.server.ConnectedPeers())
+		c.server.BroadcastMessage(msg)
+	}()
+
 }
 
-func (adapter *P2PClientAdapter) HandleMessage(peer *spvnet.Peer, msg p2p.Message) error {
-	msgHash := adapter.GetMessageHash(msg)
-	if adapter.ExistMessageHash(msgHash) {
-		return nil
+func (c *p2pclient) handleMessage(peer *peer.Peer, msg p2p.Message) {
+	msgHash := c.GetMessageHash(msg)
+	if c.ExistMessageHash(msgHash) {
+		return
 	} else {
-		adapter.AddMessageHash(msgHash)
-		log.Info("*****")
-		log.Info(msg.CMD())
-		log.Info("*****")
-		adapter.Broadcast(msg)
+		c.AddMessageHash(msgHash)
+		log.Info("[HandleMessage] received msg:", msg.CMD(), "from peer id-", peer.ID())
+		c.Broadcast(msg)
 	}
 
-	if adapter.listeners == nil {
-		return nil
+	if c.listeners == nil {
+		return
 	}
 
-	for _, listener := range adapter.listeners {
+	for _, listener := range c.listeners {
 		if err := listener.OnP2PReceived(peer, msg); err != nil {
 			log.Warn(err)
 			continue
 		}
 	}
 
-	return nil
+	return
 }
 
-func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, err error) {
+func makeEmptyMessage(cmd string) (message p2p.Message, err error) {
 	switch cmd {
+	case p2p.CmdInv:
+		message = new(msg.Inv)
+	case p2p.CmdGetData:
+		message = new(msg.GetData)
+	case p2p.CmdNotFound:
+		message = new(msg.NotFound)
+	case p2p.CmdTx:
+		message = msg.NewTx(new(core.Transaction))
+	case p2p.CmdMerkleBlock:
+		message = msg.NewMerkleBlock(new(core.Header))
+	case p2p.CmdReject:
+		message = new(msg.Reject)
 	case WithdrawCommand:
 		message = &SignMessage{Command: WithdrawCommand}
 	case ComplainCommand:
@@ -172,21 +253,4 @@ func (adapter *P2PClientAdapter) MakeMessage(cmd string) (message p2p.Message, e
 		return nil, errors.New("Received unsupported message, CMD " + cmd)
 	}
 	return message, nil
-}
-
-func (adapter *P2PClientAdapter) OnHandshake(v *msg.Version) error {
-
-	if v.Version < sdk.ProtocolVersion {
-		return errors.New(fmt.Sprint("To support SPV protocol, peer version must greater than ", sdk.ProtocolVersion))
-	}
-
-	//if v.Services/ServiveSPV&1 == 0 {
-	//	return errors.New("SPV service not enabled on connected peer")
-	//}
-
-	return nil
-}
-
-func (adapter *P2PClientAdapter) OnPeerEstablish(peer *spvnet.Peer) {
-	//peer.Send(msg.NewFilterLoad(spv.chain.GetBloomFilter()))
 }

@@ -5,9 +5,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA/bloom"
 	. "github.com/elastos/Elastos.ELA/core"
 	ela "github.com/elastos/Elastos.ELA/core"
 )
@@ -51,7 +51,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 
 	result, err := store.DbCache.MainChainStore.AddMainChainTxs(txs)
 	if err != nil {
-		log.Error("AddMainChainTx error:", err)
+		log.Error("[Notify-Process] AddMainChainTx error:", err)
 		return
 	}
 
@@ -60,6 +60,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	}
 
 	if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+		log.Warn("[Notify-Process] i am not onduty")
 		return
 	}
 
@@ -73,7 +74,7 @@ func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
 	for index, spvTx := range spvTxs {
 		log.Info("[Notify-Process] tx hash[", index, "]:", spvTx.MainChainTransaction.Hash().String())
 	}
-	ArbitratorGroupSingleton.GetCurrentArbitrator().CreateAndSendDepositTransactions(spvTxs, l.ListenAddress)
+	ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, l.ListenAddress)
 }
 
 func (l *DepositListener) Rollback(height uint32) {
