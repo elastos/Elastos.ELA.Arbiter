@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"io"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 )
@@ -60,6 +63,16 @@ func (i *IllegalDistributedContent) SerializeUnsigned(w io.Writer) error {
 }
 
 func (i *IllegalDistributedContent) Submit() error {
-	// todo commit illegal distributed data from mainchain rpc
+	var err error
+	buf := new(bytes.Buffer)
+	if err = i.Evidence.Serialize(buf); err != nil {
+		return err
+	}
+
+	content := common.BytesToHexString(buf.Bytes())
+	if _, err = rpc.CallAndUnmarshalResponse("submitsidechainillegaldata",
+		rpc.Param("illegaldata", content), config.Parameters.MainNode.Rpc); err != nil {
+		return err
+	}
 	return nil
 }
