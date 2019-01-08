@@ -13,6 +13,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/dpos/p2p"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type Response struct {
@@ -30,6 +32,31 @@ type Error struct {
 type ArbitratorGroupInfo struct {
 	OnDutyArbitratorIndex int
 	Arbitrators           []string
+}
+
+func GetActiveDposPeers() (result []p2p.PeerAddr, err error) {
+	resp, err := CallAndUnmarshal("getactivedpospeers", nil, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	peerAddrMap := make(map[string]string)
+	Unmarshal(&resp, peerAddrMap)
+
+	for k, v := range peerAddrMap {
+		var id peer.PID
+		pk, err := common.HexStringToBytes(k)
+		if err != nil {
+			return nil, err
+		}
+
+		copy(id[:], pk)
+		result = append(result, p2p.PeerAddr{
+			PID:  id,
+			Addr: v,
+		})
+	}
+	return result, nil
 }
 
 func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error) {
