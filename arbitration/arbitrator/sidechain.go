@@ -28,8 +28,8 @@ type SideChain interface {
 	ClearLastUsedOutPoints()
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
-
 	GetWithdrawTransaction(txHash string) (*base.WithdrawTxInfo, error)
+	CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error)
 }
 
 type SideChainManager interface {

@@ -156,7 +156,7 @@ func TestCheckWithdrawTransaction(t *testing.T) {
 	log.Info("GetSideChainTxsFromHashes Used time:", endTime.Sub(startTime).String())
 
 	startTime = time.Now()
-	withdrawInfo, err := side.ParseUserWithdrawTransactionInfo(unsolvedTransactions)
+	withdrawInfo, err := side.parseUserWithdrawTransactionInfo(unsolvedTransactions)
 	if err != nil {
 		t.Error("Parse user withdraw transaction info failed")
 	}

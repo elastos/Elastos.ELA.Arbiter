@@ -90,7 +90,36 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
 				}
 
-				//todo call fireIllegalEvidenceFound if found illegal evidence from sidechain rpc
+				evidences, err := rpc.GetIllegalEvidenceByHeight(currentHeight+1, sideNode.Rpc)
+				if err != nil {
+					log.Error("get illegal evidence at height:", currentHeight+1, "failed\n"+
+						"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
+						"error:", err)
+					break
+				}
+
+				// process illegal evidences
+				for _, e := range evidences {
+					se, err := common.Uint256FromHexString(e.Evidence)
+					if err != nil {
+						log.Error("invalid evidence:", err.Error())
+						continue
+					}
+					sce, err := common.Uint256FromHexString(e.CompareEvidence)
+					if err != nil {
+						log.Error("invalid evidence:", err.Error())
+						continue
+					}
+					evidence := &types.SidechainIllegalData{
+						IllegalType:         types.IllegalDataType(e.IllegalType),
+						Height:              currentHeight + 1,
+						IllegalSigner:       e.IllegalSigner,
+						Evidence:            types.SidechainIllegalEvidence{*se},
+						CompareEvidence:     types.SidechainIllegalEvidence{*sce},
+						GenesisBlockAddress: sideNode.GenesisBlockAddress,
+					}
+					monitor.fireIllegalEvidenceFound(evidence)
+				}
 
 				// Update wallet height
 				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight+1)

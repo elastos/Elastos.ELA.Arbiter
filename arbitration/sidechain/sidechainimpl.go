@@ -333,7 +333,11 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 	return txInfo, nil
 }
 
-func (sc *SideChainImpl) ParseUserWithdrawTransactionInfo(txs []*base.WithdrawTx) (*base.WithdrawInfo, error) {
+func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error) {
+	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
+}
+
+func (sc *SideChainImpl) parseUserWithdrawTransactionInfo(txs []*base.WithdrawTx) (*base.WithdrawInfo, error) {
 	result := new(base.WithdrawInfo)
 	for _, tx := range txs {
 		for _, withdraw := range tx.WithdrawInfo.WithdrawAssets {
@@ -419,7 +423,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return nil
 	}
 
-	withdrawInfo, err := sc.ParseUserWithdrawTransactionInfo(unsolvedTransactions)
+	withdrawInfo, err := sc.parseUserWithdrawTransactionInfo(unsolvedTransactions)
 	if err != nil {
 		return err
 	}

@@ -21,7 +21,7 @@ func SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) err
 		return errors.New("invalid side node")
 	}
 
-	params := make(map[string]string, 2)
+	params := make(map[string]interface{}, 2)
 	params["blockhash"] = blockhash
 	params["sideauxpow"] = submitauxpow
 

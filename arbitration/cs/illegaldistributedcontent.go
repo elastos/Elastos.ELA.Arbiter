@@ -2,8 +2,11 @@ package cs
 
 import (
 	"bytes"
+	"errors"
 	"io"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
@@ -18,7 +21,18 @@ type IllegalDistributedContent struct {
 }
 
 func (i *IllegalDistributedContent) Check(clientFunc interface{}) error {
-	// todo check IllegalType, Height, and data hashes from sidechain rpc
+	sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(i.Evidence.GenesisBlockAddress)
+	if !ok || sideChain == nil {
+		return errors.New("get side chain from genesis address failed when check illegal evidence")
+	}
+	evidence := &base.SidechainIllegalDataInfo{
+		IllegalType:     byte(i.Evidence.IllegalType),
+		Height:          i.Evidence.Height,
+		IllegalSigner:   i.Evidence.IllegalSigner,
+		Evidence:        i.Evidence.Evidence.DataHash.String(),
+		CompareEvidence: i.Evidence.CompareEvidence.DataHash.String(),
+	}
+	sideChain.CheckIllegalEvidence(evidence)
 	return nil
 }
 
