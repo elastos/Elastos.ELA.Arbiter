@@ -296,7 +296,7 @@ func (wallet *WalletImpl) Sign(name string, password []byte, txn *types.Transact
 func (wallet *WalletImpl) signStandardTransaction(password []byte, txn *types.Transaction) (*types.Transaction, error) {
 	code := txn.Programs[0].Code
 	// Get signer
-	programHash := crypto.ToProgramHash(common.STANDARD, code)
+	programHash := common.ToProgramHash(common.PrefixStandard, code)
 	// Check if current user is a valid signer
 	if *programHash != *wallet.Keystore.GetProgramHash() {
 		return nil, errors.New("[Wallet], Invalid signer")
