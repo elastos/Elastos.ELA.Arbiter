@@ -84,8 +84,9 @@ type DataStoreUTXO interface {
 	DataStore
 
 	CurrentHeight(height uint32) uint32
-	AddAddressUTXO(utxo *AddressUTXO) error
-	DeleteUTXO(input *types.Input) error
+
+	AddAddressUTXOs(utxos []*AddressUTXO) error
+	DeleteUTXOs(inputs []*types.Input) error
 	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
 }
 
@@ -342,9 +343,15 @@ func (store *DataStoreUTXOImpl) CurrentHeight(height uint32) uint32 {
 	return storedHeight
 }
 
-func (store *DataStoreUTXOImpl) AddAddressUTXO(utxo *AddressUTXO) error {
+func (store *DataStoreUTXOImpl) AddAddressUTXOs(utxos []*AddressUTXO) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress) values(?,?,?)")
@@ -353,25 +360,33 @@ func (store *DataStoreUTXOImpl) AddAddressUTXO(utxo *AddressUTXO) error {
 	}
 	defer stmt.Close()
 
-	// Serialize input
-	buf := new(bytes.Buffer)
-	utxo.Input.Serialize(buf)
-	inputBytes := buf.Bytes()
-	// Serialize amount
-	buf = new(bytes.Buffer)
-	utxo.Amount.Serialize(buf)
-	amountBytes := buf.Bytes()
-	// Do insert
-	_, err = stmt.Exec(inputBytes, amountBytes, utxo.GenesisBlockAddress)
-	if err != nil {
-		return err
+	for _, utxo := range utxos {
+		// Serialize input
+		buf := new(bytes.Buffer)
+		utxo.Input.Serialize(buf)
+		inputBytes := buf.Bytes()
+		// Serialize amount
+		buf = new(bytes.Buffer)
+		utxo.Amount.Serialize(buf)
+		amountBytes := buf.Bytes()
+		// Do insert
+		_, err = stmt.Exec(inputBytes, amountBytes, utxo.GenesisBlockAddress)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
-func (store *DataStoreUTXOImpl) DeleteUTXO(input *types.Input) error {
+func (store *DataStoreUTXOImpl) DeleteUTXOs(inputs []*types.Input) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
 
 	// Prepare sql statement
 	stmt, err := store.Prepare("DELETE FROM UTXOs WHERE UTXOInput=?")
@@ -380,14 +395,16 @@ func (store *DataStoreUTXOImpl) DeleteUTXO(input *types.Input) error {
 	}
 	defer stmt.Close()
 
-	// Serialize input
-	buf := new(bytes.Buffer)
-	input.Serialize(buf)
-	inputBytes := buf.Bytes()
-	// Do delete
-	_, err = stmt.Exec(inputBytes)
-	if err != nil {
-		return err
+	for _, input := range inputs {
+		// Serialize input
+		buf := new(bytes.Buffer)
+		input.Serialize(buf)
+		inputBytes := buf.Bytes()
+		// Do delete
+		_, err = stmt.Exec(inputBytes)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
