@@ -359,6 +359,8 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 	log.Info("[processBlock] block height:", block.Height, "current height:", height)
 	sideChains := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
 	// Add UTXO to wallet address from transaction outputs
+	utxos := make([]*AddressUTXO, 0)
+	inputs := make([]*Input, 0)
 	for _, txnInfo := range block.Tx {
 		var txn TransactionInfo
 		rpc.Unmarshal(&txnInfo, &txn)
@@ -389,7 +391,7 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 					GenesisBlockAddress: output.Address,
 				}
 				if *amount > Fixed64(0) {
-					DbCache.UTXOStore.AddAddressUTXO(addressUTXO)
+					utxos = append(utxos, addressUTXO)
 				}
 			}
 		}
@@ -406,9 +408,11 @@ func (mc *MainChainImpl) processBlock(block *BlockInfo, height uint32) {
 				Previous: outPoint,
 				Sequence: input.Sequence,
 			}
-			DbCache.UTXOStore.DeleteUTXO(txInput)
+			inputs = append(inputs, txInput)
 		}
 	}
+	DbCache.UTXOStore.AddAddressUTXOs(utxos)
+	DbCache.UTXOStore.DeleteUTXOs(inputs)
 
 	for _, sc := range sideChains {
 		sc.ClearLastUsedOutPoints()
