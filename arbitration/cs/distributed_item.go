@@ -198,7 +198,7 @@ func (item *DistributedItem) getMultiSignSigners() ([]*Uint168, error) {
 
 	var signers []*Uint168
 	for _, script := range scripts {
-		hash := ToProgramHash(STANDARD, script)
+		hash := ToProgramHash(PrefixStandard, script)
 		signers = append(signers, hash)
 	}
 
