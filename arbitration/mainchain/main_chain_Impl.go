@@ -300,6 +300,8 @@ func (mc *MainChainImpl) SyncChainData() {
 			}
 			currentHeight += 1
 		}
+		// Update wallet height
+		currentHeight = DbCache.UTXOStore.CurrentHeight(currentHeight - 1)
 	}
 }
 
@@ -308,10 +310,8 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 	if err != nil {
 		return err
 	}
-	mc.processBlock(block, currentHeight)
 
-	// Update wallet height
-	currentHeight = DbCache.UTXOStore.CurrentHeight(block.Height)
+	mc.processBlock(block, currentHeight)
 	return nil
 }
 
