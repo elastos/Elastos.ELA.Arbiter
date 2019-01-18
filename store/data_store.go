@@ -353,7 +353,7 @@ func (store *DataStoreUTXOImpl) AddAddressUTXOs(utxos []*AddressUTXO) error {
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress) values(?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress) values(?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -388,7 +388,7 @@ func (store *DataStoreUTXOImpl) DeleteUTXOs(inputs []*Input) error {
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("DELETE FROM UTXOs WHERE UTXOInput=?")
+	stmt, err := tx.Prepare("DELETE FROM UTXOs WHERE UTXOInput=?")
 	if err != nil {
 		return err
 	}
