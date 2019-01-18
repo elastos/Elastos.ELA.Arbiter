@@ -294,7 +294,7 @@ func (mc *MainChainImpl) SyncChainData() {
 			currentHeight += 1
 		}
 		// Update wallet height
-		currentHeight = store.DbCache.UTXOStore.CurrentHeight(currentHeight - 1)
+		currentHeight = store.DbCache.UTXOStore.CurrentHeight(currentHeight)
 	}
 }
 
