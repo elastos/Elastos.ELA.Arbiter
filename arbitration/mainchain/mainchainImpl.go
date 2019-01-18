@@ -293,6 +293,8 @@ func (mc *MainChainImpl) SyncChainData() {
 			}
 			currentHeight += 1
 		}
+		// Update wallet height
+		currentHeight = store.DbCache.UTXOStore.CurrentHeight(currentHeight - 1)
 	}
 }
 
@@ -301,7 +303,6 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 	if err != nil {
 		return err
 	}
-	mc.processBlock(block, currentHeight)
 
 	// Update active dpos peers
 	peers, err := rpc.GetActiveDposPeers()
@@ -310,6 +311,7 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 	}
 	cs.P2PClientSingleton.UpdatePeers(peers)
 
+	mc.processBlock(block, currentHeight)
 	return nil
 }
 
