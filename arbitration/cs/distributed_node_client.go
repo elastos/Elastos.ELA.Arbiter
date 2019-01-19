@@ -140,7 +140,7 @@ func checkWithdrawTransaction(txn *ela.Transaction, clientFunc DistributedNodeCl
 		for _, txHash := range payloadWithdraw.SideChainTransactionHashes {
 			tx, err := sideChain.GetWithdrawTransaction(txHash.String())
 			if err != nil {
-				return errors.New("[checkWithdrawTransaction] failed, unknown side chain transachtions")
+				return errors.New("[checkWithdrawTransaction] failed, unknown side chain transachtions:" + err.Error())
 			}
 
 			txid, err := common.Uint256FromHexString(tx.TxID)
