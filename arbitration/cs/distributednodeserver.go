@@ -13,6 +13,7 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -87,7 +88,7 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transacti
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *types.SidechainIllegalData) error {
+func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error {
 
 	proposal, err := dns.generateDistributedProposal(&IllegalDistributedContent{Evidence: data}, &DistrubutedItemFuncImpl{})
 	if err != nil {

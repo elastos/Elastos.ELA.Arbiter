@@ -146,14 +146,14 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 
 	log.Info("sideGenesisHash:", sideGenesisHash, "sideBlockHash:", sideBlockHash)
 	// Create payload
-	txPayload := &payload.PayloadSideChainPow{
+	txPayload := &payload.SideChainPow{
 		BlockHeight:     sideAuxBlock.Height,
 		SideBlockHash:   *sideBlockHash,
 		SideGenesisHash: *sideGenesisHash,
 	}
 
 	buf := new(bytes.Buffer)
-	txPayload.Serialize(buf, payload.SideChainPowPayloadVersion)
+	txPayload.Serialize(buf, payload.SideChainPowVersion)
 	txPayload.SignedData, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
 	if err != nil {
 		return err

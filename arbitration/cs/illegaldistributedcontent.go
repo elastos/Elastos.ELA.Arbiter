@@ -11,11 +11,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type IllegalDistributedContent struct {
-	Evidence *types.SidechainIllegalData
+	Evidence *payload.SidechainIllegalData
 
 	hash *common.Uint256
 }
@@ -28,7 +28,7 @@ func (i *IllegalDistributedContent) Check(clientFunc interface{}) error {
 	evidence := &base.SidechainIllegalDataInfo{
 		IllegalType:     byte(i.Evidence.IllegalType),
 		Height:          i.Evidence.Height,
-		IllegalSigner:   i.Evidence.IllegalSigner,
+		IllegalSigner:   common.BytesToHexString(i.Evidence.IllegalSigner),
 		Evidence:        i.Evidence.Evidence.DataHash.String(),
 		CompareEvidence: i.Evidence.CompareEvidence.DataHash.String(),
 	}
@@ -41,11 +41,11 @@ func (i *IllegalDistributedContent) CurrentBlockHeight() (uint32, error) {
 }
 
 func (i *IllegalDistributedContent) Deserialize(r io.Reader) error {
-	return i.Evidence.Deserialize(r)
+	return i.Evidence.Deserialize(r, payload.PayloadSidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) DeserializeUnsigned(r io.Reader) error {
-	return i.Evidence.DeserializeUnsigned(r)
+	return i.Evidence.DeserializeUnsigned(r, payload.PayloadSidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) Hash() common.Uint256 {
@@ -69,17 +69,17 @@ func (i *IllegalDistributedContent) MergeSign(newSign []byte, targetCodeHash *co
 }
 
 func (i *IllegalDistributedContent) Serialize(w io.Writer) error {
-	return i.Evidence.Serialize(w)
+	return i.Evidence.Serialize(w, payload.PayloadSidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) SerializeUnsigned(w io.Writer) error {
-	return i.Evidence.SerializeUnsigned(w)
+	return i.Evidence.SerializeUnsigned(w, payload.PayloadSidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) Submit() error {
 	var err error
 	buf := new(bytes.Buffer)
-	if err = i.Evidence.Serialize(buf); err != nil {
+	if err = i.Evidence.Serialize(buf, payload.PayloadSidechainIllegalDataVersion); err != nil {
 		return err
 	}
 

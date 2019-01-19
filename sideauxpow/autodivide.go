@@ -13,6 +13,7 @@ import (
 	walt "github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -74,7 +75,7 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 
 	from := keystore.Address()
 
-	script, err := crypto.CreateStandardRedeemScript(keystore.GetPublicKey())
+	script, err := contract.CreateStandardRedeemScript(keystore.GetPublicKey())
 	if err != nil {
 		return err
 	}

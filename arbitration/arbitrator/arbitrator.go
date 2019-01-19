@@ -16,6 +16,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -50,7 +51,7 @@ type Arbitrator interface {
 	BroadcastWithdrawProposal(txns []*types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
-	BroadcastSidechainIllegalData(data *types.SidechainIllegalData)
+	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
 	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
@@ -224,7 +225,7 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*types.Transaction) {
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *types.SidechainIllegalData) {
+func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) {
 	if err := ar.mainChainImpl.BroadcastSidechainIllegalData(data); err != nil {
 		log.Warn(err.Error())
 	}

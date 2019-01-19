@@ -240,7 +240,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 		txHashes = append(txHashes, *txHash)
 	}
 
-	txPayload := &payload.PayloadWithdrawFromSideChain{
+	txPayload := &payload.WithdrawFromSideChain{
 		BlockHeight:                chainHeight,
 		GenesisBlockAddress:        withdrawBank,
 		SideChainTransactionHashes: txHashes}

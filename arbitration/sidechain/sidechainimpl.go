@@ -19,6 +19,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	dpeer "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
@@ -59,11 +60,7 @@ func (sc *SideChainImpl) OnSendLastArbiterUsedUTXOMessage(id dpeer.PID, content 
 	}
 }
 
-<<<<<<< 7277be24ac8f40021c1aecc5fbb66627ce1ad074:arbitration/sidechain/sidechainimpl.go
 func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []types.OutPoint) error {
-=======
-func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []core.OutPoint) error {
->>>>>>> Release v0.0.2 (#282):arbitration/sidechain/side_chain_impl.go
 	log.Debug("[ReceiveSendLastArbiterUsedUtxos] start")
 	defer log.Debug("[ReceiveSendLastArbiterUsedUtxos] end")
 
@@ -294,7 +291,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*base.WithdrawTx, blockHeight u
 	return nil
 }
 
-func (sc *SideChainImpl) OnIllegalEvidenceFound(evidence *types.SidechainIllegalData) error {
+func (sc *SideChainImpl) OnIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
 	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().BroadcastSidechainIllegalData(evidence)
 	return nil
 }

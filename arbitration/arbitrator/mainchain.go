@@ -5,6 +5,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
@@ -13,7 +14,7 @@ type MainChain interface {
 		sideChainTransactionHashes []string, mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
-	BroadcastSidechainIllegalData(data *types.SidechainIllegalData) error
+	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
 	ReceiveProposalFeedback(content []byte) error
 
 	SyncMainChainCachedTxs() error

@@ -43,7 +43,7 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *types.Transact
 		txn.Serialize(buf)
 		for i := 0; i < len(param); i += crypto.SignatureScriptLength {
 			// Remove length byte
-			sign := param[i:i+crypto.SignatureScriptLength][1:]
+			sign := param[i : i+crypto.SignatureScriptLength][1:]
 			publicKey := publicKeys[signerIndex][1:]
 			pubKey, err := crypto.DecodePoint(publicKey)
 			if err != nil {
@@ -122,5 +122,5 @@ func GetGenesisAddress(genesisHash common.Uint256) (string, error) {
 }
 
 func genesisProgramHash(genesisHash common.Uint256) (*common.Uint168, error) {
-	return crypto.ToProgramHash(byte(common.CROSSCHAIN), crypto.CreateCrossChainRedeemScript(genesisHash)), nil
+	return common.ToProgramHash(byte(common.CROSSCHAIN), crypto.CreateCrossChainRedeemScript(genesisHash)), nil
 }

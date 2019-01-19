@@ -116,7 +116,7 @@ func (wallet *WalletImpl) CreateLockedTransaction(txType types.TxType, txPayload
 
 func (wallet *WalletImpl) CreateMultiOutputTransaction(fromAddress string, fee *common.Fixed64, redeemScript []byte, currentHeight uint32, outputs ...*Transfer) (*types.Transaction, error) {
 	txType := types.TransferAsset
-	txPayload := &payload.PayloadTransferAsset{}
+	txPayload := &payload.TransferAsset{}
 	return wallet.CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, redeemScript, uint32(0), currentHeight, outputs...)
 }
 

@@ -26,7 +26,7 @@ func (d *TxDistributedContent) InitSign(newSign []byte) error {
 }
 
 func (d *TxDistributedContent) Submit() error {
-	withdrawPayload, ok := d.Tx.Payload.(*payload.PayloadWithdrawFromSideChain)
+	withdrawPayload, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
 	if !ok {
 		return errors.New("received proposal feed back but withdraw transaction has invalid payload")
 	}
@@ -112,7 +112,7 @@ func (d *TxDistributedContent) MergeSign(newSign []byte, targetCodeHash *common.
 }
 
 func (d *TxDistributedContent) Check(client interface{}) error {
-	payloadWithdraw, ok := d.Tx.Payload.(*payload.PayloadWithdrawFromSideChain)
+	payloadWithdraw, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
 	if !ok {
 		return errors.New("unknown payload type")
 	}
@@ -145,7 +145,7 @@ func (d *TxDistributedContent) Check(client interface{}) error {
 }
 
 func (d *TxDistributedContent) CurrentBlockHeight() (uint32, error) {
-	withdrawPayload, ok := d.Tx.Payload.(*payload.PayloadWithdrawFromSideChain)
+	withdrawPayload, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
 	if !ok {
 		return 0, errors.New("invalid payload type")
 	}
@@ -173,7 +173,7 @@ func (d *TxDistributedContent) Hash() common.Uint256 {
 }
 
 func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
-	payloadWithdraw, ok := txn.Payload.(*payload.PayloadWithdrawFromSideChain)
+	payloadWithdraw, ok := txn.Payload.(*payload.WithdrawFromSideChain)
 	if !ok {
 		return errors.New("check withdraw transaction failed, unknown payload type")
 	}

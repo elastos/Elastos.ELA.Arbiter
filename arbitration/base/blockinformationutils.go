@@ -13,7 +13,7 @@ func getSystemAssetId() common.Uint256 {
 	systemToken := &types.Transaction{
 		TxType:         types.RegisterAsset,
 		PayloadVersion: 0,
-		Payload: &payload.PayloadRegisterAsset{
+		Payload: &payload.RegisterAsset{
 			Asset: payload.Asset{
 				Name:      "ELA",
 				Precision: 0x08,

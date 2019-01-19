@@ -13,7 +13,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type SideChainAccountMonitorImpl struct {
@@ -59,7 +59,7 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*base.With
 	return item.OnUTXOChanged(txinfos, blockHeight)
 }
 
-func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *types.SidechainIllegalData) error {
+func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
 	if monitor.accountListenerMap == nil {
 		return nil
 	}
@@ -111,12 +111,19 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						log.Error("invalid evidence:", err.Error())
 						continue
 					}
-					evidence := &types.SidechainIllegalData{
-						IllegalType:         types.IllegalDataType(e.IllegalType),
+					illegalSigner, err := common.HexStringToBytes(e.IllegalSigner)
+					if err != nil {
+						log.Error("invalid illegal signer:", err.Error())
+						continue
+						return
+					}
+
+					evidence := &payload.SidechainIllegalData{
+						IllegalType:         payload.IllegalDataType(e.IllegalType),
 						Height:              currentHeight + 1,
-						IllegalSigner:       e.IllegalSigner,
-						Evidence:            types.SidechainIllegalEvidence{*se},
-						CompareEvidence:     types.SidechainIllegalEvidence{*sce},
+						IllegalSigner:       illegalSigner,
+						Evidence:            payload.SidechainIllegalEvidence{*se},
+						CompareEvidence:     payload.SidechainIllegalEvidence{*sce},
 						GenesisBlockAddress: sideNode.GenesisBlockAddress,
 					}
 					monitor.fireIllegalEvidenceFound(evidence)

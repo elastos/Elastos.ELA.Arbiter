@@ -108,7 +108,7 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 
 	sideAuxpowString := common.BytesToHexString(buf.Bytes())
 
-	p, ok := task.tx.Payload.(*payload.PayloadSideChainPow)
+	p, ok := task.tx.Payload.(*payload.SideChainPow)
 	if !ok {
 		log.Error("invalid payload type")
 		return
