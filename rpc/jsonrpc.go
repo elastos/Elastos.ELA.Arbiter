@@ -35,17 +35,26 @@ type ArbitratorGroupInfo struct {
 }
 
 func GetActiveDposPeers() (result []p2p.PeerAddr, err error) {
-	resp, err := CallAndUnmarshal("getactivedpospeers", nil, config.Parameters.MainNode.Rpc)
+	resp, err := CallAndUnmarshal("getdpospeersinfo", nil,
+		config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
 
-	peerAddrMap := make(map[string]string)
-	Unmarshal(&resp, peerAddrMap)
+	type peerInfo struct {
+		OwnerPublicKey string `json:"ownerpublickey"`
+		NodePublicKey  string `json:"nodepublickey"`
+		IP             string `json:"ip"`
+		ConnState      string `json:"connstate"`
+	}
+	var peers []peerInfo
+	if err := Unmarshal(&resp, peers); err != nil {
+		return nil, err
+	}
 
-	for k, v := range peerAddrMap {
+	for _, v := range peers {
 		var id peer.PID
-		pk, err := common.HexStringToBytes(k)
+		pk, err := common.HexStringToBytes(v.NodePublicKey)
 		if err != nil {
 			return nil, err
 		}
@@ -53,7 +62,7 @@ func GetActiveDposPeers() (result []p2p.PeerAddr, err error) {
 		copy(id[:], pk)
 		result = append(result, p2p.PeerAddr{
 			PID:  id,
-			Addr: v,
+			Addr: v.IP,
 		})
 	}
 	return result, nil
