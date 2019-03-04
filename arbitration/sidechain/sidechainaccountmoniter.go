@@ -126,7 +126,18 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						CompareEvidence:     payload.SidechainIllegalEvidence{*sce},
 						GenesisBlockAddress: sideNode.GenesisBlockAddress,
 					}
-					monitor.fireIllegalEvidenceFound(evidence)
+					if se.String() > sce.String() {
+						evidence.Evidence =
+							payload.SidechainIllegalEvidence{*sce}
+						evidence.CompareEvidence =
+							payload.SidechainIllegalEvidence{*se}
+					}
+
+					if err := monitor.fireIllegalEvidenceFound(
+						evidence); err != nil {
+						log.Error("fire illegal evidence found error:",
+							err.Error())
+					}
 				}
 
 				// Update wallet height
