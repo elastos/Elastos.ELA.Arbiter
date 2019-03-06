@@ -18,8 +18,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	"github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA.Utility/elalog"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"github.com/elastos/Elastos.ELA/utils/elalog"
 )
 
 var (

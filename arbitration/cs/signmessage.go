@@ -4,7 +4,7 @@ import (
 	"io"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/p2p/msg"
+	"github.com/elastos/Elastos.ELA/elanet/pact"
 )
 
 type DistributedItemMessage struct {
@@ -16,7 +16,7 @@ func (s *DistributedItemMessage) CMD() string {
 }
 
 func (s *DistributedItemMessage) MaxLength() uint32 {
-	return msg.MaxBlockSize
+	return pact.MaxBlockSize
 }
 
 func (s *DistributedItemMessage) Serialize(w io.Writer) error {
@@ -24,7 +24,7 @@ func (s *DistributedItemMessage) Serialize(w io.Writer) error {
 }
 
 func (s *DistributedItemMessage) Deserialize(r io.Reader) error {
-	content, err := common.ReadVarBytes(r, msg.MaxBlockSize, "Content")
+	content, err := common.ReadVarBytes(r, pact.MaxBlockSize, "Content")
 	if err != nil {
 		return err
 	}

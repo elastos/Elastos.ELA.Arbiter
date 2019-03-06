@@ -122,5 +122,5 @@ func GetGenesisAddress(genesisHash common.Uint256) (string, error) {
 }
 
 func genesisProgramHash(genesisHash common.Uint256) (*common.Uint168, error) {
-	return common.ToProgramHash(byte(common.CROSSCHAIN), crypto.CreateCrossChainRedeemScript(genesisHash)), nil
+	return common.ToProgramHash(byte(common.PrefixCrossChain), crypto.CreateCrossChainRedeemScript(genesisHash)), nil
 }
