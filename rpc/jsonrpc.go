@@ -85,8 +85,9 @@ func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
 		IP             string `json:"ip"`
 		ConnState      string `json:"connstate"`
 	}
+
 	peers := make([]peerInfo, 0)
-	if err := Unmarshal(&resp, peers); err != nil {
+	if err := Unmarshal(&resp, &peers); err != nil {
 		return nil, err
 	}
 

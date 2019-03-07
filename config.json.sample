@@ -37,7 +37,7 @@
         "PowChain": true
       }
     ],
-    OriginCrossChainArbiters":[
+    "OriginCrossChainArbiters":[
       {
         "PublicKey": "024babfecea0300971a6f0ad13b27519faff0ef595faf9490dc1f5f4d6e6d7f3fb",
         "NetAddress": "127.0.0.1:11538"
@@ -88,5 +88,12 @@
     "SideAuxPowFee": 50000,
     "MaxLogsSize": 0,
     "MaxPerLogSize": 0,
+    "RpcConfiguration": {
+      "User": "ElaUser",
+      "Pass": "Ela123" ,
+      "WhiteIPList":[
+        "127.0.0.1"
+      ]
+    }
   }
 }

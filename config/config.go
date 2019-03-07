@@ -31,6 +31,11 @@ type CrossChainArbiterInfo struct {
 	PublicKey  string `json:"PublicKey"`
 	NetAddress string `json:"NetAddress"`
 }
+type RpcConfiguration struct {
+	User        string   `json:"User"`
+	Pass        string   `json:"Pass"`
+	WhiteIPList []string `json:"WhiteIPList"`
+}
 
 type Configuration struct {
 	Magic    uint32 `json:"Magic"`
@@ -59,6 +64,7 @@ type Configuration struct {
 	PrivateDposHeight            uint32                  `json:"PrivateDposHeight"`
 	OriginCrossChainArbiters     []CrossChainArbiterInfo `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []CrossChainArbiterInfo `json:"CRCCrossChainArbiters"`
+	RpcConfiguration             RpcConfiguration        `json:"RpcConfiguration"`
 }
 
 type RpcConfig struct {
@@ -107,14 +113,6 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 }
 
 func init() {
-	file, e := ioutil.ReadFile(DefaultConfigFilename)
-	if e != nil {
-		fmt.Printf("File error: %v\n", e)
-		os.Exit(1)
-	}
-
-	// Remove the UTF-8 Byte Order Mark
-	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
 
 	config := ConfigFile{
 		ConfigFile: Configuration{
@@ -134,8 +132,24 @@ func init() {
 			SideAuxPowFee:                50000,
 			MinThreshold:                 10000000,
 			DepositAmount:                10000000,
+			RpcConfiguration: RpcConfiguration{
+				User:        "",
+				Pass:        "",
+				WhiteIPList: []string{"127.0.0.1"},
+			},
 		},
 	}
+	Parameters.Configuration = &(config.ConfigFile)
+
+	file, e := ioutil.ReadFile(DefaultConfigFilename)
+	if e != nil {
+		fmt.Printf("File error: %v\n", e)
+		return
+	}
+
+	// Remove the UTF-8 Byte Order Mark
+	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
+
 	e = json.Unmarshal(file, &config)
 	if e != nil {
 		fmt.Printf("Unmarshal json file erro %v", e)
@@ -152,7 +166,7 @@ func init() {
 		os.Exit(1)
 	}
 
-	Parameters.Configuration = &(config.ConfigFile)
+	//Parameters.Configuration = &(config.ConfigFile)
 
 	var out bytes.Buffer
 	err := json.Indent(&out, file, "", "")

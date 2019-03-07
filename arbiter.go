@@ -4,7 +4,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-
+	"net/http"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
@@ -16,10 +16,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
-
 	"github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/utils/elalog"
+
 )
 
 var (
@@ -179,7 +179,8 @@ func main() {
 	go arbitrator.ArbitratorGroupSingleton.SyncLoop()
 
 	log.Info("9. Start servers.")
-	go httpjsonrpc.StartRPCServer()
+	pServer := new(http.Server)
+	go httpjsonrpc.StartRPCServer(pServer)
 
 	log.Info("10. Start check and remove cross chain transactions from db.")
 	go currentArbitrator.CheckAndRemoveCrossChainTransactionsFromDBLoop()
