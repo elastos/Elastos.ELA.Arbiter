@@ -305,7 +305,7 @@ func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
 	}
 
 	// Update active dpos peers
-	peers, err := rpc.GetActiveDposPeers()
+	peers, err := rpc.GetActiveDposPeers(currentHeight)
 	if err != nil {
 		return err
 	}

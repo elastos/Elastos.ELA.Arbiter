@@ -27,6 +27,11 @@ var (
 	LogDir   = "logs"
 )
 
+type CrossChainArbiterInfo struct {
+	PublicKey  string `json:"PublicKey"`
+	NetAddress string `json:"NetAddress"`
+}
+
 type Configuration struct {
 	Magic    uint32   `json:"Magic"`
 	Version  uint32   `json:"Version"`
@@ -41,20 +46,20 @@ type Configuration struct {
 	HttpRestPort  uint16        `json:"HttpRestPort"`
 	PrintLevel    uint8         `json:"PrintLevel"`
 	SPVPrintLevel uint8         `json:"SPVPrintLevel"`
-	LogPath       string        `json:"LogPath"`
-	SPVLogPath    string        `json:"SpvLogPath"`
 	MaxLogsSize   int64         `json:"MaxLogsSize"`
 	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
-	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
-	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
-	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
-	MinOutbound                  int           `json:"MinOutbound"`
-	MaxConnections               int           `json:"MaxConnections"`
-	SideAuxPowFee                int           `json:"SideAuxPowFee"`
-	MinThreshold                 int           `json:"MinThreshold"`
-	DepositAmount                int           `json:"DepositAmount"`
-	WithdrawMajorityCount        int           `json:"WithdrawMajorityCount"`
+	SideChainMonitorScanInterval time.Duration           `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration           `json:"ClearTransactionInterval"`
+	MinReceivedUsedUtxoMsgNumber uint32                  `json:"MinReceivedUsedUtxoMsgNumber"`
+	MinOutbound                  int                     `json:"MinOutbound"`
+	MaxConnections               int                     `json:"MaxConnections"`
+	SideAuxPowFee                int                     `json:"SideAuxPowFee"`
+	MinThreshold                 int                     `json:"MinThreshold"`
+	DepositAmount                int                     `json:"DepositAmount"`
+	PrivateDposHeight            uint32                  `json:"PrivateDposHeight"`
+	OriginCrossChainArbiters     []CrossChainArbiterInfo `json:"OriginCrossChainArbiters"`
+	CRCCrossChainArbiters        []CrossChainArbiterInfo `json:"CRCCrossChainArbiters"`
 }
 
 type RpcConfig struct {

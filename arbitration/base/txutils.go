@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
@@ -122,5 +123,5 @@ func GetGenesisAddress(genesisHash common.Uint256) (string, error) {
 }
 
 func genesisProgramHash(genesisHash common.Uint256) (*common.Uint168, error) {
-	return common.ToProgramHash(byte(common.PrefixCrossChain), crypto.CreateCrossChainRedeemScript(genesisHash)), nil
+	return common.ToProgramHash(byte(contract.PrefixCrossChain), contract.CreateCrossChainRedeemScript(genesisHash)), nil
 }

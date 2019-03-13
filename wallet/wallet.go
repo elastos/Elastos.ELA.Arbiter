@@ -15,6 +15,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
@@ -296,7 +297,7 @@ func (wallet *WalletImpl) Sign(name string, password []byte, txn *types.Transact
 func (wallet *WalletImpl) signStandardTransaction(password []byte, txn *types.Transaction) (*types.Transaction, error) {
 	code := txn.Programs[0].Code
 	// Get signer
-	programHash := common.ToProgramHash(common.PrefixStandard, code)
+	programHash := common.ToProgramHash(byte(contract.PrefixStandard), code)
 	// Check if current user is a valid signer
 	if *programHash != *wallet.Keystore.GetProgramHash() {
 		return nil, errors.New("[Wallet], Invalid signer")

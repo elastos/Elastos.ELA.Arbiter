@@ -125,6 +125,12 @@ func OpenKeystore(name string, password []byte) (Keystore, error) {
 
 	keystore.init(privateKey, publicKey)
 
+	script, err := contract.CreateStandardRedeemScript(keystore.GetPublicKey())
+	if err != nil {
+		return nil, err
+	}
+	keystore.redeemScript = script
+
 	// Handle system interrupt signals
 	keystore.catchSystemSignals()
 

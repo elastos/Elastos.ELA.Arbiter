@@ -75,7 +75,7 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 		return err
 	}
 	for i, programHash := range programHashes {
-		if *userProgramHash == *programHash {
+		if userProgramHash.IsEqual(*programHash) {
 			signerIndex = i
 		}
 	}
@@ -213,8 +213,7 @@ func (item *DistributedItem) getMultiSignSigners() ([]*common.Uint168, error) {
 
 	var signers []*common.Uint168
 	for _, script := range scripts {
-		script = append(script, common.STANDARD)
-		hash, _ := contract.PublicKeyToStandardProgramHash(script)
+		hash, _ := contract.PublicKeyToStandardProgramHash(script[1:])
 		signers = append(signers, hash)
 	}
 

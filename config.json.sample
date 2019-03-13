@@ -3,25 +3,26 @@
     "Magic": 7630402,
     "Version": 0,
     "SeedList": [
-      "127.0.0.1:20338"
+      "127.0.0.1:10538",
+      "127.0.0.1:20538"
     ],
-    "NodePort": 10338,
+    "NodePort": 10538,
     "PrintLevel": 1,
     "SpvPrintLevel": 4,
-    "HttpJsonPort": 10336,
+    "HttpJsonPort": 10536,
     "MainNode": {
       "Rpc": {
         "IpAddress": "127.0.0.1",
         "HttpJsonPort": 11336
       },
-     "SpvSeedList": [
-       "127.0.0.1:20866"
-    ],
-     "Magic": 7630401,
-     "MinOutbound": 1,
-     "MaxConnections": 3,
-     "FoundationAddress": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
-     "DefaultPort": 20866
+      "SpvSeedList": [
+        "127.0.0.1:20338"
+      ],
+      "Magic": 7630401,
+      "MinOutbound": 1,
+      "MaxConnections": 3,
+      "FoundationAddress": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
+      "DefaultPort": 20338
     },
     "SideNodeList": [
       {
@@ -36,9 +37,48 @@
         "PowChain": true
       }
     ],
+    OriginCrossChainArbiters":[
+      {
+        "PublicKey": "024babfecea0300971a6f0ad13b27519faff0ef595faf9490dc1f5f4d6e6d7f3fb",
+        "NetAddress": "127.0.0.1:11538"
+      },
+      {
+        "PublicKey": "0243ff13f1417c69686bfefc35227ad4f5f4ca03ccb3d3a635ae8ed67d57c20b97",
+        "NetAddress": "127.0.0.1:12538"
+      },
+      {
+        "PublicKey": "024ac1cdf73e3cbe88843b2d7279e6afdc26fc71d221f28cfbecbefb2a48d48304",
+        "NetAddress": "127.0.0.1:13538"
+      },
+      {
+        "PublicKey": "0274fe9f165574791f74d5c4358415596e408b704be9003f51a25e90fd527660b5",
+        "NetAddress": "127.0.0.1:14538"
+      },
+      {
+        "PublicKey": "03e24ce742a18bea0c54e0348c5d78a5f2b928565a9e8fb2ef4f00e66820038ba1",
+        "NetAddress": "127.0.0.1:15538"
+      }
+    ],
+    "CRCCrossChainArbiters": [
+      {
+        "PublicKey": "024babfecea0300971a6f0ad13b27519faff0ef595faf9490dc1f5f4d6e6d7f3fb",
+        "NetAddress": "127.0.0.1:21538"
+      },
+      {
+        "PublicKey": "0243ff13f1417c69686bfefc35227ad4f5f4ca03ccb3d3a635ae8ed67d57c20b97",
+        "NetAddress": "127.0.0.1:22538"
+      },
+      {
+        "PublicKey": "024ac1cdf73e3cbe88843b2d7279e6afdc26fc71d221f28cfbecbefb2a48d48304",
+        "NetAddress": "127.0.0.1:23538"
+      },
+      {
+        "PublicKey": "0274fe9f165574791f74d5c4358415596e408b704be9003f51a25e90fd527660b5",
+        "NetAddress": "127.0.0.1:24538"
+      }
+    ],
     "MinThreshold": 10000000,
     "DepositAmount": 10000000,
-    "WithdrawMajorityCount": 3,
     "SyncInterval": 1000,
     "SideChainMonitorScanInterval": 1000,
     "ClearTransactionInterval": 60000,
@@ -48,7 +88,5 @@
     "SideAuxPowFee": 50000,
     "MaxLogsSize": 0,
     "MaxPerLogSize": 0,
-    "LogPath": "",
-    "SPVLogPath": ""
   }
 }

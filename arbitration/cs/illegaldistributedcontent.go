@@ -41,11 +41,11 @@ func (i *IllegalDistributedContent) CurrentBlockHeight() (uint32, error) {
 }
 
 func (i *IllegalDistributedContent) Deserialize(r io.Reader) error {
-	return i.Evidence.Deserialize(r, payload.PayloadSidechainIllegalDataVersion)
+	return i.Evidence.Deserialize(r, payload.SidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) DeserializeUnsigned(r io.Reader) error {
-	return i.Evidence.DeserializeUnsigned(r, payload.PayloadSidechainIllegalDataVersion)
+	return i.Evidence.DeserializeUnsigned(r, payload.SidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) Hash() common.Uint256 {
@@ -69,17 +69,17 @@ func (i *IllegalDistributedContent) MergeSign(newSign []byte, targetCodeHash *co
 }
 
 func (i *IllegalDistributedContent) Serialize(w io.Writer) error {
-	return i.Evidence.Serialize(w, payload.PayloadSidechainIllegalDataVersion)
+	return i.Evidence.Serialize(w, payload.SidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) SerializeUnsigned(w io.Writer) error {
-	return i.Evidence.SerializeUnsigned(w, payload.PayloadSidechainIllegalDataVersion)
+	return i.Evidence.SerializeUnsigned(w, payload.SidechainIllegalDataVersion)
 }
 
 func (i *IllegalDistributedContent) Submit() error {
 	var err error
 	buf := new(bytes.Buffer)
-	if err = i.Evidence.Serialize(buf, payload.PayloadSidechainIllegalDataVersion); err != nil {
+	if err = i.Evidence.Serialize(buf, payload.SidechainIllegalDataVersion); err != nil {
 		return err
 	}
 

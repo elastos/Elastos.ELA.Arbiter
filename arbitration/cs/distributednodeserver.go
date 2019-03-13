@@ -7,7 +7,6 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -56,15 +55,18 @@ func CreateRedeemScript() ([]byte, error) {
 		publicKeys = append(publicKeys, temp)
 	}
 	redeemScript, err := base.CreateWithdrawRedeemScript(
-		getTransactionAgreementArbitratorsCount(), publicKeys)
+		getTransactionAgreementArbitratorsCount(len(publicKeys)), publicKeys)
 	if err != nil {
 		return nil, err
 	}
 	return redeemScript, nil
 }
 
-func getTransactionAgreementArbitratorsCount() int {
-	return config.Parameters.WithdrawMajorityCount
+func getTransactionAgreementArbitratorsCount(arbitersCount int) int {
+	if arbitersCount%3 != 0 {
+		return arbitersCount*2/3 + 1
+	}
+	return arbitersCount * 2 / 3
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
@@ -172,17 +174,18 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	dns.mux.Unlock()
 
 	targetCodeHash := transactionItem.TargetArbitratorProgramHash.ToCodeHash()
-	signedCount, err := transactionItem.ItemContent.MergeSign(newSign, &targetCodeHash)
+	signedCount, err := txn.MergeSign(newSign, &targetCodeHash)
 	if err != nil {
 		return err
 	}
 
-	if signedCount >= getTransactionAgreementArbitratorsCount() {
+	if signedCount >= getTransactionAgreementArbitratorsCount(len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
 		dns.mux.Lock()
 		delete(dns.unsolvedContents, txn.Hash())
 		dns.mux.Unlock()
 
 		if err = txn.Submit(); err != nil {
+			log.Warn(err.Error())
 			return err
 		}
 	}

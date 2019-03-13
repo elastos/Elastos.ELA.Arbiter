@@ -34,7 +34,43 @@ type ArbitratorGroupInfo struct {
 	Arbitrators           []string
 }
 
-func GetActiveDposPeers() (result []p2p.PeerAddr, err error) {
+func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
+	if height+1 < config.Parameters.PrivateDposHeight {
+		for _, a := range config.Parameters.OriginCrossChainArbiters {
+			var id peer.PID
+			pk, err := common.HexStringToBytes(a.PublicKey)
+			if err != nil {
+				return nil, err
+			}
+
+			copy(id[:], pk)
+			result = append(result, p2p.PeerAddr{
+				PID:  id,
+				Addr: a.NetAddress,
+			})
+		}
+
+		return result, nil
+	}
+
+	if height+1 >= config.Parameters.PrivateDposHeight {
+		for _, a := range config.Parameters.CRCCrossChainArbiters {
+			var id peer.PID
+			pk, err := common.HexStringToBytes(a.PublicKey)
+			if err != nil {
+				return nil, err
+			}
+
+			copy(id[:], pk)
+			result = append(result, p2p.PeerAddr{
+				PID:  id,
+				Addr: a.NetAddress,
+			})
+		}
+
+		return result, nil
+	}
+
 	resp, err := CallAndUnmarshal("getdpospeersinfo", nil,
 		config.Parameters.MainNode.Rpc)
 	if err != nil {
@@ -47,7 +83,7 @@ func GetActiveDposPeers() (result []p2p.PeerAddr, err error) {
 		IP             string `json:"ip"`
 		ConnState      string `json:"connstate"`
 	}
-	var peers []peerInfo
+	peers := make([]peerInfo, 0)
 	if err := Unmarshal(&resp, peers); err != nil {
 		return nil, err
 	}

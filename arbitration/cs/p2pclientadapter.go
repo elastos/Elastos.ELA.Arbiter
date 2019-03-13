@@ -12,6 +12,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/dpos/p2p"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
@@ -55,7 +56,8 @@ func (n *arbitratorsNetwork) AddSidechainListener(listener base.SidechainMsgList
 func (n *arbitratorsNetwork) Start() {
 	n.p2pServer.Start()
 
-	peers, err := rpc.GetActiveDposPeers()
+	currentHeight := store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
+	peers, err := rpc.GetActiveDposPeers(currentHeight)
 	if err != nil {
 		log.Error("Get active dpos peers error when start, details: ", err)
 		os.Exit(1)

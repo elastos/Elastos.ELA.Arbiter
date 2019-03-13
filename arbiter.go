@@ -45,12 +45,8 @@ func init() {
 	if config.Parameters.MaxLogsSize > 0 {
 		spvMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize) * elalog.MBSize
 	}
-	spvLogPath := SpvLogOutputPath
-	if config.Parameters.SPVLogPath != "" {
-		spvLogPath = config.Parameters.SPVLogPath
-	}
 	fileWriter := elalog.NewFileWriter(
-		spvLogPath,
+		SpvLogOutputPath,
 		spvMaxPerLogFileSize,
 		spvMaxLogsFolderSize,
 	)
@@ -70,12 +66,8 @@ func init() {
 		arbiterMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize)
 	}
 
-	arbiterLogPath := ArbiterLogOutputPath
-	if config.Parameters.LogPath != "" {
-		arbiterLogPath = config.Parameters.LogPath
-	}
 	log.Init(
-		arbiterLogPath,
+		ArbiterLogOutputPath,
 		config.Parameters.PrintLevel,
 		arbiterMaxPerLogFileSize,
 		arbiterMaxLogsFolderSize,

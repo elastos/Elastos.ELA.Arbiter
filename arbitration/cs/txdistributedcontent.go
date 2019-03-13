@@ -89,7 +89,7 @@ func (d *TxDistributedContent) Submit() error {
 
 func (d *TxDistributedContent) MergeSign(newSign []byte, targetCodeHash *common.Uint160) (int, error) {
 	var signerIndex = -1
-	codeHashes, err := account.GetSigners(d.Tx.Programs[0].Code)
+	codeHashes, err := account.GetCorssChainSigners(d.Tx.Programs[0].Code)
 	if err != nil {
 		return 0, err
 	}
