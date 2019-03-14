@@ -2,18 +2,16 @@
   "Configuration": {
     "Magic": 7630402,
     "Version": 0,
-    "SeedList": [
-      "127.0.0.1:10538",
-      "127.0.0.1:20538"
-    ],
-    "NodePort": 10538,
+    "NodePort": 11538,
     "PrintLevel": 1,
     "SpvPrintLevel": 4,
-    "HttpJsonPort": 10536,
+    "HttpJsonPort": 11536,
     "MainNode": {
       "Rpc": {
         "IpAddress": "127.0.0.1",
-        "HttpJsonPort": 11336
+        "HttpJsonPort": 11336,
+        "User": "",
+        "Pass": ""
       },
       "SpvSeedList": [
         "127.0.0.1:20338"
@@ -28,7 +26,9 @@
       {
         "Rpc": {
           "IpAddress": "127.0.0.1",
-          "HttpJsonPort": 13336
+          "HttpJsonPort": 13336,
+            "User": "",
+            "Pass": ""
         },
 		"ExchangeRate": 1.0,
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",

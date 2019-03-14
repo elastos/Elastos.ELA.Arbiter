@@ -1,8 +1,10 @@
 package rpc
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"strconv"
@@ -263,6 +265,19 @@ func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]base.UTXOIn
 	return utxoInfos, nil
 }
 
+func post(url string, contentType string, user string, pass string, body io.Reader) (resp *http.Response, err error) {
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	auth := user + ":" + pass
+	basicAuth := "Basic " + base64.StdEncoding.EncodeToString([]byte(auth))
+	req.Header.Set("Authorization", basicAuth)
+	req.Header.Set("Content-Type", contentType)
+
+	return http.DefaultClient.Do(req)
+}
+
 func Call(method string, params map[string]interface{}, config *config.RpcConfig) ([]byte, error) {
 	url := "http://" + config.IpAddress + ":" + strconv.Itoa(config.HttpJsonPort)
 	data, err := json.Marshal(map[string]interface{}{
@@ -273,7 +288,7 @@ func Call(method string, params map[string]interface{}, config *config.RpcConfig
 		return nil, err
 	}
 
-	resp, err := http.Post(url, "application/json", strings.NewReader(string(data)))
+	resp, err := post(url, "application/json", config.User, config.Pass, strings.NewReader(string(data)))
 	if err != nil {
 		log.Debug("POST requset err:", err)
 		return nil, err

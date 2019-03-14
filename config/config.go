@@ -33,10 +33,9 @@ type CrossChainArbiterInfo struct {
 }
 
 type Configuration struct {
-	Magic    uint32   `json:"Magic"`
-	Version  uint32   `json:"Version"`
-	SeedList []string `json:"SeedList"`
-	NodePort uint16   `json:"NodePort"`
+	Magic    uint32 `json:"Magic"`
+	Version  uint32 `json:"Version"`
+	NodePort uint16 `json:"NodePort"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
@@ -65,6 +64,8 @@ type Configuration struct {
 type RpcConfig struct {
 	IpAddress    string `json:"IpAddress"`
 	HttpJsonPort int    `json:"HttpJsonPort"`
+	User         string `json:"User"`
+	Pass         string `json:"Pass"`
 }
 
 type MainNodeConfig struct {
