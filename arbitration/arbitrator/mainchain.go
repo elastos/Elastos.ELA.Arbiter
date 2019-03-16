@@ -19,7 +19,7 @@ type MainChain interface {
 
 	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error
-	SyncChainData()
+	SyncChainData() uint32
 }
 
 type MainChainClient interface {

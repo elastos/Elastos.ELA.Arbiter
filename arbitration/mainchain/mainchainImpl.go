@@ -262,7 +262,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 	}, nil
 }
 
-func (mc *MainChainImpl) SyncChainData() {
+func (mc *MainChainImpl) SyncChainData() uint32 {
 	var chainHeight uint32
 	var currentHeight uint32
 	var needSync bool
@@ -296,6 +296,8 @@ func (mc *MainChainImpl) SyncChainData() {
 		// Update wallet height
 		currentHeight = store.DbCache.UTXOStore.CurrentHeight(currentHeight)
 	}
+
+	return currentHeight
 }
 
 func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {

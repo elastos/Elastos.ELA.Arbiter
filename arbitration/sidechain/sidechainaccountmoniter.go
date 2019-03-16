@@ -89,7 +89,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					}
 					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
 				}
-				currentHeight++
 
 				evidences, err := rpc.GetIllegalEvidenceByHeight(currentHeight+1, sideNode.Rpc)
 				if err != nil {
@@ -139,14 +138,10 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							err.Error())
 					}
 				}
-
-				// Update wallet height
-				currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight+1)
-				log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
+				currentHeight++
 			}
 			// Update wallet height
 			currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
-
 			log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 
 			if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {

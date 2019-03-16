@@ -89,7 +89,11 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	}
 	group.mux.Unlock()
 
-	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
+	var currentHeight uint32
+	if mc := group.GetCurrentArbitrator().GetMainChain(); mc != nil {
+		currentHeight = mc.SyncChainData()
+	}
+	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(currentHeight)
 	if err != nil {
 		log.Info("[SyncFromMainNode] get arbitrator group info failed")
 		return err
@@ -101,14 +105,9 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	group.mux.Unlock()
 
 	group.mux.Lock()
-	*group.currentHeight = height
+	*group.currentHeight = currentHeight
 	group.lastSyncTime = &currentTime
 	group.mux.Unlock()
-
-	mc := group.GetCurrentArbitrator().GetMainChain()
-	if mc != nil {
-		mc.SyncChainData()
-	}
 
 	group.CheckOnDutyStatus()
 	return nil
