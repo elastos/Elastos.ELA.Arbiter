@@ -10,6 +10,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
+	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -83,7 +84,7 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	}
 
 	group.mux.Lock()
-	if group.currentHeight != nil && *group.currentHeight == height {
+	if group.currentHeight != nil && *group.currentHeight != 0 && *group.currentHeight == height {
 		group.mux.Unlock()
 		return nil
 	}
@@ -119,8 +120,8 @@ func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
 		return
 	}
 	pk, err := base.PublicKeyFromString(onDutyArbiter)
-	arbitratorImpl, ok := group.listener.(*ArbitratorImpl)
-	if ok && err == nil && group.listener != nil && arbitratorImpl.Keystore != nil {
+	_, ok := group.listener.(*ArbitratorImpl)
+	if ok && err == nil && group.listener != nil  {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
 			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
 			group.isListenerOnDuty = !group.isListenerOnDuty
@@ -169,7 +170,7 @@ func (group *ArbitratorGroupImpl) SetListener(listener ArbitratorGroupListener) 
 	group.isListenerOnDuty = false
 }
 
-func Init() {
+func Init(client *account.Client) {
 	ArbitratorGroupSingleton = &ArbitratorGroupImpl{
 		timeoutLimit:     1000,
 		currentHeight:    new(uint32),
@@ -178,6 +179,8 @@ func Init() {
 	}
 
 	currentArbitrator := &ArbitratorImpl{mainOnDutyMux: new(sync.Mutex)}
+	currentArbitrator.InitAccount(client)
+
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)
 

@@ -3,17 +3,14 @@ package sideauxpow
 import (
 	"bytes"
 	"errors"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	walt "github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -22,15 +19,16 @@ type SideChainPowAccount struct {
 	availableBalance common.Fixed64
 }
 
-func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, wallet walt.Wallet) ([]*SideChainPowAccount, error) {
+func checkSideChainPowAccounts(addresses []string, minThreshold int) ([]*SideChainPowAccount, error) {
 	var warnAddresses []*SideChainPowAccount
 	currentHeight := *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
-	for _, addr := range addrs {
+	for _, addr := range addresses {
 		available := common.Fixed64(0)
 		locked := common.Fixed64(0)
-		UTXOs, err := wallet.GetAddressUTXOs(addr.Addr.ProgramHash)
+		programHash, _ := common.Uint168FromAddress(addr)
+		UTXOs, err := GetAddressUTXOs(programHash)
 		if err != nil {
-			return nil, errors.New("get " + addr.Addr.Address + " UTXOs failed")
+			return nil, errors.New("get " + addr + " UTXOs failed")
 		}
 		for _, utxo := range UTXOs {
 			if utxo.LockTime < currentHeight {
@@ -42,7 +40,7 @@ func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, walle
 
 		if available < common.Fixed64(minThreshold) {
 			warnAddresses = append(warnAddresses, &SideChainPowAccount{
-				Address:          addr.Addr.Address,
+				Address:          addr,
 				availableBalance: available,
 			})
 		}
@@ -65,39 +63,25 @@ func checkSideChainPowAccounts(addrs []*walt.KeyAddress, minThreshold int, walle
 	return nil, nil
 }
 
-func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error {
+func divideTransfer(name string, outputs []*Transfer) error {
 	// create transaction
 	fee := common.Fixed64(100000)
-	keystore, err := walt.OpenKeystore(name, getMainAccountPassword())
-	if err != nil {
-		return err
-	}
+	mainAccount:= client.GetMainAccount()
 
-	from := keystore.Address()
+	from := mainAccount.Address
+	script := mainAccount.RedeemScript
 
-	script, err := contract.CreateStandardRedeemScript(keystore.GetPublicKey())
-	if err != nil {
-		return err
-	}
-
-	var txn *types.Transaction
-	txn, err = CurrentWallet.CreateMultiOutputTransaction(from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
+	txn, err := CreateMultiOutputTransaction(from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
 	if err != nil {
 		return errors.New("create divide transaction failed: " + err.Error())
 	}
 
-	// sign transaction
-	program := txn.Programs[0]
-
-	haveSign, needSign, err := crypto.GetSignStatus(program.Code, program.Parameter)
-	if haveSign == needSign {
-		return errors.New("transaction was fully signed, no need more sign")
-	}
-	_, err = CurrentWallet.Sign(name, getPassword(passwd, false), txn)
+	txnSigned, err := client.Sign(txn)
 	if err != nil {
 		return err
 	}
-	haveSign, needSign, _ = crypto.GetSignStatus(program.Code, program.Parameter)
+	program := txnSigned.Programs[0]
+	haveSign, needSign, _ := crypto.GetSignStatus(program.Code, program.Parameter)
 	log.Debug("Divide transaction successfully signed: ", haveSign, needSign)
 
 	buf := new(bytes.Buffer)
@@ -114,28 +98,28 @@ func divideTransfer(name string, passwd []byte, outputs []*walt.Transfer) error 
 	return nil
 }
 
-func SidechainAccountDivide(wallet walt.Wallet) {
+func SidechainAccountDivide() {
 	for {
 		select {
 		case <-time.After(time.Second * 60):
-			addresses := wallet.GetAddresses()
-			if len(addresses) == 0 {
-				log.Error("Wallet addresses is null")
+			miningAddresses := make([]string, 0)
+			for _, sideNode := range config.Parameters.SideNodeList {
+				miningAddresses = append(miningAddresses, sideNode.MiningAddr)
 			}
-			warningAccounts, err := checkSideChainPowAccounts(addresses, config.Parameters.MinThreshold, wallet)
+			warningAccounts, err := checkSideChainPowAccounts(miningAddresses, config.Parameters.MinThreshold)
 			if err != nil {
 				log.Error("Check side chain pow err", err)
 			}
 			if len(warningAccounts) > 0 {
-				var outputs []*walt.Transfer
+				var outputs []*Transfer
 				amount := common.Fixed64(config.Parameters.DepositAmount)
 				for _, warningAccount := range warningAccounts {
-					outputs = append(outputs, &walt.Transfer{
+					outputs = append(outputs, &Transfer{
 						Address: warningAccount.Address,
 						Amount:  &amount,
 					})
 				}
-				divideTransfer(walt.DefaultKeystoreFile, getMainAccountPassword(), outputs)
+				divideTransfer(DefaultKeystoreFile, outputs)
 			}
 		}
 	}
