@@ -91,7 +91,7 @@ type SideNodeConfig struct {
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
-	MiningAddr			string 	`json:"MiningAddr"`
+	MiningAddr          string  `json:"MiningAddr"`
 	PayToAddr           string  `json:"PayToAddr"`
 	PowChain            bool    `json:"PowChain"`
 }

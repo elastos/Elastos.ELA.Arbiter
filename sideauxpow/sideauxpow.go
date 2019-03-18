@@ -4,16 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"os"
 	"sync"
-	"time"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
@@ -24,7 +20,7 @@ import (
 
 var (
 	lock                          sync.RWMutex
-	client *account.Client
+	client                        *account.Client
 	lastSendSideMiningHeightMap   map[common.Uint256]uint32
 	lastNotifySideMiningHeightMap map[common.Uint256]uint32
 	lastSubmitAuxpowHeightMap     map[common.Uint256]uint32
@@ -62,25 +58,6 @@ func UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256) {
 	lock.Lock()
 	defer lock.Unlock()
 	lastSubmitAuxpowHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
-}
-
-func getPassword(passwd []byte, confirmed bool) []byte {
-	var tmp []byte
-	var err error
-	if len(passwd) > 0 {
-		tmp = []byte(passwd)
-	} else {
-		if confirmed {
-			tmp, err = password.GetConfirmedPassword()
-		} else {
-			tmp, err = password.GetPassword()
-		}
-		if err != nil {
-			log.Error(err)
-			os.Exit(1)
-		}
-	}
-	return tmp
 }
 
 func unmarshal(result interface{}, target interface{}) error {
@@ -203,36 +180,6 @@ func StartSideChainMining(sideNode *config.SideNodeConfig) {
 	err := sideChainPowTransfer(sideNode)
 	if err != nil {
 		log.Warn(err)
-	}
-}
-
-func calculateGenesisAddress(genesisBlockHash string) (string, error) {
-	genesisBlockBytes, err := common.HexStringToBytes(genesisBlockHash)
-	if err != nil {
-		return "", errors.New("genesis block hash string to bytes failed")
-	}
-	genesisHash, err := common.Uint256FromBytes(genesisBlockBytes)
-	if err != nil {
-		return "", errors.New("genesis block hash bytes to hash failed")
-	}
-
-	genesisAddress, err := base.GetGenesisAddress(*genesisHash)
-	if err != nil {
-		return "", errors.New("genesis block hash to genesis address failed")
-	}
-
-	return genesisAddress, nil
-}
-
-func TestMultiSidechain() {
-	for {
-		select {
-		case <-time.After(time.Second * 3):
-			for _, node := range config.Parameters.SideNodeList {
-				StartSideChainMining(node)
-			}
-			println("TestMultiSidechain")
-		}
 	}
 }
 

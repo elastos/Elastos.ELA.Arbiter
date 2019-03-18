@@ -1,29 +1,18 @@
 package sideauxpow
 
 import (
-	"fmt"
 	"errors"
+	"fmt"
 	"math"
 	"math/rand"
 	"strconv"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
-	"github.com/elastos/Elastos.ELA/core/contract/program"
-	"github.com/elastos/Elastos.ELA/core/types/payload"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	"github.com/elastos/Elastos.ELA/core/types"
 )
-
-func CreateMultiOutputTransaction(fromAddress string, fee *common.Fixed64, redeemScript []byte, currentHeight uint32, outputs ...*Transfer) (*types.Transaction, error) {
-	txType := types.TransferAsset
-	txPayload := &payload.TransferAsset{}
-	return CreateLockedMultiOutputTransaction(txType, txPayload, fromAddress, fee, redeemScript, uint32(0), currentHeight, outputs...)
-}
-
-func CreateLockedMultiOutputTransaction(txType types.TxType, txPayload types.Payload, fromAddress string, fee *common.Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32, outputs ...*Transfer) (*types.Transaction, error) {
-	return createTransaction(txType, txPayload, fromAddress, fee, redeemScript, lockedUntil, currentHeight, outputs...)
-}
 
 func createTransaction(txType types.TxType, txPayload types.Payload, fromAddress string, fee *common.Fixed64, redeemScript []byte, lockedUntil uint32, currentHeight uint32, outputs ...*Transfer) (*types.Transaction, error) {
 	// Check if output is valid
