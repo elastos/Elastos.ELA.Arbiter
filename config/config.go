@@ -61,7 +61,7 @@ type Configuration struct {
 	SideAuxPowFee                int                     `json:"SideAuxPowFee"`
 	MinThreshold                 int                     `json:"MinThreshold"`
 	DepositAmount                int                     `json:"DepositAmount"`
-	PrivateDposHeight            uint32                  `json:"PrivateDposHeight"`
+	CRCOnlyDPOSHeight            uint32                  `json:"CRCOnlyDPOSHeight"`
 	OriginCrossChainArbiters     []CrossChainArbiterInfo `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []CrossChainArbiterInfo `json:"CRCCrossChainArbiters"`
 	RpcConfiguration             RpcConfiguration        `json:"RpcConfiguration"`

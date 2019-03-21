@@ -37,7 +37,7 @@ type ArbitratorGroupInfo struct {
 }
 
 func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
-	if height+1 < config.Parameters.PrivateDposHeight {
+	if height+1 < config.Parameters.CRCOnlyDPOSHeight {
 		for _, a := range config.Parameters.OriginCrossChainArbiters {
 			var id peer.PID
 			pk, err := common.HexStringToBytes(a.PublicKey)
@@ -55,7 +55,7 @@ func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
 		return result, nil
 	}
 
-	if height+1 >= config.Parameters.PrivateDposHeight {
+	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
 			var id peer.PID
 			pk, err := common.HexStringToBytes(a.PublicKey)
