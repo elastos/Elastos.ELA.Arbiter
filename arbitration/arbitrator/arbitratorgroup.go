@@ -121,7 +121,7 @@ func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
 	}
 	pk, err := base.PublicKeyFromString(onDutyArbiter)
 	_, ok := group.listener.(*ArbitratorImpl)
-	if ok && err == nil && group.listener != nil  {
+	if ok && err == nil && group.listener != nil {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
 			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
 			group.isListenerOnDuty = !group.isListenerOnDuty

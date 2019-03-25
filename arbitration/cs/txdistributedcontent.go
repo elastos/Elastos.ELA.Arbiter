@@ -66,11 +66,6 @@ func (d *TxDistributedContent) Submit() error {
 		for _, input := range d.Tx.Inputs {
 			newUsedUtxos = append(newUsedUtxos, input.Previous)
 		}
-		sidechain, ok := currentArbitrator.GetSideChainManager().GetChain(withdrawPayload.GenesisBlockAddress)
-		if !ok {
-			return errors.New("get side chain from withdraw payload failed")
-		}
-		sidechain.AddLastUsedOutPoints(newUsedUtxos)
 
 		err = store.DbCache.SideChainStore.RemoveSideChainTxs(transactionHashes)
 		if err != nil {
@@ -112,11 +107,6 @@ func (d *TxDistributedContent) MergeSign(newSign []byte, targetCodeHash *common.
 }
 
 func (d *TxDistributedContent) Check(client interface{}) error {
-	payloadWithdraw, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
-	if !ok {
-		return errors.New("unknown payload type")
-	}
-
 	clientFunc, ok := client.(DistributedNodeClientFunc)
 	if !ok {
 		return errors.New("unknown client function")
@@ -126,21 +116,6 @@ func (d *TxDistributedContent) Check(client interface{}) error {
 	if err != nil {
 		return err
 	}
-
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	sc, ok := currentArbitrator.GetSideChainManager().GetChain(payloadWithdraw.GenesisBlockAddress)
-	if !ok {
-		return errors.New("get side chain from GenesisBlockAddress failed")
-	}
-
-	if payloadWithdraw.BlockHeight > sc.GetLastUsedUtxoHeight() {
-		var outPoints []types.OutPoint
-		for _, input := range d.Tx.Inputs {
-			outPoints = append(outPoints, input.Previous)
-		}
-		sc.AddLastUsedOutPoints(outPoints)
-	}
-
 	return nil
 }
 
@@ -233,27 +208,6 @@ func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNode
 		txs = sideChainTxs
 	}
 
-	utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(payloadWithdraw.GenesisBlockAddress)
-	if err != nil {
-		return errors.New("get spender's UTXOs failed")
-	}
-
-	//check inputs
-	var inputTotalAmount common.Fixed64
-	for _, input := range txn.Inputs {
-		isContained := false
-		for _, utxo := range utxos {
-			if utxo.Input.IsEqual(*input) {
-				isContained = true
-				inputTotalAmount += *utxo.Amount
-				break
-			}
-		}
-		if !isContained {
-			return errors.New("check withdraw transaction failed, utxo is not from genesis address account")
-		}
-	}
-
 	//check outputs and fee
 	var outputTotalAmount common.Fixed64
 	for _, output := range txn.Outputs {
@@ -265,19 +219,13 @@ func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNode
 	var totalCrossChainCount int
 	for _, tx := range txs {
 		for _, w := range tx.WithdrawInfo.WithdrawAssets {
-
-			if *w.CrossChainAmount < 0 || *w.Amount <= 0 || *w.CrossChainAmount >= *w.Amount {
+			if *w.CrossChainAmount < 0 || *w.Amount <= 0 || *w.Amount-*w.CrossChainAmount <= 0 || *w.CrossChainAmount >= *w.Amount {
 				return errors.New("check withdraw transaction failed, cross chain amount less than 0")
 			}
 			oriOutputAmount += common.Fixed64(float64(*w.CrossChainAmount) / exchangeRate)
 			totalFee += common.Fixed64(float64(*w.Amount-*w.CrossChainAmount) / exchangeRate)
 		}
 		totalCrossChainCount += len(tx.WithdrawInfo.WithdrawAssets)
-	}
-
-	if inputTotalAmount != outputTotalAmount+totalFee {
-		log.Info("inputTotalAmount-", inputTotalAmount, " outputTotalAmount-", outputTotalAmount, " totalFee-", totalFee)
-		return errors.New("check withdraw transaction failed, input amount not equal output amount")
 	}
 
 	//check exchange rate

@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"math"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sync"
 
@@ -17,11 +16,11 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	_ "github.com/mattn/go-sqlite3"
+	"os/exec"
 )
 
 var (
 	DBDocumentNAME  = filepath.Join(config.DataPath, config.DataDir, "arbiter")
-	DBNameUTXO      = filepath.Join(DBDocumentNAME, "chainUTXOCache.db")
 	DBNameMainChain = filepath.Join(DBDocumentNAME, "mainChainCache.db")
 	DBNameSideChain = filepath.Join(DBDocumentNAME, "sideChainCache.db")
 )
@@ -41,12 +40,6 @@ const (
 	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
 				GenesisBlockAddress VARCHAR(34) NOT NULL PRIMARY KEY,
 				Height INTEGER 
-			);`
-	CreateUTXOsTable = `CREATE TABLE IF NOT EXISTS UTXOs (
-				Id INTEGER NOT NULL PRIMARY KEY,
-				UTXOInput BLOB UNIQUE,
-				Amount VARCHAR,
-				GenesisBlockAddress VARCHAR(34)
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
@@ -80,19 +73,10 @@ type DataStore interface {
 	catchSystemSignals()
 }
 
-type DataStoreUTXO interface {
-	DataStore
-
-	CurrentHeight(height uint32) uint32
-
-	AddAddressUTXOs(utxos []*AddressUTXO) error
-	DeleteUTXOs(inputs []*types.Input) error
-	GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error)
-}
-
 type DataStoreMainChain interface {
 	DataStore
 
+	CurrentHeight(height uint32) uint32
 	AddMainChainTx(tx *base.MainChainTransaction) error
 	AddMainChainTxs(txs []*base.MainChainTransaction) ([]bool, error)
 	HasMainChainTx(transactionHash, genesisBlockAddress string) (bool, error)
@@ -118,15 +102,8 @@ type DataStoreSideChain interface {
 }
 
 type DataStoreImpl struct {
-	UTXOStore      DataStoreUTXO
 	MainChainStore DataStoreMainChain
 	SideChainStore DataStoreSideChain
-}
-
-type DataStoreUTXOImpl struct {
-	mux *sync.Mutex
-
-	*sql.DB
 }
 
 type DataStoreMainChainImpl struct {
@@ -142,10 +119,11 @@ type DataStoreSideChainImpl struct {
 }
 
 func OpenDataStore() (*DataStoreImpl, error) {
-	dbUTXO, err := initUTXODB()
-	if err != nil {
+	if err := checkAndCreateArbiterDataDir(); err != nil {
+		log.Errorf("create arbiter db dir error: %s\n", err)
 		return nil, err
 	}
+
 	dbMainChain, err := initMainChainDB()
 	if err != nil {
 		return nil, err
@@ -155,27 +133,12 @@ func OpenDataStore() (*DataStoreImpl, error) {
 		return nil, err
 	}
 	dataStore := &DataStoreImpl{
-		UTXOStore:      &DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO},
 		MainChainStore: &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
 		SideChainStore: &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
 
 	// Handle system interrupt signals
-	dataStore.UTXOStore.catchSystemSignals()
 	dataStore.MainChainStore.catchSystemSignals()
 	dataStore.SideChainStore.catchSystemSignals()
-
-	return dataStore, nil
-}
-
-func OpenUTXODataStore() (*DataStoreUTXOImpl, error) {
-	dbUTXO, err := initUTXODB()
-	if err != nil {
-		return nil, err
-	}
-	dataStore := &DataStoreUTXOImpl{mux: new(sync.Mutex), DB: dbUTXO}
-
-	// Handle system interrupt signals
-	dataStore.catchSystemSignals()
 
 	return dataStore, nil
 }
@@ -206,16 +169,22 @@ func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
 	return dataStore, nil
 }
 
-func initUTXODB() (*sql.DB, error) {
-	arbiterPath := filepath.Join(config.DataPath, config.DataDir, "arbiter")
+func checkAndCreateArbiterDataDir() error {
+	arbiterPath := filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir)
 	if _, err := os.Stat(arbiterPath); os.IsNotExist(err) {
 		cmd := exec.Command("mkdir", "-p", arbiterPath)
-		if err = cmd.Run(); err != nil {
-			log.Errorf("Create arbiter db dir error: %s\n", err)
-			return nil, err
-		}
+		return cmd.Run()
 	}
-	db, err := sql.Open(DriverName, DBNameUTXO)
+	return nil
+}
+
+func initMainChainDB() (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("create DBCache doucument error:", err)
+		return nil, err
+	}
+	db, err := sql.Open(DriverName, DBNameMainChain)
 	if err != nil {
 		log.Error("Open data db error:", err)
 		return nil, err
@@ -225,13 +194,8 @@ func initUTXODB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-	// Create SideHeightInfo table
-	_, err = db.Exec(CreateHeightInfoTable)
-	if err != nil {
-		return nil, err
-	}
-	// Create UTXOs table
-	_, err = db.Exec(CreateUTXOsTable)
+	// Create MainChainTxs table
+	_, err = db.Exec(CreateMainChainTxsTable)
 	if err != nil {
 		return nil, err
 	}
@@ -240,25 +204,6 @@ func initUTXODB() (*sql.DB, error) {
 		return nil, err
 	}
 	stmt.Exec("Height", uint32(0))
-	return db, nil
-}
-
-func initMainChainDB() (*sql.DB, error) {
-	err := CheckAndCreateDocument(DBDocumentNAME)
-	if err != nil {
-		log.Error("Create DBCache doucument error:", err)
-		return nil, err
-	}
-	db, err := sql.Open(DriverName, DBNameMainChain)
-	if err != nil {
-		log.Error("Open data db error:", err)
-		return nil, err
-	}
-	// Create MainChainTxs table
-	_, err = db.Exec(CreateMainChainTxsTable)
-	if err != nil {
-		return nil, err
-	}
 	return db, nil
 }
 
@@ -293,152 +238,6 @@ func initSideChainDB() (*sql.DB, error) {
 	}
 
 	return db, nil
-}
-
-func (store *DataStoreUTXOImpl) ResetDataStore() error {
-	store.DB.Close()
-	os.Remove(DBNameUTXO)
-
-	var err error
-	store.DB, err = initUTXODB()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (store *DataStoreUTXOImpl) catchSystemSignals() {
-	HandleSignal(func() {
-		store.mux.Lock()
-		store.DB.Close()
-		os.Exit(-1)
-	})
-}
-
-func (store *DataStoreUTXOImpl) CurrentHeight(height uint32) uint32 {
-	store.mux.Lock()
-	defer store.mux.Unlock()
-
-	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
-	var storedHeight uint32
-	row.Scan(&storedHeight)
-
-	if height > storedHeight {
-		// Received reset height code
-		if height == ResetHeightCode {
-			height = 0
-		}
-		// Insert current height
-		stmt, err := store.Prepare("UPDATE Info SET Value=? WHERE Name=?")
-		if err != nil {
-			return uint32(0)
-		}
-		_, err = stmt.Exec(height, "Height")
-		if err != nil {
-			return uint32(0)
-		}
-		return height
-	}
-	return storedHeight
-}
-
-func (store *DataStoreUTXOImpl) AddAddressUTXOs(utxos []*AddressUTXO) error {
-	store.mux.Lock()
-	defer store.mux.Unlock()
-
-	tx, err := store.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Commit()
-
-	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO UTXOs(UTXOInput, Amount, GenesisBlockAddress) values(?,?,?)")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for _, utxo := range utxos {
-		// Serialize input
-		buf := new(bytes.Buffer)
-		utxo.Input.Serialize(buf)
-		inputBytes := buf.Bytes()
-		// Serialize amount
-		buf = new(bytes.Buffer)
-		utxo.Amount.Serialize(buf)
-		amountBytes := buf.Bytes()
-		// Do insert
-		_, err = stmt.Exec(inputBytes, amountBytes, utxo.GenesisBlockAddress)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (store *DataStoreUTXOImpl) DeleteUTXOs(inputs []*types.Input) error {
-	store.mux.Lock()
-	defer store.mux.Unlock()
-
-	tx, err := store.Begin()
-	if err != nil {
-		return err
-	}
-	defer tx.Commit()
-
-	// Prepare sql statement
-	stmt, err := tx.Prepare("DELETE FROM UTXOs WHERE UTXOInput=?")
-	if err != nil {
-		return err
-	}
-	defer stmt.Close()
-
-	for _, input := range inputs {
-		// Serialize input
-		buf := new(bytes.Buffer)
-		input.Serialize(buf)
-		inputBytes := buf.Bytes()
-		// Do delete
-		_, err = stmt.Exec(inputBytes)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (store *DataStoreUTXOImpl) GetAddressUTXOsFromGenesisBlockAddress(genesisBlockAddress string) ([]*AddressUTXO, error) {
-	store.mux.Lock()
-	defer store.mux.Unlock()
-
-	rows, err := store.Query(`SELECT UTXOs.UTXOInput, UTXOs.Amount FROM UTXOs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var inputs []*AddressUTXO
-	for rows.Next() {
-		var outputBytes []byte
-		var amountBytes []byte
-		err = rows.Scan(&outputBytes, &amountBytes)
-		if err != nil {
-			return nil, err
-		}
-
-		var input types.Input
-		reader := bytes.NewReader(outputBytes)
-		input.Deserialize(reader)
-
-		var amount common.Fixed64
-		reader = bytes.NewReader(amountBytes)
-		amount.Deserialize(reader)
-
-		inputs = append(inputs, &AddressUTXO{&input, &amount, genesisBlockAddress})
-	}
-	return inputs, nil
 }
 
 func (store *DataStoreSideChainImpl) ResetDataStore() error {
@@ -712,6 +511,33 @@ func (store *DataStoreMainChainImpl) catchSystemSignals() {
 		store.DB.Close()
 		os.Exit(-1)
 	})
+}
+
+func (store *DataStoreMainChainImpl) CurrentHeight(height uint32) uint32 {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
+	var storedHeight uint32
+	row.Scan(&storedHeight)
+
+	if height > storedHeight {
+		// Received reset height code
+		if height == ResetHeightCode {
+			height = 0
+		}
+		// Insert current height
+		stmt, err := store.Prepare("UPDATE Info SET Value=? WHERE Name=?")
+		if err != nil {
+			return uint32(0)
+		}
+		_, err = stmt.Exec(height, "Height")
+		if err != nil {
+			return uint32(0)
+		}
+		return height
+	}
+	return storedHeight
 }
 
 func (store *DataStoreMainChainImpl) AddMainChainTx(tx *base.MainChainTransaction) error {

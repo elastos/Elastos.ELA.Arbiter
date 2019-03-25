@@ -2,7 +2,6 @@ package mainchain
 
 import (
 	"errors"
-	"math"
 	"math/rand"
 	"strconv"
 
@@ -136,28 +135,9 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 		return nil, err
 	}
 
-	//get real available utxos
-	ops := sideChain.GetLastUsedOutPoints()
-
-	var realAvailableUtxos []*store.AddressUTXO
-	var unavailableUtxos []*store.AddressUTXO
-	for _, utxo := range availableUTXOs {
-		isUsed := false
-		for _, ops := range ops {
-			if ops.IsEqual(utxo.Input.Previous) {
-				isUsed = true
-			}
-		}
-		if !isUsed {
-			realAvailableUtxos = append(realAvailableUtxos, utxo)
-		} else {
-			unavailableUtxos = append(unavailableUtxos, utxo)
-		}
-	}
-
 	// Create transaction inputs
 	var txInputs []*types.Input
-	for _, utxo := range realAvailableUtxos {
+	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
 			totalOutputAmount -= *utxo.Amount
@@ -181,41 +161,14 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 		}
 	}
 
-	//if available utxo is not enough, try to use unavailable utxos from biggest one
-	if totalOutputAmount > 0 && len(unavailableUtxos) != 0 {
-		for i := len(unavailableUtxos) - 1; i >= 0; i++ {
-			utxo := unavailableUtxos[i]
-			txInputs = append(txInputs, utxo.Input)
-			if *utxo.Amount < totalOutputAmount {
-				totalOutputAmount -= *utxo.Amount
-			} else if *utxo.Amount == totalOutputAmount {
-				totalOutputAmount = 0
-				break
-			} else if *utxo.Amount > totalOutputAmount {
-				programHash, err := common.Uint168FromAddress(withdrawBank)
-				if err != nil {
-					return nil, err
-				}
-				change := &types.Output{
-					AssetID:     common.Uint256(base.SystemAssetId),
-					Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
-					OutputLock:  uint32(0),
-					ProgramHash: *programHash,
-				}
-				txOutputs = append(txOutputs, change)
-				totalOutputAmount = 0
-				break
-			}
-		}
-	}
-
 	if totalOutputAmount > 0 {
-		return nil, errors.New("Available token is not enough")
+		return nil, errors.New("available token is not enough")
 	}
 	if err != nil {
 		return nil, err
 	}
 
+	// Create redeem script
 	redeemScript, err := cs.CreateRedeemScript()
 	if err != nil {
 		return nil, err
@@ -263,57 +216,30 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 }
 
 func (mc *MainChainImpl) SyncChainData() uint32 {
-	var chainHeight uint32
-	var currentHeight uint32
-	var needSync bool
-
-	for {
-		chainHeight, currentHeight, needSync = mc.needSyncBlocks()
-		if !needSync {
-			log.Debug("No need sync, chain height:", chainHeight, "current height:", currentHeight)
-			break
-		}
-		log.Info("[arbitrator] Main chain height: ", chainHeight)
-
-		//sync genesis block
-		if currentHeight == 0 {
-			err := mc.syncAndProcessBlock(currentHeight)
-			if err != nil {
-				log.Error("get genesis block failed, chainHeight:", chainHeight)
-				break
-			}
-		}
-
-		for currentHeight < chainHeight {
-			err := mc.syncAndProcessBlock(currentHeight + 1)
-			if err != nil {
-				log.Error("get block by height failed, chain height:", chainHeight,
-					"current height:", currentHeight+1, "err:", err.Error())
-				break
-			}
-			currentHeight += 1
-		}
-		// Update wallet height
-		currentHeight = store.DbCache.UTXOStore.CurrentHeight(currentHeight)
+	chainHeight, currentHeight, needSync := mc.needSyncBlocks()
+	if !needSync {
+		log.Debug("No need sync, chain height:", chainHeight, "current height:", currentHeight)
+		return currentHeight
 	}
+	log.Info("[arbitrator] Main chain height: ", chainHeight)
+	err := mc.updatePeers(chainHeight)
+	if err != nil {
+		log.Error("update peers failed", err.Error())
+	}
+
+	// Update wallet height
+	currentHeight = store.DbCache.MainChainStore.CurrentHeight(chainHeight)
 
 	return currentHeight
 }
 
-func (mc *MainChainImpl) syncAndProcessBlock(currentHeight uint32) error {
-	block, err := rpc.GetBlockByHeight(currentHeight, config.Parameters.MainNode.Rpc)
-	if err != nil {
-		return err
-	}
-
+func (mc *MainChainImpl) updatePeers(currentHeight uint32) error {
 	// Update active dpos peers
 	peers, err := rpc.GetActiveDposPeers(currentHeight)
 	if err != nil {
 		return err
 	}
 	cs.P2PClientSingleton.UpdatePeers(peers)
-
-	mc.processBlock(block, currentHeight)
 	return nil
 }
 
@@ -324,28 +250,13 @@ func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
 		return 0, 0, false
 	}
 
-	currentHeight := store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
+	currentHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
 	}
 
 	return chainHeight, currentHeight, true
-}
-
-func (mc *MainChainImpl) getAvailableUTXOs(utxos []*store.AddressUTXO) []*store.AddressUTXO {
-	var availableUTXOs []*store.AddressUTXO
-	var currentHeight = store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
-	for _, utxo := range utxos {
-		if utxo.Input.Sequence > 0 {
-			if utxo.Input.Sequence >= currentHeight {
-				continue
-			}
-			utxo.Input.Sequence = math.MaxUint32 - 1
-		}
-		availableUTXOs = append(availableUTXOs, utxo)
-	}
-	return availableUTXOs
 }
 
 func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
@@ -355,73 +266,6 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 		}
 	}
 	return false
-}
-
-func (mc *MainChainImpl) processBlock(block *base.BlockInfo, height uint32) {
-	log.Info("[processBlock] block height:", block.Height, "current height:", height)
-	sideChains := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
-	// Add UTXO to wallet address from transaction outputs
-	utxos := make([]*store.AddressUTXO, 0)
-	inputs := make([]*types.Input, 0)
-	for _, txnInfo := range block.Tx {
-		var txn base.TransactionInfo
-		rpc.Unmarshal(&txnInfo, &txn)
-
-		// Add UTXOs to wallet address from transaction outputs
-		for index, output := range txn.Outputs {
-			if ok := mc.containGenesisBlockAddress(output.Address); ok {
-				// Create UTXO input from output
-				txHashBytes, _ := common.HexStringToBytes(txn.Hash)
-				referTxHash, _ := common.Uint256FromBytes(common.BytesReverse(txHashBytes))
-				sequence := output.OutputLock
-				input := &types.Input{
-					Previous: types.OutPoint{
-						TxID:  *referTxHash,
-						Index: uint16(index),
-					},
-					Sequence: sequence,
-				}
-				if txn.TxType == types.CoinBase {
-					sequence = block.Height + 100
-				}
-
-				amount, _ := common.StringToFixed64(output.Value)
-				// Save UTXO input to data store
-				addressUTXO := &store.AddressUTXO{
-					Input:               input,
-					Amount:              amount,
-					GenesisBlockAddress: output.Address,
-				}
-
-				if *amount > common.Fixed64(0) {
-					utxos = append(utxos, addressUTXO)
-				}
-			}
-		}
-
-		// Delete UTXOs from wallet by transaction inputs
-		for _, input := range txn.Inputs {
-			txHashBytes, _ := common.HexStringToBytes(input.TxID)
-			referTxID, _ := common.Uint256FromBytes(common.BytesReverse(txHashBytes))
-			outPoint := types.OutPoint{
-				TxID:  *referTxID,
-				Index: input.VOut,
-			}
-			txInput := &types.Input{
-				Previous: outPoint,
-				Sequence: input.Sequence,
-			}
-			inputs = append(inputs, txInput)
-		}
-	}
-	store.DbCache.UTXOStore.AddAddressUTXOs(utxos)
-	store.DbCache.UTXOStore.DeleteUTXOs(inputs)
-
-	for _, sc := range sideChains {
-		sc.ClearLastUsedOutPoints()
-		sc.SetLastUsedUtxoHeight(height)
-		log.Info("Side chain [", sc.GetKey(), "] SetLastUsedUtxoHeight ", height)
-	}
 }
 
 func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {

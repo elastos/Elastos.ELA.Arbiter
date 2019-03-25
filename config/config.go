@@ -21,10 +21,11 @@ var (
 	Version    string
 	Parameters configParams
 
-	DataPath = "elastos_arbiter"
-	DataDir  = "data"
-	SpvDir   = "spv"
-	LogDir   = "logs"
+	DataPath   = "elastos_arbiter"
+	DataDir    = "data"
+	SpvDir     = "spv"
+	LogDir     = "logs"
+	ArbiterDir = "arbiter"
 )
 
 type CrossChainArbiterInfo struct {
@@ -55,7 +56,6 @@ type Configuration struct {
 
 	SideChainMonitorScanInterval time.Duration           `json:"SideChainMonitorScanInterval"`
 	ClearTransactionInterval     time.Duration           `json:"ClearTransactionInterval"`
-	MinReceivedUsedUtxoMsgNumber uint32                  `json:"MinReceivedUsedUtxoMsgNumber"`
 	MinOutbound                  int                     `json:"MinOutbound"`
 	MaxConnections               int                     `json:"MaxConnections"`
 	SideAuxPowFee                int                     `json:"SideAuxPowFee"`
@@ -127,7 +127,6 @@ func init() {
 			SyncInterval:                 1000,
 			SideChainMonitorScanInterval: 1000,
 			ClearTransactionInterval:     60000,
-			MinReceivedUsedUtxoMsgNumber: 2,
 			MinOutbound:                  3,
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,

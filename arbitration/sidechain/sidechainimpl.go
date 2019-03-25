@@ -2,15 +2,11 @@ package sidechain
 
 import (
 	"bytes"
-	"crypto/rand"
-	"encoding/binary"
 	"errors"
-	"strconv"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
@@ -18,194 +14,18 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
-	dpeer "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type SideChainImpl struct {
-	mux         sync.Mutex
-	withdrawMux sync.Mutex
+	mux sync.Mutex
 
 	Key           string
 	CurrentConfig *config.SideNodeConfig
-
-	LastUsedUtxoHeight        uint32
-	LastUsedOutPoints         []types.OutPoint
-	ToSendTransactionHashes   map[uint32][]string
-	ToSendTransactionsHeight  uint32
-	Ready                     bool
-	ReceivedUsedUtxoMsgNumber uint32
-}
-
-func (sc *SideChainImpl) OnGetLastArbiterUsedUTXOMessage(id dpeer.PID, content []byte) {
-	buf := new(bytes.Buffer)
-	buf.Write(content)
-	msg := &cs.GetLastArbiterUsedUTXOMessage{}
-	msg.Deserialize(buf)
-
-	if err := sc.ReceiveGetLastArbiterUsedUtxos(id, msg.Height, msg.GenesisAddress); err != nil {
-		log.Error("[OnGetLastArbiterUsedUTXOMessage] sidechain get last arbiter used utxo message error: ", err)
-	}
-}
-
-func (sc *SideChainImpl) OnSendLastArbiterUsedUTXOMessage(id dpeer.PID, content []byte) {
-	buf := new(bytes.Buffer)
-	buf.Write(content)
-	msg := &cs.SendLastArbiterUsedUTXOMessage{}
-	msg.Deserialize(buf)
-
-	if err := sc.ReceiveSendLastArbiterUsedUtxos(msg.Height, msg.GenesisAddress, msg.OutPoints); err != nil {
-		log.Error("[OnGetLastArbiterUsedUTXOMessage] sidechain send last arbiter used utxo message error: ", err)
-	}
-}
-
-func (sc *SideChainImpl) ReceiveSendLastArbiterUsedUtxos(height uint32, genesisAddress string, outPoints []types.OutPoint) error {
-	log.Debug("[ReceiveSendLastArbiterUsedUtxos] start")
-	defer log.Debug("[ReceiveSendLastArbiterUsedUtxos] end")
-
-	sc.withdrawMux.Lock()
-	defer sc.withdrawMux.Unlock()
-
-	sc.mux.Lock()
-	scKey := sc.GetKey()
-	scHeight := sc.ToSendTransactionsHeight
-	ready := sc.Ready
-	txs := sc.ToSendTransactionHashes
-	sc.mux.Unlock()
-	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received message, scKey", scKey, "genesisAddress:", genesisAddress)
-	log.Info("[ReceiveSendLastArbiterUsedUtxos] Received message, received height:", height, "my height:", sc.LastUsedUtxoHeight)
-	if scKey == genesisAddress && scHeight <= height {
-		sc.mux.Lock()
-		sc.ReceivedUsedUtxoMsgNumber++
-		msgNum := sc.ReceivedUsedUtxoMsgNumber
-		sc.mux.Unlock()
-		sc.AddLastUsedOutPoints(outPoints)
-		sc.SetLastUsedUtxoHeight(height)
-		if ready && msgNum >= config.Parameters.MinReceivedUsedUtxoMsgNumber {
-			for _, v := range txs {
-				err := sc.CreateAndBroadcastWithdrawProposal(v)
-				if err != nil {
-					log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
-				}
-			}
-			sc.mux.Lock()
-			sc.Ready = false
-			sc.ToSendTransactionHashes = make(map[uint32][]string, 0)
-			sc.ToSendTransactionsHeight = 0
-			sc.mux.Unlock()
-			log.Info("[ReceiveSendLastArbiterUsedUtxos] Send transactions for multi sign")
-		}
-	}
-	return nil
-}
-
-func (sc *SideChainImpl) ReceiveGetLastArbiterUsedUtxos(id dpeer.PID, height uint32, genesisAddress string) error {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	if sc.GetKey() == genesisAddress {
-		log.Info("[ReceiveGetLastArbiterUsedUtxos] Received message, need height:", height, "my height:", sc.LastUsedUtxoHeight)
-		if sc.LastUsedUtxoHeight >= height {
-			var number = make([]byte, 8)
-			var nonce int64
-			rand.Read(number)
-			binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
-
-			msg := &cs.SendLastArbiterUsedUTXOMessage{
-				Command:        cs.SendLastArbiterUsedUtxoCommand,
-				GenesisAddress: genesisAddress,
-				Height:         sc.LastUsedUtxoHeight,
-				OutPoints:      sc.LastUsedOutPoints,
-				Nonce:          strconv.FormatInt(nonce, 10),
-			}
-			cs.P2PClientSingleton.SendMessageToPeer(id, msg)
-
-			utxos, err := store.DbCache.UTXOStore.GetAddressUTXOsFromGenesisBlockAddress(genesisAddress)
-			if err != nil {
-				return err
-			}
-			var newOutPoints []types.OutPoint
-			for _, op := range sc.LastUsedOutPoints {
-				isContained := false
-				for _, utxo := range utxos {
-					if op.IsEqual(utxo.Input.Previous) {
-						isContained = true
-					}
-				}
-				if !isContained {
-					newOutPoints = append(newOutPoints, op)
-				}
-			}
-			sc.LastUsedOutPoints = newOutPoints
-		} else {
-			return errors.New("I have no needed outpoints at requested height")
-		}
-	}
-
-	return nil
 }
 
 func (sc *SideChainImpl) GetKey() string {
 	return sc.Key
-}
-
-func (sc *SideChainImpl) GetLastUsedUtxoHeight() uint32 {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	return sc.LastUsedUtxoHeight
-}
-
-func (sc *SideChainImpl) SetLastUsedUtxoHeight(height uint32) {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	sc.LastUsedUtxoHeight = height
-}
-
-func (sc *SideChainImpl) GetLastUsedOutPoints() []types.OutPoint {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	return sc.LastUsedOutPoints
-}
-
-func (sc *SideChainImpl) AddLastUsedOutPoints(ops []types.OutPoint) {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	for _, op := range ops {
-		isContained := false
-		for _, outPoint := range sc.LastUsedOutPoints {
-			if op.IsEqual(outPoint) {
-				isContained = true
-			}
-		}
-		if !isContained {
-			sc.LastUsedOutPoints = append(sc.LastUsedOutPoints, op)
-		}
-	}
-}
-
-func (sc *SideChainImpl) RemoveLastUsedOutPoints(ops []types.OutPoint) {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-	var newOutPoints []types.OutPoint
-	for _, outPoint := range sc.LastUsedOutPoints {
-		isContained := false
-		for _, op := range ops {
-			if outPoint.IsEqual(op) {
-				isContained = true
-			}
-		}
-		if !isContained {
-			newOutPoints = append(newOutPoints, outPoint)
-		}
-	}
-	sc.LastUsedOutPoints = newOutPoints
-}
-
-func (sc *SideChainImpl) ClearLastUsedOutPoints() {
-	sc.mux.Lock()
-	defer sc.mux.Unlock()
-
-	sc.LastUsedOutPoints = make([]types.OutPoint, 0)
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
@@ -371,32 +191,17 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 
 	unsolvedTxs, unsolvedBlockHeights := base.SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
 
-	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
-	if err != nil {
-		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
-		return
-	}
-
 	if len(unsolvedTxs) != 0 {
 		heightTxsMap := base.GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
 
-		sc.ToSendTransactionHashes = heightTxsMap
-		sc.ToSendTransactionsHeight = chainHeight - 1
-		sc.Ready = true
-		sc.ReceivedUsedUtxoMsgNumber = 0
+		for _, v := range heightTxsMap {
+			err := sc.CreateAndBroadcastWithdrawProposal(v)
+			if err != nil {
+				log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
+			}
+		}
 
-		var number = make([]byte, 8)
-		var nonce int64
-		rand.Read(number)
-		binary.Read(bytes.NewReader(number), binary.LittleEndian, &nonce)
-
-		msg := &cs.GetLastArbiterUsedUTXOMessage{
-			Command:        cs.GetLastArbiterUsedUtxoCommand,
-			GenesisAddress: sc.GetKey(),
-			Height:         chainHeight - 1,
-			Nonce:          strconv.FormatInt(nonce, 10)}
-		cs.P2PClientSingleton.BroadcastMessage(msg)
-		log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send GetLastArbiterUsedUtxoCommand mssage")
+		log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send  mssage")
 	}
 
 	if len(receivedTxs) != 0 {
@@ -431,7 +236,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	currentArbitrator.GetMainChain().SyncChainData()
-	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfo, sc, txnHashes, &arbitrator.DbMainChainFunc{})
+	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfo, sc, txnHashes, &arbitrator.MainChainFuncImpl{})
 
 	log.Info("[CreateAndBroadcastWithdrawProposal] Transactions count: ", len(transactions))
 	currentArbitrator.BroadcastWithdrawProposal(transactions)

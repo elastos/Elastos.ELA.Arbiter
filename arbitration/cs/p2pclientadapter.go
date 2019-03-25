@@ -1,7 +1,6 @@
 package cs
 
 import (
-	"bytes"
 	"errors"
 	"math/rand"
 	"os"
@@ -23,9 +22,7 @@ var P2PClientSingleton *arbitratorsNetwork
 
 const (
 	//len of message need to less than 12
-	DistributeItemCommand          = "disitem"
-	GetLastArbiterUsedUtxoCommand  = "RQLastUtxo"
-	SendLastArbiterUsedUtxoCommand = "SDLastUtxo"
+	DistributeItemCommand = "disitem"
 )
 
 type messageItem struct {
@@ -35,7 +32,6 @@ type messageItem struct {
 
 type arbitratorsNetwork struct {
 	mainchainListeners []base.MainchainMsgListener
-	sidechainListeners []base.SidechainMsgListener
 
 	peersLock      sync.Mutex
 	connectedPeers []p2p.PeerAddr
@@ -49,14 +45,10 @@ func (n *arbitratorsNetwork) AddMainchainListener(listener base.MainchainMsgList
 	n.mainchainListeners = append(n.mainchainListeners, listener)
 }
 
-func (n *arbitratorsNetwork) AddSidechainListener(listener base.SidechainMsgListener) {
-	n.sidechainListeners = append(n.sidechainListeners, listener)
-}
-
 func (n *arbitratorsNetwork) Start() {
 	n.p2pServer.Start()
 
-	currentHeight := store.DbCache.UTXOStore.CurrentHeight(store.QueryHeightCode)
+	currentHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
 	peers, err := rpc.GetActiveDposPeers(currentHeight)
 	if err != nil {
 		log.Error("Get active dpos peers error when start, details: ", err)
@@ -119,24 +111,6 @@ func (n *arbitratorsNetwork) processMessage(msgItem *messageItem) {
 				v.OnReceivedSignMsg(msgItem.ID, withdraw.Content)
 			}
 		}
-	case GetLastArbiterUsedUtxoCommand:
-		getUtxo, processed := m.(*GetLastArbiterUsedUTXOMessage)
-		if processed {
-			content := new(bytes.Buffer)
-			getUtxo.Serialize(content)
-			for _, v := range n.sidechainListeners {
-				v.OnGetLastArbiterUsedUTXOMessage(msgItem.ID, content.Bytes())
-			}
-		}
-	case SendLastArbiterUsedUtxoCommand:
-		sendUtxo, processed := m.(*SendLastArbiterUsedUTXOMessage)
-		if processed {
-			content := new(bytes.Buffer)
-			sendUtxo.Serialize(content)
-			for _, v := range n.sidechainListeners {
-				v.OnSendLastArbiterUsedUTXOMessage(msgItem.ID, content.Bytes())
-			}
-		}
 	}
 }
 
@@ -164,7 +138,6 @@ func InitP2PClient(pid peer.PID) error {
 func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 	network := &arbitratorsNetwork{
 		mainchainListeners: make([]base.MainchainMsgListener, 0),
-		sidechainListeners: make([]base.SidechainMsgListener, 0),
 		connectedPeers:     make([]p2p.PeerAddr, 0),
 		messageQueue:       make(chan *messageItem, 10000), //todo config handle capacity though config file
 		quit:               make(chan bool),
@@ -197,10 +170,6 @@ func makeEmptyMessage(cmd string) (message elap2p.Message, err error) {
 	switch cmd {
 	case DistributeItemCommand:
 		message = &DistributedItemMessage{}
-	case GetLastArbiterUsedUtxoCommand:
-		message = &GetLastArbiterUsedUTXOMessage{Command: GetLastArbiterUsedUtxoCommand}
-	case SendLastArbiterUsedUtxoCommand:
-		message = &SendLastArbiterUsedUTXOMessage{Command: SendLastArbiterUsedUtxoCommand}
 	default:
 		return nil, errors.New("received unsupported message, CMD " + cmd)
 	}

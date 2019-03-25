@@ -87,17 +87,15 @@ func GetInfo(param Params) map[string]interface{} {
 		Version                      uint32        `json:"version"`
 		SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
 		ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
-		MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
 		MinOutbound                  int           `json:"MinOutbound"`
 		MaxConnections               int           `json:"MaxConnections"`
 		SideAuxPowFee                int           `json:"SideAuxPowFee"`
 		MinThreshold                 int           `json:"MinThreshold"`
 		DepositAmount                int           `json:"DepositAmount"`
 	}{
-		Version:                      config.Parameters.Version,
+		Version: config.Parameters.Version,
 		SideChainMonitorScanInterval: config.Parameters.SideChainMonitorScanInterval,
 		ClearTransactionInterval:     config.Parameters.ClearTransactionInterval,
-		MinReceivedUsedUtxoMsgNumber: config.Parameters.MinReceivedUsedUtxoMsgNumber,
 		MinOutbound:                  config.Parameters.MinOutbound,
 		MaxConnections:               config.Parameters.MaxConnections,
 		SideAuxPowFee:                config.Parameters.SideAuxPowFee,
@@ -147,7 +145,7 @@ func GetSideMiningInfo(param Params) map[string]interface{} {
 }
 
 func GetMainChainBlockHeight(param Params) map[string]interface{} {
-	return ResponsePack(errors.Success, store.DbCache.UTXOStore.CurrentHeight(0))
+	return ResponsePack(errors.Success, store.DbCache.MainChainStore.CurrentHeight(0))
 }
 
 func GetSideChainBlockHeight(param Params) map[string]interface{} {

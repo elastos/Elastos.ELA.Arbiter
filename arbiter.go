@@ -2,31 +2,31 @@ package main
 
 import (
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
-	"net/http"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/sidechain"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/net/servers/httpjsonrpc"
+	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
-	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/utils/elalog"
-
 )
 
 var (
 	LogsPath             = filepath.Join(config.DataPath, config.LogDir)
-	ArbiterLogOutputPath = filepath.Join(LogsPath, "arbiter")
-	SpvLogOutputPath     = filepath.Join(LogsPath, "spv")
+	ArbiterLogOutputPath = filepath.Join(LogsPath, config.ArbiterDir)
+	SpvLogOutputPath     = filepath.Join(LogsPath, config.SpvDir)
 )
 
 const (
@@ -118,9 +118,6 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 	//register p2p client listener
 	if err := mainchain.InitMainChain(arbitrator); err != nil {
 		return err
-	}
-	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
-		cs.P2PClientSingleton.AddSidechainListener(side)
 	}
 
 	cs.P2PClientSingleton.Start()
