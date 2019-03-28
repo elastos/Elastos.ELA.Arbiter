@@ -93,7 +93,7 @@ func GetInfo(param Params) map[string]interface{} {
 		MinThreshold                 int           `json:"MinThreshold"`
 		DepositAmount                int           `json:"DepositAmount"`
 	}{
-		Version: config.Parameters.Version,
+		Version:                      config.Parameters.Version,
 		SideChainMonitorScanInterval: config.Parameters.SideChainMonitorScanInterval,
 		ClearTransactionInterval:     config.Parameters.ClearTransactionInterval,
 		MinOutbound:                  config.Parameters.MinOutbound,

@@ -57,6 +57,7 @@ func StartRPCServer(pServer *http.Server) {
 		log.Warnf("StartRPCServer : %v", err.Error())
 	}
 }
+
 func Stop(s *http.Server) error {
 
 	if s != nil {

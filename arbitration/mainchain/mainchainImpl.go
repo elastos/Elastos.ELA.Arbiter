@@ -102,7 +102,7 @@ func (mc *MainChainImpl) OnReceivedSignMsg(id peer2.PID, content []byte) {
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChain, withdrawInfo *base.WithdrawInfo,
-	sideChainTransactionHashes []string, mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
+	sideChainTxHashes []string, mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
@@ -130,7 +130,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
 	}
 
-	availableUTXOs, err := mcFunc.GetAvailableUtxos(withdrawBank)
+	availableUTXOs, err := mcFunc.GetWithdrawUTXOsByAmount(withdrawBank, totalOutputAmount)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +181,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 	}
 
 	var txHashes []common.Uint256
-	for _, hash := range sideChainTransactionHashes {
+	for _, hash := range sideChainTxHashes {
 		hashBytes, err := common.HexStringToBytes(hash)
 		if err != nil {
 			return nil, err
@@ -244,7 +244,6 @@ func (mc *MainChainImpl) updatePeers(currentHeight uint32) error {
 }
 
 func (mc *MainChainImpl) needSyncBlocks() (uint32, uint32, bool) {
-
 	chainHeight, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return 0, 0, false

@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -15,6 +16,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/dpos/p2p"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
@@ -113,7 +115,9 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 		return nil, err
 	}
 	groupInfo := &ArbitratorGroupInfo{}
-	Unmarshal(&resp, groupInfo)
+	if err := Unmarshal(&resp, groupInfo); err != nil {
+		return nil, err
+	}
 
 	return groupInfo, nil
 }
@@ -154,7 +158,9 @@ func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*base.Block
 		return nil, err
 	}
 	block := &base.BlockInfo{}
-	Unmarshal(&resp, block)
+	if err := Unmarshal(&resp, block); err != nil {
+		return nil, err
+	}
 
 	return block, nil
 }
@@ -217,8 +223,9 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	}
 
 	tx := &base.WithdrawTxInfo{}
-	Unmarshal(&result, tx)
-
+	if err := Unmarshal(&result, tx); err != nil {
+		return nil, err
+	}
 	return tx, nil
 }
 
@@ -235,7 +242,9 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	}
 
 	var removeTxs []string
-	Unmarshal(&result, &removeTxs)
+	if err := Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
 	return removeTxs, nil
 }
 
@@ -248,8 +257,53 @@ func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]stri
 	}
 
 	var removeTxs []string
-	Unmarshal(&result, &removeTxs)
+	if err := Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
 	return removeTxs, nil
+}
+
+func GetWithdrawUTXOsByAmount(genesisAddress string, amount common.Fixed64, config *config.RpcConfig) ([]base.UTXOInfo, error) {
+	parameter := make(map[string]interface{})
+	parameter["address"] = genesisAddress
+	parameter["amount"] = amount.String()
+	result, err := CallAndUnmarshal("getutxosbyamount", parameter, config)
+	if err != nil {
+		return nil, err
+	}
+
+	var utxoInfos []base.UTXOInfo
+	if err := Unmarshal(&result, &utxoInfos); err != nil {
+		return nil, err
+	}
+
+	return utxoInfos, nil
+}
+
+func GetAmountByInputs(inputs []*types.Input, config *config.RpcConfig) (common.Fixed64, error) {
+	buf := new(bytes.Buffer)
+	if err := common.WriteVarUint(buf, uint64(len(inputs))); err != nil {
+		return 0, err
+	}
+	for _, input := range inputs {
+		if err := input.Serialize(buf); err != nil {
+			return 0, err
+		}
+	}
+	parameter := make(map[string]interface{})
+	parameter["inputs"] = common.BytesToHexString(buf.Bytes())
+	result, err := CallAndUnmarshal("getamountbyinputs", parameter, config)
+	if err != nil {
+		return 0, err
+	}
+	if a, ok := result.(string); ok {
+		amount, err := common.StringToFixed64(a)
+		if err != nil {
+			return 0, err
+		}
+		return *amount, nil
+	}
+	return 0, errors.New("get amount by inputs failed")
 }
 
 func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]base.UTXOInfo, error) {
@@ -261,8 +315,9 @@ func GetUnspentUtxo(addresses []string, config *config.RpcConfig) ([]base.UTXOIn
 	}
 
 	var utxoInfos []base.UTXOInfo
-	Unmarshal(&result, &utxoInfos)
-
+	if err := Unmarshal(&result, &utxoInfos); err != nil {
+		return nil, err
+	}
 	return utxoInfos, nil
 }
 
@@ -311,8 +366,7 @@ func CallAndUnmarshal(method string, params map[string]interface{}, config *conf
 	}
 
 	resp := Response{}
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
+	if err = json.Unmarshal(body, &resp); err != nil {
 		return string(body), nil
 	}
 
@@ -330,8 +384,7 @@ func CallAndUnmarshalResponse(method string, params map[string]interface{}, conf
 	}
 
 	resp := Response{}
-	err = json.Unmarshal(body, &resp)
-	if err != nil {
+	if err = json.Unmarshal(body, &resp); err != nil {
 		return Response{}, err
 	}
 
@@ -343,8 +396,7 @@ func Unmarshal(result interface{}, target interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = json.Unmarshal(data, target)
-	if err != nil {
+	if err = json.Unmarshal(data, target); err != nil {
 		return err
 	}
 	return nil

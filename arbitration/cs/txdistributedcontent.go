@@ -111,8 +111,8 @@ func (d *TxDistributedContent) Check(client interface{}) error {
 	if !ok {
 		return errors.New("unknown client function")
 	}
-
-	err := checkWithdrawTransaction(d.Tx, clientFunc)
+	mainFunc := &arbitrator.MainChainFuncImpl{}
+	err := checkWithdrawTransaction(d.Tx, clientFunc, mainFunc)
 	if err != nil {
 		return err
 	}
@@ -147,7 +147,8 @@ func (d *TxDistributedContent) Hash() common.Uint256 {
 	return d.Tx.Hash()
 }
 
-func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
+func checkWithdrawTransaction(txn *types.Transaction,
+	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
 	payloadWithdraw, ok := txn.Payload.(*payload.WithdrawFromSideChain)
 	if !ok {
 		return errors.New("check withdraw transaction failed, unknown payload type")
@@ -208,6 +209,11 @@ func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNode
 		txs = sideChainTxs
 	}
 
+	inputTotalAmount, err := mainFunc.GetAmountByInputs(txn.Inputs)
+	if err != nil {
+		return errors.New("get spender's UTXOs failed")
+	}
+
 	//check outputs and fee
 	var outputTotalAmount common.Fixed64
 	for _, output := range txn.Outputs {
@@ -226,6 +232,11 @@ func checkWithdrawTransaction(txn *types.Transaction, clientFunc DistributedNode
 			totalFee += common.Fixed64(float64(*w.Amount-*w.CrossChainAmount) / exchangeRate)
 		}
 		totalCrossChainCount += len(tx.WithdrawInfo.WithdrawAssets)
+	}
+
+	if inputTotalAmount != outputTotalAmount+totalFee {
+		log.Info("inputTotalAmount-", inputTotalAmount, " outputTotalAmount-", outputTotalAmount, " totalFee-", totalFee)
+		return errors.New("check withdraw transaction failed, input amount not equal output amount")
 	}
 
 	//check exchange rate

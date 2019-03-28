@@ -16,8 +16,9 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(sideChain SideChain, withdrawInfo *base.WithdrawInfo,
-		sideChainTransactionHashes []string, mcFunc MainChainFunc) (*types.Transaction, error)
+	CreateWithdrawTransaction(sideChain SideChain,
+		withdrawInfo *base.WithdrawInfo, sideChainTxHashes []string,
+		mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
@@ -33,21 +34,24 @@ type MainChainClient interface {
 }
 
 type MainChainFunc interface {
-	GetAvailableUtxos(withdrawBank string) ([]*store.AddressUTXO, error)
+	GetWithdrawUTXOsByAmount(withdrawBank string,
+		fixed64 common.Fixed64) ([]*store.AddressUTXO, error)
 	GetMainNodeCurrentHeight() (uint32, error)
+	GetAmountByInputs(inputs []*types.Input) (common.Fixed64, error)
 }
 
 type MainChainFuncImpl struct {
 }
 
-func (dbFunc *MainChainFuncImpl) GetAvailableUtxos(
-	withdrawBank string) ([]*store.AddressUTXO, error) {
-	utxos, err := dbFunc.GetAddressUTXOsFromGenesisBlockAddress(withdrawBank)
+func (dbFunc *MainChainFuncImpl) GetWithdrawUTXOsByAmount(
+	withdrawBank string, amount common.Fixed64) ([]*store.AddressUTXO, error) {
+	utxos, err := dbFunc.GetWithdrawAddressUTXOsByAmount(withdrawBank, amount)
 	if err != nil {
-		return nil, errors.New("get spender's UTXOs failed.")
+		return nil, errors.New("get spender's UTXOs failed, err:" + err.Error())
 	}
 	var availableUTXOs []*store.AddressUTXO
-	var currentHeight = store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
+	var currentHeight = store.DbCache.MainChainStore.CurrentHeight(
+		store.QueryHeightCode)
 	for _, utxo := range utxos {
 		if utxo.Input.Sequence > 0 {
 			if utxo.Input.Sequence >= currentHeight {
@@ -62,10 +66,10 @@ func (dbFunc *MainChainFuncImpl) GetAvailableUtxos(
 	return availableUTXOs, nil
 }
 
-func (dbFunc *MainChainFuncImpl) GetAddressUTXOsFromGenesisBlockAddress(
-	genesisBlockAddress string) ([]*store.AddressUTXO, error) {
-	// todo get utxo from ela rpc by given amount
-	utxoInfos, err := rpc.GetUnspentUtxo([]string{genesisBlockAddress}, config.Parameters.MainNode.Rpc)
+func (dbFunc *MainChainFuncImpl) GetWithdrawAddressUTXOsByAmount(
+	genesisBlockAddress string, amount common.Fixed64) ([]*store.AddressUTXO, error) {
+	utxoInfos, err := rpc.GetWithdrawUTXOsByAmount(genesisBlockAddress, amount,
+		config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
@@ -110,4 +114,13 @@ func (dbFunc *MainChainFuncImpl) GetMainNodeCurrentHeight() (uint32, error) {
 		return 0, err
 	}
 	return chainHeight, nil
+}
+
+func (dbFunc *MainChainFuncImpl) GetAmountByInputs(
+	inputs []*types.Input) (common.Fixed64, error) {
+	amount, err := rpc.GetAmountByInputs(inputs, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return 0, err
+	}
+	return amount, nil
 }

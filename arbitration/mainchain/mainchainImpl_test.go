@@ -19,7 +19,7 @@ package mainchain
 //type TestWithdrawFunc struct {
 //}
 //
-//func (mcFunc *TestWithdrawFunc) GetAvailableUtxos(withdrawBank string) ([]*store.AddressUTXO, error) {
+//func (mcFunc *TestWithdrawFunc) GetWithdrawUTXOsByAmount(withdrawBank string) ([]*store.AddressUTXO, error) {
 //	var utxos []*store.AddressUTXO
 //	amount := common.Fixed64(10000000000)
 //	utxo := &store.AddressUTXO{
