@@ -11,13 +11,13 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
+	"github.com/elastos/Elastos.ELA/account"
 )
 
 const (
@@ -39,8 +39,8 @@ type Arbitrator interface {
 	GetSideChainManager() SideChainManager
 	GetMainChain() MainChain
 
-	InitAccount(passwd []byte) error
-	StartSpvModule(passwd []byte) error
+	InitAccount(client *account.Client)
+	StartSpvModule() error
 
 	//deposit
 	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
@@ -63,7 +63,7 @@ type ArbitratorImpl struct {
 	mainChainImpl        MainChain
 	mainChainClientImpl  MainChainClient
 	sideChainManagerImpl SideChainManager
-	Keystore             Keystore
+	client               *account.Client
 }
 
 func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
@@ -71,17 +71,9 @@ func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
-	mainAccount := ar.Keystore.MainAccount()
+	mainAccount:= ar.client.GetMainAccount()
 
-	buf := new(bytes.Buffer)
-
-	spvPublicKey := mainAccount.PublicKey()
-	spvPublicKey.Serialize(buf)
-
-	publicKey := new(crypto.PublicKey)
-	publicKey.Deserialize(buf)
-
-	return publicKey
+	return mainAccount.PubKey()
 }
 
 func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
@@ -120,7 +112,7 @@ func (ar *ArbitratorImpl) GetComplainSolving() ComplainSolving {
 }
 
 func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
-	mainAccount := ar.Keystore.MainAccount()
+	mainAccount := ar.client.GetMainAccount()
 
 	return mainAccount.Sign(content)
 }
@@ -275,21 +267,11 @@ func (ar *ArbitratorImpl) SetSideChainManager(manager SideChainManager) {
 	ar.sideChainManagerImpl = manager
 }
 
-func (ar *ArbitratorImpl) InitAccount(passwd []byte) error {
-	ar.Keystore = NewKeystore()
-	_, err := ar.Keystore.Open(string(passwd[:]))
-	if err != nil {
-		return err
-	}
-	accounts := ar.Keystore.GetAccounts()
-	if len(accounts) <= 0 {
-		ar.Keystore.NewAccount()
-	}
-
-	return nil
+func (ar *ArbitratorImpl) InitAccount(client *account.Client) {
+	ar.client = client
 }
 
-func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
+func (ar *ArbitratorImpl) StartSpvModule() error {
 	spvCfg := &Config{
 		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
 		Magic:          config.Parameters.MainNode.Magic,
@@ -310,14 +292,9 @@ func (ar *ArbitratorImpl) StartSpvModule(passwd []byte) error {
 	}
 
 	for _, sideNode := range config.Parameters.SideNodeList {
-		keystore, err := wallet.OpenKeystore(sideNode.KeystoreFile, passwd)
-		if err != nil {
-			return err
-		}
-
 		if sideNode.PowChain {
-			log.Info("[StartSpvModule] register auxpow listener:", keystore.Address())
-			auxpowListener := &AuxpowListener{ListenAddress: keystore.Address()}
+			log.Info("[StartSpvModule] register auxpow listener:", sideNode.MiningAddr)
+			auxpowListener := &AuxpowListener{ListenAddress: sideNode.MiningAddr}
 			auxpowListener.start()
 			err = SpvService.RegisterTransactionListener(auxpowListener)
 			if err != nil {

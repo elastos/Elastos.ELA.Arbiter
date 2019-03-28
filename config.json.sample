@@ -32,7 +32,7 @@
         },
 		"ExchangeRate": 1.0,
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
-        "KeystoreFile": "keystore1.dat",
+        "MiningAddr": "EQr9qjiXGF2y7YMtDCHtHNewZynakbDzF7",
         "PayToAddr": "ERtJFJaEfmABKDy3Afbrpwb6nDrRUGkZ6k",
         "PowChain": true
       }
@@ -77,6 +77,7 @@
         "NetAddress": "127.0.0.1:24538"
       }
     ],
+    "CRCOnlyDPOSHeight": 100,
     "MinThreshold": 10000000,
     "DepositAmount": 10000000,
     "SyncInterval": 1000,
