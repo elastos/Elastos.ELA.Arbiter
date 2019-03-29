@@ -63,10 +63,7 @@ func CreateRedeemScript() ([]byte, error) {
 }
 
 func getTransactionAgreementArbitratorsCount(arbitersCount int) int {
-	if arbitersCount%3 != 0 {
-		return arbitersCount*2/3 + 1
-	}
-	return arbitersCount * 2 / 3
+	return arbitersCount*2/3 + 1
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
