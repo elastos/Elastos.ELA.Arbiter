@@ -88,6 +88,7 @@
     "SideAuxPowFee": 50000,
     "MaxLogsSize": 0,
     "MaxPerLogSize": 0,
+    "MaxTxsPerWithdrawTx": 1000,
     "RpcConfiguration": {
       "User": "ElaUser",
       "Pass": "Ela123" ,

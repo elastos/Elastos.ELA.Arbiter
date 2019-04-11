@@ -62,6 +62,7 @@ type Configuration struct {
 	MinThreshold                 int                     `json:"MinThreshold"`
 	DepositAmount                int                     `json:"DepositAmount"`
 	CRCOnlyDPOSHeight            uint32                  `json:"CRCOnlyDPOSHeight"`
+	MaxTxsPerWithdrawTx          int                     `json:"MaxTxsPerWithdrawTx"`
 	OriginCrossChainArbiters     []CrossChainArbiterInfo `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []CrossChainArbiterInfo `json:"CRCCrossChainArbiters"`
 	RpcConfiguration             RpcConfiguration        `json:"RpcConfiguration"`
@@ -132,6 +133,7 @@ func init() {
 			SideAuxPowFee:                50000,
 			MinThreshold:                 10000000,
 			DepositAmount:                10000000,
+			MaxTxsPerWithdrawTx:          1000,
 			RpcConfiguration: RpcConfiguration{
 				User:        "",
 				Pass:        "",

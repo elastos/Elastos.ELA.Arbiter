@@ -13,11 +13,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
-	"github.com/elastos/Elastos.ELA/account"
 )
 
 const (
@@ -46,9 +46,9 @@ type Arbitrator interface {
 	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
 
 	//withdraw
-	CreateWithdrawTransactions(
-		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) []*types.Transaction
-	BroadcastWithdrawProposal(txns []*types.Transaction)
+	CreateWithdrawTransaction(
+		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) *types.Transaction
+	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
@@ -71,7 +71,7 @@ func (ar *ArbitratorImpl) GetSideChainManager() SideChainManager {
 }
 
 func (ar *ArbitratorImpl) GetPublicKey() *crypto.PublicKey {
-	mainAccount:= ar.client.GetMainAccount()
+	mainAccount := ar.client.GetMainAccount()
 
 	return mainAccount.PubKey()
 }
@@ -127,10 +127,8 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfo *WithdrawInfo, sideChain SideChain,
-	sideTransactionHash []string, mcFunc MainChainFunc) []*types.Transaction {
-	//todo divide into different transactions by the number of side chain transactions
-	var result []*types.Transaction
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawInfo *WithdrawInfo, sideChain SideChain,
+	sideTransactionHash []string, mcFunc MainChainFunc) *types.Transaction {
 
 	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, withdrawInfo, sideTransactionHash, mcFunc)
 	if err != nil {
@@ -141,9 +139,8 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactions(withdrawInfo *WithdrawInfo,
 		log.Warn("Created an empty withdraw transaction.")
 		return nil
 	}
-	result = append(result, withdrawTransaction)
 
-	return result
+	return withdrawTransaction
 }
 
 type DepositTxInfo struct {
@@ -208,12 +205,10 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txns []*types.Transaction) {
-	for _, txn := range txns {
-		err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
-		if err != nil {
-			log.Warn(err.Error())
-		}
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *types.Transaction) {
+	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+	if err != nil {
+		log.Warn(err.Error())
 	}
 }
 
