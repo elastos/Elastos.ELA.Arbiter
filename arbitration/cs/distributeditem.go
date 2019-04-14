@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"io"
+	"sort"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -252,11 +254,27 @@ func (item *DistributedItem) IsFeedback() bool {
 }
 
 func (itemFunc *DistrubutedItemFuncImpl) GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error) {
-	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
-	if err != nil {
-		return nil, err
+	groupInfo := &rpc.ArbitratorGroupInfo{
+		Arbitrators: make([]string, 0),
 	}
-	return groupInfo, nil
+	if height+1 < config.Parameters.CRCOnlyDPOSHeight {
+		for _, a := range config.Parameters.OriginCrossChainArbiters {
+			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
+		}
+		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
+		return groupInfo, nil
+	}
+
+	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
+		for _, a := range config.Parameters.CRCCrossChainArbiters {
+			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
+		}
+		sort.Strings(groupInfo.Arbitrators)
+		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
+		return groupInfo, nil
+	}
+
+	return rpc.GetArbitratorGroupInfoByHeight(height)
 }
 
 func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool, itemFunc DistrubutedItemFunc) error {

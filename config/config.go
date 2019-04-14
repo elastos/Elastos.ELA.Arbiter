@@ -32,6 +32,7 @@ type CrossChainArbiterInfo struct {
 	PublicKey  string `json:"PublicKey"`
 	NetAddress string `json:"NetAddress"`
 }
+
 type RpcConfiguration struct {
 	User        string   `json:"User"`
 	Pass        string   `json:"Pass"`
