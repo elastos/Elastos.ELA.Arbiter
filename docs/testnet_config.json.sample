@@ -67,75 +67,26 @@
         "PayToAddr": "ESHtMtd4v4247fBn3KcDG4pfoCtz51Q6nZ"
       }
     ],
-    "OriginCrossChainArbiters": [{
-        "PublicKey": "03e333657c788a20577c0288559bd489ee65514748d18cb1dc7560ae4ce3d45613",
-        "NetAddress": "node-testnet-011.elastos.org:21538"
-      },
-      {
-        "PublicKey": "02dd22722c3b3a284929e4859b07e6a706595066ddd2a0b38e5837403718fb047c",
-        "NetAddress": "node-testnet-012.elastos.org:21538"
-      },
-      {
-        "PublicKey": "03e4473b918b499e4112d281d805fc8d8ae7ac0a71ff938cba78006bf12dd90a85",
-        "NetAddress": "node-testnet-013.elastos.org:21538"
-      },
-      {
-        "PublicKey": "03dd66833d28bac530ca80af0efbfc2ec43b4b87504a41ab4946702254e7f48961",
-        "NetAddress": "node-testnet-014.elastos.org:21538"
-      },
-      {
-        "PublicKey": "02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
-        "NetAddress": "node-testnet-015.elastos.org:21538"
-      }
+    "OriginCrossChainArbiters": [
+      "03e333657c788a20577c0288559bd489ee65514748d18cb1dc7560ae4ce3d45613",
+      "02dd22722c3b3a284929e4859b07e6a706595066ddd2a0b38e5837403718fb047c",
+      "03e4473b918b499e4112d281d805fc8d8ae7ac0a71ff938cba78006bf12dd90a85",
+      "03dd66833d28bac530ca80af0efbfc2ec43b4b87504a41ab4946702254e7f48961",
+      "02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448"
     ],
-    "CRCCrossChainArbiters": [{
-        "PublicKey": "03e435ccd6073813917c2d841a0815d21301ec3286bc1412bb5b099178c68a10b6",
-        "NetAddress": "node-testnet-016.elastos.org:21538"
-      },
-      {
-        "PublicKey": "038a1829b4b2bee784a99bebabbfecfec53f33dadeeeff21b460f8b4fc7c2ca771",
-        "NetAddress": "node-testnet-017.elastos.org:21538"
-      },
-      {
-        "PublicKey": "02435df9a4728e6250283cfa8215f16b48948d71936c4600b3a5b1c6fde70503ae",
-        "NetAddress": "node-testnet-018.elastos.org:21538"
-      },
-      {
-        "PublicKey": "027d44ee7e7a6c6ff13a130d15b18c75a3b47494c3e54fcffe5f4b10e225351e09",
-        "NetAddress": "node-testnet-019.elastos.org:21538"
-      },
-      {
-        "PublicKey": "02ad972fbfce4aaa797425138e4f3b22bcfa765ffad88b8a5af0ab515161c0a365",
-        "NetAddress": "node-testnet-020.elastos.org:21538"
-      },
-      {
-        "PublicKey": "0373eeae2bac0f5f14373ca603fe2c9caa9c7a79c7793246cec415d005e2fe53c0",
-        "NetAddress": "node-testnet-021.elastos.org:21538"
-      },
-      {
-        "PublicKey": "03503011cc4e44b94f73ed2c76c73182a75b4863f23d1e7083025eead945a8e764",
-        "NetAddress": "node-testnet-022.elastos.org:21538"
-      },
-      {
-        "PublicKey": "0270b6880e7fab8d02bea7d22639d7b5e07279dd6477baa713dacf99bb1d65de69",
-        "NetAddress": "node-testnet-023.elastos.org:21538"
-      },
-      {
-        "PublicKey": "030eed9f9c1d70307beba52ddb72a24a02582c0ee626ec93ee1dcef2eb308852dd",
-        "NetAddress": "node-testnet-024.elastos.org:21538"
-      },
-      {
-        "PublicKey": "026bba43feb19ce5859ffcf0ce9dd8b9d625130b686221da8b445fa9b8f978d7b9",
-        "NetAddress": "node-testnet-025.elastos.org:21538"
-      },
-      {
-        "PublicKey": "02bf9e37b3db0cbe86acf76a76578c6b17b4146df101ec934a00045f7d201f06dd",
-        "NetAddress": "node-testnet-026.elastos.org:21538"
-      },
-      {
-        "PublicKey": "03111f1247c66755d369a8c8b3a736dfd5cf464ca6735b659533cbe1268cd102a9",
-        "NetAddress": "node-testnet-027.elastos.org:21538"
-      }
+    "CRCCrossChainArbiters": [
+      "03e435ccd6073813917c2d841a0815d21301ec3286bc1412bb5b099178c68a10b6",
+      "038a1829b4b2bee784a99bebabbfecfec53f33dadeeeff21b460f8b4fc7c2ca771",
+      "02435df9a4728e6250283cfa8215f16b48948d71936c4600b3a5b1c6fde70503ae",
+      "027d44ee7e7a6c6ff13a130d15b18c75a3b47494c3e54fcffe5f4b10e225351e09",
+      "02ad972fbfce4aaa797425138e4f3b22bcfa765ffad88b8a5af0ab515161c0a365",
+      "0373eeae2bac0f5f14373ca603fe2c9caa9c7a79c7793246cec415d005e2fe53c0",
+      "03503011cc4e44b94f73ed2c76c73182a75b4863f23d1e7083025eead945a8e764",
+      "0270b6880e7fab8d02bea7d22639d7b5e07279dd6477baa713dacf99bb1d65de69",
+      "030eed9f9c1d70307beba52ddb72a24a02582c0ee626ec93ee1dcef2eb308852dd",
+      "026bba43feb19ce5859ffcf0ce9dd8b9d625130b686221da8b445fa9b8f978d7b9",
+      "02bf9e37b3db0cbe86acf76a76578c6b17b4146df101ec934a00045f7d201f06dd",
+      "03111f1247c66755d369a8c8b3a736dfd5cf464ca6735b659533cbe1268cd102a9"
     ],
     "CRCOnlyDPOSHeight": 211000,
     "MinThreshold": 1000000,

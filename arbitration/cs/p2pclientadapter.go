@@ -1,9 +1,11 @@
 package cs
 
 import (
+	"encoding/hex"
 	"errors"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -13,6 +15,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
+	"github.com/elastos/Elastos.ELA/dpos/dtime"
 	"github.com/elastos/Elastos.ELA/dpos/p2p"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	elap2p "github.com/elastos/Elastos.ELA/p2p"
@@ -34,7 +37,7 @@ type arbitratorsNetwork struct {
 	mainchainListeners []base.MainchainMsgListener
 
 	peersLock      sync.Mutex
-	connectedPeers []p2p.PeerAddr
+	connectedPeers []peer.PID
 
 	p2pServer    p2p.Server
 	messageQueue chan *messageItem
@@ -86,7 +89,7 @@ func (n *arbitratorsNetwork) BroadcastMessage(msg elap2p.Message) {
 	n.p2pServer.BroadcastMessage(msg)
 }
 
-func (n *arbitratorsNetwork) UpdatePeers(connectedPeers []p2p.PeerAddr) {
+func (n *arbitratorsNetwork) UpdatePeers(connectedPeers []peer.PID) {
 	n.peersLock.Lock()
 	n.connectedPeers = connectedPeers
 	n.peersLock.Unlock()
@@ -114,19 +117,13 @@ func (n *arbitratorsNetwork) processMessage(msgItem *messageItem) {
 	}
 }
 
-func (n *arbitratorsNetwork) getHearBeatNonce(pid peer.PID) uint64 {
+func (n *arbitratorsNetwork) getNonce(pid peer.PID) uint64 {
 	return rand.Uint64()
 }
 
-func (n *arbitratorsNetwork) signNonce(nonce []byte) (signature [64]byte) {
-	sign, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(nonce)
-	if err != nil || len(signature) != 64 {
-		return signature
-	}
-
-	copy(signature[:], sign)
-
-	return signature
+func (n *arbitratorsNetwork) sign(data []byte) []byte {
+	sign, _ := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(data)
+	return sign
 }
 
 func InitP2PClient(pid peer.PID) error {
@@ -138,27 +135,37 @@ func InitP2PClient(pid peer.PID) error {
 func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 	network := &arbitratorsNetwork{
 		mainchainListeners: make([]base.MainchainMsgListener, 0),
-		connectedPeers:     make([]p2p.PeerAddr, 0),
+		connectedPeers:     make([]peer.PID, 0),
 		messageQueue:       make(chan *messageItem, 10000), //todo config handle capacity though config file
 		quit:               make(chan bool),
 	}
 	notifier := p2p.NewNotifier(p2p.NFNetStabled|p2p.NFBadNetwork, network.notifyFlag)
 
 	server, err := p2p.NewServer(&p2p.Config{
+		DataDir:          filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir),
 		PID:              pid,
 		MagicNumber:      config.Parameters.Magic,
-		ProtocolVersion:  config.Parameters.Version,
-		Services:         0, //todo add to config if need any services
 		DefaultPort:      config.Parameters.NodePort,
+		TimeSource:       dtime.NewMedianTime(),
+		Sign:             network.sign,
+		PingNonce:        network.getNonce,
+		PongNonce:        network.getNonce,
 		MakeEmptyMessage: makeEmptyMessage,
 		HandleMessage:    network.handleMessage,
-		PingNonce:        network.getHearBeatNonce,
-		PongNonce:        network.getHearBeatNonce,
-		SignNonce:        network.signNonce,
 		StateNotifier:    notifier,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	for _, p := range config.Parameters.CRCCrossChainArbiters {
+		id := peer.PID{}
+		pk, err := hex.DecodeString(p)
+		if err != nil {
+			return nil, errors.New("invalid CRC public key in config")
+		}
+		copy(id[:], pk)
+		server.AddAddr(id, config.Parameters.DPoSNetAddress)
 	}
 
 	network.p2pServer = server

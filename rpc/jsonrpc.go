@@ -18,7 +18,6 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
-	"github.com/elastos/Elastos.ELA/dpos/p2p"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
@@ -39,20 +38,17 @@ type ArbitratorGroupInfo struct {
 	Arbitrators           []string
 }
 
-func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
+func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 	if height+1 < config.Parameters.CRCOnlyDPOSHeight {
 		for _, a := range config.Parameters.OriginCrossChainArbiters {
 			var id peer.PID
-			pk, err := common.HexStringToBytes(a.PublicKey)
+			pk, err := common.HexStringToBytes(a)
 			if err != nil {
 				return nil, err
 			}
 
 			copy(id[:], pk)
-			result = append(result, p2p.PeerAddr{
-				PID:  id,
-				Addr: a.NetAddress,
-			})
+			result = append(result, id)
 		}
 
 		return result, nil
@@ -61,16 +57,13 @@ func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
 	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
 			var id peer.PID
-			pk, err := common.HexStringToBytes(a.PublicKey)
+			pk, err := common.HexStringToBytes(a)
 			if err != nil {
 				return nil, err
 			}
 
 			copy(id[:], pk)
-			result = append(result, p2p.PeerAddr{
-				PID:  id,
-				Addr: a.NetAddress,
-			})
+			result = append(result, id)
 		}
 
 		return result, nil
@@ -102,10 +95,7 @@ func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
 		}
 
 		copy(id[:], pk)
-		result = append(result, p2p.PeerAddr{
-			PID:  id,
-			Addr: v.IP,
-		})
+		result = append(result, id)
 	}
 	return result, nil
 }
@@ -116,7 +106,7 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 	}
 	if height+1 < config.Parameters.CRCOnlyDPOSHeight {
 		for _, a := range config.Parameters.OriginCrossChainArbiters {
-			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
+			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a)
 		}
 		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
 		return groupInfo, nil
@@ -124,10 +114,10 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 
 	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
-			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
+			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a)
 		}
 		sort.Strings(groupInfo.Arbitrators)
-		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
+		groupInfo.OnDutyArbitratorIndex = int(height-config.Parameters.CRCOnlyDPOSHeight+1) % len(groupInfo.Arbitrators)
 		return groupInfo, nil
 	}
 

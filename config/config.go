@@ -28,11 +28,6 @@ var (
 	ArbiterDir = "arbiter"
 )
 
-type CrossChainArbiterInfo struct {
-	PublicKey  string `json:"PublicKey"`
-	NetAddress string `json:"NetAddress"`
-}
-
 type RpcConfiguration struct {
 	User        string   `json:"User"`
 	Pass        string   `json:"Pass"`
@@ -55,18 +50,19 @@ type Configuration struct {
 	MaxLogsSize   int64         `json:"MaxLogsSize"`
 	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
-	SideChainMonitorScanInterval time.Duration           `json:"SideChainMonitorScanInterval"`
-	ClearTransactionInterval     time.Duration           `json:"ClearTransactionInterval"`
-	MinOutbound                  int                     `json:"MinOutbound"`
-	MaxConnections               int                     `json:"MaxConnections"`
-	SideAuxPowFee                int                     `json:"SideAuxPowFee"`
-	MinThreshold                 int                     `json:"MinThreshold"`
-	DepositAmount                int                     `json:"DepositAmount"`
-	CRCOnlyDPOSHeight            uint32                  `json:"CRCOnlyDPOSHeight"`
-	MaxTxsPerWithdrawTx          int                     `json:"MaxTxsPerWithdrawTx"`
-	OriginCrossChainArbiters     []CrossChainArbiterInfo `json:"OriginCrossChainArbiters"`
-	CRCCrossChainArbiters        []CrossChainArbiterInfo `json:"CRCCrossChainArbiters"`
-	RpcConfiguration             RpcConfiguration        `json:"RpcConfiguration"`
+	SideChainMonitorScanInterval time.Duration    `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration    `json:"ClearTransactionInterval"`
+	MinOutbound                  int              `json:"MinOutbound"`
+	MaxConnections               int              `json:"MaxConnections"`
+	SideAuxPowFee                int              `json:"SideAuxPowFee"`
+	MinThreshold                 int              `json:"MinThreshold"`
+	DepositAmount                int              `json:"DepositAmount"`
+	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
+	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
+	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
+	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
+	RpcConfiguration             RpcConfiguration `json:"RpcConfiguration"`
+	DPoSNetAddress               string           `json:"DPoSNetAddress"`
 }
 
 type RpcConfig struct {
@@ -140,6 +136,7 @@ func init() {
 				Pass:        "",
 				WhiteIPList: []string{"127.0.0.1"},
 			},
+			DPoSNetAddress: "127.0.0.1:20339",
 		},
 	}
 	Parameters.Configuration = &(config.ConfigFile)
