@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -110,11 +111,32 @@ func GetActiveDposPeers(height uint32) (result []p2p.PeerAddr, err error) {
 }
 
 func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error) {
-	resp, err := CallAndUnmarshal("getarbitratorgroupbyheight", Param("height", height), config.Parameters.MainNode.Rpc)
+	groupInfo := &ArbitratorGroupInfo{
+		Arbitrators: make([]string, 0),
+	}
+	if height+1 < config.Parameters.CRCOnlyDPOSHeight {
+		for _, a := range config.Parameters.OriginCrossChainArbiters {
+			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
+		}
+		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
+		return groupInfo, nil
+	}
+
+	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
+		for _, a := range config.Parameters.CRCCrossChainArbiters {
+			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
+		}
+		sort.Strings(groupInfo.Arbitrators)
+		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
+		return groupInfo, nil
+	}
+
+	// todo change to get arbitrator groupinfo by rpc later
+	resp, err := CallAndUnmarshal("getarbitratorgroupbyheight",
+		Param("height", height), config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
-	groupInfo := &ArbitratorGroupInfo{}
 	if err := Unmarshal(&resp, groupInfo); err != nil {
 		return nil, err
 	}

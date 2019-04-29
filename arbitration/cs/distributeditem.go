@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"errors"
 	"io"
-	"sort"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -110,7 +108,7 @@ func (item *DistributedItem) GetSignedData() []byte {
 
 func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 	if len(item.signedData) != crypto.SignatureScriptLength*2 {
-		return nil, errors.New("ParseFeedbackSignedData invalid sign data.")
+		return nil, errors.New("ParseFeedbackSignedData invalid sign data length.")
 	}
 
 	sign := item.signedData[crypto.SignatureScriptLength:]
@@ -254,26 +252,6 @@ func (item *DistributedItem) IsFeedback() bool {
 }
 
 func (itemFunc *DistrubutedItemFuncImpl) GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error) {
-	groupInfo := &rpc.ArbitratorGroupInfo{
-		Arbitrators: make([]string, 0),
-	}
-	if height+1 < config.Parameters.CRCOnlyDPOSHeight {
-		for _, a := range config.Parameters.OriginCrossChainArbiters {
-			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
-		}
-		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
-		return groupInfo, nil
-	}
-
-	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
-		for _, a := range config.Parameters.CRCCrossChainArbiters {
-			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a.PublicKey)
-		}
-		sort.Strings(groupInfo.Arbitrators)
-		groupInfo.OnDutyArbitratorIndex = int(height) % len(groupInfo.Arbitrators)
-		return groupInfo, nil
-	}
-
 	return rpc.GetArbitratorGroupInfoByHeight(height)
 }
 
