@@ -230,13 +230,10 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 }
 
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
-	infoBytes, err := json.Marshal(txs)
-	if err != nil {
-		return nil, err
-	}
-
+	parameter := make(map[string]interface{})
+	parameter["txs"] = txs
 	result, err := CallAndUnmarshal("getexistwithdrawtransactions",
-		Param("txs", common.BytesToHexString(infoBytes)), config.Parameters.MainNode.Rpc)
+		parameter, config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
