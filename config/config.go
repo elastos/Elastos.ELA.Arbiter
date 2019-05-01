@@ -136,13 +136,12 @@ func GetSpvChainParams() *elacfg.Params {
 			os.Exit(1)
 		}
 		params.Foundation = *address
-	}
-	if len(mncfg.SpvSeedList) != 0 {
-		params.SeedList = mncfg.SpvSeedList
+		params.GenesisBlock = elacfg.GenesisBlock(address)
 	}
 	if mncfg.DefaultPort != 0 {
 		params.DefaultPort = mncfg.DefaultPort
 	}
+	params.DNSSeeds = nil
 	return params
 }
 
