@@ -267,18 +267,12 @@ func (ar *ArbitratorImpl) InitAccount(client *account.Client) {
 }
 
 func (ar *ArbitratorImpl) StartSpvModule() error {
+	params := config.GetSpvChainParams()
 	spvCfg := &Config{
 		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
-		Magic:          config.Parameters.MainNode.Magic,
-		Foundation:     config.Parameters.MainNode.FoundationAddress,
-		SeedList:       config.Parameters.MainNode.SpvSeedList,
-		DefaultPort:    config.Parameters.MainNode.DefaultPort,
-		MinOutbound:    config.Parameters.MainNode.MinOutbound,
-		MaxConnections: config.Parameters.MainNode.MaxConnections,
-		OnRollback:     nil, // Not implemented yet
+		ChainParams:    params,
+		PermanentPeers: config.Parameters.MainNode.SpvSeedList,
 	}
-
-	log.Info("[StartSpvModule] new spv service:", spvCfg)
 
 	var err error
 	SpvService, err = NewSPVService(spvCfg)

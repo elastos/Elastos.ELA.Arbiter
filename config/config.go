@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
 	"github.com/elastos/Elastos.ELA/common"
+	elacfg "github.com/elastos/Elastos.ELA/common/config"
 )
 
 const (
@@ -35,9 +37,10 @@ type RpcConfiguration struct {
 }
 
 type Configuration struct {
-	Magic    uint32 `json:"Magic"`
-	Version  uint32 `json:"Version"`
-	NodePort uint16 `json:"NodePort"`
+	ActiveNet string `json:"ActiveNet"`
+	Magic     uint32 `json:"Magic"`
+	Version   uint32 `json:"Version"`
+	NodePort  uint16 `json:"NodePort"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
@@ -77,8 +80,6 @@ type MainNodeConfig struct {
 	SpvSeedList       []string   `json:"SpvSeedList""`
 	DefaultPort       uint16     `json:"DefaultPort"`
 	Magic             uint32     `json:"Magic"`
-	MinOutbound       int        `json:"MinOutbound"`
-	MaxConnections    int        `json:"MaxConnections"`
 	FoundationAddress string     `json:"FoundationAddress"`
 }
 
@@ -109,6 +110,40 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 		}
 	}
 	return nil, false
+}
+
+func GetSpvChainParams() *elacfg.Params {
+	var params *elacfg.Params
+	switch strings.ToLower(Parameters.ActiveNet) {
+	case "testnet", "test":
+		params = elacfg.DefaultParams.TestNet()
+
+	case "regnet", "reg":
+		params = elacfg.DefaultParams.RegNet()
+
+	default:
+		params = &elacfg.DefaultParams
+	}
+
+	mncfg := Parameters.MainNode
+	if mncfg.Magic != 0 {
+		params.Magic = mncfg.Magic
+	}
+	if mncfg.FoundationAddress != "" {
+		address, err := common.Uint168FromAddress(mncfg.FoundationAddress)
+		if err != nil {
+			fmt.Printf("invalid foundation address")
+			os.Exit(1)
+		}
+		params.Foundation = *address
+	}
+	if len(mncfg.SpvSeedList) != 0 {
+		params.SeedList = mncfg.SpvSeedList
+	}
+	if mncfg.DefaultPort != 0 {
+		params.DefaultPort = mncfg.DefaultPort
+	}
+	return params
 }
 
 func init() {

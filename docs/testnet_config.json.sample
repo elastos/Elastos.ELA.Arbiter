@@ -1,5 +1,6 @@
 ﻿{
   "Configuration": {
+    "ActiveNet": "testnet",
     "Magic": 2018103,
     "Version": 0,
     "NodePort": 21538,
@@ -21,8 +22,6 @@
         "node-testnet-004.elastos.org:21338"
       ],
       "Magic": 2018101,
-      "MinOutbound": 3,
-      "MaxConnections": 10,
       "FoundationAddress": "8ZNizBf4KhhPjeJRGpox6rPcHE5Np6tFx3",
       "DefaultPort": 21338,
       "MinPeersForSync": 1
@@ -88,6 +87,7 @@
       "02bf9e37b3db0cbe86acf76a76578c6b17b4146df101ec934a00045f7d201f06dd",
       "03111f1247c66755d369a8c8b3a736dfd5cf464ca6735b659533cbe1268cd102a9"
     ],
+    "DPoSNetAddress": "127.0.0.1:20339",
     "CRCOnlyDPOSHeight": 211000,
     "MinThreshold": 1000000,
     "DepositAmount": 1000000,

@@ -1,5 +1,6 @@
 ﻿{
   "Configuration": {
+    "ActiveNet": "testnet",
     "Magic": 7630402,
     "Version": 0,
     "NodePort": 11538,
@@ -17,8 +18,6 @@
         "127.0.0.1:20338"
       ],
       "Magic": 7630401,
-      "MinOutbound": 1,
-      "MaxConnections": 3,
       "FoundationAddress": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
       "DefaultPort": 20338
     },
@@ -58,6 +57,7 @@
       "02bf9e37b3db0cbe86acf76a76578c6b17b4146df101ec934a00045f7d201f06dd",
       "03111f1247c66755d369a8c8b3a736dfd5cf464ca6735b659533cbe1268cd102a9"
     ],
+    "DPoSNetAddress": "127.0.0.1:20339",
     "CRCOnlyDPOSHeight": 100,
     "MinThreshold": 10000000,
     "DepositAmount": 10000000,
