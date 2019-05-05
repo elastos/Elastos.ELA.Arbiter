@@ -137,8 +137,14 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 	}
 
 	programHash, err := common.Uint168FromAddress(sideNode.MiningAddr)
+	if err != nil {
+		return errors.New("[sideChainPowTransfer] invalid miningAddr")
+	}
 	codeHash := programHash.ToCodeHash()
 	miningAccount := client.GetAccountByCodeHash(codeHash)
+	if miningAccount == nil {
+		return errors.New("[sideChainPowTransfer] not found miningAddr in keystore")
+	}
 
 	from := sideNode.MiningAddr
 	script := miningAccount.RedeemScript
