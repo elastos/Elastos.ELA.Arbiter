@@ -245,6 +245,9 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 			targetIndex = i
 		}
 		tx := currentArbitrator.CreateWithdrawTransaction(withdrawInfo, sc, txnHashes[:targetIndex], &arbitrator.MainChainFuncImpl{})
+		if tx == nil {
+			continue
+		}
 		if tx.GetSize() < pact.MaxBlockSize {
 			wTx = tx
 		}
