@@ -253,8 +253,11 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		}
 	}
 
+	if wTx == nil {
+		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
+	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
-	log.Info("[CreateAndBroadcastWithdrawProposal] Transactions count: ", len(withdrawInfo.WithdrawAssets))
+	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", len(withdrawInfo.WithdrawAssets))
 
 	return nil
 }
