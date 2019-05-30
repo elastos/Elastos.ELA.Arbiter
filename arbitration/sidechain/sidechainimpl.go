@@ -246,7 +246,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		if tx == nil {
 			continue
 		}
-		if tx.GetSize() < pact.MaxBlockSize {
+		if tx.GetSize() < int(pact.MaxBlockSize) {
 			wTx = tx
 		}
 	}
