@@ -201,8 +201,6 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 		if err != nil {
 			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
 		}
-
-		log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send  mssage")
 	}
 
 	if len(receivedTxs) != 0 {

@@ -72,7 +72,7 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	}
 
 	P2PClientSingleton.BroadcastMessage(msg)
-	log.Info("[sendToArbitrator] Send withdraw transaction to arbtiers for multi sign")
+	log.Info("[sendToArbitrator] Send withdraw transaction to arbiters for multi sign")
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transaction) error {
