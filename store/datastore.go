@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-	"os/exec"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -39,7 +38,7 @@ const (
 			);`
 	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
 				GenesisBlockAddress VARCHAR(34) NOT NULL PRIMARY KEY,
-				Height INTEGER 
+				Height INTEGER
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
@@ -172,8 +171,9 @@ func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
 func checkAndCreateArbiterDataDir() error {
 	arbiterPath := filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir)
 	if _, err := os.Stat(arbiterPath); os.IsNotExist(err) {
-		cmd := exec.Command("mkdir", "-p", arbiterPath)
-		return cmd.Run()
+		if err := os.MkdirAll(arbiterPath, 0740); err != nil {
+			return err
+		}
 	}
 	return nil
 }
