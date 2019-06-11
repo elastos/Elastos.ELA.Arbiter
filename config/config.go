@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
 	"github.com/elastos/Elastos.ELA/common"
+	elacfg "github.com/elastos/Elastos.ELA/common/config"
 )
 
 const (
@@ -28,10 +30,6 @@ var (
 	ArbiterDir = "arbiter"
 )
 
-type CrossChainArbiterInfo struct {
-	PublicKey  string `json:"PublicKey"`
-	NetAddress string `json:"NetAddress"`
-}
 type RpcConfiguration struct {
 	User        string   `json:"User"`
 	Pass        string   `json:"Pass"`
@@ -39,9 +37,10 @@ type RpcConfiguration struct {
 }
 
 type Configuration struct {
-	Magic    uint32 `json:"Magic"`
-	Version  uint32 `json:"Version"`
-	NodePort uint16 `json:"NodePort"`
+	ActiveNet string `json:"ActiveNet"`
+	Magic     uint32 `json:"Magic"`
+	Version   uint32 `json:"Version"`
+	NodePort  uint16 `json:"NodePort"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
@@ -54,17 +53,19 @@ type Configuration struct {
 	MaxLogsSize   int64         `json:"MaxLogsSize"`
 	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
-	SideChainMonitorScanInterval time.Duration           `json:"SideChainMonitorScanInterval"`
-	ClearTransactionInterval     time.Duration           `json:"ClearTransactionInterval"`
-	MinOutbound                  int                     `json:"MinOutbound"`
-	MaxConnections               int                     `json:"MaxConnections"`
-	SideAuxPowFee                int                     `json:"SideAuxPowFee"`
-	MinThreshold                 int                     `json:"MinThreshold"`
-	DepositAmount                int                     `json:"DepositAmount"`
-	CRCOnlyDPOSHeight            uint32                  `json:"CRCOnlyDPOSHeight"`
-	OriginCrossChainArbiters     []CrossChainArbiterInfo `json:"OriginCrossChainArbiters"`
-	CRCCrossChainArbiters        []CrossChainArbiterInfo `json:"CRCCrossChainArbiters"`
-	RpcConfiguration             RpcConfiguration        `json:"RpcConfiguration"`
+	SideChainMonitorScanInterval time.Duration    `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration    `json:"ClearTransactionInterval"`
+	MinOutbound                  int              `json:"MinOutbound"`
+	MaxConnections               int              `json:"MaxConnections"`
+	SideAuxPowFee                int              `json:"SideAuxPowFee"`
+	MinThreshold                 int              `json:"MinThreshold"`
+	DepositAmount                int              `json:"DepositAmount"`
+	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
+	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
+	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
+	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
+	RpcConfiguration             RpcConfiguration `json:"RpcConfiguration"`
+	DPoSNetAddress               string           `json:"DPoSNetAddress"`
 }
 
 type RpcConfig struct {
@@ -79,8 +80,6 @@ type MainNodeConfig struct {
 	SpvSeedList       []string   `json:"SpvSeedList""`
 	DefaultPort       uint16     `json:"DefaultPort"`
 	Magic             uint32     `json:"Magic"`
-	MinOutbound       int        `json:"MinOutbound"`
-	MaxConnections    int        `json:"MaxConnections"`
 	FoundationAddress string     `json:"FoundationAddress"`
 }
 
@@ -113,6 +112,39 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	return nil, false
 }
 
+func GetSpvChainParams() *elacfg.Params {
+	var params *elacfg.Params
+	switch strings.ToLower(Parameters.ActiveNet) {
+	case "testnet", "test":
+		params = elacfg.DefaultParams.TestNet()
+
+	case "regnet", "reg":
+		params = elacfg.DefaultParams.RegNet()
+
+	default:
+		params = &elacfg.DefaultParams
+	}
+
+	mncfg := Parameters.MainNode
+	if mncfg.Magic != 0 {
+		params.Magic = mncfg.Magic
+	}
+	if mncfg.FoundationAddress != "" {
+		address, err := common.Uint168FromAddress(mncfg.FoundationAddress)
+		if err != nil {
+			fmt.Printf("invalid foundation address")
+			os.Exit(1)
+		}
+		params.Foundation = *address
+		params.GenesisBlock = elacfg.GenesisBlock(address)
+	}
+	if mncfg.DefaultPort != 0 {
+		params.DefaultPort = mncfg.DefaultPort
+	}
+	params.DNSSeeds = nil
+	return params
+}
+
 func init() {
 
 	config := ConfigFile{
@@ -132,11 +164,13 @@ func init() {
 			SideAuxPowFee:                50000,
 			MinThreshold:                 10000000,
 			DepositAmount:                10000000,
+			MaxTxsPerWithdrawTx:          1000,
 			RpcConfiguration: RpcConfiguration{
 				User:        "",
 				Pass:        "",
 				WhiteIPList: []string{"127.0.0.1"},
 			},
+			DPoSNetAddress: "127.0.0.1:20339",
 		},
 	}
 	Parameters.Configuration = &(config.ConfigFile)

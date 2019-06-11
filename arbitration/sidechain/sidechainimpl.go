@@ -14,7 +14,9 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/elanet/pact"
 )
 
 type SideChainImpl struct {
@@ -183,25 +185,22 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 		return
 	}
 
+	if len(txHashes) > config.Parameters.MaxTxsPerWithdrawTx {
+		txHashes = txHashes[:config.Parameters.MaxTxsPerWithdrawTx]
+	}
+
 	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
 	if err != nil {
 		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
 		return
 	}
 
-	unsolvedTxs, unsolvedBlockHeights := base.SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
-
+	unsolvedTxs, _ := base.SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
 	if len(unsolvedTxs) != 0 {
-		heightTxsMap := base.GetHeightTransactionHashesMap(unsolvedTxs, unsolvedBlockHeights)
-
-		for _, v := range heightTxsMap {
-			err := sc.CreateAndBroadcastWithdrawProposal(v)
-			if err != nil {
-				log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
-			}
+		err := sc.CreateAndBroadcastWithdrawProposal(unsolvedTxs)
+		if err != nil {
+			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
 		}
-
-		log.Info("[SendCachedWithdrawTxs] Find withdraw transaction, send  mssage")
 	}
 
 	if len(receivedTxs) != 0 {
@@ -235,11 +234,28 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	currentArbitrator.GetMainChain().SyncChainData()
-	transactions := currentArbitrator.CreateWithdrawTransactions(withdrawInfo, sc, txnHashes, &arbitrator.MainChainFuncImpl{})
 
-	log.Info("[CreateAndBroadcastWithdrawProposal] Transactions count: ", len(transactions))
-	currentArbitrator.BroadcastWithdrawProposal(transactions)
+	var wTx *types.Transaction
+	for i := 0; i < len(unsolvedTransactions); {
+		i += 100
+		targetIndex := len(txnHashes)
+		if targetIndex > i {
+			targetIndex = i
+		}
+		tx := currentArbitrator.CreateWithdrawTransaction(withdrawInfo, sc, txnHashes[:targetIndex], &arbitrator.MainChainFuncImpl{})
+		if tx == nil {
+			continue
+		}
+		if tx.GetSize() < int(pact.MaxBlockSize) {
+			wTx = tx
+		}
+	}
+
+	if wTx == nil {
+		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
+	}
+	currentArbitrator.BroadcastWithdrawProposal(wTx)
+	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", len(withdrawInfo.WithdrawAssets))
 
 	return nil
 }

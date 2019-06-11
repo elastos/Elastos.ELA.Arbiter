@@ -136,7 +136,7 @@ func createAuxpowTransaction(txType types.TxType, txPayload types.Payload, fromA
 		return nil, errors.New("[Wallet], Get spender's UTXOs failed")
 	}
 	availableUTXOs := removeLockedUTXOs(UTXOs, currentHeight) // Remove locked UTXOs
-	availableUTXOs = SortUTXOs(availableUTXOs)                       // Sort available UTXOs by value ASC
+	availableUTXOs = SortUTXOs(availableUTXOs)                // Sort available UTXOs by value ASC
 
 	// Create transaction inputs
 	var txInputs []*types.Input // The inputs in transaction

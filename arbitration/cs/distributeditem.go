@@ -108,7 +108,7 @@ func (item *DistributedItem) GetSignedData() []byte {
 
 func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 	if len(item.signedData) != crypto.SignatureScriptLength*2 {
-		return nil, errors.New("ParseFeedbackSignedData invalid sign data.")
+		return nil, errors.New("ParseFeedbackSignedData invalid sign data length.")
 	}
 
 	sign := item.signedData[crypto.SignatureScriptLength:]
@@ -252,11 +252,7 @@ func (item *DistributedItem) IsFeedback() bool {
 }
 
 func (itemFunc *DistrubutedItemFuncImpl) GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error) {
-	groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
-	if err != nil {
-		return nil, err
-	}
-	return groupInfo, nil
+	return rpc.GetArbitratorGroupInfoByHeight(height)
 }
 
 func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool, itemFunc DistrubutedItemFunc) error {

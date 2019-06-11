@@ -6,10 +6,10 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
@@ -121,7 +121,7 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 
 	buf := new(bytes.Buffer)
 	txPayload.Serialize(buf, payload.SideChainPowVersion)
-	txPayload.SignedData, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
+	txPayload.Signature, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
 	if err != nil {
 		return err
 	}
@@ -137,8 +137,14 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 	}
 
 	programHash, err := common.Uint168FromAddress(sideNode.MiningAddr)
+	if err != nil {
+		return errors.New("[sideChainPowTransfer] invalid miningAddr")
+	}
 	codeHash := programHash.ToCodeHash()
 	miningAccount := client.GetAccountByCodeHash(codeHash)
+	if miningAccount == nil {
+		return errors.New("[sideChainPowTransfer] not found miningAddr in keystore")
+	}
 
 	from := sideNode.MiningAddr
 	script := miningAccount.RedeemScript
