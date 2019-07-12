@@ -7,7 +7,7 @@ import (
 
 type AccountListener interface {
 	GetAccountAddress() string
-	OnUTXOChanged(txinfos []*WithdrawTx, blockHeight uint32) error
+	OnUTXOChanged(withdrawTxs []*WithdrawTx, blockHeight uint32) error
 	OnIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error
 
 	StartSideChainMining()

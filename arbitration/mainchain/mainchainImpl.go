@@ -101,8 +101,22 @@ func (mc *MainChainImpl) OnReceivedSignMsg(id peer2.PID, content []byte) {
 	}
 }
 
-func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChain, withdrawInfo *base.WithdrawInfo,
-	sideChainTxHashes []string, mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
+func parseUserWithdrawTransactions(txs []*base.WithdrawTx) (
+	*base.WithdrawInfo, []common.Uint256) {
+	result := new(base.WithdrawInfo)
+	var sideChainTxHashes []common.Uint256
+	for _, tx := range txs {
+		for _, withdraw := range tx.WithdrawInfo.WithdrawAssets {
+			result.WithdrawAssets = append(result.WithdrawAssets, withdraw)
+			sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
+		}
+	}
+	return result, sideChainTxHashes
+}
+
+func (mc *MainChainImpl) CreateWithdrawTransaction(
+	sideChain arbitrator.SideChain, withdrawTxs []*base.WithdrawTx,
+	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
@@ -115,6 +129,7 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 	var txOutputs []*types.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
+	withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
 	for _, withdraw := range withdrawInfo.WithdrawAssets {
 		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
@@ -178,19 +193,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(sideChain arbitrator.SideChai
 	chainHeight, err := mcFunc.GetMainNodeCurrentHeight()
 	if err != nil {
 		return nil, err
-	}
-
-	var txHashes []common.Uint256
-	for _, hash := range sideChainTxHashes {
-		hashBytes, err := common.HexStringToBytes(hash)
-		if err != nil {
-			return nil, err
-		}
-		txHash, err := common.Uint256FromBytes(hashBytes)
-		if err != nil {
-			return nil, err
-		}
-		txHashes = append(txHashes, *txHash)
 	}
 
 	txPayload := &payload.WithdrawFromSideChain{

@@ -85,20 +85,21 @@ func (sc *SideChainImpl) GetAccountAddress() string {
 	return sc.GetKey()
 }
 
-func (sc *SideChainImpl) OnUTXOChanged(txinfos []*base.WithdrawTx, blockHeight uint32) error {
-	if len(txinfos) == 0 {
-		return errors.New("[OnUTXOChanged] received txinfos, but size is 0")
+func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeight uint32) error {
+	if len(withdrawTxs) == 0 {
+		return errors.New("[OnUTXOChanged] received withdrawTx, but size is 0")
 	}
 
 	var txs []*base.SideChainTransaction
-	for _, txinfo := range txinfos {
+	for _, withdrawTx := range withdrawTxs {
 		buf := new(bytes.Buffer)
-		if err := txinfo.Serialize(buf); err != nil {
-			return errors.New("[OnUTXOChanged] received txinfos, but have invalid tx," + err.Error())
+		if err := withdrawTx.Serialize(buf); err != nil {
+			log.Error("[OnUTXOChanged] received withdrawTx, but is invalid tx,", err.Error())
+			continue
 		}
 
 		txs = append(txs, &base.SideChainTransaction{
-			TransactionHash:     txinfo.Txid.String(),
+			TransactionHash:     withdrawTx.Txid.String(),
 			GenesisBlockAddress: sc.GetKey(),
 			Transaction:         buf.Bytes(),
 			BlockHeight:         blockHeight,
@@ -109,7 +110,7 @@ func (sc *SideChainImpl) OnUTXOChanged(txinfos []*base.WithdrawTx, blockHeight u
 		return err
 	}
 
-	log.Info("[OnUTXOChanged] Find ", len(txs), "withdraw transaction, add into dbcache")
+	log.Info("[OnUTXOChanged] find ", len(txs), "withdraw transaction, add into db cache")
 	return nil
 }
 
@@ -158,16 +159,6 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 
 func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error) {
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
-}
-
-func (sc *SideChainImpl) parseUserWithdrawTransactionInfo(txs []*base.WithdrawTx) (*base.WithdrawInfo, error) {
-	result := new(base.WithdrawInfo)
-	for _, tx := range txs {
-		for _, withdraw := range tx.WithdrawInfo.WithdrawAssets {
-			result.WithdrawAssets = append(result.WithdrawAssets, withdraw)
-		}
-	}
-	return result, nil
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() {
@@ -228,21 +219,19 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return nil
 	}
 
-	withdrawInfo, err := sc.parseUserWithdrawTransactionInfo(unsolvedTransactions)
-	if err != nil {
-		return err
-	}
-
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
 	var wTx *types.Transaction
+	var targetIndex int
 	for i := 0; i < len(unsolvedTransactions); {
 		i += 100
-		targetIndex := len(txnHashes)
+		targetIndex = len(unsolvedTransactions)
 		if targetIndex > i {
 			targetIndex = i
 		}
-		tx := currentArbitrator.CreateWithdrawTransaction(withdrawInfo, sc, txnHashes[:targetIndex], &arbitrator.MainChainFuncImpl{})
+
+		tx := currentArbitrator.CreateWithdrawTransaction(
+			unsolvedTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
 		if tx == nil {
 			continue
 		}
@@ -255,7 +244,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
-	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", len(withdrawInfo.WithdrawAssets))
+	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
 
 	return nil
 }

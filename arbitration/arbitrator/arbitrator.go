@@ -46,8 +46,8 @@ type Arbitrator interface {
 	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
 
 	//withdraw
-	CreateWithdrawTransaction(
-		withdrawInfo *WithdrawInfo, sideChain SideChain, sideTransactionHash []string, mcFunc MainChainFunc) *types.Transaction
+	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
+		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
 	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
@@ -127,10 +127,11 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawInfo *WithdrawInfo, sideChain SideChain,
-	sideTransactionHash []string, mcFunc MainChainFunc) *types.Transaction {
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
 
-	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(sideChain, withdrawInfo, sideTransactionHash, mcFunc)
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(
+		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
 		log.Warn(err.Error())
 		return nil

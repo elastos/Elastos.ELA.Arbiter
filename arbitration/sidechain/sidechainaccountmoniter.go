@@ -13,6 +13,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
@@ -46,7 +47,7 @@ func (monitor *SideChainAccountMonitorImpl) RemoveListener(account string) error
 	return nil
 }
 
-func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*base.WithdrawTx, genesisBlockAddress string, blockHeight uint32) error {
+func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(withdrawTxs []*base.WithdrawTx, genesisBlockAddress string, blockHeight uint32) error {
 	if monitor.accountListenerMap == nil {
 		return nil
 	}
@@ -56,7 +57,7 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(txinfos []*base.With
 		return errors.New("fired unknown listener")
 	}
 
-	return item.OnUTXOChanged(txinfos, blockHeight)
+	return item.OnUTXOChanged(withdrawTxs, blockHeight)
 }
 
 func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
@@ -174,7 +175,7 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 }
 
 func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*base.WithdrawTxInfo, genesisAddress string, blockHeight uint32) {
-	var txInfos []*base.WithdrawTx
+	var withdrawTxs []*base.WithdrawTx
 	for _, txn := range transactions {
 		txnBytes, err := common.HexStringToBytes(txn.TxID)
 		if err != nil {
@@ -200,6 +201,21 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 				log.Warn("Find output to destroy address, but have invlaid corss chain amount")
 				continue
 			}
+			programHash, err := common.Uint168FromAddress(withdraw.CrossChainAddress)
+			if err != nil {
+				log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
+				continue
+			}
+			addr, err := programHash.ToAddress()
+			if err != nil || addr != withdraw.CrossChainAddress {
+				log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
+				continue
+			}
+			if contract.PrefixType(programHash[0]) != contract.PrefixStandard &&
+				contract.PrefixType(programHash[0]) != contract.PrefixMultiSig {
+				log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
+				continue
+			}
 
 			withdrawAssets = append(withdrawAssets, &base.WithdrawAsset{
 				TargetAddress:    withdraw.CrossChainAddress,
@@ -217,11 +233,11 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 
 		reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
 		if ok, err := store.DbCache.SideChainStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
-			txInfos = append(txInfos, withdrawTx)
+			withdrawTxs = append(withdrawTxs, withdrawTx)
 		}
 	}
-	if len(txInfos) != 0 {
-		err := monitor.fireUTXOChanged(txInfos, genesisAddress, blockHeight)
+	if len(withdrawTxs) != 0 {
+		err := monitor.fireUTXOChanged(withdrawTxs, genesisAddress, blockHeight)
 		if err != nil {
 			log.Error("[fireUTXOChanged] err:", err.Error())
 		}

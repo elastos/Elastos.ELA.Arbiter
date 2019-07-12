@@ -16,8 +16,7 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(sideChain SideChain,
-		withdrawInfo *base.WithdrawInfo, sideChainTxHashes []string,
+	CreateWithdrawTransaction(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
 		mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
