@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/elastos/Elastos.ELA/core/contract"
 	"io"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )

@@ -139,7 +139,7 @@ func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	if count, ok := result.(float64); ok {
+	if count, ok := result.(float64); ok && count >= 1 {
 		return uint32(count) - 1, nil
 	}
 	return 0, errors.New("[GetCurrentHeight] invalid count")
