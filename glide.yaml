@@ -16,3 +16,4 @@ import:
     - ssh/terminal
 ignore:
 - golang.org/x/crypto/ssh/terminal
+- github.com/russross/blackfriday/v2
