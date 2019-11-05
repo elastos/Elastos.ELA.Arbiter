@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -340,7 +341,9 @@ func post(url string, contentType string, user string, pass string, body io.Read
 	req.Header.Set("Authorization", basicAuth)
 	req.Header.Set("Content-Type", contentType)
 
-	return http.DefaultClient.Do(req)
+	client := *http.DefaultClient
+	client.Timeout = time.Minute
+	return client.Do(req)
 }
 
 func Call(method string, params map[string]interface{}, config *config.RpcConfig) ([]byte, error) {

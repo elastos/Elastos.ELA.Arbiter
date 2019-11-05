@@ -1,9 +1,9 @@
 package: github.com/elastos/Elastos.ELA.Arbiter
 import:
 - package: github.com/elastos/Elastos.ELA
-  version: v0.3.2
+  version: v0.3.2.1
 - package: github.com/elastos/Elastos.ELA.SPV
-  version: v0.0.4
+  version: v0.0.4.1
 - package: github.com/howeyc/gopass
 - package: github.com/itchyny/base58-go
 - package: github.com/mattn/go-sqlite3
@@ -16,3 +16,4 @@ import:
     - ssh/terminal
 ignore:
 - golang.org/x/crypto/ssh/terminal
+- github.com/russross/blackfriday/v2
