@@ -293,7 +293,8 @@ func checkWithdrawTransaction(txn *types.Transaction,
 	}
 
 	for k, v := range withdrawOutputsMap {
-		if amount, ok := crossChainOutputsMap[k]; !ok || amount != v {
+		amount, ok := crossChainOutputsMap[k]
+		if !ok || common.Fixed64(float64(amount)/exchangeRate) != v {
 			return fmt.Errorf("check withdraw transaction failed, addr"+
 				" %s amount is invalid, real is %s, need to be %s", k,
 				v.String(), amount.String())
