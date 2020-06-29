@@ -54,7 +54,8 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 		return result, nil
 	}
 
-	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
+	if height+1 >= config.Parameters.CRCOnlyDPOSHeight &&
+		height < config.Parameters.CRCClaimDPOSNodeHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
 			var id peer.PID
 			pk, err := common.HexStringToBytes(a)
@@ -76,20 +77,17 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 	}
 
 	type peerInfo struct {
-		OwnerPublicKey string `json:"ownerpublickey"`
-		NodePublicKey  string `json:"nodepublickey"`
-		IP             string `json:"ip"`
-		ConnState      string `json:"connstate"`
+		NodePublicKeys []string `json:"NodePublicKeys"`
 	}
 
-	peers := make([]peerInfo, 0)
+	var peers peerInfo
 	if err := Unmarshal(&resp, &peers); err != nil {
 		return nil, err
 	}
 
-	for _, v := range peers {
+	for _, v := range peers.NodePublicKeys {
 		var id peer.PID
-		pk, err := common.HexStringToBytes(v.NodePublicKey)
+		pk, err := common.HexStringToBytes(v)
 		if err != nil {
 			return nil, err
 		}
