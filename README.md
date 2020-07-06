@@ -13,21 +13,18 @@ Elastos ELA Arbiter
 - [Pre-requisites on Mac](#pre-requisites-on-mac)
     - [1. Check OS version](#1-check-os-version)
     - [2. Install Go distribution 1.9](#2-install-go-distribution-19)
-    - [3. Install Glide](#3-install-glide)
 - [Pre-requisites on Ubuntu](#pre-requisites-on-ubuntu)
     - [1. Check OS version](#1-check-os-version-1)
     - [2. Install git](#2-install-git)
     - [3. Install Go distribution 1.9](#3-install-go-distribution-19)
-    - [4. Install Glide](#4-install-glide)
 - [Configure the node](#configure-the-node)
 - [Build the node](#build-the-node)
     - [1. Setup basic workspace](#1-setup-basic-workspace)
     - [2. Set correct environment variables](#2-set-correct-environment-variables)
-    - [3. Check Go version and glide version](#3-check-go-version-and-glide-version)
+    - [3. Check Go version](#3-check-go-version)
     - [4. Clone source code to $GOPATH/src/github/elastos folder](#4-clone-source-code-to-gopathsrcgithubelastos-folder)
-    - [5. Install dependencies using Glide](#5-install-dependencies-using-glide)
-    - [6. Make](#6-make)
-    - [7. Run the node on Mac](#7-run-the-node-on-mac)
+    - [5. Make](#5-make)
+    - [6. Run the node on Mac](#6-run-the-node-on-mac)
 - [Interact with the node](#interact-with-the-node)
     - [1. JSON RPC API of the node](#1-json-rpc-api-of-the-node)
 - [Contribution](#contribution)
@@ -55,13 +52,6 @@ $ brew install go@1.9
 
 > If you install older version, such as v1.8, you may get missing math/bits package error when build.
 
-#### 3. Install Glide
-
-Glide is a package manager for Golang. We use Glide to install dependent packages.
-
-```shell
-$ brew install --ignore-dependencies glide
-```
 
 ## Pre-requisites on Ubuntu
 
@@ -90,15 +80,6 @@ $ sudo apt-get install -y golang-1.9-go
 ```
 
 > If you install older version, such as v1.8, you may get missing math/bits package error when build.
-
-#### 4. Install Glide
-
-Glide is a package manager for Golang. We use Glide to install dependent packages.
-
-```shell
-$ cd ~/dev
-$ curl https://glide.sh/get | sh
-```
 
 ## Configure the node
 
@@ -136,16 +117,13 @@ export PATH=$GOROOT/bin:$PATH
 export PATH=$GOBIN:$PATH
 ```
 
-#### 3. Check Go version and glide version
+#### 3. Check Go version
 
-Check the golang and glider version. Make sure they are the following version number or above.
+Check the golang version. Make sure they are the following version number or above.
 
 ```shell
 $ go version
-go version go1.9.2 darwin/amd64
-
-$ glide --version
-glide version 0.13.1
+go version go1.13.4 darwin/amd64
 ```
 
 If you cannot see the version number, there must be something wrong when install.
@@ -158,14 +136,7 @@ $ git clone https://github.com/elastos/Elastos.ELA.Arbiter.git
 
 If clone works successfully, you should see folder structure like $GOPATH/src/github.com/elastos/Elastos.ELA.Arbiter/Makefile
 
-#### 5. Install dependencies using Glide
-
-```shell
-$ cd $GOPATH/src/github.com/elastos/Elastos.ELA.Arbiter
-$ glide update && glide install
-``` 
-
-#### 6. Make
+#### 5. Make
 
 Build the node.
 ```shell
@@ -175,7 +146,7 @@ $ make
 
 If you did not see any error message, congratulations, you have made the arbiter full node.
 
-#### 7. Run the node on Mac
+#### 6. Run the node on Mac
 
 Run the node.
 ```shell
