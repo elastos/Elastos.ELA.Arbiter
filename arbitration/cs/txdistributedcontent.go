@@ -56,8 +56,13 @@ func (d *TxDistributedContent) Submit() error {
 	log.Warn("################################### ")
 
 	if err != nil || resp.Error != nil && resp.Code != MCErrDoubleSpend {
-		log.Warn("send withdraw transaction failed, move to finished db, "+
-			"txHash:", d.Tx.Hash().String(), "err:", err.Error())
+		if err != nil {
+			log.Warn("send withdraw transaction failed, move to finished db, "+
+				"txHash:", d.Tx.Hash().String(), "err:", err.Error())
+		} else {
+			log.Warn("send withdraw transaction failed, move to finished db, "+
+				"txHash:", d.Tx.Hash().String(), "err:", resp.Error.Message)
+		}
 
 		buf := new(bytes.Buffer)
 		err := d.Tx.Serialize(buf)

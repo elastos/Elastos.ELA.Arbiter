@@ -3,6 +3,7 @@ module github.com/elastos/Elastos.ELA.Arbiter
 go 1.13
 
 require (
+	github.com/cevaris/ordered_map v0.0.0-20190319150403-3adeae072e73 // indirect
 	github.com/elastos/Elastos.ELA v0.5.0
 	github.com/elastos/Elastos.ELA.SPV v0.0.5-0.20200710105133-b6f33b61a79e
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
