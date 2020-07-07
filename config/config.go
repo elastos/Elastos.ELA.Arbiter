@@ -61,6 +61,7 @@ type Configuration struct {
 	MinThreshold                 int              `json:"MinThreshold"`
 	DepositAmount                int              `json:"DepositAmount"`
 	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
+	CRCClaimDPOSNodeHeight       uint32           `json:"CRCClaimDPOSNodeHeight"`
 	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
 	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
@@ -77,7 +78,7 @@ type RpcConfig struct {
 
 type MainNodeConfig struct {
 	Rpc               *RpcConfig `json:"Rpc"`
-	SpvSeedList       []string   `json:"SpvSeedList""`
+	SpvSeedList       []string   `json:"SpvSeedList"`
 	DefaultPort       uint16     `json:"DefaultPort"`
 	Magic             uint32     `json:"Magic"`
 	FoundationAddress string     `json:"FoundationAddress"`

@@ -47,15 +47,16 @@ func (dns *DistributedNodeServer) UnsolvedTransactions() map[common.Uint256]base
 
 func CreateRedeemScript() ([]byte, error) {
 	var publicKeys []*crypto.PublicKey
-	for _, arStr := range arbitrator.ArbitratorGroupSingleton.GetAllArbitrators() {
+	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
+	for _, arStr := range arbiters {
 		temp, err := base.PublicKeyFromString(arStr)
 		if err != nil {
 			return nil, err
 		}
 		publicKeys = append(publicKeys, temp)
 	}
-	redeemScript, err := base.CreateWithdrawRedeemScript(
-		getTransactionAgreementArbitratorsCount(len(publicKeys)), publicKeys)
+	arbitersCount := getTransactionAgreementArbitratorsCount(len(publicKeys))
+	redeemScript, err := base.CreateWithdrawRedeemScript(arbitersCount, publicKeys)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +64,7 @@ func CreateRedeemScript() ([]byte, error) {
 }
 
 func getTransactionAgreementArbitratorsCount(arbitersCount int) int {
-	return arbitersCount*2/3 + 1
+	return arbitersCount * 2 / 3
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
