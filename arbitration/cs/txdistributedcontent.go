@@ -41,6 +41,20 @@ func (d *TxDistributedContent) Submit() error {
 		transactionHashes = append(transactionHashes, hash.String())
 	}
 
+	log.Warn("################################### ")
+	log.Warn("############ withdrawTransaction")
+	log.Warn("############# tx hash:", d.Tx.Hash().String())
+	log.Warn("############ payload ###########")
+	for _, hash := range withdrawPayload.SideChainTransactionHashes {
+		log.Warn("#############", hash)
+	}
+	log.Warn("############# output ##########")
+	for _, o := range d.Tx.Outputs {
+		addr, _ := o.ProgramHash.ToAddress()
+		log.Warn("############# to:", addr, "amount:", o.Value.String())
+	}
+	log.Warn("################################### ")
+
 	if err != nil || resp.Error != nil && resp.Code != MCErrDoubleSpend {
 		log.Warn("send withdraw transaction failed, move to finished db, "+
 			"txHash:", d.Tx.Hash().String(), "err:", err.Error())

@@ -88,6 +88,29 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							"error:", err)
 						break
 					}
+					if len(transactions) != 0 {
+						log.Info("@@@@@@ found withdraw tx at height:", currentHeight+1-6, "sidechain:", sideNode.Rpc.HttpJsonPort)
+					}
+					var has bool
+					for _, a := range transactions {
+						for _, a2 := range a.CrossChainAssets {
+							if a2.CrossChainAddress == "EYH69rRAfDQ2HRa35bmYRh6UoAZ8u3n7ZJ" {
+								log.Info("@@@@@@@@@@  amount:", a2.CrossChainAmount, "addr:", a2.CrossChainAddress, "height:", currentHeight+1-6)
+								has = true
+							}
+						}
+					}
+					if has {
+						log.Info("@@@@@@@@@@@@@@@@@@@@")
+						for i, a := range transactions {
+							log.Info("@@@@@@@@@@ tx:", i)
+							for _, a2 := range a.CrossChainAssets {
+								log.Info("@@@@@@@@@@  amount:", a2.CrossChainAmount, "addr:", a2.CrossChainAddress)
+								has = true
+							}
+						}
+						log.Info("@@@@@@@@@@@@@@@@@@@@")
+					}
 					monitor.processTransactions(transactions, sideNode.GenesisBlockAddress, currentHeight+1-6)
 				}
 
