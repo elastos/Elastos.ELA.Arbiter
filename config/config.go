@@ -61,7 +61,7 @@ type Configuration struct {
 	MinThreshold                 int              `json:"MinThreshold"`
 	DepositAmount                int              `json:"DepositAmount"`
 	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
-	CRCClaimDPOSNodeHeight       uint32           `json:"CRCClaimDPOSNodeHeight"`
+	CRClaimDPOSNodeStartHeight   uint32           `json:"CRClaimDPOSNodeStartHeight"`
 	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
 	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
