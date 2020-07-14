@@ -70,24 +70,27 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 		return result, nil
 	}
 
-	resp, err := CallAndUnmarshal("getdpospeersinfo", nil,
+	resp, err := CallAndUnmarshal("getarbiterpeersinfo", nil,
 		config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
 
 	type peerInfo struct {
-		NodePublicKeys []string `json:"NodePublicKeys"`
+		OwnerPublicKey string `json:"ownerpublickey"`
+		NodePublicKey  string `json:"nodepublickey"`
+		IP             string `json:"ip"`
+		ConnState      string `json:"connstate"`
 	}
 
-	var peers peerInfo
+	peers := make([]peerInfo, 0)
 	if err := Unmarshal(&resp, &peers); err != nil {
 		return nil, err
 	}
 
-	for _, v := range peers.NodePublicKeys {
+	for _, v := range peers {
 		var id peer.PID
-		pk, err := common.HexStringToBytes(v)
+		pk, err := common.HexStringToBytes(v.NodePublicKey)
 		if err != nil {
 			return nil, err
 		}
@@ -110,7 +113,8 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 		return groupInfo, nil
 	}
 
-	if height+1 >= config.Parameters.CRCOnlyDPOSHeight {
+	if height+1 >= config.Parameters.CRCOnlyDPOSHeight &&
+		height < config.Parameters.CRClaimDPOSNodeStartHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
 			groupInfo.Arbitrators = append(groupInfo.Arbitrators, a)
 		}
@@ -119,7 +123,6 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 		return groupInfo, nil
 	}
 
-	// todo change to get arbitrator groupinfo by rpc later
 	resp, err := CallAndUnmarshal("getarbitratorgroupbyheight",
 		Param("height", height), config.Parameters.MainNode.Rpc)
 	if err != nil {
