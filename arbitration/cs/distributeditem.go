@@ -106,9 +106,9 @@ func (item *DistributedItem) GetSignedData() []byte {
 	return item.signedData
 }
 
-func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
+func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
 	if len(item.signedData) != crypto.SignatureScriptLength*2 {
-		return nil, errors.New("ParseFeedbackSignedData invalid sign data length.")
+		return nil, "ParseFeedbackSignedData invalid sign data length.", nil
 	}
 
 	sign := item.signedData[crypto.SignatureScriptLength:]
@@ -116,15 +116,15 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	err := item.ItemContent.SerializeUnsigned(buf)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), sign[1:])
 	if err != nil {
-		return nil, errors.New("ParseFeedbackSignedData invalid sign data.")
+		return nil, "", errors.New("ParseFeedbackSignedData invalid sign data.")
 	}
 
-	return sign, nil
+	return sign, "", nil
 }
 
 func (item *DistributedItem) Serialize(w io.Writer) error {
