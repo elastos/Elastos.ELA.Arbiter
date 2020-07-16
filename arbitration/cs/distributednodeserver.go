@@ -154,9 +154,13 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
 		return err
 	}
-	newSign, err := transactionItem.ParseFeedbackSignedData()
+	newSign, msg, err := transactionItem.ParseFeedbackSignedData()
 	if err != nil {
 		return err
+	}
+	if msg != "" {
+		log.Warn(msg)
+		return nil
 	}
 
 	dns.mux.Lock()
@@ -176,7 +180,6 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	if err != nil {
 		return err
 	}
-
 	if signedCount >= getTransactionAgreementArbitratorsCount(len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
 		dns.mux.Lock()
 		delete(dns.unsolvedContents, txn.Hash())
