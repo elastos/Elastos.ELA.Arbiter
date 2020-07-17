@@ -70,27 +70,24 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 		return result, nil
 	}
 
-	resp, err := CallAndUnmarshal("getarbiterpeersinfo", nil,
+	resp, err := CallAndUnmarshal("getcrcpeersinfo", nil,
 		config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
 	}
 
 	type peerInfo struct {
-		OwnerPublicKey string `json:"ownerpublickey"`
-		NodePublicKey  string `json:"nodepublickey"`
-		IP             string `json:"ip"`
-		ConnState      string `json:"connstate"`
+		NodePublicKeys []string `json:"nodepublickeys"`
 	}
 
-	peers := make([]peerInfo, 0)
+	peers := peerInfo{}
 	if err := Unmarshal(&resp, &peers); err != nil {
 		return nil, err
 	}
 
-	for _, v := range peers {
+	for _, v := range peers.NodePublicKeys {
 		var id peer.PID
-		pk, err := common.HexStringToBytes(v.NodePublicKey)
+		pk, err := common.HexStringToBytes(v)
 		if err != nil {
 			return nil, err
 		}
