@@ -129,10 +129,10 @@ func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
 	}
 }
 
-func (group *ArbitratorGroupImpl) GetCurrentHeight() *uint32 {
+func (group *ArbitratorGroupImpl) GetCurrentHeight() uint32 {
 	group.mux.Lock()
 	defer group.mux.Unlock()
-	return group.currentHeight
+	return *group.currentHeight
 }
 
 func (group *ArbitratorGroupImpl) GetArbitratorsCount() int {

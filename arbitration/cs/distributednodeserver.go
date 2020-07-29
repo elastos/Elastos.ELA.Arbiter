@@ -7,6 +7,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -64,6 +65,10 @@ func CreateRedeemScript() ([]byte, error) {
 }
 
 func getTransactionAgreementArbitratorsCount(arbitersCount int) int {
+	currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	if currentHeight <= config.Parameters.CRClaimDPOSNodeStartHeight {
+		return arbitersCount*2/3 + 1
+	}
 	return arbitersCount * 2 / 3
 }
 
