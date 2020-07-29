@@ -23,7 +23,7 @@ type SideChainPowAccount struct {
 
 func checkSideChainPowAccounts(addresses []string, minThreshold int) ([]*SideChainPowAccount, error) {
 	var warnAddresses []*SideChainPowAccount
-	currentHeight := *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 	for _, addr := range addresses {
 		available := common.Fixed64(0)
 		locked := common.Fixed64(0)
@@ -75,7 +75,8 @@ func divideTransfer(name string, outputs []*Transfer) error {
 
 	txType := types.TransferAsset
 	txPayload := &payload.TransferAsset{}
-	txn, err := createTransaction(txType, txPayload, from, &fee, script, uint32(0), *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
+	txn, err := createTransaction(txType, txPayload, from, &fee, script,
+		uint32(0), arbitrator.ArbitratorGroupSingleton.GetCurrentHeight(), outputs...)
 	if err != nil {
 		return errors.New("create divide transaction failed: " + err.Error())
 	}

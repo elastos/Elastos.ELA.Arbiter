@@ -51,13 +51,13 @@ func GetLastSubmitAuxpowHeight(genesisBlockHash *common.Uint256) (uint32, bool) 
 func UpdateLastNotifySideMiningHeight(genesisBlockHash common.Uint256) {
 	lock.Lock()
 	defer lock.Unlock()
-	lastNotifySideMiningHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lastNotifySideMiningHeightMap[genesisBlockHash] = arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
 func UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256) {
 	lock.Lock()
 	defer lock.Unlock()
-	lastSubmitAuxpowHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lastSubmitAuxpowHeightMap[genesisBlockHash] = arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
 func unmarshal(result interface{}, target interface{}) error {
@@ -149,7 +149,8 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 	from := sideNode.MiningAddr
 	script := miningAccount.RedeemScript
 
-	txn, err := createAuxpowTransaction(txType, txPayload, from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight())
+	txn, err := createAuxpowTransaction(txType, txPayload, from, &fee, script,
+		arbitrator.ArbitratorGroupSingleton.GetCurrentHeight())
 	if err != nil {
 		return errors.New("[sideChainPowTransfer] create transaction failed: " + err.Error())
 	}
@@ -176,7 +177,8 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 
 	lock.Lock()
 	defer lock.Unlock()
-	lastSendSideMiningHeightMap[*sideGenesisHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lastSendSideMiningHeightMap[*sideGenesisHash] =
+		arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 
 	log.Info("[sideChainPowTransfer] end")
 	return nil

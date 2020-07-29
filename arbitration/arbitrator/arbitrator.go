@@ -225,10 +225,13 @@ func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *types.Transaction) (rpc.R
 		return rpc.Response{}, err
 	}
 
-	log.Info("[Rpc-sendrawtransaction] Withdraw transaction to main chain：", config.Parameters.MainNode.Rpc.IpAddress, ":", config.Parameters.MainNode.Rpc.HttpJsonPort)
+	log.Info("[Rpc-sendrawtransaction] Withdraw transaction to main chain：",
+		config.Parameters.MainNode.Rpc.IpAddress, ":", config.Parameters.MainNode.Rpc.HttpJsonPort)
 	resp, err := rpc.CallAndUnmarshalResponse("sendrawtransaction",
 		rpc.Param("data", content), config.Parameters.MainNode.Rpc)
 	if err != nil {
+		log.Error("[Rpc-sendrawtransaction] Withdraw transaction to main "+
+			"chain error:", err)
 		return rpc.Response{}, err
 	}
 
