@@ -50,13 +50,16 @@ func CreateRedeemScript() ([]byte, error) {
 	var publicKeys []*crypto.PublicKey
 	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 	for _, arStr := range arbiters {
+		if arStr == "" {
+			continue
+		}
 		temp, err := base.PublicKeyFromString(arStr)
 		if err != nil {
 			return nil, err
 		}
 		publicKeys = append(publicKeys, temp)
 	}
-	arbitersCount := getTransactionAgreementArbitratorsCount(len(publicKeys))
+	arbitersCount := getTransactionAgreementArbitratorsCount(len(arbiters))
 	redeemScript, err := base.CreateWithdrawRedeemScript(arbitersCount, publicKeys)
 	if err != nil {
 		return nil, err

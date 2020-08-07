@@ -126,6 +126,11 @@ func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
 			group.isListenerOnDuty = !group.isListenerOnDuty
 			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
 		}
+	} else if ok && err != nil {
+		if group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk) {
+			group.isListenerOnDuty = !group.isListenerOnDuty
+			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
+		}
 	}
 }
 
