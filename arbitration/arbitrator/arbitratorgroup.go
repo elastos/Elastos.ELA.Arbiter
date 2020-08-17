@@ -27,7 +27,7 @@ type ArbitratorGroup interface {
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
 	GetOnDutyArbitratorOfMain() (string, error)
-	CheckOnDutyStatus()
+	CheckOnDutyStatus(uint32)
 	SetListener(listener ArbitratorGroupListener)
 }
 
@@ -109,11 +109,11 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	group.lastSyncTime = &currentTime
 	group.mux.Unlock()
 
-	group.CheckOnDutyStatus()
+	group.CheckOnDutyStatus(currentHeight)
 	return nil
 }
 
-func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
+func (group *ArbitratorGroupImpl) CheckOnDutyStatus(height uint32) {
 	onDutyArbiter, err := ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain()
 	if err != nil {
 		return
@@ -124,6 +124,8 @@ func (group *ArbitratorGroupImpl) CheckOnDutyStatus() {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
 			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
 			group.isListenerOnDuty = !group.isListenerOnDuty
+			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
+		} else if group.isListenerOnDuty == true && crypto.Equal(group.listener.GetPublicKey(), pk) && config.Parameters.CRClaimDPOSNodeStartHeight == height {
 			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
 		}
 	} else if ok && err != nil {
