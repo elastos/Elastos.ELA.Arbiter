@@ -114,13 +114,17 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 }
 
 func (group *ArbitratorGroupImpl) CheckOnDutyStatus(height uint32) {
+	if group.listener == nil {
+		return
+	}
+
 	onDutyArbiter, err := ArbitratorGroupSingleton.GetOnDutyArbitratorOfMain()
 	if err != nil {
 		return
 	}
 	pk, err := base.PublicKeyFromString(onDutyArbiter)
 	_, ok := group.listener.(*ArbitratorImpl)
-	if ok && err == nil && group.listener != nil {
+	if ok && err == nil {
 		if (group.isListenerOnDuty == false && crypto.Equal(group.listener.GetPublicKey(), pk)) ||
 			(group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk)) {
 			group.isListenerOnDuty = !group.isListenerOnDuty
@@ -129,7 +133,7 @@ func (group *ArbitratorGroupImpl) CheckOnDutyStatus(height uint32) {
 			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
 		}
 	} else if ok && err != nil {
-		if group.isListenerOnDuty == true && !crypto.Equal(group.listener.GetPublicKey(), pk) {
+		if group.isListenerOnDuty == true && pk == nil {
 			group.isListenerOnDuty = !group.isListenerOnDuty
 			group.listener.OnDutyArbitratorChanged(group.isListenerOnDuty)
 		}
