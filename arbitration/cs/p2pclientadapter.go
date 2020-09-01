@@ -92,6 +92,9 @@ func (n *arbitratorsNetwork) BroadcastMessage(msg elap2p.Message) {
 func (n *arbitratorsNetwork) UpdatePeers(connectedPeers []peer.PID) {
 	n.peersLock.Lock()
 	n.connectedPeers = connectedPeers
+	for _, pid := range connectedPeers {
+		n.p2pServer.AddAddr(pid, config.Parameters.DPoSNetAddress)
+	}
 	n.peersLock.Unlock()
 
 	n.p2pServer.ConnectPeers(n.connectedPeers)
