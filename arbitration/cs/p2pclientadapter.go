@@ -129,6 +129,10 @@ func (n *arbitratorsNetwork) sign(data []byte) []byte {
 	return sign
 }
 
+func (n *arbitratorsNetwork) DumpArbiterPeersInfo() []*p2p.PeerInfo {
+	return n.p2pServer.DumpPeersInfo()
+}
+
 func InitP2PClient(pid peer.PID) error {
 	var err error
 	P2PClientSingleton, err = NewArbitratorsNetwork(pid)

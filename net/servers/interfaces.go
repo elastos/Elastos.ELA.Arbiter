@@ -1,11 +1,13 @@
 package servers
 
 import (
+	"encoding/hex"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/complain"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
@@ -227,4 +229,22 @@ func GetSPVHeight(param Params) map[string]interface{} {
 		return ResponsePack(errors.InternalError, "get spv best header failed")
 	}
 	return ResponsePack(errors.Success, bestHeader.Height)
+}
+
+func GetArbiterPeersInfo(params Params) map[string]interface{} {
+	type peerInfo struct {
+		PublicKey string `json:"publickey"`
+		IP        string `json:"ip"`
+		ConnState string `json:"connstate"`
+	}
+	peers := cs.P2PClientSingleton.DumpArbiterPeersInfo()
+	result := make([]peerInfo, 0)
+	for _, p := range peers {
+		result = append(result, peerInfo{
+			PublicKey: hex.EncodeToString(p.PID[:]),
+			IP:        p.Addr,
+			ConnState: p.State.String(),
+		})
+	}
+	return ResponsePack(errors.Success, result)
 }
