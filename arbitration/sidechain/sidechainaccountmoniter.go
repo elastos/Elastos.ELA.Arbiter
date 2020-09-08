@@ -115,7 +115,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					if err != nil {
 						log.Error("invalid illegal signer:", err.Error())
 						continue
-						return
 					}
 
 					evidence := &payload.SidechainIllegalData{
