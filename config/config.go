@@ -62,6 +62,7 @@ type Configuration struct {
 	DepositAmount                int              `json:"DepositAmount"`
 	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
 	CRClaimDPOSNodeStartHeight   uint32           `json:"CRClaimDPOSNodeStartHeight"`
+	NewP2PProtocolVersionHeight uint64            `json:"NewP2PProtocolVersionHeight"`
 	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
 	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
@@ -142,6 +143,12 @@ func GetSpvChainParams() *elacfg.Params {
 	if mncfg.DefaultPort != 0 {
 		params.DefaultPort = mncfg.DefaultPort
 	}
+	if Parameters.CRClaimDPOSNodeStartHeight > 0 {
+		params.CRClaimDPOSNodeStartHeight =  Parameters.CRClaimDPOSNodeStartHeight
+	}
+	if Parameters.NewP2PProtocolVersionHeight > 0 {
+		params.NewP2PProtocolVersionHeight =  Parameters.NewP2PProtocolVersionHeight
+	}
 	params.DNSSeeds = nil
 	return params
 }
@@ -207,6 +214,8 @@ func init() {
 					"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 				},
 				CRClaimDPOSNodeStartHeight: 1000000, // TODO reset it later
+				NewP2PProtocolVersionHeight:        1000000,
+
 			},
 		}
 
@@ -258,6 +267,8 @@ func init() {
 					"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 				},
 				CRClaimDPOSNodeStartHeight: 1000000, // TODO reset it later
+				NewP2PProtocolVersionHeight:        1000000,
+
 			},
 		}
 
@@ -309,6 +320,8 @@ func init() {
 					"03ab3ecd1148b018d480224520917c6c3663a3631f198e3b25cf4c9c76786b7850",
 				},
 				CRClaimDPOSNodeStartHeight: 1000000, // TODO reset it later
+				NewP2PProtocolVersionHeight:        1000000,
+
 			},
 		}
 	}
