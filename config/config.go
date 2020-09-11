@@ -16,7 +16,11 @@ import (
 )
 
 const (
+	// DefaultConfigFilename indicates the file name of config.
 	DefaultConfigFilename = "./config.json"
+
+	// NodePrefix indicates the prefix of node version.
+	NodePrefix = "arbiter-"
 )
 
 var (

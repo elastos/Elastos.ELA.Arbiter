@@ -276,7 +276,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
 		ChainParams:    params,
 		PermanentPeers: config.Parameters.MainNode.SpvSeedList,
-		NodeVersion : config.Version,
+		NodeVersion : config.NodePrefix + config.Version,
 	}
 
 	var err error
