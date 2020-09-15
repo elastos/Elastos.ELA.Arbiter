@@ -123,12 +123,13 @@ func initialize() {
 }
 
 func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
-	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
+	sidechain.SideChainAccountMonitor.ParentArbitrator = arbitrator
 
 	for i, side := range arbitrator.GetSideChainManager().GetAllChains() {
-		monitor.AddListener(side)
-		go monitor.SyncChainData(config.Parameters.SideNodeList[i], side)
+		sidechain.SideChainAccountMonitor.AddListener(side)
+		go sidechain.SideChainAccountMonitor.SyncChainData(config.Parameters.SideNodeList[i], side)
 	}
+
 }
 
 func initP2P(arbitrator arbitrator.Arbitrator) error {
