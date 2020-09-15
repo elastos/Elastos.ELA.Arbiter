@@ -178,6 +178,7 @@ func Init() {
 			},
 		}
 		sideChainManager.AddChain(ges[i], side)
+		config.Parameters.SideNodeList = append(config.Parameters.SideNodeList, side.CurrentConfig)
 	}
 
 	currentArbitrator.SetSideChainManager(sideChainManager)
