@@ -1,6 +1,8 @@
 package sidechain
 
 import (
+	"bytes"
+	"errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
@@ -10,6 +12,54 @@ import (
 
 type SideChainManagerImpl struct {
 	SideChains map[string]arbitrator.SideChain
+}
+
+func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain() error {
+	txs, err := store.DbCache.RegisteredSideChainStore.GetAllRegisteredSideChainTxs()
+	if err != nil {
+		return errors.New("[OnReceivedRegisteredSideChain] %s" + err.Error())
+	}
+
+	if len(txs) == 0 {
+		log.Info("No cached register sidechain transaction need to send")
+		return nil
+	}
+
+	for _, transaction := range txs {
+		if err != nil {
+			return errors.New("[OnReceivedRegisteredSideChain] %s" + err.Error())
+		}
+		side := &SideChainImpl{
+			Key: transaction.GenesisBlockAddress,
+			CurrentConfig: &config.SideNodeConfig{
+				Rpc: &config.RpcConfig{
+					IpAddress:    transaction.RegisteredSideChain.IpAddr,
+					HttpJsonPort: int(transaction.RegisteredSideChain.HttpJsonPort),
+					User:         transaction.RegisteredSideChain.User,
+					Pass:         transaction.RegisteredSideChain.Pass,
+				},
+				ExchangeRate:        1.0,
+				GenesisBlockAddress: transaction.GenesisBlockAddress,
+				GenesisBlock:        transaction.RegisteredSideChain.GenesisHash.String(),
+				PowChain:            false,
+			},
+		}
+
+		sideManager.AddChain(transaction.GenesisBlockAddress, side)
+
+		err = store.DbCache.RegisteredSideChainStore.RemoveRegisteredSideChainTx(transaction.TransactionHash, transaction.GenesisBlockAddress)
+		if err != nil {
+			return errors.New("[OnReceivedRegisteredSideChain] RemoveRegisteredSideChainTx %s" + err.Error())
+		}
+		writer := new(bytes.Buffer)
+		transaction.RegisteredSideChain.Serialize(writer)
+		err = store.FinishedTxsDbCache.AddSucceedRegisterTx(transaction.TransactionHash, transaction.GenesisBlockAddress, writer.Bytes())
+		if err != nil {
+			return errors.New("[OnReceivedRegisteredSideChain] AddSucceedRegisterTxs %s" + err.Error())
+		}
+	}
+
+	return nil
 }
 
 func (sideManager *SideChainManagerImpl) AddChain(key string, chain arbitrator.SideChain) {
@@ -103,5 +153,30 @@ func Init() {
 		sideChainManager.AddChain(sideConfig.GenesisBlockAddress, side)
 		log.Infof("Init Sidechain config ", side.Key, side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GenesisBlock)
 	}
+
+	_, ges, txData, err := store.FinishedTxsDbCache.GetRegisterTxs(true)
+	if err != nil {
+		log.Error("Error fetching data GetRegisterTxs ", err.Error())
+		return
+	}
+	for i, transaction := range txData {
+		side := &SideChainImpl{
+			Key: ges[i],
+			CurrentConfig: &config.SideNodeConfig{
+				Rpc: &config.RpcConfig{
+					IpAddress:    transaction.IpAddr,
+					HttpJsonPort: int(transaction.HttpJsonPort),
+					User:         transaction.User,
+					Pass:         transaction.Pass,
+				},
+				ExchangeRate:        1.0,
+				GenesisBlockAddress: ges[i],
+				GenesisBlock:        transaction.GenesisHash.String(),
+				PowChain:            false,
+			},
+		}
+		sideChainManager.AddChain(ges[i], side)
+	}
+
 	currentArbitrator.SetSideChainManager(sideChainManager)
 }

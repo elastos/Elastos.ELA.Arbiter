@@ -1,8 +1,10 @@
 package store
 
 import (
+	"bytes"
 	"database/sql"
 	"errors"
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"os"
 	"path/filepath"
 	"sync"
@@ -46,6 +48,15 @@ const (
 				TransactionData BLOB,
 				RecordTime TEXT
 			);`
+	CreateRegisterTransactionsTable = `CREATE TABLE IF NOT EXISTS RegisterTransactions (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				TransactionHash VARCHAR,
+				GenesisBlockAddress VARCHAR(34),
+				TransactionData BLOB,
+				Succeed BOOLEAN,
+				RecordTime TEXT,
+				UNIQUE (TransactionHash, GenesisBlockAddress)
+			);`
 )
 
 var (
@@ -59,6 +70,13 @@ type FinishedTransactionsDataStore interface {
 	GetDepositTxByHash(transactionHash string) ([]bool, []string, error)
 	GetDepositTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error)
 	GetDepositTxs(succeed bool) ([]string, []string, error)
+
+	AddFailedRegisterTxs(transactionHashes, genesisBlockAddresses []string) error
+	AddSucceedRegisterTx(transactionHashes, genesisBlockAddresses string, transactionBytes []byte) error
+	HasRegisterTx(transactionHash string, genesisBlockAddress string) (bool, error)
+	GetRegisterTxByHash(transactionHash string) ([]bool, []string, error)
+	GetRegisterTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error)
+	GetRegisterTxs(succeed bool) ([]string, []string, []base.RegisteredSideChain, error)
 
 	AddFailedWithdrawTxs(transactionHashes []string, transactionByte []byte) error
 	AddSucceedWithdrawTxs(transactionHashes []string) error
@@ -126,6 +144,12 @@ func initFinishedTxsDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Create error register side chain transactions table
+	_, err = db.Exec(CreateRegisterTransactionsTable)
+	if err != nil {
+		return nil, err
+	}
+
 	return db, nil
 }
 
@@ -149,6 +173,150 @@ func (store *FinishedTxsDataStoreImpl) ResetDataStore() error {
 	}
 
 	return nil
+}
+
+func (store *FinishedTxsDataStoreImpl) AddFailedRegisterTxs(transactionHashes, genesisBlockAddresses []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO RegisterTransactions(TransactionHash, GenesisBlockAddress, Succeed, RecordTime) values(?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Do insert
+	for i := 0; i < len(transactionHashes); i++ {
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddresses[i], false, time.Now().Format("2006-01-02_15.04.05"))
+		if err != nil {
+			continue
+		}
+	}
+	return nil
+}
+
+func (store *FinishedTxsDataStoreImpl) AddSucceedRegisterTx(transactionHashes, genesisBlockAddresses string, transactionBytes []byte) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO RegisterTransactions(TransactionHash, GenesisBlockAddress,TransactionData, Succeed, RecordTime) values(?,?,?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Do insert
+	_, err = stmt.Exec(transactionHashes, genesisBlockAddresses, transactionBytes, true, time.Now().Format("2006-01-02_15.04.05"))
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (store *FinishedTxsDataStoreImpl) HasRegisterTx(transactionHash string, genesisBlockAddress string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT GenesisBlockAddress FROM RegisterTransactions WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHash, genesisBlockAddress)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	return rows.Next(), nil
+}
+
+func (store *FinishedTxsDataStoreImpl) GetRegisterTxByHash(transactionHash string) ([]bool, []string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT Succeed, GenesisBlockAddress FROM RegisterTransactions WHERE TransactionHash=?`, transactionHash)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var succeed []bool
+	var genesisAddresses []string
+	for rows.Next() {
+		var address string
+		var suc bool
+		err = rows.Scan(&suc, &address)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		succeed = append(succeed, suc)
+		genesisAddresses = append(genesisAddresses, address)
+	}
+	return succeed, genesisAddresses, nil
+}
+
+func (store *FinishedTxsDataStoreImpl) GetRegisterTxByHashAndGenesisAddress(transactionHash string, genesisAddress string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT Succeed FROM RegisterTransactions WHERE TransactionHash=? AND GenesisBlockAddress=?`, transactionHash, genesisAddress)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	var suc bool
+	if rows.Next() {
+		err = rows.Scan(&suc)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	return suc, nil
+}
+
+func (store *FinishedTxsDataStoreImpl) GetRegisterTxs(succeed bool) ([]string, []string, []base.RegisteredSideChain, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,TransactionData FROM RegisterTransactions WHERE Succeed=?`, succeed)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	var genesisAddresses []string
+	var transactionData []base.RegisteredSideChain
+	for rows.Next() {
+		var hash string
+		var address string
+		var data []byte
+		err = rows.Scan(&hash, &address, &data)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		txHashes = append(txHashes, hash)
+		genesisAddresses = append(genesisAddresses, address)
+		rsc := base.RegisteredSideChain{}
+		rsc.Deserialize(bytes.NewBuffer(data))
+		transactionData = append(transactionData, rsc)
+	}
+
+	return txHashes, genesisAddresses, transactionData, nil
 }
 
 func (store *FinishedTxsDataStoreImpl) AddFailedDepositTxs(transactionHashes, genesisBlockAddresses []string) error {

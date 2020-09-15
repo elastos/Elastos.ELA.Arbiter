@@ -420,6 +420,13 @@ func (mc *MainChainImpl) SyncChainData() uint32 {
 		log.Error("update peers failed", err.Error())
 	}
 
+	transactions, err := rpc.GetRegisterTransactionByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		log.Error("GetRegisterTransactionByHeight failed ", err.Error())
+		return currentHeight
+	}
+	store.DbCache.RegisteredSideChainStore.AddRegisteredSideChainTxs(transactions)
+
 	// Update wallet height
 	currentHeight = store.DbCache.MainChainStore.CurrentHeight(chainHeight)
 
