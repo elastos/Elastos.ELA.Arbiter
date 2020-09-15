@@ -22,7 +22,10 @@ import (
 
 const sideChainHeightInterval uint32 = 1000
 
-var Initialized bool
+var (
+	Initialized bool
+	SideChainAccountMonitor SideChainAccountMonitorImpl
+)
 
 type SideChainAccountMonitorImpl struct {
 	mux sync.Mutex
