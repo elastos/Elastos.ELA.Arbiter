@@ -184,6 +184,21 @@ func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*base.Block
 	return block, nil
 }
 
+func GetRegisterTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.RegisteredSideChainTransaction, error) {
+	resp, err := CallAndUnmarshal("getregistertransactionsbyheight", Param("height", height), config)
+	if err != nil {
+		return nil, err
+	}
+	txs := make([]*base.RegisteredSideChainTransaction, 0)
+	if err = Unmarshal(&resp, &txs); err != nil {
+		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
+		return nil, err
+	}
+	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs), "transactions:", txs)
+
+	return txs, nil
+}
+
 func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.WithdrawTxInfo, error) {
 	resp, err := CallAndUnmarshal("getwithdrawtransactionsbyheight", Param("height", height), config)
 	if err != nil {

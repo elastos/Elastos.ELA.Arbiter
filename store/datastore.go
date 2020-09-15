@@ -19,9 +19,10 @@ import (
 )
 
 var (
-	DBDocumentNAME  = filepath.Join(config.DataPath, config.DataDir, "arbiter")
-	DBNameMainChain = filepath.Join(DBDocumentNAME, "mainChainCache.db")
-	DBNameSideChain = filepath.Join(DBDocumentNAME, "sideChainCache.db")
+	DBDocumentNAME          = filepath.Join(config.DataPath, config.DataDir, "arbiter")
+	DBNameMainChain         = filepath.Join(DBDocumentNAME, "mainChainCache.db")
+	DBNameSideChain         = filepath.Join(DBDocumentNAME, "sideChainCache.db")
+	DBNameRegisterSideChain = filepath.Join(DBDocumentNAME, "registerSideChainCache.db")
 )
 
 const (
@@ -54,6 +55,14 @@ const (
 				TransactionData BLOB,
 				MerkleProof BLOB,
                 UNIQUE (TransactionHash, GenesisBlockAddress)
+			);`
+
+	CreateRegisteredSideChainsTable = `CREATE TABLE IF NOT EXISTS RegisteredSideChains (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				TransactionHash VARCHAR,
+				GenesisBlockAddress VARCHAR(34),
+				RegisterInfo BLOB,
+				UNIQUE (TransactionHash, GenesisBlockAddress)
 			);`
 )
 
@@ -100,9 +109,25 @@ type DataStoreSideChain interface {
 	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
 }
 
+type DataStoreRegisteredSideChain interface {
+	DataStore
+
+	CurrentHeight(height uint32) uint32
+	AddRegisteredSideChainTx(tx *base.RegisteredSideChainTransaction) error
+	AddRegisteredSideChainTxs(txs []*base.RegisteredSideChainTransaction) ([]bool, error)
+	HasRegisteredSideChainTx(transactionHash, genesisBlockAddress string) (bool, error)
+	RemoveRegisteredSideChainTx(transactionHash, genesisBlockAddress string) error
+	RemoveRegisteredSideChainTxs(transactionHashes, genesisBlockAddress []string) error
+	GetAllRegisteredSideChainTxsHashes() ([]string, []string, error)
+	GetAllRegisteredSideChainTxs() ([]*base.RegisteredSideChainTransaction, error)
+	GetRegisteredSideChainTxByHash(tx string) (*base.RegisteredSideChainTransaction, error)
+	GetRegisteredSideChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.RegisteredSideChain, error)
+}
+
 type DataStoreImpl struct {
-	MainChainStore DataStoreMainChain
-	SideChainStore DataStoreSideChain
+	MainChainStore           DataStoreMainChain
+	SideChainStore           DataStoreSideChain
+	RegisteredSideChainStore DataStoreRegisteredSideChain
 }
 
 type DataStoreMainChainImpl struct {
@@ -112,6 +137,12 @@ type DataStoreMainChainImpl struct {
 }
 
 type DataStoreSideChainImpl struct {
+	mux *sync.Mutex
+
+	*sql.DB
+}
+
+type DataStoreRegisteredSideChainStoreImpl struct {
 	mux *sync.Mutex
 
 	*sql.DB
@@ -131,13 +162,20 @@ func OpenDataStore() (*DataStoreImpl, error) {
 	if err != nil {
 		return nil, err
 	}
+	registerSc, err := initRegisterSideChainDB()
+	if err != nil {
+		return nil, err
+	}
 	dataStore := &DataStoreImpl{
-		MainChainStore: &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
-		SideChainStore: &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}}
+		MainChainStore:           &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
+		SideChainStore:           &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain},
+		RegisteredSideChainStore: &DataStoreRegisteredSideChainStoreImpl{mux: new(sync.Mutex), DB: registerSc},
+	}
 
 	// Handle system interrupt signals
 	dataStore.MainChainStore.catchSystemSignals()
 	dataStore.SideChainStore.catchSystemSignals()
+	dataStore.RegisteredSideChainStore.catchSystemSignals()
 
 	return dataStore, nil
 }
@@ -161,6 +199,19 @@ func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
 		return nil, err
 	}
 	dataStore := &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}
+
+	// Handle system interrupt signals
+	dataStore.catchSystemSignals()
+
+	return dataStore, nil
+}
+
+func OpenRegisteredSideChainDataStore() (*DataStoreRegisteredSideChainStoreImpl, error) {
+	dbRegisterSideChain, err := initRegisterSideChainDB()
+	if err != nil {
+		return nil, err
+	}
+	dataStore := &DataStoreRegisteredSideChainStoreImpl{mux: new(sync.Mutex), DB: dbRegisterSideChain}
 
 	// Handle system interrupt signals
 	dataStore.catchSystemSignals()
@@ -235,6 +286,27 @@ func initSideChainDB() (*sql.DB, error) {
 			return nil, err
 		}
 		stmt.Exec(node.GenesisBlockAddress, uint32(0))
+	}
+
+	return db, nil
+}
+
+func initRegisterSideChainDB() (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+	db, err := sql.Open(DriverName, DBNameRegisterSideChain)
+	if err != nil {
+		log.Error("Open data db error:", err)
+		return nil, err
+	}
+
+	// Create SideChainTxs table
+	_, err = db.Exec(CreateRegisteredSideChainsTable)
+	if err != nil {
+		return nil, err
 	}
 
 	return db, nil
@@ -791,4 +863,292 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) ResetDataStore() error {
+	store.DB.Close()
+	os.Remove(DBNameMainChain)
+
+	var err error
+	store.DB, err = initMainChainDB()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) catchSystemSignals() {
+	HandleSignal(func() {
+		store.mux.Lock()
+		store.DB.Close()
+		os.Exit(-1)
+	})
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) CurrentHeight(height uint32) uint32 {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
+	var storedHeight uint32
+	row.Scan(&storedHeight)
+
+	if height > storedHeight {
+		// Received reset height code
+		if height == ResetHeightCode {
+			height = 0
+		}
+		// Insert current height
+		stmt, err := store.Prepare("UPDATE Info SET Value=? WHERE Name=?")
+		if err != nil {
+			return uint32(0)
+		}
+		_, err = stmt.Exec(height, "Height")
+		if err != nil {
+			return uint32(0)
+		}
+		return height
+	}
+	return storedHeight
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) AddRegisteredSideChainTx(tx *base.RegisteredSideChainTransaction) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	// Prepare sql statement
+	stmt, err := store.Prepare("INSERT INTO RegisteredSideChains(TransactionHash, GenesisBlockAddress, RegisterInfo) values(?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Serialize transaction
+	buf := new(bytes.Buffer)
+	tx.RegisteredSideChain.Serialize(buf)
+	transactionBytes := buf.Bytes()
+
+	// Do insert
+	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, transactionBytes)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) AddRegisteredSideChainTxs(txs []*base.RegisteredSideChainTransaction) ([]bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Commit()
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO RegisteredSideChains(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
+	if err != nil {
+		return nil, err
+	}
+	defer stmt.Close()
+
+	var result []bool
+	for _, tx := range txs {
+		// Serialize transaction
+		buf := new(bytes.Buffer)
+		tx.RegisteredSideChain.Serialize(buf)
+		transactionBytes := buf.Bytes()
+
+		// Do insert
+		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, transactionBytes)
+		if err != nil {
+			result = append(result, false)
+		} else {
+			result = append(result, true)
+		}
+	}
+
+	return result, nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) HasRegisteredSideChainTx(transactionHash, genesisBlockAddress string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	sql := `SELECT TransactionHash FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?`
+	rows, err := store.Query(sql, transactionHash, genesisBlockAddress)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	return rows.Next(), nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) RemoveRegisteredSideChainTx(transactionHash, genesisBlockAddress string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	stmt, err := store.Prepare("DELETE FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(transactionHash, genesisBlockAddress)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) RemoveRegisteredSideChainTxs(transactionHashes, genesisBlockAddress []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	stmt, err := tx.Prepare("DELETE FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for i := 0; i < len(transactionHashes); i++ {
+		_, err = stmt.Exec(transactionHashes[i], genesisBlockAddress[i])
+		if err != nil {
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) GetAllRegisteredSideChainTxsHashes() ([]string, []string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress FROM RegisteredSideChains`)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	var genesisAddresses []string
+	for rows.Next() {
+		var txHash string
+		var genesisAddress string
+		err = rows.Scan(&txHash, &genesisAddress)
+		if err != nil {
+			return nil, nil, err
+		}
+		txHashes = append(txHashes, txHash)
+		genesisAddresses = append(genesisAddresses, genesisAddress)
+	}
+	return txHashes, genesisAddresses, nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) GetRegisteredSideChainTxByHash(tx string) (*base.RegisteredSideChainTransaction, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
+ 									TransactionData FROM RegisteredSideChains where TransactionHash = ?`, tx)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txs *base.RegisteredSideChainTransaction
+	for rows.Next() {
+		var txHash string
+		var genesisAddress string
+		var transactionBytes []byte
+		err = rows.Scan(&txHash, &genesisAddress, &transactionBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		var tx base.RegisteredSideChain
+		reader := bytes.NewReader(transactionBytes)
+		tx.Deserialize(reader)
+
+		txs = &base.RegisteredSideChainTransaction{txHash,
+			genesisAddress, &tx}
+		break
+	}
+	return txs, nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) GetAllRegisteredSideChainTxs() ([]*base.RegisteredSideChainTransaction, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
+ 									TransactionData FROM RegisteredSideChains`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txs []*base.RegisteredSideChainTransaction
+	for rows.Next() {
+		var txHash string
+		var genesisAddress string
+		var transactionBytes []byte
+		err = rows.Scan(&txHash, &genesisAddress, &transactionBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		var tx base.RegisteredSideChain
+		reader := bytes.NewReader(transactionBytes)
+		tx.Deserialize(reader)
+
+		txs = append(txs, &base.RegisteredSideChainTransaction{txHash,
+			genesisAddress, &tx})
+	}
+	return txs, nil
+}
+
+func (store *DataStoreRegisteredSideChainStoreImpl) GetRegisteredSideChainTxsFromHashes(transactionHashes []string,
+	genesisBlockAddresses string) ([]*base.RegisteredSideChain, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	var rsc []*base.RegisteredSideChain
+
+	sql := `SELECT TransactionData FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?`
+	for i := 0; i < len(transactionHashes); i++ {
+		rows, err := store.Query(sql, transactionHashes[i], genesisBlockAddresses)
+		if err != nil {
+			return nil, err
+		}
+
+		for rows.Next() {
+			var transactionBytes []byte
+			err = rows.Scan(&transactionBytes)
+			if err != nil {
+				rows.Close()
+				return nil, err
+			}
+
+			var tx base.RegisteredSideChain
+			reader := bytes.NewReader(transactionBytes)
+			tx.Deserialize(reader)
+
+			rsc = append(rsc, &tx)
+		}
+		rows.Close()
+	}
+
+	return rsc, nil
 }
