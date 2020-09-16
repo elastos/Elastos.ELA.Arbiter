@@ -66,7 +66,7 @@ type Configuration struct {
 	DepositAmount                int              `json:"DepositAmount"`
 	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
 	CRClaimDPOSNodeStartHeight   uint32           `json:"CRClaimDPOSNodeStartHeight"`
-	NewP2PProtocolVersionHeight uint64            `json:"NewP2PProtocolVersionHeight"`
+	NewP2PProtocolVersionHeight  uint64           `json:"NewP2PProtocolVersionHeight"`
 	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
 	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
@@ -148,10 +148,10 @@ func GetSpvChainParams() *elacfg.Params {
 		params.DefaultPort = mncfg.DefaultPort
 	}
 	if Parameters.CRClaimDPOSNodeStartHeight > 0 {
-		params.CRClaimDPOSNodeStartHeight =  Parameters.CRClaimDPOSNodeStartHeight
+		params.CRClaimDPOSNodeStartHeight = Parameters.CRClaimDPOSNodeStartHeight
 	}
 	if Parameters.NewP2PProtocolVersionHeight > 0 {
-		params.NewP2PProtocolVersionHeight =  Parameters.NewP2PProtocolVersionHeight
+		params.NewP2PProtocolVersionHeight = Parameters.NewP2PProtocolVersionHeight
 	}
 	params.DNSSeeds = nil
 	return params
@@ -173,7 +173,7 @@ func init() {
 	case "testnet", "test":
 		config = ConfigFile{
 			ConfigFile: Configuration{
-				Magic:                        0,
+				Magic:                        2018103,
 				Version:                      0,
 				NodePort:                     21538,
 				HttpJsonPort:                 21536,
@@ -189,10 +189,27 @@ func init() {
 				MinThreshold:                 1000000,
 				DepositAmount:                1000000,
 				MaxTxsPerWithdrawTx:          1000,
+				MainNode: &MainNodeConfig{
+					SpvSeedList: []string{
+						"127.0.0.1:21338",
+						"node-testnet-002.elastos.org:21338",
+						"node-testnet-003.elastos.org:21338",
+						"node-testnet-004.elastos.org:21338",
+					},
+					FoundationAddress: "8ZNizBf4KhhPjeJRGpox6rPcHE5Np6tFx3",
+					DefaultPort:       21338,
+					Magic:             2018111,
+					Rpc: &RpcConfig{
+						User:         "ela",
+						Pass:         "testnet-ela",
+						HttpJsonPort: 21336,
+						IpAddress:    "127.0.0.1",
+					},
+				},
 				RpcConfiguration: RpcConfiguration{
-					User:        "",
-					Pass:        "",
-					WhiteIPList: []string{"127.0.0.1"},
+					User:        "arbiter",
+					Pass:        "testnet-arbiter",
+					WhiteIPList: []string{"0.0.0.0"},
 				},
 				DPoSNetAddress:    "127.0.0.1:21339",
 				CRCOnlyDPOSHeight: 211000,
@@ -217,16 +234,15 @@ func init() {
 					"03dd66833d28bac530ca80af0efbfc2ec43b4b87504a41ab4946702254e7f48961",
 					"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 				},
-				CRClaimDPOSNodeStartHeight: 1000000, // TODO reset it later
-				NewP2PProtocolVersionHeight:        1000000,
-
+				CRClaimDPOSNodeStartHeight:  1000000, // TODO reset it later
+				NewP2PProtocolVersionHeight: 1000000,
 			},
 		}
 
 	case "regnet", "reg":
 		config = ConfigFile{
 			ConfigFile: Configuration{
-				Magic:                        0,
+				Magic:                        2018203,
 				Version:                      0,
 				NodePort:                     22538,
 				HttpJsonPort:                 22536,
@@ -242,6 +258,23 @@ func init() {
 				MinThreshold:                 1000000,
 				DepositAmount:                1000000,
 				MaxTxsPerWithdrawTx:          1000,
+				MainNode: &MainNodeConfig{
+					SpvSeedList: []string{
+						"127.0.0.1:22338",
+						"node-regtest-002.elastos.org:22338",
+						"node-regtest-003.elastos.org:22338",
+						"node-regtest-004.elastos.org:22338",
+					},
+					FoundationAddress: "8ZNizBf4KhhPjeJRGpox6rPcHE5Np6tFx3",
+					DefaultPort:       22338,
+					Magic:             2018211,
+					Rpc: &RpcConfig{
+						User:         "",
+						Pass:         "",
+						HttpJsonPort: 22336,
+						IpAddress:    "127.0.0.1",
+					},
+				},
 				RpcConfiguration: RpcConfiguration{
 					User:        "",
 					Pass:        "",
@@ -270,16 +303,15 @@ func init() {
 					"03dd66833d28bac530ca80af0efbfc2ec43b4b87504a41ab4946702254e7f48961",
 					"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 				},
-				CRClaimDPOSNodeStartHeight: 1000000, // TODO reset it later
-				NewP2PProtocolVersionHeight:        1000000,
-
+				CRClaimDPOSNodeStartHeight:  1000000, // TODO reset it later
+				NewP2PProtocolVersionHeight: 1000000,
 			},
 		}
 
 	default:
 		config = ConfigFile{
 			ConfigFile: Configuration{
-				Magic:                        0,
+				Magic:                        2017003,
 				Version:                      0,
 				NodePort:                     20538,
 				HttpJsonPort:                 20536,
@@ -292,13 +324,29 @@ func init() {
 				MinOutbound:                  3,
 				MaxConnections:               8,
 				SideAuxPowFee:                50000,
-				MinThreshold:                 10000000,
-				DepositAmount:                10000000,
+				MinThreshold:                 1000000,
+				DepositAmount:                1000000,
 				MaxTxsPerWithdrawTx:          1000,
+				MainNode: &MainNodeConfig{
+					SpvSeedList: []string{
+						"127.0.0.1:20338",
+						"node-mainnet-001.elastos.org:20338",
+						"node-mainnet-024.elastos.org:20338",
+					},
+					FoundationAddress: "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
+					DefaultPort:       20338,
+					Magic:             2017001,
+					Rpc: &RpcConfig{
+						User:         "USER",
+						Pass:         "PASS",
+						HttpJsonPort: 20336,
+						IpAddress:    "127.0.0.1",
+					},
+				},
 				RpcConfiguration: RpcConfiguration{
-					User:        "",
-					Pass:        "",
-					WhiteIPList: []string{"127.0.0.1"},
+					User:        "USER",
+					Pass:        "PASS",
+					WhiteIPList: []string{"IP"},
 				},
 				DPoSNetAddress:    "127.0.0.1:20339",
 				CRCOnlyDPOSHeight: 343400,
@@ -323,9 +371,8 @@ func init() {
 					"02fa3e0d14e0e93ca41c3c0f008679e417cf2adb6375dd4bbbee9ed8e8db606a56",
 					"03ab3ecd1148b018d480224520917c6c3663a3631f198e3b25cf4c9c76786b7850",
 				},
-				CRClaimDPOSNodeStartHeight: 1000000, // TODO reset it later
-				NewP2PProtocolVersionHeight:        1000000,
-
+				CRClaimDPOSNodeStartHeight:  1000000, // TODO reset it later
+				NewP2PProtocolVersionHeight: 1000000,
 			},
 		}
 	}
