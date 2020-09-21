@@ -305,6 +305,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
 				}
 			}
+
 		}
 	}
 }

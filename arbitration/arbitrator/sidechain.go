@@ -20,7 +20,7 @@ type SideChain interface {
 type SideChainManager interface {
 	GetChain(key string) (SideChain, bool)
 	GetAllChains() []SideChain
-
+	AddChain(key string, chain SideChain)
 	StartSideChainMining()
 	CheckAndRemoveWithdrawTransactionsFromDB() error
 	CheckAndRemoveReturnDepositTransactionsFromDB() error

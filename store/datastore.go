@@ -948,7 +948,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) AddRegisteredSideChainTxs(tx
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO RegisteredSideChains(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO RegisteredSideChains(TransactionHash, GenesisBlockAddress, RegisterInfo) values(?,?,?)")
 	if err != nil {
 		return nil, err
 	}
@@ -1061,7 +1061,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetRegisteredSideChainTxByHa
 	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
- 									TransactionData FROM RegisteredSideChains where TransactionHash = ?`, tx)
+ 									RegisterInfo FROM RegisteredSideChains where TransactionHash = ?`, tx)
 	if err != nil {
 		return nil, err
 	}
@@ -1093,7 +1093,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetAllRegisteredSideChainTxs
 	defer store.mux.Unlock()
 
 	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
- 									TransactionData FROM RegisteredSideChains`)
+ 									RegisterInfo FROM RegisteredSideChains`)
 	if err != nil {
 		return nil, err
 	}
@@ -1126,7 +1126,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetRegisteredSideChainTxsFro
 
 	var rsc []*base.RegisteredSideChain
 
-	sql := `SELECT TransactionData FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?`
+	sql := `SELECT RegisterInfo FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	for i := 0; i < len(transactionHashes); i++ {
 		rows, err := store.Query(sql, transactionHashes[i], genesisBlockAddresses)
 		if err != nil {
