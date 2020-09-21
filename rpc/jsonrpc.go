@@ -21,6 +21,7 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"github.com/elastos/Elastos.ELA/servers"
 )
 
 type Response struct {
@@ -190,11 +191,36 @@ func GetRegisterTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 		return nil, err
 	}
 	txs := make([]*base.RegisteredSideChainTransaction, 0)
-	if err = Unmarshal(&resp, &txs); err != nil {
-		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
+	result := make([]*servers.RsInfo, 0)
+	if err = Unmarshal(&resp, &result); err != nil {
+		log.Error("[GetRegisterTransactionByHeight] received invalid response", err.Error())
 		return nil, err
 	}
-	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs), "transactions:", txs)
+	for _, v := range result {
+		address, err := base.GetGenesisAddress(v.GenesisHash)
+		if err != nil {
+			log.Error("[GetRegisterTransactionByHeight] GetGenesisAddress from genesis hash error", err.Error())
+			return nil, err
+		}
+		txs = append(txs, &base.RegisteredSideChainTransaction{
+			RegisteredSideChain: &base.RegisteredSideChain{
+				SideChainName:          v.SideChainName,
+				MagicNumber:            v.MagicNumber,
+				DNSSeeds:               v.DNSSeeds,
+				NodePort:               v.NodePort,
+				GenesisHash:            v.GenesisHash,
+				GenesisBlockDifficulty: v.GenesisBlockDifficulty,
+				GenesisTimestamp:       v.GenesisTimestamp,
+				HttpJsonPort:           60666,
+				IpAddr:                 "127.0.0.1",
+				User:                   "",
+				Pass:                   "",
+			},
+			GenesisBlockAddress: address,
+			TransactionHash:     v.TxHash.String(),
+		})
+	}
+	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs))
 
 	return txs, nil
 }

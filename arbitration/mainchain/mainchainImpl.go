@@ -425,7 +425,16 @@ func (mc *MainChainImpl) SyncChainData() uint32 {
 		log.Error("GetRegisterTransactionByHeight failed ", err.Error())
 		return currentHeight
 	}
-	store.DbCache.RegisteredSideChainStore.AddRegisteredSideChainTxs(transactions)
+	for _, v := range transactions {
+		if exist, err := store.DbCache.RegisteredSideChainStore.HasRegisteredSideChainTx(v.TransactionHash, v.GenesisBlockAddress); err != nil {
+			log.Error("HasRegisteredSideChainTx failed ", err.Error())
+			return currentHeight
+		} else if !exist {
+			store.DbCache.RegisteredSideChainStore.AddRegisteredSideChainTxs(transactions)
+		} else {
+			log.Warn("Sidechain with genesisblockaddress ", v.GenesisBlockAddress, " already exists")
+		}
+	}
 
 	// Update wallet height
 	currentHeight = store.DbCache.MainChainStore.CurrentHeight(chainHeight)

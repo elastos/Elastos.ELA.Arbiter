@@ -41,7 +41,9 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain() error {
 				ExchangeRate:        1.0,
 				GenesisBlockAddress: transaction.GenesisBlockAddress,
 				GenesisBlock:        transaction.RegisteredSideChain.GenesisHash.String(),
-				PowChain:            false,
+				MiningAddr:          "ENqkyrQEZsfHyGctuo8rpdcanyVCHdRu8G", // TODO remote it
+				PayToAddr:           "Eg4FRyiMa2xvjv2Kzd7V4jxRxWm1bv4JGY", // TODO remove it
+				PowChain:            true,                                 // TODO change to false
 			},
 		}
 
@@ -156,11 +158,16 @@ func Init() {
 		log.Infof("Init Sidechain config ", side.Key, side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GenesisBlock)
 	}
 
+	currentArbitrator.SetSideChainManager(sideChainManager)
+}
+
+func LoadRegisterSideChain(current arbitrator.Arbitrator) {
 	_, ges, txData, err := store.FinishedTxsDbCache.GetRegisterTxs(true)
 	if err != nil {
 		log.Error("Error fetching data GetRegisterTxs ", err.Error())
 		return
 	}
+	log.Info("Loading Register SideChain tx ", len(txData))
 	for i, transaction := range txData {
 		side := &SideChainImpl{
 			Key: ges[i],
@@ -174,12 +181,12 @@ func Init() {
 				ExchangeRate:        1.0,
 				GenesisBlockAddress: ges[i],
 				GenesisBlock:        transaction.GenesisHash.String(),
-				PowChain:            false,
+				MiningAddr:          "ENqkyrQEZsfHyGctuo8rpdcanyVCHdRu8G", // TODO remote it
+				PayToAddr:           "Eg4FRyiMa2xvjv2Kzd7V4jxRxWm1bv4JGY", // TODO remove it
+				PowChain:            true,                                 // TODO change to false
 			},
 		}
-		sideChainManager.AddChain(ges[i], side)
+		current.GetSideChainManager().AddChain(ges[i], side)
 		config.Parameters.SideNodeList = append(config.Parameters.SideNodeList, side.CurrentConfig)
 	}
-
-	currentArbitrator.SetSideChainManager(sideChainManager)
 }
