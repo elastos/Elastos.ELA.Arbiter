@@ -65,7 +65,7 @@ var (
 				"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 			},
 			CRClaimDPOSNodeStartHeight:  532650,
-			NewP2PProtocolVersionHeight: 531030,
+			NewP2PProtocolVersionHeight: 532650,
 		},
 	}
 
@@ -159,8 +159,11 @@ var (
 			MainNode: &MainNodeConfig{
 				SpvSeedList: []string{
 					"127.0.0.1:20338",
-					"node-mainnet-001.elastos.org:20338",
-					"node-mainnet-024.elastos.org:20338",
+					"node-mainnet-005.elastos.org:20338",
+					"node-mainnet-010.elastos.org:20338",
+					"node-mainnet-015.elastos.org:20338",
+					"node-mainnet-020.elastos.org:20338",
+					"node-mainnet-025.elastos.org:20338",
 				},
 				FoundationAddress: "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
 				DefaultPort:       20338,
