@@ -219,19 +219,26 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return nil
 	}
 
+	targetTransactions := make([]*base.WithdrawTx, 0)
+	for _, tx := range unsolvedTransactions {
+		if len(tx.WithdrawInfo.WithdrawAssets) != 0 {
+			targetTransactions = append(targetTransactions, tx)
+		}
+	}
+
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
 	var wTx *types.Transaction
 	var targetIndex int
-	for i := 0; i < len(unsolvedTransactions); {
+	for i := 0; i < len(targetTransactions); {
 		i += 100
-		targetIndex = len(unsolvedTransactions)
+		targetIndex = len(targetTransactions)
 		if targetIndex > i {
 			targetIndex = i
 		}
 
 		tx := currentArbitrator.CreateWithdrawTransaction(
-			unsolvedTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
+			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
 		if tx == nil {
 			continue
 		}
