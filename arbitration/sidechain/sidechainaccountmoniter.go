@@ -223,6 +223,10 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 			})
 		}
 
+		if len(withdrawAssets) == 0 {
+			continue
+		}
+
 		withdrawTx := &base.WithdrawTx{
 			Txid: hash,
 			WithdrawInfo: &base.WithdrawInfo{
