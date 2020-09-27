@@ -773,9 +773,8 @@ func CheckAndCreateDocument(path string) error {
 	if err != nil {
 		return err
 	}
-
 	if !exist {
-		err := os.Mkdir(path, os.ModePerm)
+		err := os.MkdirAll(path, 0700)
 		if err != nil {
 			return err
 		}
