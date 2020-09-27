@@ -179,9 +179,6 @@ func (mc *MainChainImpl) CreateWithdrawTransaction(
 	if totalOutputAmount > 0 {
 		return nil, errors.New("available token is not enough")
 	}
-	if err != nil {
-		return nil, err
-	}
 
 	// Create redeem script
 	redeemScript, err := cs.CreateRedeemScript()
