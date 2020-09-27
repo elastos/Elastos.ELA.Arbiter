@@ -1,7 +1,10 @@
 package main
 
 import (
+	"io"
+	"net/http"
 	"os"
+	"path/filepath"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
@@ -13,30 +16,78 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
-	"github.com/elastos/Elastos.ELA.Utility/elalog"
-	//"github.com/elastos/Elastos.ELA.Utility/p2p/addrmgr"
-	//"github.com/elastos/Elastos.ELA.Utility/p2p/connmgr"
-	//"github.com/elastos/Elastos.ELA.Utility/p2p/peer"
+
+	"github.com/elastos/Elastos.ELA.SPV/interface"
+	"github.com/elastos/Elastos.ELA/account"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"github.com/elastos/Elastos.ELA/utils/elalog"
 )
 
 var (
-	backend = elalog.NewBackend(log.Stdout, elalog.Llongfile)
+	LogsPath             = filepath.Join(config.DataPath, config.LogDir)
+	ArbiterLogOutputPath = filepath.Join(LogsPath, config.ArbiterDir)
+	SpvLogOutputPath     = filepath.Join(LogsPath, config.SpvDir)
+)
 
-	addrlog = backend.Logger("ADDR", 0)
-	connlog = backend.Logger("CONN", 0)
-	peerlog = backend.Logger("PEER", 0)
+const (
+	defaultSpvMaxPerLogFileSize int64 = elalog.MBSize * 20
+	defaultSpvMaxLogsFolderSize int64 = elalog.GBSize * 2
+
+	defaultArbiterMaxPerLogFileSize int64 = 20
+	defaultArbiterMaxLogsFolderSize int64 = 2 * 1024
 )
 
 func init() {
-	config.Init()
-	log.Init(log.Path, log.Stdout)
+	spvMaxPerLogFileSize := defaultSpvMaxPerLogFileSize
+	spvMaxLogsFolderSize := defaultSpvMaxLogsFolderSize
+	if config.Parameters.MaxPerLogSize > 0 {
+		spvMaxPerLogFileSize = int64(config.Parameters.MaxPerLogSize) * elalog.MBSize
+	}
+	if config.Parameters.MaxLogsSize > 0 {
+		spvMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize) * elalog.MBSize
+	}
+	fileWriter := elalog.NewFileWriter(
+		SpvLogOutputPath,
+		spvMaxPerLogFileSize,
+		spvMaxLogsFolderSize,
+	)
+	logWriter := io.MultiWriter(os.Stdout, fileWriter)
+	level := elalog.Level(config.Parameters.SPVPrintLevel)
+	backend := elalog.NewBackend(logWriter, elalog.Llongfile)
 
-	//addrmgr.UseLogger(addrlog)
-	//connmgr.UseLogger(connlog)
-	//peer.UseLogger(peerlog)
+	spvslog := backend.Logger("SPVS", level)
+	_interface.UseLogger(spvslog)
 
-	arbitrator.Init()
+	arbiterMaxPerLogFileSize := defaultArbiterMaxPerLogFileSize
+	arbiterMaxLogsFolderSize := defaultArbiterMaxLogsFolderSize
+	if config.Parameters.MaxPerLogSize > 0 {
+		arbiterMaxPerLogFileSize = int64(config.Parameters.MaxPerLogSize)
+	}
+	if config.Parameters.MaxLogsSize > 0 {
+		arbiterMaxLogsFolderSize = int64(config.Parameters.MaxLogsSize)
+	}
+
+	log.Init(
+		ArbiterLogOutputPath,
+		config.Parameters.PrintLevel,
+		arbiterMaxPerLogFileSize,
+		arbiterMaxLogsFolderSize,
+	)
+
+	log.Info("Init wallet.")
+	passwd, err := password.GetAccountPassword()
+	if err != nil {
+		log.Fatal("Get password error.")
+		os.Exit(1)
+	}
+	c, err := account.Open(sideauxpow.DefaultKeystoreFile, passwd)
+	if err != nil || c == nil {
+		log.Fatal("error: open wallet failed, ", err)
+		os.Exit(1)
+	}
+
+	sideauxpow.Init(c)
+	arbitrator.Init(c)
 	sidechain.Init()
 }
 
@@ -53,16 +104,20 @@ func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 }
 
 func initP2P(arbitrator arbitrator.Arbitrator) error {
-	if err := cs.InitP2PClient(arbitrator); err != nil {
+	pk, err := arbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	var id peer.PID
+	copy(id[:], pk)
+	if err := cs.InitP2PClient(id); err != nil {
 		return err
 	}
 
 	//register p2p client listener
 	if err := mainchain.InitMainChain(arbitrator); err != nil {
 		return err
-	}
-	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
-		cs.P2PClientSingleton.AddListener(side)
 	}
 
 	cs.P2PClientSingleton.Start()
@@ -71,13 +126,8 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 
 func main() {
 	log.Info("Arbiter version: ", config.Version)
-	log.Info("1. Init configurations.")
-	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
 
-	log.Info("2. Init chain utxo cache.")
+	log.Info("1. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
 	if err != nil {
 		log.Fatalf("Data store open failed error: [s%]", err.Error())
@@ -85,7 +135,7 @@ func main() {
 	}
 	store.DbCache = *dataStore
 
-	log.Info("3. Init finished transaction cache.")
+	log.Info("2. Init finished transaction cache.")
 	finishedDataStore, err := store.OpenFinishedTxsDataStore()
 	if err != nil {
 		log.Fatalf("Side chain monitor setup error: [s%]", err.Error())
@@ -95,53 +145,38 @@ func main() {
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 
-	log.Info("4. Init wallet.")
-	passwd, err := password.GetAccountPassword()
-	if err != nil {
-		log.Fatal("Get password error.")
-		os.Exit(1)
-	}
-	wallet, err := wallet.Open(passwd)
-	if err != nil {
-		log.Fatal("error: open wallet failed, ", err)
-		os.Exit(1)
-	}
-	sideauxpow.CurrentWallet = wallet
-
-	log.Info("5. Init arbitrator account.")
-	sideauxpow.SetMainAccountPassword(passwd)
-	if err := currentArbitrator.InitAccount(passwd); err != nil {
-		log.Fatal(err)
-		os.Exit(1)
-	}
-
-	log.Info("6. Start arbitrator P2P networks.")
+	log.Info("3. Start arbitrator P2P networks.")
 	if err := initP2P(currentArbitrator); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
 	setSideChainAccountMonitor(currentArbitrator)
-	currentArbitrator.GetMainChain().SyncChainData()
-	currentArbitrator.GetArbitratorGroup().CheckOnDutyStatus()
 
-	log.Info("7. Start arbitrator spv module.")
-	if err := currentArbitrator.StartSpvModule(passwd); err != nil {
+	log.Info("4. Init configurations.")
+	if err := arbitrator.ArbitratorGroupSingleton.InitArbitrators(); err != nil {
 		log.Fatal(err)
 		os.Exit(1)
 	}
 
-	log.Info("8. Start arbitrator group monitor.")
+	log.Info("5. Start arbitrator spv module.")
+	if err := currentArbitrator.StartSpvModule(); err != nil {
+		log.Fatal(err)
+		os.Exit(1)
+	}
+
+	log.Info("6. Start arbitrator group monitor.")
 	go arbitrator.ArbitratorGroupSingleton.SyncLoop()
 
-	log.Info("9. Start servers.")
-	go httpjsonrpc.StartRPCServer()
+	log.Info("7. Start servers.")
+	pServer := new(http.Server)
+	go httpjsonrpc.StartRPCServer(pServer)
 
-	log.Info("10. Start check and remove cross chain transactions from db.")
+	log.Info("8. Start check and remove cross chain transactions from db.")
 	go currentArbitrator.CheckAndRemoveCrossChainTransactionsFromDBLoop()
 
-	log.Info("11. Start side chain account divide.")
-	go sideauxpow.SidechainAccountDivide(wallet)
+	log.Info("9. Start side chain account divide.")
+	go sideauxpow.SidechainAccountDivide()
 
 	select {}
 }

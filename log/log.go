@@ -2,28 +2,23 @@ package log
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
-	"time"
 
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA/utils/elalog"
 )
 
 const (
-	Blue   = "0;34"
-	Red    = "0;31"
-	Green  = "0;32"
-	Yellow = "0;33"
-	Cyan   = "0;36"
+	Red    = "1;31"
+	Green  = "1;32"
+	Yellow = "1;33"
 	Pink   = "1;35"
+	Cyan   = "1;36"
 )
 
 func Color(code, msg string) string {
@@ -31,34 +26,33 @@ func Color(code, msg string) string {
 }
 
 const (
-	debugLog = iota
+	debugLog uint8 = iota
 	infoLog
 	warnLog
 	errorLog
 	fatalLog
-	traceLog
-	maxLevelLog
+	disableLog
 )
 
 var (
-	levels = map[int]string{
-		debugLog: Color(Green, "[DEBUG]"),
-		infoLog:  Color(Blue, "[INFO ]"),
-		warnLog:  Color(Yellow, "[WARN ]"),
-		errorLog: Color(Red, "[ERROR]"),
-		fatalLog: Color(Red, "[FATAL]"),
-		traceLog: Color(Pink, "[TRACE]"),
+	levels = []string{
+		debugLog:   Color(Green, "[DBG]"),
+		infoLog:    Color(Pink, "[INF]"),
+		warnLog:    Color(Yellow, "[WRN]"),
+		errorLog:   Color(Red, "[ERR]"),
+		fatalLog:   Color(Red, "[FAT]"),
+		disableLog: "DISABLED",
 	}
 	Stdout = os.Stdout
 )
 
 const (
-	namePrefix        = "LEVEL"
-	callDepth         = 2
-	defaultMaxLogSize = 20
-	byteToMb          = 1024 * 1024
-	byteToKb          = 1024
-	Path              = "./ArbiterLog/"
+	calldepth             = 2
+	KBSize                = int64(1024)
+	MBSize                = KBSize * 1024
+	GBSize                = MBSize * 1024
+	defaultPerLogFileSize = 20 * MBSize
+	defaultLogsFolderSize = 5 * GBSize
 )
 
 func GetGID() uint64 {
@@ -70,88 +64,92 @@ func GetGID() uint64 {
 	return n
 }
 
-var Log *Logger
+var logger *Logger
 
-func LevelName(level int) string {
-	if name, ok := levels[level]; ok {
-		return name
+func levelName(level uint8) string {
+	if int(level) >= len(levels) {
+		return fmt.Sprintf("LEVEL%d", level)
 	}
-	return namePrefix + strconv.Itoa(level)
-}
-
-func NameLevel(name string) int {
-	for k, v := range levels {
-		if v == name {
-			return k
-		}
-	}
-	var level int
-	if strings.HasPrefix(name, namePrefix) {
-		level, _ = strconv.Atoi(name[len(namePrefix):])
-	}
-	return level
+	return levels[int(level)]
 }
 
 type Logger struct {
-	level   int
-	logger  *log.Logger
-	logFile *os.File
+	level  uint8 // The log print level
+	logger *log.Logger
 }
 
-func New(out io.Writer, prefix string, flag, level int, file *os.File) *Logger {
+func NewLogger(outputPath string, level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) *Logger {
+	var perLogFileSize = defaultPerLogFileSize
+	var logsFolderSize = defaultLogsFolderSize
+
+	if maxPerLogSizeMb != 0 {
+		perLogFileSize = maxPerLogSizeMb * MBSize
+	}
+	if maxLogsSizeMb != 0 {
+		logsFolderSize = maxLogsSizeMb * MBSize
+	}
+
+	writer := elalog.NewFileWriter(outputPath, perLogFileSize, logsFolderSize)
+
 	return &Logger{
-		level:   level,
-		logger:  log.New(out, prefix, flag),
-		logFile: file,
+		level: level,
+		logger: log.New(io.MultiWriter(os.Stdout, writer), "",
+			log.Ldate|log.Lmicroseconds),
 	}
 }
 
-func (l *Logger) SetDebugLevel(level int) error {
-	if level > maxLevelLog || level < 0 {
-		return errors.New("Invalid Debug Level")
-	}
+func Init(outputPath string, level uint8, maxPerLogSizeMb, maxLogsSizeMb int64) {
+	logger = NewLogger(outputPath, level, maxPerLogSizeMb, maxLogsSizeMb)
+}
 
+func (l *Logger) SetPrintLevel(level uint8) {
 	l.level = level
-	return nil
 }
 
-func (l *Logger) Output(level int, a ...interface{}) error {
-	if level >= l.level {
-		gid := GetGID()
-		gidStr := strconv.FormatUint(gid, 10)
-
-		a = append([]interface{}{LevelName(level), "GID",
-			gidStr + ","}, a...)
-
-		return l.logger.Output(callDepth, fmt.Sprintln(a...))
+func (l *Logger) Output(level uint8, a ...interface{}) {
+	if l.level <= level {
+		gidStr := strconv.FormatUint(GetGID(), 10)
+		a = append([]interface{}{levelName(level), "GID", gidStr + ","}, a...)
+		l.logger.Output(calldepth, fmt.Sprintln(a...))
 	}
-	return nil
 }
 
-func (l *Logger) Outputf(level int, format string, v ...interface{}) error {
-	if level >= l.level {
-		gid := GetGID()
-		v = append([]interface{}{LevelName(level), "GID",
-			gid}, v...)
-
-		return l.logger.Output(callDepth, fmt.Sprintf("%s %s %d, "+format+"\n", v...))
+func (l *Logger) Outputf(level uint8, format string, v ...interface{}) {
+	if l.level <= level {
+		v = append([]interface{}{levelName(level), "GID", GetGID()}, v...)
+		l.logger.Output(calldepth, fmt.Sprintf("%s %s %d, "+format+"\n", v...))
 	}
-	return nil
-}
-
-func (l *Logger) Trace(a ...interface{}) {
-	l.Output(traceLog, a...)
-}
-
-func (l *Logger) Tracef(format string, a ...interface{}) {
-	l.Outputf(traceLog, format, a...)
 }
 
 func (l *Logger) Debug(a ...interface{}) {
+	if l.level > debugLog {
+		return
+	}
+
+	pc, file, line, ok := runtime.Caller(calldepth)
+	if !ok {
+		return
+	}
+
+	fn := runtime.FuncForPC(pc)
+	a = append([]interface{}{fn.Name(), filepath.Base(file) + ":" + strconv.Itoa(line)}, a...)
+
 	l.Output(debugLog, a...)
 }
 
 func (l *Logger) Debugf(format string, a ...interface{}) {
+	if l.level > debugLog {
+		return
+	}
+
+	pc, file, line, ok := runtime.Caller(calldepth)
+	if !ok {
+		return
+	}
+
+	fn := runtime.FuncForPC(pc)
+	a = append([]interface{}{fn.Name(), filepath.Base(file), line}, a...)
+
 	l.Outputf(debugLog, format, a...)
 }
 
@@ -172,7 +170,9 @@ func (l *Logger) Warnf(format string, a ...interface{}) {
 }
 
 func (l *Logger) Error(a ...interface{}) {
-	l.Output(errorLog, a...)
+	if l.level <= errorLog {
+		l.Output(errorLog, a...)
+	}
 }
 
 func (l *Logger) Errorf(format string, a ...interface{}) {
@@ -187,194 +187,46 @@ func (l *Logger) Fatalf(format string, a ...interface{}) {
 	l.Outputf(fatalLog, format, a...)
 }
 
-func Trace(a ...interface{}) {
-	if traceLog < Log.level {
-		return
-	}
-
-	pc := make([]uintptr, 10)
-	runtime.Callers(2, pc)
-	f := runtime.FuncForPC(pc[0])
-	file, line := f.FileLine(pc[0])
-	fileName := filepath.Base(file)
-
-	nameFull := f.Name()
-	nameEnd := filepath.Ext(nameFull)
-	funcName := strings.TrimPrefix(nameEnd, ".")
-
-	a = append([]interface{}{funcName + "()", fileName + ":" + strconv.Itoa(line)}, a...)
-
-	Log.Trace(a...)
-}
-
-func Tracef(format string, a ...interface{}) {
-	if traceLog < Log.level {
-		return
-	}
-
-	pc := make([]uintptr, 10)
-	runtime.Callers(2, pc)
-	f := runtime.FuncForPC(pc[0])
-	file, line := f.FileLine(pc[0])
-	fileName := filepath.Base(file)
-
-	nameFull := f.Name()
-	nameEnd := filepath.Ext(nameFull)
-	funcName := strings.TrimPrefix(nameEnd, ".")
-
-	a = append([]interface{}{funcName, fileName, line}, a...)
-
-	Log.Tracef("%s() %s:%d "+format, a...)
-}
-
 func Debug(a ...interface{}) {
-	if debugLog < Log.level {
-		return
-	}
-
-	pc := make([]uintptr, 10)
-	runtime.Callers(2, pc)
-	f := runtime.FuncForPC(pc[0])
-	file, line := f.FileLine(pc[0])
-	fileName := filepath.Base(file)
-
-	a = append([]interface{}{f.Name(), fileName + ":" + strconv.Itoa(line)}, a...)
-
-	Log.Debug(a...)
+	logger.Debug(a...)
 }
 
 func Debugf(format string, a ...interface{}) {
-	if debugLog < Log.level {
-		return
-	}
-
-	pc := make([]uintptr, 10)
-	runtime.Callers(2, pc)
-	f := runtime.FuncForPC(pc[0])
-	file, line := f.FileLine(pc[0])
-	fileName := filepath.Base(file)
-
-	a = append([]interface{}{f.Name(), fileName, line}, a...)
-
-	Log.Debugf("%s %s:%d "+format, a...)
+	logger.Debugf("%s %s:%d "+format, a...)
 }
 
 func Info(a ...interface{}) {
-	Log.Info(a...)
+	logger.Info(a...)
 }
 
 func Warn(a ...interface{}) {
-	Log.Warn(a...)
+	logger.Warn(a...)
 }
 
 func Error(a ...interface{}) {
-	Log.Error(a...)
+	logger.Error(a...)
 }
 
 func Fatal(a ...interface{}) {
-	Log.Fatal(a...)
+	logger.Fatal(a...)
 }
 
 func Infof(format string, a ...interface{}) {
-	Log.Infof(format, a...)
+	logger.Infof(format, a...)
 }
 
 func Warnf(format string, a ...interface{}) {
-	Log.Warnf(format, a...)
+	logger.Warnf(format, a...)
 }
 
 func Errorf(format string, a ...interface{}) {
-	Log.Errorf(format, a...)
+	logger.Errorf(format, a...)
 }
 
 func Fatalf(format string, a ...interface{}) {
-	Log.Fatalf(format, a...)
+	logger.Fatalf(format, a...)
 }
 
-func FileOpen(path string) (*os.File, error) {
-	if fi, err := os.Stat(path); err == nil {
-		if !fi.IsDir() {
-			return nil, fmt.Errorf("open %s: not a directory", path)
-		}
-	} else if os.IsNotExist(err) {
-		if err := os.MkdirAll(path, 0766); err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, err
-	}
-
-	var currenttime string = time.Now().Format("2006-01-02_15.04.05")
-
-	logfile, err := os.OpenFile(path+currenttime+"_LOG.log", os.O_RDWR|os.O_CREATE, 0666)
-	if err != nil {
-		return nil, err
-	}
-	return logfile, nil
-}
-
-func Init(a ...interface{}) {
-	writers := []io.Writer{}
-	var logFile *os.File
-	var err error
-	if len(a) == 0 {
-		writers = append(writers, ioutil.Discard)
-	} else {
-		for _, o := range a {
-			switch o.(type) {
-			case string:
-				logFile, err = FileOpen(o.(string))
-				if err != nil {
-					fmt.Println("error: open log file failed")
-					os.Exit(1)
-				}
-				writers = append(writers, logFile)
-			case *os.File:
-				writers = append(writers, o.(*os.File))
-			default:
-				fmt.Println("error: invalid log location")
-				os.Exit(1)
-			}
-		}
-	}
-	fileAndStdoutWrite := io.MultiWriter(writers...)
-	var printlevel = config.Parameters.PrintLevel
-	Log = New(fileAndStdoutWrite, "", log.Ldate|log.Lmicroseconds, printlevel, logFile)
-}
-
-func GetLogFileSize() (int64, error) {
-	f, e := Log.logFile.Stat()
-	if e != nil {
-		return 0, e
-	}
-	return f.Size(), nil
-}
-
-func GetMaxLogChangeInterval() int64 {
-	if config.Parameters.MaxLogSize != 0 {
-		return (config.Parameters.MaxLogSize * byteToMb)
-	} else {
-		return (defaultMaxLogSize * byteToMb)
-	}
-}
-
-func CheckIfNeedNewFile() bool {
-	logFileSize, err := GetLogFileSize()
-	maxLogFileSize := GetMaxLogChangeInterval()
-	if err != nil {
-		return false
-	}
-	if logFileSize > maxLogFileSize {
-		return true
-	} else {
-		return false
-	}
-}
-
-func ClosePrintLog() error {
-	var err error
-	if Log.logFile != nil {
-		err = Log.logFile.Close()
-	}
-	return err
+func SetPrintLevel(level uint8) {
+	logger.SetPrintLevel(level)
 }

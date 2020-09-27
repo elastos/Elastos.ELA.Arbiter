@@ -2,7 +2,7 @@ package rpc
 
 import "strconv"
 
-type Parameter map[string]string
+type Parameter map[string]interface{}
 
 func Param(key string, value interface{}) Parameter {
 	return Parameter{}.Add(key, value)

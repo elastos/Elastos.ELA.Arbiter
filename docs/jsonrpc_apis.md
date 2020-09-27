@@ -23,7 +23,6 @@ result:
 | version | int | the version of arbiter | 
 | SideChainMonitorScanInterval | int | the interval of side chain monitor scan | 
 | ClearTransactionInterval | int | the interval of clear exist cross chain transaction | 
-| MinReceivedUsedUtxoMsgNumber | int | the min received used utxo message number | 
 | MinOutbound | int | the min connections of neighbor arbiters | 
 | MaxConnections | int | the max connections of neighbor arbiters | 
 | SideAuxPowFee | int | the side mining fee | 
@@ -47,7 +46,6 @@ result sample:
         "version": 0,
         "SideChainMonitorScanInterval": 1000,
         "ClearTransactionInterval": 60000,
-        "MinReceivedUsedUtxoMsgNumber": 2,
         "MinOutbound": 3,
         "MaxConnections": 8,
         "SideAuxPowFee": 50000,

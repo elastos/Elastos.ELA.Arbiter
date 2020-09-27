@@ -1,49 +1,81 @@
 ﻿{
   "Configuration": {
+    "ActiveNet": "testnet",
     "Magic": 7630402,
     "Version": 0,
-    "SeedList": [
-      "127.0.0.1:20338"
-    ],
-    "NodePort": 10338,
-    "PrintLevel": 1,
-    "SpvPrintLevel": 4,
-    "HttpJsonPort": 10336,
+    "NodePort": 11538,
+    "PrintLevel": 0,
+    "SpvPrintLevel": 0,
+    "MaxLogsSize": 0,
+    "MaxPerLogSize": 0,
+    "HttpJsonPort": 11536,
     "MainNode": {
       "Rpc": {
         "IpAddress": "127.0.0.1",
-        "HttpJsonPort": 11336
+        "HttpJsonPort": 11336,
+        "User": "",
+        "Pass": ""
       },
-     "SpvSeedList": [
-       "127.0.0.1:20866"
-    ],
-     "Magic": 7630401,
-     "MinOutbound": 1,
-     "MaxConnections": 3,
-     "FoundationAddress": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
-     "DefaultPort": 20866,
-     "MinPeersForSync": 1
+      "SpvSeedList": [
+        "127.0.0.1:20338"
+      ],
+      "Magic": 7630401,
+      "FoundationAddress": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta",
+      "DefaultPort": 20338
     },
     "SideNodeList": [
       {
         "Rpc": {
           "IpAddress": "127.0.0.1",
-          "HttpJsonPort": 13336
+          "HttpJsonPort": 13336,
+            "User": "",
+            "Pass": ""
         },
 		"ExchangeRate": 1.0,
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
-        "KeystoreFile": "keystore1.dat",
-        "PayToAddr": "ERtJFJaEfmABKDy3Afbrpwb6nDrRUGkZ6k"
+        "MiningAddr": "EQr9qjiXGF2y7YMtDCHtHNewZynakbDzF7",
+        "PayToAddr": "ERtJFJaEfmABKDy3Afbrpwb6nDrRUGkZ6k",
+        "PowChain": true
       }
     ],
+    "OriginCrossChainArbiters":[
+      "024babfecea0300971a6f0ad13b27519faff0ef595faf9490dc1f5f4d6e6d7f3fb",
+      "0243ff13f1417c69686bfefc35227ad4f5f4ca03ccb3d3a635ae8ed67d57c20b97",
+      "024ac1cdf73e3cbe88843b2d7279e6afdc26fc71d221f28cfbecbefb2a48d48304",
+      "0274fe9f165574791f74d5c4358415596e408b704be9003f51a25e90fd527660b5",
+      "03e24ce742a18bea0c54e0348c5d78a5f2b928565a9e8fb2ef4f00e66820038ba1"
+    ],
+    "CRCCrossChainArbiters": [
+      "03e435ccd6073813917c2d841a0815d21301ec3286bc1412bb5b099178c68a10b6",
+      "038a1829b4b2bee784a99bebabbfecfec53f33dadeeeff21b460f8b4fc7c2ca771",
+      "02435df9a4728e6250283cfa8215f16b48948d71936c4600b3a5b1c6fde70503ae",
+      "027d44ee7e7a6c6ff13a130d15b18c75a3b47494c3e54fcffe5f4b10e225351e09",
+      "02ad972fbfce4aaa797425138e4f3b22bcfa765ffad88b8a5af0ab515161c0a365",
+      "0373eeae2bac0f5f14373ca603fe2c9caa9c7a79c7793246cec415d005e2fe53c0",
+      "03503011cc4e44b94f73ed2c76c73182a75b4863f23d1e7083025eead945a8e764",
+      "0270b6880e7fab8d02bea7d22639d7b5e07279dd6477baa713dacf99bb1d65de69",
+      "030eed9f9c1d70307beba52ddb72a24a02582c0ee626ec93ee1dcef2eb308852dd",
+      "026bba43feb19ce5859ffcf0ce9dd8b9d625130b686221da8b445fa9b8f978d7b9",
+      "02bf9e37b3db0cbe86acf76a76578c6b17b4146df101ec934a00045f7d201f06dd",
+      "03111f1247c66755d369a8c8b3a736dfd5cf464ca6735b659533cbe1268cd102a9"
+    ],
+    "DPoSNetAddress": "127.0.0.1:20339",
+    "CRCOnlyDPOSHeight": 100,
     "MinThreshold": 10000000,
     "DepositAmount": 10000000,
     "SyncInterval": 1000,
     "SideChainMonitorScanInterval": 1000,
     "ClearTransactionInterval": 60000,
-    "MinReceivedUsedUtxoMsgNumber": 1,
     "MinOutbound": 3,
     "MaxConnections": 8,
-    "SideAuxPowFee": 50000
+    "SideAuxPowFee": 50000,
+    "MaxTxsPerWithdrawTx": 1000,
+    "RpcConfiguration": {
+      "User": "ElaUser",
+      "Pass": "Ela123" ,
+      "WhiteIPList":[
+        "127.0.0.1"
+      ]
+    }
   }
 }

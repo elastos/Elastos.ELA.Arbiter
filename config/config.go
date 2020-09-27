@@ -6,27 +6,45 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
+	"github.com/elastos/Elastos.ELA/common"
+	elacfg "github.com/elastos/Elastos.ELA/common/config"
 )
 
 const (
+	// DefaultConfigFilename indicates the file name of config.
 	DefaultConfigFilename = "./config.json"
+
+	// NodePrefix indicates the prefix of node version.
+	NodePrefix = "arbiter-"
 )
 
 var (
 	Version    string
 	Parameters configParams
+
+	DataPath   = "elastos_arbiter"
+	DataDir    = "data"
+	SpvDir     = "spv"
+	LogDir     = "logs"
+	ArbiterDir = "arbiter"
 )
 
+type RpcConfiguration struct {
+	User        string   `json:"User"`
+	Pass        string   `json:"Pass"`
+	WhiteIPList []string `json:"WhiteIPList"`
+}
+
 type Configuration struct {
-	Magic    uint32   `json:"Magic"`
-	Version  int      `json:"Version"`
-	SeedList []string `json:"SeedList"`
-	NodePort uint16   `json:"NodePort"`
+	ActiveNet string `json:"ActiveNet"`
+	Magic     uint32 `json:"Magic"`
+	Version   uint32 `json:"Version"`
+	NodePort  uint16 `json:"NodePort"`
 
 	MainNode     *MainNodeConfig   `json:"MainNode"`
 	SideNodeList []*SideNodeConfig `json:"SideNodeList"`
@@ -34,34 +52,41 @@ type Configuration struct {
 	SyncInterval  time.Duration `json:"SyncInterval"`
 	HttpJsonPort  int           `json:"HttpJsonPort"`
 	HttpRestPort  uint16        `json:"HttpRestPort"`
-	PrintLevel    int           `json:"PrintLevel"`
-	SpvPrintLevel int           `json:"SpvPrintLevel"`
-	MaxLogSize    int64         `json:"MaxLogSize"`
+	PrintLevel    uint8         `json:"PrintLevel"`
+	SPVPrintLevel uint8         `json:"SPVPrintLevel"`
+	MaxLogsSize   int64         `json:"MaxLogsSize"`
+	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
-	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
-	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
-	MinReceivedUsedUtxoMsgNumber uint32        `json:"MinReceivedUsedUtxoMsgNumber"`
-	MinOutbound                  int           `json:"MinOutbound"`
-	MaxConnections               int           `json:"MaxConnections"`
-	SideAuxPowFee                int           `json:"SideAuxPowFee"`
-	MinThreshold                 int           `json:"MinThreshold"`
-	DepositAmount                int           `json:"DepositAmount"`
+	SideChainMonitorScanInterval time.Duration    `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration    `json:"ClearTransactionInterval"`
+	MinOutbound                  int              `json:"MinOutbound"`
+	MaxConnections               int              `json:"MaxConnections"`
+	SideAuxPowFee                int              `json:"SideAuxPowFee"`
+	MinThreshold                 int              `json:"MinThreshold"`
+	DepositAmount                int              `json:"DepositAmount"`
+	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
+	CRClaimDPOSNodeStartHeight   uint32           `json:"CRClaimDPOSNodeStartHeight"`
+	NewP2PProtocolVersionHeight  uint64           `json:"NewP2PProtocolVersionHeight"`
+	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
+	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
+	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
+	RpcConfiguration             RpcConfiguration `json:"RpcConfiguration"`
+	DPoSNetAddress               string           `json:"DPoSNetAddress"`
 }
 
 type RpcConfig struct {
 	IpAddress    string `json:"IpAddress"`
 	HttpJsonPort int    `json:"HttpJsonPort"`
+	User         string `json:"User"`
+	Pass         string `json:"Pass"`
 }
 
 type MainNodeConfig struct {
 	Rpc               *RpcConfig `json:"Rpc"`
-	SpvSeedList       []string   `json:"SpvSeedList""`
+	SpvSeedList       []string   `json:"SpvSeedList"`
 	DefaultPort       uint16     `json:"DefaultPort"`
 	Magic             uint32     `json:"Magic"`
-	MinOutbound       int        `json:"MinOutbound"`
-	MaxConnections    int        `json:"MaxConnections"`
 	FoundationAddress string     `json:"FoundationAddress"`
-	MinPeersForSync   int        `json:"MinPeersForSync"`
 }
 
 type SideNodeConfig struct {
@@ -71,7 +96,9 @@ type SideNodeConfig struct {
 	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
 	GenesisBlock        string  `json:"GenesisBlock"`
 	KeystoreFile        string  `json:"KeystoreFile"`
+	MiningAddr          string  `json:"MiningAddr"`
 	PayToAddr           string  `json:"PayToAddr"`
+	PowChain            bool    `json:"PowChain"`
 }
 
 type ConfigFile struct {
@@ -91,44 +118,85 @@ func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	return nil, false
 }
 
-func Init() {
+func GetSpvChainParams() *elacfg.Params {
+	var params *elacfg.Params
+	switch strings.ToLower(Parameters.ActiveNet) {
+	case "testnet", "test":
+		params = elacfg.DefaultParams.TestNet()
+
+	case "regnet", "reg":
+		params = elacfg.DefaultParams.RegNet()
+
+	default:
+		params = &elacfg.DefaultParams
+	}
+
+	mncfg := Parameters.MainNode
+	if mncfg.Magic != 0 {
+		params.Magic = mncfg.Magic
+	}
+	if mncfg.FoundationAddress != "" {
+		address, err := common.Uint168FromAddress(mncfg.FoundationAddress)
+		if err != nil {
+			fmt.Printf("invalid foundation address")
+			os.Exit(1)
+		}
+		params.Foundation = *address
+		params.GenesisBlock = elacfg.GenesisBlock(address)
+	}
+	if mncfg.DefaultPort != 0 {
+		params.DefaultPort = mncfg.DefaultPort
+	}
+	if Parameters.CRClaimDPOSNodeStartHeight > 0 {
+		params.CRClaimDPOSNodeStartHeight = Parameters.CRClaimDPOSNodeStartHeight
+	}
+	if Parameters.NewP2PProtocolVersionHeight > 0 {
+		params.NewP2PProtocolVersionHeight = Parameters.NewP2PProtocolVersionHeight
+	}
+	params.DNSSeeds = nil
+	return params
+}
+
+func init() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)
-		os.Exit(1)
+		return
 	}
-
+	i := ConfigFile{}
 	// Remove the UTF-8 Byte Order Mark
 	file = bytes.TrimPrefix(file, []byte("\xef\xbb\xbf"))
 
-	config := ConfigFile{
-		ConfigFile: Configuration{
-			Magic:                        0,
-			Version:                      0,
-			NodePort:                     20538,
-			HttpJsonPort:                 20536,
-			HttpRestPort:                 20534,
-			PrintLevel:                   1,
-			SpvPrintLevel:                1,
-			MaxLogSize:                   0,
-			SyncInterval:                 1000,
-			SideChainMonitorScanInterval: 1000,
-			ClearTransactionInterval:     60000,
-			MinReceivedUsedUtxoMsgNumber: 2,
-			MinOutbound:                  3,
-			MaxConnections:               8,
-			SideAuxPowFee:                50000,
-			MinThreshold:                 10000000,
-			DepositAmount:                10000000,
-		},
+	e = json.Unmarshal(file, &i)
+	var config ConfigFile
+	switch strings.ToLower(i.ConfigFile.ActiveNet) {
+	case "testnet", "test":
+		config = testnet
+	case "regnet", "reg":
+		config = regnet
+	default:
+		config = mainnet
 	}
+
+	Parameters.Configuration = &(config.ConfigFile)
+
 	e = json.Unmarshal(file, &config)
 	if e != nil {
 		fmt.Printf("Unmarshal json file erro %v", e)
 		os.Exit(1)
 	}
 
-	Parameters.Configuration = &(config.ConfigFile)
+	for _, side := range config.ConfigFile.SideNodeList {
+		side.PowChain = true
+	}
+
+	e = json.Unmarshal(file, &config)
+	if e != nil {
+		fmt.Printf("Unmarshal json file erro %v", e)
+		os.Exit(1)
+	}
+
+	//Parameters.Configuration = &(config.ConfigFile)
 
 	var out bytes.Buffer
 	err := json.Indent(&out, file, "", "")
@@ -148,14 +216,14 @@ func Init() {
 	}
 
 	for _, node := range Parameters.SideNodeList {
-		genesisBytes, err := HexStringToBytes(node.GenesisBlock)
+		genesisBytes, err := common.HexStringToBytes(node.GenesisBlock)
 		if err != nil {
 			fmt.Printf("Side node genesis block hash error: %v\n", e)
 			return
 		}
-		reversedGenesisBytes := BytesReverse(genesisBytes)
-		reversedGenesisStr := BytesToHexString(reversedGenesisBytes)
-		genesisBlockHash, err := Uint256FromHexString(reversedGenesisStr)
+		reversedGenesisBytes := common.BytesReverse(genesisBytes)
+		reversedGenesisStr := common.BytesToHexString(reversedGenesisBytes)
+		genesisBlockHash, err := common.Uint256FromHexString(reversedGenesisStr)
 		if err != nil {
 			fmt.Printf("Side node genesis block hash reverse error: %v\n", e)
 			return

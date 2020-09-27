@@ -4,65 +4,60 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"os"
-	"time"
+	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA.Arbiter/wallet"
 
-	. "github.com/elastos/Elastos.ELA.Utility/common"
-	"github.com/elastos/Elastos.ELA.Utility/crypto"
-	ela "github.com/elastos/Elastos.ELA/core"
+	"github.com/elastos/Elastos.ELA/account"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
+	"github.com/elastos/Elastos.ELA/crypto"
 )
 
 var (
-	CurrentWallet       wallet.Wallet
-	mainAccountPassword []byte
-
-	LastSendSideMiningHeightMap   map[Uint256]uint32
-	LastNotifySideMiningHeightMap map[Uint256]uint32
-	LastSubmitAuxpowHeightMap     map[Uint256]uint32
+	lock                          sync.RWMutex
+	client                        *account.Client
+	lastSendSideMiningHeightMap   map[common.Uint256]uint32
+	lastNotifySideMiningHeightMap map[common.Uint256]uint32
+	lastSubmitAuxpowHeightMap     map[common.Uint256]uint32
 )
 
-func getMainAccountPassword() []byte {
-	return mainAccountPassword
+func GetLastSendSideMiningHeight(genesisBlockHash *common.Uint256) (uint32, bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	height, ok := lastSendSideMiningHeightMap[*genesisBlockHash]
+	return height, ok
 }
 
-func SetMainAccountPassword(passwd []byte) {
-	mainAccountPassword = passwd
+func GetLastNotifySideMiningHeight(genesisBlockHash *common.Uint256) (uint32, bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	height, ok := lastNotifySideMiningHeightMap[*genesisBlockHash]
+	return height, ok
 }
 
-func UpdateLastNotifySideMiningHeight(genesisBlockHash Uint256) {
-	LastNotifySideMiningHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+func GetLastSubmitAuxpowHeight(genesisBlockHash *common.Uint256) (uint32, bool) {
+	lock.RLock()
+	defer lock.RUnlock()
+	height, ok := lastSubmitAuxpowHeightMap[*genesisBlockHash]
+	return height, ok
+
 }
 
-func UpdateLastSubmitAuxpowHeight(genesisBlockHash Uint256) {
-	LastSubmitAuxpowHeightMap[genesisBlockHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+func UpdateLastNotifySideMiningHeight(genesisBlockHash common.Uint256) {
+	lock.Lock()
+	defer lock.Unlock()
+	lastNotifySideMiningHeightMap[genesisBlockHash] = arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
-func getPassword(passwd []byte, confirmed bool) []byte {
-	var tmp []byte
-	var err error
-	if len(passwd) > 0 {
-		tmp = []byte(passwd)
-	} else {
-		if confirmed {
-			tmp, err = password.GetConfirmedPassword()
-		} else {
-			tmp, err = password.GetPassword()
-		}
-		if err != nil {
-			fmt.Println(err)
-			os.Exit(1)
-		}
-	}
-	return tmp
+func UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256) {
+	lock.Lock()
+	defer lock.Unlock()
+	lastSubmitAuxpowHeightMap[genesisBlockHash] = arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 }
 
 func unmarshal(result interface{}, target interface{}) error {
@@ -77,15 +72,15 @@ func unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeConfig) error {
+func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 	log.Info("[sideChainPowTransfer] start")
-	depositAddress := sideNode.PayToAddr
-	if depositAddress == "" {
+
+	if sideNode.PayToAddr == "" {
 		return errors.New("[sideChainPowTransfer] has no side aux pow paytoaddr")
 	}
-	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", depositAddress), sideNode.Rpc)
+	resp, err := rpc.CallAndUnmarshal("createauxblock", rpc.Param("paytoaddress", sideNode.PayToAddr), sideNode.Rpc)
 	if err != nil {
-		log.Error("[sideChainPowTransfer] create aux block failed")
+		log.Errorf("[sideChainPowTransfer] create aux block failed: %s", err)
 		return err
 	}
 	if resp == nil {
@@ -107,27 +102,26 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	if err != nil {
 		return err
 	}
-	// fmt.Println(sideAuxBlock)
 
-	txType := ela.SideChainPow
+	txType := types.SideChainPow
 
-	sideGenesisHashData, _ := HexStringToBytes(sideAuxBlock.GenesisHash)
-	sideBlockHashData, _ := HexStringToBytes(sideAuxBlock.Hash)
+	sideGenesisHashData, _ := common.HexStringToBytes(sideAuxBlock.GenesisHash)
+	sideBlockHashData, _ := common.HexStringToBytes(sideAuxBlock.Hash)
 
-	sideGenesisHash, _ := Uint256FromBytes(sideGenesisHashData)
-	sideBlockHash, _ := Uint256FromBytes(sideBlockHashData)
+	sideGenesisHash, _ := common.Uint256FromBytes(sideGenesisHashData)
+	sideBlockHash, _ := common.Uint256FromBytes(sideBlockHashData)
 
-	fmt.Println(sideGenesisHash, sideBlockHash)
+	log.Info("sideGenesisHash:", sideGenesisHash, "sideBlockHash:", sideBlockHash)
 	// Create payload
-	txPayload := &ela.PayloadSideChainPow{
+	txPayload := &payload.SideChainPow{
 		BlockHeight:     sideAuxBlock.Height,
 		SideBlockHash:   *sideBlockHash,
 		SideGenesisHash: *sideGenesisHash,
 	}
 
 	buf := new(bytes.Buffer)
-	txPayload.Serialize(buf, ela.SideChainPowPayloadVersion)
-	txPayload.SignedData, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
+	txPayload.Serialize(buf, payload.SideChainPowVersion)
+	txPayload.Signature, err = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().Sign(buf.Bytes()[0:68])
 	if err != nil {
 		return err
 	}
@@ -136,39 +130,42 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	if config.Parameters.SideAuxPowFee <= 0 {
 		return errors.New("[sideChainPowTransfer] invalid side aux pow fee")
 	}
-	fee := Fixed64(config.Parameters.SideAuxPowFee)
+	fee := common.Fixed64(config.Parameters.SideAuxPowFee)
 
-	addr := CurrentWallet.GetAddress(name)
-	if addr == nil {
-		return errors.New("[sideChainPowTransfer] get key store address failed:" + name)
+	if sideNode.MiningAddr == "" {
+		return errors.New("[sideChainPowTransfer] get side chain mining address failed:" + sideNode.MiningAddr)
 	}
 
-	from := addr.Addr.Address
-	script := addr.Addr.RedeemScript
+	programHash, err := common.Uint168FromAddress(sideNode.MiningAddr)
+	if err != nil {
+		return errors.New("[sideChainPowTransfer] invalid miningAddr")
+	}
+	codeHash := programHash.ToCodeHash()
+	miningAccount := client.GetAccountByCodeHash(codeHash)
+	if miningAccount == nil {
+		return errors.New("[sideChainPowTransfer] not found miningAddr in keystore")
+	}
 
-	var txn *ela.Transaction
-	txn, err = CurrentWallet.CreateAuxpowTransaction(txType, txPayload, from, &fee, script, *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight())
+	from := sideNode.MiningAddr
+	script := miningAccount.RedeemScript
+
+	txn, err := createAuxpowTransaction(txType, txPayload, from, &fee, script,
+		arbitrator.ArbitratorGroupSingleton.GetCurrentHeight())
 	if err != nil {
 		return errors.New("[sideChainPowTransfer] create transaction failed: " + err.Error())
 	}
 
-	// sign transaction
-	program := txn.Programs[0]
-
-	haveSign, needSign, err := crypto.GetSignStatus(program.Code, program.Parameter)
-	if haveSign == needSign {
-		return errors.New("[sideChainPowTransfer] transaction was fully signed, no need more sign")
-	}
-	_, err = CurrentWallet.Sign(name, getPassword(passwd, false), txn)
+	txnSigned, err := client.Sign(txn)
 	if err != nil {
 		return err
 	}
-	haveSign, needSign, _ = crypto.GetSignStatus(program.Code, program.Parameter)
+	program := txnSigned.Programs[0]
+	haveSign, needSign, _ := crypto.GetSignStatus(program.Code, program.Parameter)
 	log.Debug("[sideChainPowTransfer] transaction successfully signed: ", haveSign, needSign)
 
 	sideChainPowBuf := new(bytes.Buffer)
 	txn.Serialize(sideChainPowBuf)
-	content := BytesToHexString(sideChainPowBuf.Bytes())
+	content := common.BytesToHexString(sideChainPowBuf.Bytes())
 	// log.Debug("Raw Sidemining transaction: ", content)
 
 	// send transaction
@@ -178,51 +175,25 @@ func sideChainPowTransfer(name string, passwd []byte, sideNode *config.SideNodeC
 	}
 	log.Info("[SendSideChainMining] End send Sidemining transaction:  genesis address [", sideNode.GenesisBlockAddress, "], result: ", result)
 
-	LastSendSideMiningHeightMap[*sideGenesisHash] = *arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	lock.Lock()
+	defer lock.Unlock()
+	lastSendSideMiningHeightMap[*sideGenesisHash] =
+		arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 
 	log.Info("[sideChainPowTransfer] end")
 	return nil
 }
 
 func StartSideChainMining(sideNode *config.SideNodeConfig) {
-	err := sideChainPowTransfer(sideNode.KeystoreFile, getMainAccountPassword(), sideNode)
+	err := sideChainPowTransfer(sideNode)
 	if err != nil {
 		log.Warn(err)
 	}
 }
 
-func calculateGenesisAddress(genesisBlockHash string) (string, error) {
-	genesisBlockBytes, err := HexStringToBytes(genesisBlockHash)
-	if err != nil {
-		return "", errors.New("genesis block hash string to bytes failed")
-	}
-	genesisHash, err := Uint256FromBytes(genesisBlockBytes)
-	if err != nil {
-		return "", errors.New("genesis block hash bytes to hash failed")
-	}
-
-	genesisAddress, err := base.GetGenesisAddress(*genesisHash)
-	if err != nil {
-		return "", errors.New("genesis block hash to genesis address failed")
-	}
-
-	return genesisAddress, nil
-}
-
-func TestMultiSidechain() {
-	for {
-		select {
-		case <-time.After(time.Second * 3):
-			for _, node := range config.Parameters.SideNodeList {
-				StartSideChainMining(node)
-			}
-			println("TestMultiSidechain")
-		}
-	}
-}
-
-func init() {
-	LastSendSideMiningHeightMap = make(map[Uint256]uint32)
-	LastNotifySideMiningHeightMap = make(map[Uint256]uint32)
-	LastSubmitAuxpowHeightMap = make(map[Uint256]uint32)
+func Init(c *account.Client) {
+	client = c
+	lastSendSideMiningHeightMap = make(map[common.Uint256]uint32)
+	lastNotifySideMiningHeightMap = make(map[common.Uint256]uint32)
+	lastSubmitAuxpowHeightMap = make(map[common.Uint256]uint32)
 }
