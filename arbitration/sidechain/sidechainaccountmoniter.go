@@ -17,6 +17,8 @@ import (
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
+const sideChainHeightInterval uint32 = 1000
+
 type SideChainAccountMonitorImpl struct {
 	mux sync.Mutex
 
@@ -78,7 +80,12 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
 		if needSync {
-			log.Info("currentHeight:", currentHeight, " chainHeight:", chainHeight)
+			if currentHeight < sideNode.SyncStartHeight {
+				currentHeight = sideNode.SyncStartHeight
+			}
+			log.Info("[SyncSideChain] side chain:", sideNode.GenesisBlockAddress,
+				"current height:", currentHeight, " chain height:", chainHeight)
+			count := uint32(1)
 			for currentHeight < chainHeight {
 				if currentHeight >= 6 {
 					transactions, err := rpc.GetWithdrawTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
@@ -139,6 +146,11 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					}
 				}
 				currentHeight++
+				count++
+				if count%sideChainHeightInterval == 0 {
+					currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+					log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
+				}
 			}
 			// Update wallet height
 			currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
@@ -151,6 +163,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
 				}
 			}
+
 		}
 
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
