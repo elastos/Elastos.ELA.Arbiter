@@ -99,6 +99,7 @@ type SideNodeConfig struct {
 	MiningAddr          string  `json:"MiningAddr"`
 	PayToAddr           string  `json:"PayToAddr"`
 	PowChain            bool    `json:"PowChain"`
+	SyncStartHeight     uint32  `json:"SyncStartHeight"`
 }
 
 type ConfigFile struct {
