@@ -2,7 +2,7 @@ Elastos.ELA.Arbiter version 0.2.0 is now available from:
 
   <https://download.elastos.org/elastos-arbiter/elastos-arbitier-v0.2.0/>
 
-This is a new minor version release, add conflict slot of register did.
+This is a new minor version release.
 
 Please report bugs using the issue tracker at GitHub:
 
