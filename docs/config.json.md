@@ -32,6 +32,7 @@
           "User": "USER",                 // SideChain Node Rpc Username
           "Pass": "PASS"                  // SideChain Node Rpc Password
         },
+        "SyncStartHeight": 0,             // The height at which synchronization begins.
         "ExchangeRate": 1.0,              // Sidechain token exchange rate with ELA
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3", // SideChain genesis block hash
         "MiningAddr": "EWYdXxK6L8unXcz2Hu2nmLBQLr67Qx5c2b",                                 // Sending sideChain pow transaction address
@@ -45,6 +46,7 @@
           "User": "USER",
           "Pass": "PASS"
         },
+        "SyncStartHeight": 0, 
         "ExchangeRate": 1.0,
         "GenesisBlock": "b569111dfb5e12d40be5cf09e42f7301128e9ac7ab3c6a26f24e77872b9a730e",
         "MiningAddr": "EXeog2edenqtrJM3wnWHmWZzmyataX6pgh",
@@ -58,6 +60,7 @@
           "User": "",
           "Pass": ""
         },
+        "SyncStartHeight": 0,       // The height at which synchronization begins.
         "ExchangeRate": 1.0,
         "GenesisBlock": "6afc2eb01956dfe192dc4cd065efdf6c3c80448776ca367a7246d279e228ff0a",
         "MiningAddr": "EQ3h7C9hHe1WWDaNyYRtAe3Lx8zV9eHpjM",
