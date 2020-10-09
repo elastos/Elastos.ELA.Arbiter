@@ -15,6 +15,7 @@
           "User": "",
           "Pass": ""
         },
+        "SyncStartHeight": 401000,
         "ExchangeRate": 1.0,
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
         "MiningAddr": "EWgV4gokrbAahWB2RjF35yoPL3awfVrv64",
@@ -28,6 +29,7 @@
           "User": "",
           "Pass": ""
         },
+        "SyncStartHeight": 2515000,
         "ExchangeRate": 1.0,
         "GenesisBlock": "6afc2eb01956dfe192dc4cd065efdf6c3c80448776ca367a7246d279e228ff0a",
         "MiningAddr": "EUZs18aHmfc1yvVJQZmBevYVhbMiyxAdsb",
