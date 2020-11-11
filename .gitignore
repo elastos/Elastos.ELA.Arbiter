@@ -13,6 +13,7 @@ build/
 *.rej
 vendor/*
 elastos_arbiter/*
+arbitration/mainchain/log
 cscope*
 deps/
 arbiter
@@ -22,7 +23,6 @@ arbiter
 *.dat
 ArbiterLog/
 glide.lock
-config.json
 cli-config.json
 ela-cli
 go.sum
