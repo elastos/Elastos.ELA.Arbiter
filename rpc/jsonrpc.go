@@ -71,7 +71,13 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 		return result, nil
 	}
 
-	resp, err := CallAndUnmarshal("getcrcpeersinfo", nil,
+	var rpcMethod string
+	if height < config.Parameters.DPOSNodeCrossChainHeight {
+		rpcMethod = "getcrcpeersinfo"
+	} else {
+		rpcMethod = "getcrosschainpeersinfo"
+	}
+	resp, err := CallAndUnmarshal(rpcMethod, nil,
 		config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
@@ -96,6 +102,7 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 		copy(id[:], pk)
 		result = append(result, id)
 	}
+
 	return result, nil
 }
 
