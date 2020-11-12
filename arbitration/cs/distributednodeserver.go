@@ -76,8 +76,10 @@ func getTransactionAgreementArbitratorsCount(arbitersCount int) int {
 	currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 	if currentHeight <= config.Parameters.CRClaimDPOSNodeStartHeight {
 		return arbitersCount*2/3 + 1
+	} else if currentHeight < config.Parameters.DPOSNodeCrossChainHeight {
+		return arbitersCount * 2 / 3
 	}
-	return arbitersCount * 2 / 3
+	return arbitersCount*2/3 + 1
 }
 
 func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
@@ -205,7 +207,8 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	signs[targetCodeHash] = true
 	pk, _ := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
 	log.Info("receive signature from ", hex.EncodeToString(pk))
-	if signedCount >= getTransactionAgreementArbitratorsCount(len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
+	if signedCount >= getTransactionAgreementArbitratorsCount(
+		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
 		dns.mux.Lock()
 		delete(dns.unsolvedContents, hash)
 		delete(dns.unsolvedContentsSignature, hash)
