@@ -18,7 +18,7 @@ import (
 type DistributeContentType byte
 
 const (
-	MaxReedemScriptDataSize = 1000
+	MaxRedeemScriptDataSize = 10000
 
 	TxDistribute      DistributeContentType = 0x00
 	IllegalDistribute DistributeContentType = 0x01
@@ -180,7 +180,7 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	case IllegalDistribute:
 	}
 
-	redeemScript, err := common.ReadVarBytes(r, MaxReedemScriptDataSize, "redeem script")
+	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
 	if err != nil {
 		return errors.New("redeemScript deserialization failed.")
 	}
