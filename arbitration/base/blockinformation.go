@@ -137,6 +137,17 @@ type WithdrawTxInfo struct {
 	CrossChainAssets []*WithdrawOutputInfo `json:"crosschainassets"`
 }
 
+type DepositOutputInfo struct {
+	CrossChainAddress string `json:"crosschainaddress"`
+	CrossChainAmount  string `json:"crosschainamount"`
+	OutputAmount      string `json:"outputamount"`
+}
+
+type DepositTxsInfo struct {
+	TxID             string               `json:"txid"`
+	CrossChainAssets []*DepositOutputInfo `json:"crosschainassets"`
+}
+
 type SidechainIllegalDataInfo struct {
 	IllegalType     uint8  `json:"illegaltype"`
 	Height          uint32 `json:"height"`

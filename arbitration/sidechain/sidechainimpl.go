@@ -2,6 +2,7 @@ package sidechain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"sync"
 
@@ -24,10 +25,20 @@ type SideChainImpl struct {
 
 	Key           string
 	CurrentConfig *config.SideNodeConfig
+	DoneSmallCrs  map[string]bool
+}
+
+func (sc *SideChainImpl) IsSendSmallCrxTx(tx string) bool {
+	_, ok := sc.DoneSmallCrs[tx]
+	return ok
 }
 
 func (sc *SideChainImpl) GetKey() string {
 	return sc.Key
+}
+
+func (sc *SideChainImpl) GetCurrentConfig() *config.SideNodeConfig {
+	return sc.getCurrentConfig()
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
@@ -75,6 +86,24 @@ func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, 
 	if response.Error != nil {
 		log.Info("response: ", response.Error.Message)
 	} else {
+		log.Info("response:", response)
+	}
+
+	return response, nil
+}
+
+func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error) {
+	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
+	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", hex.EncodeToString(signature)).Add("rawTx", tx).Add("txHash", hash), sc.CurrentConfig.Rpc)
+	if err != nil {
+		return rpc.Response{}, err
+	}
+	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction finished")
+
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else if r, ok := response.Result.(bool); ok && r {
+		sc.DoneSmallCrs[hash] = true
 		log.Info("response:", response)
 	}
 
@@ -157,8 +186,25 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 	return txInfo, nil
 }
 
+func (sc *SideChainImpl) GetIllegalDeositTransaction(txHash string, height uint32) (bool, error) {
+	exist, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc, height)
+	if err != nil {
+		return false, err
+	}
+
+	return exist, nil
+}
+
 func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error) {
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
+}
+
+func (sc *SideChainImpl) CheckIllegalDepositTx(depositTxs []common.Uint256) (bool, error) {
+	return rpc.CheckIllegalDepositTx(depositTxs, sc.CurrentConfig.Rpc)
+}
+
+func (sc *SideChainImpl) SendFailedDepositTxs(tx []base.FailedDepositTx, sideHeight uint32) error {
+	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx, sideHeight)
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() {
@@ -252,6 +298,62 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
 	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
+
+	return nil
+}
+
+func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []base.FailedDepositTx, sideHeight uint32) error {
+
+	if len(failedTxs) == 0 {
+		return nil
+	}
+	targetTransactions := make([]*base.FailedDepositTx, 0)
+	for _, tx := range failedTxs {
+		if len(tx.DepositInfo.DepositAssets) != 0 {
+			targetTransactions = append(targetTransactions, &tx)
+		}
+	}
+
+	log.Info("Tx targetaddress ", failedTxs[0].DepositInfo.DepositAssets[0].TargetAddress)
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	var wTx *types.Transaction
+	var targetIndex int
+	for i := 0; i < len(targetTransactions); {
+		i += 100
+		targetIndex = len(targetTransactions)
+		if targetIndex > i {
+			targetIndex = i
+		}
+
+		tx := currentArbitrator.CreateFailedDepositTransaction(
+			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, sideHeight)
+		if tx == nil {
+			continue
+		}
+		wTx = tx
+
+		buf := new(bytes.Buffer)
+		if err := wTx.Serialize(buf); err != nil {
+			log.Warn("tx serialize error ", err.Error())
+		}
+
+		var txD types.Transaction
+		err := txD.Deserialize(bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			log.Warn("tx deserialize error ", err.Error(), txD.String())
+		}
+		testPayload, k := txD.Payload.(*payload.ReturnSideChainDepositCoin)
+		if !k {
+			log.Error("payload deserialize error")
+		} else {
+			log.Info(testPayload.Height, testPayload.GenesisBlockAddress, testPayload.DepositTxs[0].String())
+		}
+	}
+	if wTx == nil {
+		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
+	}
+	currentArbitrator.BroadcastWithdrawProposal(wTx)
+	log.Info("[CreateAndBroadcastFailedDepositTxsProposal] transactions count: ", targetIndex)
 
 	return nil
 }

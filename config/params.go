@@ -17,6 +17,7 @@ var (
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
+			SmallCrossTransferThreshold:  100000000,
 			DepositAmount:                1000000,
 			MaxTxsPerWithdrawTx:          1000,
 			MainNode: &MainNodeConfig{
@@ -67,6 +68,7 @@ var (
 			CRClaimDPOSNodeStartHeight:  532650,
 			NewP2PProtocolVersionHeight: 532650,
 			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			ReturnDepositTransactionFee: 100,     //todo fix me
 		},
 	}
 
@@ -86,6 +88,7 @@ var (
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
+			SmallCrossTransferThreshold:  100000000,
 			DepositAmount:                1000000,
 			MaxTxsPerWithdrawTx:          1000,
 			MainNode: &MainNodeConfig{
@@ -136,6 +139,7 @@ var (
 			CRClaimDPOSNodeStartHeight:  646700,
 			NewP2PProtocolVersionHeight: 646700,
 			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			ReturnDepositTransactionFee: 100,     //todo fix me
 		},
 	}
 
@@ -156,6 +160,7 @@ var (
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
+			SmallCrossTransferThreshold:  100000000,
 			DepositAmount:                1000000,
 			MaxTxsPerWithdrawTx:          1000,
 			MainNode: &MainNodeConfig{

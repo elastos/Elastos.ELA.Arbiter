@@ -16,6 +16,7 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract/program"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
@@ -112,6 +113,116 @@ func parseUserWithdrawTransactions(txs []*base.WithdrawTx) (
 		}
 	}
 	return result, sideChainTxHashes
+}
+
+func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.Fixed64) (
+	*base.DepositInfo, []common.Uint256) {
+	result := new(base.DepositInfo)
+	var sideChainTxHashes []common.Uint256
+	for _, tx := range txs {
+		for _, asset := range tx.DepositInfo.DepositAssets {
+			result.DepositAssets = append(result.DepositAssets, asset)
+		}
+		sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
+	}
+	return result, sideChainTxHashes
+}
+
+func (mc *MainChainImpl) CreateFailedDepositTransaction(
+	sideChain arbitrator.SideChain, failedDepositTxs []*base.FailedDepositTx,
+	mcFunc arbitrator.MainChainFunc, sideHeight uint32) (*types.Transaction, error) {
+
+	withdrawBank := sideChain.GetKey()
+	exchangeRate, err := sideChain.GetExchangeRate()
+	if err != nil {
+		return nil, err
+	}
+
+	var totalOutputAmount common.Fixed64
+	// Create transaction outputs
+	var txOutputs []*types.Output
+	// Check if from address is valid
+	assetID := base.SystemAssetId
+	withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
+
+	for _, withdraw := range withdrawInfo.DepositAssets {
+		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
+		if err != nil {
+			return nil, err
+		}
+		txOutput := &types.Output{
+			AssetID:     common.Uint256(assetID),
+			ProgramHash: *programhash,
+			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
+			OutputLock:  0,
+			Type:        types.OTNone,
+			Payload:     &outputpayload.DefaultOutput{},
+		}
+		txOutputs = append(txOutputs, txOutput)
+		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
+	}
+	log.Info("totalOutputAmount ", totalOutputAmount)
+
+	availableUTXOs, err := mcFunc.GetWithdrawUTXOsByAmount(withdrawBank, totalOutputAmount)
+	if err != nil {
+		return nil, err
+	}
+
+	// Create transaction inputs
+	var txInputs []*types.Input
+	for _, utxo := range availableUTXOs {
+		txInputs = append(txInputs, utxo.Input)
+		if *utxo.Amount < totalOutputAmount {
+			totalOutputAmount -= *utxo.Amount
+		} else if *utxo.Amount == totalOutputAmount {
+			totalOutputAmount = 0
+			break
+		} else if *utxo.Amount > totalOutputAmount {
+			programHash, err := common.Uint168FromAddress(withdrawBank)
+			if err != nil {
+				return nil, err
+			}
+			change := &types.Output{
+				AssetID:     common.Uint256(base.SystemAssetId),
+				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
+				OutputLock:  uint32(0),
+				ProgramHash: *programHash,
+				Type:        types.OTNone,
+				Payload:     &outputpayload.DefaultOutput{},
+			}
+			txOutputs = append(txOutputs, change)
+			totalOutputAmount = 0
+			break
+		}
+	}
+	if totalOutputAmount > 0 {
+		return nil, errors.New("available token is not enough")
+	}
+
+	// Create redeem script
+	redeemScript, err := cs.CreateRedeemScript()
+	if err != nil {
+		return nil, err
+	}
+
+	txPayload := &payload.ReturnSideChainDepositCoin{
+		Height:              sideHeight,
+		GenesisBlockAddress: withdrawBank,
+		DepositTxs:          txHashes,
+	}
+
+	p := &program.Program{redeemScript, nil}
+
+	return &types.Transaction{
+		Version:    types.TxVersion09,
+		TxType:     types.ReturnSideChainDepositCoin,
+		Payload:    txPayload,
+		Attributes: []*types.Attribute{},
+		Inputs:     txInputs,
+		Outputs:    txOutputs,
+		Programs:   []*program.Program{p},
+		LockTime:   uint32(0),
+	}, nil
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransaction(
