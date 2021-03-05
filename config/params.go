@@ -17,6 +17,7 @@ var (
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
+			SmallCrossTransferThreshold:  100000000,
 			DepositAmount:                1000000,
 			MaxTxsPerWithdrawTx:          1000,
 			MainNode: &MainNodeConfig{
@@ -86,6 +87,7 @@ var (
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
+			SmallCrossTransferThreshold:  100000000,
 			DepositAmount:                1000000,
 			MaxTxsPerWithdrawTx:          1000,
 			MainNode: &MainNodeConfig{
@@ -156,6 +158,7 @@ var (
 			MaxConnections:               8,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
+			SmallCrossTransferThreshold:  100000000,
 			DepositAmount:                1000000,
 			MaxTxsPerWithdrawTx:          1000,
 			MainNode: &MainNodeConfig{

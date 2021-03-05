@@ -30,6 +30,10 @@ func (sc *SideChainImpl) GetKey() string {
 	return sc.Key
 }
 
+func (sc *SideChainImpl) GetCurrentConfig() *config.SideNodeConfig {
+	return sc.getCurrentConfig()
+}
+
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
 	sc.mux.Lock()
 	defer sc.mux.Unlock()

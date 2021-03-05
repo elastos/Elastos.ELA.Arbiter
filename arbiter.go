@@ -178,5 +178,8 @@ func main() {
 	log.Info("9. Start side chain account divide.")
 	go sideauxpow.SidechainAccountDivide()
 
+	log.Info("10. Start small crosschain transfer monitor.")
+	go arbitrator.MoniterSmallCrossTransfer()
+
 	select {}
 }
