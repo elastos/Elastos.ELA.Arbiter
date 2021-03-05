@@ -2,7 +2,10 @@ package cs
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"io"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -22,6 +25,7 @@ const (
 
 	TxDistribute      DistributeContentType = 0x00
 	IllegalDistribute DistributeContentType = 0x01
+	IllegalDepositTxs DistributeContentType = 0x02
 )
 
 type DistributedItem struct {
@@ -107,6 +111,7 @@ func (item *DistributedItem) GetSignedData() []byte {
 }
 
 func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
+	log.Info("item.signedData length ", len(item.signedData))
 	if len(item.signedData) != crypto.SignatureScriptLength*2 {
 		return nil, "ParseFeedbackSignedData invalid sign data length.", nil
 	}
@@ -175,9 +180,10 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	case TxDistribute:
 		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
 		if err = item.ItemContent.Deserialize(r); err != nil {
-			return errors.New("RawTransaction deserialization failed.")
+			return errors.New("RawTransaction deserialization failed." + err.Error())
 		}
 	case IllegalDistribute:
+
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
@@ -259,9 +265,9 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
 	newSign = append(newSign, signature...)
-
+	log.Info("appendSignature newSign ", len(newSign))
 	signedData := item.signedData
-
+	log.Info("appendSignature signedData ", len(item.signedData))
 	if !isFeedback {
 		if signedData == nil {
 			signedData = []byte{}
@@ -276,12 +282,30 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		sign := signedData[1:]
 		targetPk := item.TargetArbitratorPublicKey
 
-		blockHeight, err := item.ItemContent.CurrentBlockHeight()
+		//blockHeight, err := item.ItemContent.CurrentBlockHeight()
+		//if err != nil {
+		//	return err
+		//}
+		//groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(blockHeight)
+		//if err != nil {
+		//	return err
+		//}
+		//
+		//onDutyArbitratorPk, err :=
+		//	base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
+		//if err != nil {
+		//	return err
+		//}
+
+		height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
 		if err != nil {
+			log.Info("[appendSignature] rpc get current height failed")
 			return err
 		}
-		groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(blockHeight)
+
+		groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
 		if err != nil {
+			log.Info("[appendSignature] get arbitrator group info failed")
 			return err
 		}
 
@@ -292,7 +316,9 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		if !crypto.Equal(targetPk, onDutyArbitratorPk) {
-			return errors.New("Can not sign without current arbitrator's signing.")
+			tarP, _ := targetPk.EncodePoint(true)
+			onP, _ := onDutyArbitratorPk.EncodePoint(true)
+			return errors.New("Can not sign without current arbitrator's signing. onduty arbiter is not the targetPk , actual pubkey " + hex.EncodeToString(tarP) + " onduty publicKey " + hex.EncodeToString(onP))
 		}
 
 		buf := new(bytes.Buffer)
@@ -303,7 +329,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 
 		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
 		if err != nil {
-			return errors.New("Can not sign without current arbitrator's signing.")
+			return errors.New("Can not sign without current arbitrator's signing." + err.Error())
 		}
 	}
 
@@ -312,6 +338,6 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 	buf.Write(newSign)
 
 	item.signedData = buf.Bytes()
-
+	log.Info("appendSignature merge  ", item.signedData)
 	return nil
 }

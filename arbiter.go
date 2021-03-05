@@ -1,11 +1,6 @@
 package main
 
 import (
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
-
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
@@ -16,11 +11,14 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-
 	"github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/utils/elalog"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
 )
 
 var (
@@ -94,12 +92,9 @@ func init() {
 func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
 
-	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
+	for i, side := range arbitrator.GetSideChainManager().GetAllChains() {
 		monitor.AddListener(side)
-	}
-
-	for _, node := range config.Parameters.SideNodeList {
-		go monitor.SyncChainData(node)
+		go monitor.SyncChainData(config.Parameters.SideNodeList[i], side)
 	}
 }
 
@@ -177,6 +172,11 @@ func main() {
 
 	log.Info("9. Start side chain account divide.")
 	go sideauxpow.SidechainAccountDivide()
+
+	log.Info("10. Start small crosschain transfer monitor.")
+	go arbitrator.MoniterSmallCrossTransfer()
+
+	sidechain.Initialized = true
 
 	select {}
 }

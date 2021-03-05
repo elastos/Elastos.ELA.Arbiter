@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -141,6 +142,7 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 }
 
 func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
+	log.Info("call get current height ", config.IpAddress, config.HttpJsonPort)
 	result, err := CallAndUnmarshal("getblockcount", nil, config)
 	if err != nil {
 		return 0, err
@@ -227,6 +229,34 @@ func CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo, config *confi
 	return result, nil
 }
 
+func CheckIllegalDepositTx(checkTxs []common.Uint256, config *config.RpcConfig) (bool, error) {
+	resp, err := CallAndUnmarshal("getfaileddeposittransactions", nil,
+		config)
+	if err != nil {
+		return false, err
+	}
+
+	var ftxs []string
+	if err := Unmarshal(&resp, &ftxs); err != nil {
+		return false, err
+	}
+
+	for _, oriTx := range checkTxs {
+		var find bool
+		for _, compTx := range ftxs {
+			if oriTx.String() == compTx {
+				find = true
+				break
+			}
+		}
+		if !find {
+			return false, errors.New("Can not find failed tx")
+		}
+	}
+
+	return true, nil
+}
+
 func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*base.WithdrawTxInfo, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
@@ -245,6 +275,32 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 		return nil, err
 	}
 	return tx, nil
+}
+
+func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig, height uint32) (bool, error) {
+	hashBytes, err := common.HexStringToBytes(transactionHash)
+	if err != nil {
+		return false, err
+	}
+	hashStr := common.BytesToHexString(hashBytes)
+	log.Info("GetDepositTransactionInfoByHash hashStr ", hashStr, " height ", height)
+	result, err := CallAndUnmarshal("getfaileddeposittransactions", Param("height", height), config)
+	if err != nil {
+		return false, err
+	}
+
+	var fTxs []string
+	if err := Unmarshal(&result, &fTxs); err != nil {
+		return false, errors.New("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
+	}
+	log.Infof("Result %v", fTxs)
+	for _, tx := range fTxs {
+		if tx == hashStr {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
@@ -293,6 +349,20 @@ func GetWithdrawUTXOsByAmount(genesisAddress string, amount common.Fixed64, conf
 	}
 
 	return utxoInfos, nil
+}
+
+func GetReferenceAddress(txid string, index int, config *config.RpcConfig) (string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txid"] = txid
+	parameter["index"] = index
+	result, err := CallAndUnmarshal("getreferenceaddress", parameter, config)
+	if err != nil {
+		return "", err
+	}
+	if a, ok := result.(string); ok {
+		return a, nil
+	}
+	return "", errors.New("invalid data type")
 }
 
 func GetAmountByInputs(inputs []*types.Input, config *config.RpcConfig) (common.Fixed64, error) {
@@ -417,4 +487,28 @@ func Unmarshal(result interface{}, target interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, error) {
+	param := make(map[string]interface{})
+	param["txid"] = tx
+	resp, err := CallAndUnmarshalResponse("getrawtransaction", param,
+		config)
+	if err != nil {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc " + err.Error())
+	}
+	rawTx, ok := resp.Result.(string)
+	if !ok {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Getrawtransaction rpc result not correct ")
+	}
+	buf, err := hex.DecodeString(rawTx)
+	if err != nil {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Invalid data from GetSmallCrossTransferTxs " + err.Error())
+	}
+	var txn types.Transaction
+	err = txn.Deserialize(bytes.NewReader(buf))
+	if err != nil {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Decode transaction error " + err.Error())
+	}
+	return &txn, nil
 }

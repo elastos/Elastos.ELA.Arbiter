@@ -2,6 +2,7 @@ package arbitrator
 
 import (
 	"bytes"
+	"encoding/hex"
 	"path/filepath"
 	"sync"
 	"time"
@@ -44,10 +45,15 @@ type Arbitrator interface {
 
 	//deposit
 	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
+	SendSmallCrossDepositTransactions(spvTxs []*SmallCrossTransaction, genesisAddress string)
 
 	//withdraw
 	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
 		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+	//failed deposit
+	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
+		sideChain SideChain, mcFunc MainChainFunc, sideHeight uint32) *types.Transaction
+
 	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
@@ -125,6 +131,23 @@ func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
+}
+
+func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
+	sideChain SideChain, mcFunc MainChainFunc, sideHeight uint32) *types.Transaction {
+	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
+		sideChain, withdrawTxs, mcFunc, sideHeight)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+	log.Info("ftx %v", ftx)
+	if ftx == nil {
+		log.Warn("Created an empty withdraw transaction.")
+		return nil
+	}
+
+	return ftx
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
@@ -206,6 +229,28 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 	}
 }
 
+func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCrossTransaction, genesisAddress string) {
+	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+	if !ok {
+		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		return
+	}
+	for _, tx := range knownTx {
+		buf := new(bytes.Buffer)
+		tx.MainTx.Serialize(buf)
+		rawTx := hex.EncodeToString(buf.Bytes())
+		signature := tx.Signature
+		hash := tx.MainTx.Hash().String()
+		if sideChain.IsSendSmallCrxTx(hash) {
+			continue
+		}
+		_, err := sideChain.SendSmallCrossTransaction(rawTx, signature, hash)
+		if err != nil {
+			log.Info("Send deposit transaction Error", err.Error())
+		}
+	}
+}
+
 func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *types.Transaction) {
 	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 	if err != nil {
@@ -276,7 +321,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
 		ChainParams:    params,
 		PermanentPeers: config.Parameters.MainNode.SpvSeedList,
-		NodeVersion : config.NodePrefix + config.Version,
+		NodeVersion:    config.NodePrefix + config.Version,
 	}
 
 	var err error
