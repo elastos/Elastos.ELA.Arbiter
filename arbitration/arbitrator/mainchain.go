@@ -21,6 +21,7 @@ type MainChain interface {
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
+	BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs) error
 	ReceiveProposalFeedback(content []byte) error
 
 	SyncMainChainCachedTxs() error

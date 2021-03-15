@@ -181,5 +181,8 @@ func main() {
 	log.Info("10. Start small crosschain transfer monitor.")
 	go arbitrator.MoniterSmallCrossTransfer()
 
+	log.Info("11. Start failed deposit transfer monitor.")
+	go arbitrator.MoniterFailedDepositTransfer()
+
 	select {}
 }

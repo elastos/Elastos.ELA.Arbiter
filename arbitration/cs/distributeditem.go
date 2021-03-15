@@ -12,6 +12,7 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -22,6 +23,7 @@ const (
 
 	TxDistribute      DistributeContentType = 0x00
 	IllegalDistribute DistributeContentType = 0x01
+	IllegalDepositTxs DistributeContentType = 0x02
 )
 
 type DistributedItem struct {
@@ -177,7 +179,13 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		if err = item.ItemContent.Deserialize(r); err != nil {
 			return errors.New("RawTransaction deserialization failed.")
 		}
+	case IllegalDepositTxs:
+		item.ItemContent = &IllegalDepositTx{DepositTxs: new(payload.IllegalDepositTxs)}
+		if err = item.ItemContent.Deserialize(r); err != nil {
+			return errors.New("RawTransaction deserialization failed.")
+		}
 	case IllegalDistribute:
+
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")

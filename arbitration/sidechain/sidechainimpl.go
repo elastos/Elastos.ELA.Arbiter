@@ -165,6 +165,14 @@ func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDat
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
 }
 
+func (sc *SideChainImpl) CheckIllegalDepositTx(depositTxs []common.Uint256) (bool, error) {
+	return rpc.CheckIllegalDepositTx(depositTxs, sc.CurrentConfig.Rpc)
+}
+
+func (sc *SideChainImpl) SendFailedDepositTxs(txnHashes []common.Uint256, genesisBlockAddress string) error {
+	return sc.CreateAndBroadcastFailedDepositTxsProposal(txnHashes, genesisBlockAddress)
+}
+
 func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	log.Info("[SendCachedWithdrawTxs] start")
 	defer log.Info("[SendCachedWithdrawTxs] end")
@@ -256,6 +264,24 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
 	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
+
+	return nil
+}
+
+func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(txnHashes []common.Uint256, genesisBlockAddress string) error {
+
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+
+	currentHeight := store.DbCache.SideChainStore.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
+
+	illegalDtxs := &payload.IllegalDepositTxs{
+		Height:              currentHeight + 1,
+		GenesisBlockAddress: genesisBlockAddress,
+		DepositTxs:          txnHashes,
+	}
+
+	currentArbitrator.BroadcastIllegalDepositTxsData(illegalDtxs)
+	log.Info("[CreateAndBroadcastFailedDepositTxsProposal] transactions count: ", len(txnHashes))
 
 	return nil
 }

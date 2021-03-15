@@ -53,6 +53,8 @@ type Arbitrator interface {
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
+	BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs)
+
 	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
 
@@ -219,6 +221,12 @@ func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *payload.SidechainI
 	}
 }
 
+func (ar *ArbitratorImpl) BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs) {
+	if err := ar.mainChainImpl.BroadcastIllegalDepositTxsData(data); err != nil {
+		log.Warn(err.Error())
+	}
+}
+
 func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error) {
 	content, err := ar.convertToTransactionContent(txn)
 	if err != nil {
@@ -276,7 +284,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
 		ChainParams:    params,
 		PermanentPeers: config.Parameters.MainNode.SpvSeedList,
-		NodeVersion : config.NodePrefix + config.Version,
+		NodeVersion:    config.NodePrefix + config.Version,
 	}
 
 	var err error

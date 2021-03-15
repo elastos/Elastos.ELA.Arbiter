@@ -115,6 +115,18 @@ func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.Si
 	return nil
 }
 
+func (dns *DistributedNodeServer) BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs) error {
+
+	proposal, err := dns.generateDistributedProposal(&IllegalDepositTx{DepositTxs: data}, &DistrubutedItemFuncImpl{})
+	if err != nil {
+		return err
+	}
+
+	dns.sendToArbitrator(proposal)
+
+	return nil
+}
+
 func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.DistributedContent, itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
@@ -131,6 +143,10 @@ func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.D
 		ItemContent:                 itemContent,
 		TargetArbitratorPublicKey:   currentArbitrator.GetPublicKey(),
 		TargetArbitratorProgramHash: programHash,
+	}
+
+	if _, ok := itemContent.(*IllegalDepositTx); ok {
+		transactionItem.Type = IllegalDepositTxs
 	}
 
 	if err = transactionItem.InitScript(currentArbitrator); err != nil {
