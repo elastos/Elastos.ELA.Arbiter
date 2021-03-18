@@ -14,7 +14,7 @@ func MoniterFailedDepositTransfer() {
 
 			currentArbitrator, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
 			if !ok {
-				log.Error("Unable to get current arbiter")
+				log.Error("[MoniterFailedDepositTransfer] Unable to get current arbiter")
 				break
 			}
 
@@ -25,30 +25,30 @@ func MoniterFailedDepositTransfer() {
 					resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", nil,
 						cfg.Rpc)
 					if err != nil {
-						log.Errorf("Unable to call getfaileddeposittransactions rpc ")
+						log.Errorf("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ")
 						break
 					}
 
 					var failedTxs []string
 					if err := rpc.Unmarshal(&resp, &failedTxs); err != nil {
-						log.Error("Unmarshal getfaileddeposittransactions responce error")
+						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
 						break
 					}
 
 					if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-						log.Warn("[FailedWithdrawTransfer] i am not onduty")
+						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
 						return
 					}
 
 					failedTxsUint256, err := ToUint256(failedTxs)
 					if err != nil {
-						log.Errorf("Unable to call ToUint256 ")
+						log.Errorf("[MoniterFailedDepositTransfer] Unable to call ToUint256 ")
 						break
 					}
 
 					err = curr.SendFailedDepositTxs(failedTxsUint256, cfg.GenesisBlockAddress)
 					if err != nil {
-						log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
+						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed")
 						break
 					}
 				}

@@ -18,7 +18,7 @@ func MoniterSmallCrossTransfer() {
 			resp, err := rpc.CallAndUnmarshal("getsmallcrosstransfertxs", nil,
 				config.Parameters.MainNode.Rpc)
 			if err != nil {
-				log.Errorf("Unable to call GetSmallCrossTransferTxs rpc ")
+				log.Errorf("[Small-Transfer] Unable to call GetSmallCrossTransferTxs rpc ")
 				break
 			}
 
@@ -28,26 +28,26 @@ func MoniterSmallCrossTransfer() {
 
 			s := SmallCrossTransferTx{}
 			if err := rpc.Unmarshal(&resp, &s); err != nil {
-				log.Error("Unmarshal GetSmallCrossTransferTxs responce error")
+				log.Error("[Small-Transfer] Unmarshal GetSmallCrossTransferTxs responce error")
 				break
 			}
 
 			currentArbitrator, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
 			if !ok {
-				log.Error("Unable to get current arbiter")
+				log.Error("[Small-Transfer] Unable to get current arbiter")
 				break
 			}
 			var txs []*base.MainChainTransaction
 			for _, r := range s.RawTx {
 				buf, err := hex.DecodeString(r)
 				if err != nil {
-					log.Error("Invalid data from GetSmallCrossTransferTxs")
+					log.Error("[Small-Transfer] Invalid data from GetSmallCrossTransferTxs")
 					break
 				}
 				var txn types.Transaction
 				err = txn.Deserialize(bytes.NewReader(buf))
 				if err != nil {
-					log.Error("Decode transaction error", err.Error())
+					log.Error("[Small-Transfer] Decode transaction error", err.Error())
 					break
 				}
 				xAddr := txn.Outputs[0].String()
