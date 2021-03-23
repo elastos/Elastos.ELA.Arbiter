@@ -85,6 +85,23 @@ func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, 
 	return response, nil
 }
 
+func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte) (rpc.Response, error) {
+	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
+	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", signature).Add("rawTx", tx), sc.CurrentConfig.Rpc)
+	if err != nil {
+		return rpc.Response{}, err
+	}
+	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction finished")
+
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else {
+		log.Info("response:", response)
+	}
+
+	return response, nil
+}
+
 func (sc *SideChainImpl) GetAccountAddress() string {
 	return sc.GetKey()
 }

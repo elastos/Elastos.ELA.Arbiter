@@ -66,27 +66,29 @@ func MoniterSmallCrossTransfer() {
 				}
 			}
 
-			if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-				log.Warn("[Small-Transfer] i am not onduty")
-				return
-			}
-
-			sendingTxs := make(map[string][]*base.SpvTransaction, 0)
+			sendingTxs := make(map[string][]*base.SmallCrossTransaction, 0)
 			for i := 0; i < len(txs); i++ {
-				spvTxs, ok := sendingTxs[txs[i].GenesisBlockAddress]
+				knownTxs, ok := sendingTxs[txs[i].GenesisBlockAddress]
 				if !ok {
-					spvTxs = make([]*base.SpvTransaction, 0)
-					sendingTxs[txs[i].GenesisBlockAddress] = spvTxs
+					knownTxs = make([]*base.SmallCrossTransaction, 0)
+					sendingTxs[txs[i].GenesisBlockAddress] = knownTxs
 				}
-				spvTxs = append(spvTxs, &base.SpvTransaction{MainChainTransaction: txs[i].Transaction, Proof: txs[i].Proof})
+				buf := new(bytes.Buffer)
+				txs[i].Transaction.Serialize(buf)
+				signature, err := currentArbitrator.Sign(buf.Bytes())
+				if err != nil {
+					log.Error("[Small-Transfer] currentArbiter sign error ", err.Error())
+					break
+				}
+				knownTxs = append(knownTxs, &base.SmallCrossTransaction{MainTx: txs[i].Transaction, Signature: signature})
 			}
 
-			for xAddr, spvTxs := range sendingTxs {
-				log.Info("[Small-Transfer] find small deposit transaction, create and send deposit transaction, size of txs:", len(spvTxs))
-				for index, spvTx := range spvTxs {
-					log.Info("[Small-Transfer] tx hash[", index, "]:", spvTx.MainChainTransaction.Hash().String())
+			for xAddr, knownTxs := range sendingTxs {
+				log.Info("[Small-Transfer] find small deposit transaction, create and send deposit transaction, size of txs:", len(knownTxs))
+				for index, knownTx := range knownTxs {
+					log.Info("[Small-Transfer] tx hash[", index, "]:", knownTx.MainTx.Hash().String())
 				}
-				ArbitratorGroupSingleton.GetCurrentArbitrator().SendDepositTransactions(spvTxs, xAddr)
+				ArbitratorGroupSingleton.GetCurrentArbitrator().SendSmallCrossDepositTransactions(knownTxs, xAddr)
 			}
 		}
 	}

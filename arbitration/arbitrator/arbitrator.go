@@ -2,6 +2,7 @@ package arbitrator
 
 import (
 	"bytes"
+	"encoding/hex"
 	"path/filepath"
 	"sync"
 	"time"
@@ -44,6 +45,7 @@ type Arbitrator interface {
 
 	//deposit
 	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
+	SendSmallCrossDepositTransactions(spvTxs []*SmallCrossTransaction, genesisAddress string)
 
 	//withdraw
 	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
@@ -204,6 +206,24 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 		err = store.FinishedTxsDbCache.AddSucceedDepositTxs(succeedMainChainTxHashes, succeedGenesisAddresses)
 		if err != nil {
 			log.Warn("Add succeed deposit transaction to finished db failed")
+		}
+	}
+}
+
+func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCrossTransaction, genesisAddress string) {
+	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+	if !ok {
+		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		return
+	}
+	for _, tx := range knownTx {
+		buf := new(bytes.Buffer)
+		tx.MainTx.Serialize(buf)
+		rawTx := hex.EncodeToString(buf.Bytes())
+		signature := tx.Signature
+		_, err := sideChain.SendSmallCrossTransaction(rawTx, signature)
+		if err != nil {
+			log.Info("Send deposit transaction Error", err.Error())
 		}
 	}
 }

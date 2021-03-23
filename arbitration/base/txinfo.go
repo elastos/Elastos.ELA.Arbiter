@@ -29,6 +29,11 @@ type SpvTransaction struct {
 	Proof                *bloom.MerkleProof
 }
 
+type SmallCrossTransaction struct {
+	MainTx    *types.Transaction
+	Signature []byte
+}
+
 type MainChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
