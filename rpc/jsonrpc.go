@@ -343,6 +343,20 @@ func GetWithdrawUTXOsByAmount(genesisAddress string, amount common.Fixed64, conf
 	return utxoInfos, nil
 }
 
+func GetReferenceAddress(txid string, index int, config *config.RpcConfig) (string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txid"] = txid
+	parameter["index"] = index
+	result, err := CallAndUnmarshal("getreferenceaddress", parameter, config)
+	if err != nil {
+		return "", err
+	}
+	if a, ok := result.(string); ok {
+		return a, nil
+	}
+	return "", errors.New("invalid data type")
+}
+
 func GetAmountByInputs(inputs []*types.Input, config *config.RpcConfig) (common.Fixed64, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteVarUint(buf, uint64(len(inputs))); err != nil {

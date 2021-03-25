@@ -116,6 +116,8 @@ func parseUserWithdrawTransactions(txs []*base.WithdrawTx) (
 
 func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.Fixed64) (
 	*base.DepositInfo, []common.Uint256) {
+
+	log.Info("Tx targetaddress 1111 ", txs[0].DepositInfo.DepositAssets[0].TargetAddress)
 	result := new(base.DepositInfo)
 	var sideChainTxHashes []common.Uint256
 	for _, tx := range txs {
@@ -131,13 +133,14 @@ func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.
 			*a.Amount += *asset.Amount + fee
 			*a.CrossChainAmount += *asset.CrossChainAmount
 		} else {
-			existAsset[asset.TargetAddress] = a
+			existAsset[asset.TargetAddress] = *asset
 		}
 	}
 	returnResult := new(base.DepositInfo)
 	for _, v := range existAsset {
 		returnResult.DepositAssets = append(returnResult.DepositAssets, &v)
 	}
+	log.Info("Tx targetaddress 222 ", returnResult.DepositAssets[0].TargetAddress)
 	return returnResult, sideChainTxHashes
 }
 
@@ -146,6 +149,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
+	log.Info("withdrawBank address",withdrawBank)
 	exchangeRate, err := sideChain.GetExchangeRate()
 	if err != nil {
 		return nil, err
@@ -158,6 +162,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
 	for _, withdraw := range withdrawInfo.DepositAssets {
+		log.Info(333,withdraw.TargetAddress,withdraw.Amount,withdraw.CrossChainAmount)
 		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
 			return nil, err
@@ -187,8 +192,10 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 			totalOutputAmount = 0
 			break
 		} else if *utxo.Amount > totalOutputAmount {
+			log.Info("here",withdrawBank)
 			programHash, err := common.Uint168FromAddress(withdrawBank)
 			if err != nil {
+				log.Info("here")
 				return nil, err
 			}
 			change := &types.Output{

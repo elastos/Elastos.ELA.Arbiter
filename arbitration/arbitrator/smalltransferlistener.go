@@ -15,6 +15,7 @@ func MoniterSmallCrossTransfer() {
 	for {
 		select {
 		case <-time.After(time.Second * 1):
+			log.Info("Start Monitor Small Cross Transfer")
 			resp, err := rpc.CallAndUnmarshal("getsmallcrosstransfertxs", nil,
 				config.Parameters.MainNode.Rpc)
 			if err != nil {
@@ -50,7 +51,11 @@ func MoniterSmallCrossTransfer() {
 					log.Error("[Small-Transfer] Decode transaction error", err.Error())
 					break
 				}
-				xAddr := txn.Outputs[0].String()
+				xAddr, err := txn.Outputs[0].ProgramHash.ToAddress()
+				if err != nil {
+					log.Error("[Small-Transfer] get xaddress failed ", err.Error())
+					break
+				}
 				side, ok := currentArbitrator.GetChain(xAddr)
 				if !ok {
 					log.Error("[Small-Transfer] unrecognized xAddr", xAddr)
@@ -81,6 +86,7 @@ func MoniterSmallCrossTransfer() {
 					break
 				}
 				knownTxs = append(knownTxs, &base.SmallCrossTransaction{MainTx: txs[i].Transaction, Signature: signature})
+				sendingTxs[txs[i].GenesisBlockAddress] = knownTxs
 			}
 
 			for xAddr, knownTxs := range sendingTxs {
@@ -90,6 +96,7 @@ func MoniterSmallCrossTransfer() {
 				}
 				ArbitratorGroupSingleton.GetCurrentArbitrator().SendSmallCrossDepositTransactions(knownTxs, xAddr)
 			}
+			log.Info("End Monitor Small Cross Transfer")
 		}
 	}
 

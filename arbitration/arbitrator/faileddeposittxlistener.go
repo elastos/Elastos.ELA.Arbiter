@@ -3,7 +3,6 @@ package arbitrator
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA/common"
 	"time"
 )
@@ -11,8 +10,8 @@ import (
 func MoniterFailedDepositTransfer() {
 	for {
 		select {
-		case <-time.After(time.Second * 1):
-
+		case <-time.After(time.Second * 30):
+			log.Info("Start Monitor Failed Deposit Transfer")
 			currentArbitrator, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
 			if !ok {
 				log.Error("[MoniterFailedDepositTransfer] Unable to get current arbiter")
@@ -23,34 +22,70 @@ func MoniterFailedDepositTransfer() {
 				cfg := curr.GetCurrentConfig()
 				if cfg.SupportQuickRecharge {
 
-					resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", nil,
-						cfg.Rpc)
-					if err != nil {
-						log.Errorf("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ")
-						break
-					}
+					//resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", nil,
+					//	cfg.Rpc)
+					//if err != nil {
+					//	log.Errorf("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ")
+					//	break
+					//}
 
-					// 这个depositTx需要组合，1个交易可能有多个depositAsset对应多条链转账，去除掉不是支持SupportQuickRecharge的但是
-					// 因为我们本身就是从支持quickrecharge的链查询的，所以应该没有问题，然后就是合并，多个交易可能对应的target地址是一样的，如果是这样就需要
-					// 合并为同一个交易发送。
 					var failedTxs []base.FailedDepositTx
-					if err := rpc.Unmarshal(&resp, &failedTxs); err != nil {
-						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
-						break
-					}
+					//if err := rpc.Unmarshal(&resp, &failedTxs); err != nil {
+					//	log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
+					//	break
+					//}
+
+					//Add Test Data
+					txid := "de5a9ce6542a7ff603c6cbe38b31f7115b8e3e0a6d76da16630f13c27154ac3d"
+					amount := common.Fixed64(1000001000)
+					cross := common.Fixed64(1000000000)
+					id, _ := common.Uint256FromHexString(txid)
+					failedTxs = append(failedTxs, base.FailedDepositTx{
+						Txid: id,
+						DepositInfo: &base.DepositInfo{
+							DepositAssets: []*base.DepositAssets{
+								{
+									TargetAddress:    "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
+									Amount:           &amount,
+									CrossChainAmount: &cross,
+								},
+							},
+						},
+					})
+
+					//fullfil target address
+					//for _ , ftx := range failedTxs {
+					//	cachedTx , err := store.DbCache.MainChainStore.GetMainChainTxsFromHashes([]string{ftx.Txid.String()},cfg.GenesisBlockAddress)
+					//	if err != nil || len(cachedTx) == 0 {
+					//		log.Error("[MoniterFailedDepositTransfer] warning can not find cached tx ")
+					//		return
+					//	}
+					//	referIndex := cachedTx[0].MainChainTransaction.Inputs[0].Previous.Index
+					//	referTxid := cachedTx[0].MainChainTransaction.Inputs[0].Previous.TxID
+					//	main := &MainChainFuncImpl{}
+					//	targetAddress ,err := main.GetReferenceAddress(referTxid.String(), int(referIndex))
+					//	if err != nil {
+					//		log.Error("[MoniterFailedDepositTransfer] get target address failed " , err.Error())
+					//		return
+					//	}
+					//	for _, as :=range ftx.DepositInfo.DepositAssets {
+					//		as.TargetAddress = targetAddress
+					//	}
+					//}
 
 					if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
-						return
+						break
 					}
 
-					err = curr.SendFailedDepositTxs(failedTxs)
+					err := curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
-						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed")
+						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed" , err.Error())
 						break
 					}
 				}
 			}
+			log.Info("End Monitor Failed Deposit Transfer")
 		}
 	}
 

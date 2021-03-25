@@ -28,17 +28,24 @@ func (d *TxDistributedContent) InitSign(newSign []byte) error {
 }
 
 func (d *TxDistributedContent) Submit() error {
-	withdrawPayload, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
-	if !ok {
-		return errors.New("received proposal feed back but withdraw transaction has invalid payload")
-	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	resp, err := currentArbitrator.SendWithdrawTransaction(d.Tx)
 
 	var transactionHashes []string
-	for _, hash := range withdrawPayload.SideChainTransactionHashes {
-		transactionHashes = append(transactionHashes, hash.String())
+	switch pl := d.Tx.Payload.(type) {
+	case *payload.WithdrawFromSideChain:
+		log.Info("Submit WithdrawFromSideChain transaction")
+		for _, hash := range pl.SideChainTransactionHashes {
+			transactionHashes = append(transactionHashes, hash.String())
+		}
+	case *payload.IllegalDepositTxs:
+		log.Info("Submit IllegalDepositTxs transaction")
+		for _, hash := range pl.DepositTxs {
+			transactionHashes = append(transactionHashes, hash.String())
+		}
+	default:
+		return errors.New("received proposal feed back but withdraw transaction has invalid payload")
 	}
 
 	if err != nil || resp.Error != nil && resp.Code != MCErrDoubleSpend {
@@ -338,25 +345,36 @@ func checkIllegalDepositTxPayload(txn *types.Transaction,
 	if err != nil || len(sideChainTxs) != len(payloadIllegalDeposit.DepositTxs) {
 		log.Info("[checkIllegalDepositTxPayload], need to get side chain transaction from rpc")
 		for _, txHash := range payloadIllegalDeposit.DepositTxs {
-			tx, err := sideChain.GetIllegalDeositTransaction(txHash.String())
-			if err != nil {
-				return errors.New("[checkIllegalDepositTxPayload] failed, unknown side chain transactions")
+			//tx, err := sideChain.GetIllegalDeositTransaction(txHash.String())
+			//if err != nil {
+			//	return errors.New("[checkIllegalDepositTxPayload] failed, unknown side chain transactions")
+			//}
+			//
+			//txID, err := common.Uint256FromHexString(tx.TxID)
+			//if err != nil {
+			//	return errors.New("[checkIllegalDepositTxPayload] failed, invalid txID")
+			//}
+			log.Info("[checkIllegalDepositTxPayload] , txHash  , key ", txHash, sideChain.GetKey())
+			tx := &base.DepositTxsInfo{
+				TxID: "de5a9ce6542a7ff603c6cbe38b31f7115b8e3e0a6d76da16630f13c27154ac3d",
+				CrossChainAssets: []*base.DepositOutputInfo{
+					{
+						CrossChainAddress: "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
+						CrossChainAmount:  "1000000000",
+						OutputAmount:      "1000001000",
+					},
+				},
 			}
-
-			txID, err := common.Uint256FromHexString(tx.TxID)
-			if err != nil {
-				return errors.New("[checkIllegalDepositTxPayload] failed, invalid txID")
-			}
-
+			txID, _ := common.Uint256FromHexString(tx.TxID)
 			var depositAssets []*base.DepositAssets
 			for _, cs := range tx.CrossChainAssets {
 				csAmount, err := common.StringToFixed64(cs.CrossChainAmount)
 				if err != nil {
-					return errors.New("[checkWithdrawTransaction] invalid cross chain amount in tx")
+					return errors.New("[checkIllegalDepositTxPayload] invalid cross chain amount in tx")
 				}
 				opAmount, err := common.StringToFixed64(cs.OutputAmount)
 				if err != nil {
-					return errors.New("[checkWithdrawTransaction] invalid output amount in tx")
+					return errors.New("[checkIllegalDepositTxPayload] invalid output amount in tx")
 				}
 				depositAssets = append(depositAssets, &base.DepositAssets{
 					TargetAddress:    cs.CrossChainAddress,
@@ -468,5 +486,7 @@ func checkIllegalDepositTxPayload(txn *types.Transaction,
 		log.Info("oriOutputAmount-", oriOutputAmount, " withdrawOutputAmount-", withdrawOutputAmount)
 		return errors.New("check withdraw transaction failed, exchange rate verify failed")
 	}
+
+	log.Info("[checkIllegalDepositTxPayload] success")
 	return nil
 }

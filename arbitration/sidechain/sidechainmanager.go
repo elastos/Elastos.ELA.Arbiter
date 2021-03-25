@@ -3,6 +3,7 @@ package sidechain
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 )
@@ -76,6 +77,7 @@ func Init() {
 		}
 
 		sideChainManager.AddChain(sideConfig.GenesisBlockAddress, side)
+		log.Infof("Init Sidechain config ", side.Key , side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GenesisBlock)
 	}
 	currentArbitrator.SetSideChainManager(sideChainManager)
 }

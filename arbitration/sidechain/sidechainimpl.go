@@ -2,6 +2,7 @@ package sidechain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"sync"
 
@@ -87,7 +88,7 @@ func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, 
 
 func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte) (rpc.Response, error) {
 	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", signature).Add("rawTx", tx), sc.CurrentConfig.Rpc)
+	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", hex.EncodeToString(signature)).Add("rawTx", tx), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
@@ -306,6 +307,8 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			targetTransactions = append(targetTransactions, &tx)
 		}
 	}
+
+	log.Info("Tx targetaddress ", failedTxs[0].DepositInfo.DepositAssets[0].TargetAddress)
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	var wTx *types.Transaction
 	var targetIndex int

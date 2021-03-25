@@ -40,6 +40,7 @@ type MainChainFunc interface {
 		fixed64 common.Fixed64) ([]*store.AddressUTXO, error)
 	GetMainNodeCurrentHeight() (uint32, error)
 	GetAmountByInputs(inputs []*types.Input) (common.Fixed64, error)
+	GetReferenceAddress(txid string, index int) (string, error)
 }
 
 type MainChainFuncImpl struct {
@@ -125,4 +126,12 @@ func (dbFunc *MainChainFuncImpl) GetAmountByInputs(
 		return 0, err
 	}
 	return amount, nil
+}
+
+func (dbFunc *MainChainFuncImpl) GetReferenceAddress(txid string, index int) (string, error) {
+	addr, err := rpc.GetReferenceAddress(txid, index, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return "", err
+	}
+	return addr, nil
 }
