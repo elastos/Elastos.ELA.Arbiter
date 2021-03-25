@@ -16,7 +16,7 @@ type AccountListener interface {
 	UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256)
 
 	SendCachedWithdrawTxs()
-	SendFailedDepositTxs(txnHashes []common.Uint256, genesisBlockAddress string) error
+	SendFailedDepositTxs(failedTxs []FailedDepositTx) error
 }
 
 type AccountMonitor interface {

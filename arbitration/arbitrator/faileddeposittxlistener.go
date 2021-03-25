@@ -1,6 +1,7 @@
 package arbitrator
 
 import (
+	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA/common"
@@ -29,7 +30,10 @@ func MoniterFailedDepositTransfer() {
 						break
 					}
 
-					var failedTxs []string
+					// 这个depositTx需要组合，1个交易可能有多个depositAsset对应多条链转账，去除掉不是支持SupportQuickRecharge的但是
+					// 因为我们本身就是从支持quickrecharge的链查询的，所以应该没有问题，然后就是合并，多个交易可能对应的target地址是一样的，如果是这样就需要
+					// 合并为同一个交易发送。
+					var failedTxs []base.FailedDepositTx
 					if err := rpc.Unmarshal(&resp, &failedTxs); err != nil {
 						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
 						break
@@ -40,13 +44,7 @@ func MoniterFailedDepositTransfer() {
 						return
 					}
 
-					failedTxsUint256, err := ToUint256(failedTxs)
-					if err != nil {
-						log.Errorf("[MoniterFailedDepositTransfer] Unable to call ToUint256 ")
-						break
-					}
-
-					err = curr.SendFailedDepositTxs(failedTxsUint256, cfg.GenesisBlockAddress)
+					err = curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
 						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed")
 						break

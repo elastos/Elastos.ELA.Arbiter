@@ -50,6 +50,10 @@ type Arbitrator interface {
 	//withdraw
 	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
 		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+	//failed deposit
+	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
+		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+
 	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
@@ -129,6 +133,23 @@ func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 
 func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
+}
+
+func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
+	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
+
+	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+	if ftx == nil {
+		log.Warn("Created an empty withdraw transaction.")
+		return nil
+	}
+
+	return ftx
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,

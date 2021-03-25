@@ -68,6 +68,7 @@ var (
 			CRClaimDPOSNodeStartHeight:  532650,
 			NewP2PProtocolVersionHeight: 532650,
 			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			ReturnDepositTransactionFee: 100,     //todo fix me
 		},
 	}
 
@@ -138,6 +139,7 @@ var (
 			CRClaimDPOSNodeStartHeight:  646700,
 			NewP2PProtocolVersionHeight: 646700,
 			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			ReturnDepositTransactionFee: 100,     //todo fix me
 		},
 	}
 

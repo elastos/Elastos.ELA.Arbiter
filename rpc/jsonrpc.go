@@ -275,6 +275,26 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	return tx, nil
 }
 
+func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*base.DepositTxsInfo, error) {
+	hashBytes, err := common.HexStringToBytes(transactionHash)
+	if err != nil {
+		return nil, err
+	}
+	reversedHashBytes := common.BytesReverse(hashBytes)
+	reversedHashStr := common.BytesToHexString(reversedHashBytes)
+
+	result, err := CallAndUnmarshal("getdeposittransaction", Param("txid", reversedHashStr), config)
+	if err != nil {
+		return nil, err
+	}
+
+	tx := &base.DepositTxsInfo{}
+	if err := Unmarshal(&result, tx); err != nil {
+		return nil, err
+	}
+	return tx, nil
+}
+
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	parameter := make(map[string]interface{})
 	parameter["txs"] = txs

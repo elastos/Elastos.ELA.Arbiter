@@ -74,6 +74,7 @@ type Configuration struct {
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
 	RpcConfiguration             RpcConfiguration `json:"RpcConfiguration"`
 	DPoSNetAddress               string           `json:"DPoSNetAddress"`
+	ReturnDepositTransactionFee  common.Fixed64   `json:ReturnDepositTransactionFee`
 }
 
 type RpcConfig struct {
@@ -94,14 +95,14 @@ type MainNodeConfig struct {
 type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
-	ExchangeRate        float64 `json:"ExchangeRate"`
-	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
-	GenesisBlock        string  `json:"GenesisBlock"`
-	KeystoreFile        string  `json:"KeystoreFile"`
-	MiningAddr          string  `json:"MiningAddr"`
-	PayToAddr           string  `json:"PayToAddr"`
-	PowChain            bool    `json:"PowChain"`
-	SyncStartHeight     uint32  `json:"SyncStartHeight"`
+	ExchangeRate         float64 `json:"ExchangeRate"`
+	GenesisBlockAddress  string  `json:"GenesisBlockAddress"`
+	GenesisBlock         string  `json:"GenesisBlock"`
+	KeystoreFile         string  `json:"KeystoreFile"`
+	MiningAddr           string  `json:"MiningAddr"`
+	PayToAddr            string  `json:"PayToAddr"`
+	PowChain             bool    `json:"PowChain"`
+	SyncStartHeight      uint32  `json:"SyncStartHeight"`
 	SupportQuickRecharge bool    `json:"SupportQuickRecharge"`
 }
 

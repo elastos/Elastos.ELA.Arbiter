@@ -178,6 +178,15 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 	return txInfo, nil
 }
 
+func (sc *SideChainImpl) GetIllegalDeositTransaction(txHash string) (*base.DepositTxsInfo, error) {
+	txInfo, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	return txInfo, nil
+}
+
 func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error) {
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
 }
@@ -186,8 +195,8 @@ func (sc *SideChainImpl) CheckIllegalDepositTx(depositTxs []common.Uint256) (boo
 	return rpc.CheckIllegalDepositTx(depositTxs, sc.CurrentConfig.Rpc)
 }
 
-func (sc *SideChainImpl) SendFailedDepositTxs(txnHashes []common.Uint256, genesisBlockAddress string) error {
-	return sc.CreateAndBroadcastFailedDepositTxsProposal(txnHashes, genesisBlockAddress)
+func (sc *SideChainImpl) SendFailedDepositTxs(tx []base.FailedDepositTx) error {
+	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx)
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() {
@@ -285,20 +294,43 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	return nil
 }
 
-func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(txnHashes []common.Uint256, genesisBlockAddress string) error {
+func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []base.FailedDepositTx) error {
 
-	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-
-	currentHeight := store.DbCache.SideChainStore.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
-
-	illegalDtxs := &payload.IllegalDepositTxs{
-		Height:              currentHeight + 1,
-		GenesisBlockAddress: genesisBlockAddress,
-		DepositTxs:          txnHashes,
+	if len(failedTxs) == 0 {
+		return nil
 	}
 
-	currentArbitrator.BroadcastIllegalDepositTxsData(illegalDtxs)
-	log.Info("[CreateAndBroadcastFailedDepositTxsProposal] transactions count: ", len(txnHashes))
+	targetTransactions := make([]*base.FailedDepositTx, 0)
+	for _, tx := range failedTxs {
+		if len(tx.DepositInfo.DepositAssets) != 0 {
+			targetTransactions = append(targetTransactions, &tx)
+		}
+	}
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	var wTx *types.Transaction
+	var targetIndex int
+	for i := 0; i < len(targetTransactions); {
+		i += 100
+		targetIndex = len(targetTransactions)
+		if targetIndex > i {
+			targetIndex = i
+		}
+
+		tx := currentArbitrator.CreateFailedDepositTransaction(
+			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
+		if tx == nil {
+			continue
+		}
+		if tx.GetSize() < int(pact.MaxBlockContextSize) {
+			wTx = tx
+		}
+	}
+
+	if wTx == nil {
+		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
+	}
+	currentArbitrator.BroadcastWithdrawProposal(wTx)
+	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
 
 	return nil
 }
