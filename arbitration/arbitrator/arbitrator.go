@@ -137,7 +137,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 
 func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
 	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
-
+	log.Info("1211111")
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
 	if err != nil {

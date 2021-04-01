@@ -17,11 +17,11 @@ func MoniterFailedDepositTransfer() {
 				log.Error("[MoniterFailedDepositTransfer] Unable to get current arbiter")
 				break
 			}
-
+			log.Info("1")
 			for _, curr := range currentArbitrator.GetAllChains() {
 				cfg := curr.GetCurrentConfig()
 				if cfg.SupportQuickRecharge {
-
+					log.Info("11")
 					//resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", nil,
 					//	cfg.Rpc)
 					//if err != nil {
@@ -77,7 +77,7 @@ func MoniterFailedDepositTransfer() {
 						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
 						break
 					}
-
+					log.Info("111")
 					err := curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
 						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed" , err.Error())

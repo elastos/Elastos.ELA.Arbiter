@@ -300,7 +300,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 	if len(failedTxs) == 0 {
 		return nil
 	}
-
+	log.Info("1111")
 	targetTransactions := make([]*base.FailedDepositTx, 0)
 	for _, tx := range failedTxs {
 		if len(tx.DepositInfo.DepositAssets) != 0 {
@@ -310,6 +310,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 
 	log.Info("Tx targetaddress ", failedTxs[0].DepositInfo.DepositAssets[0].TargetAddress)
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	log.Info("11111")
 	var wTx *types.Transaction
 	var targetIndex int
 	for i := 0; i < len(targetTransactions); {
@@ -328,7 +329,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			wTx = tx
 		}
 	}
-
+	log.Info("111111")
 	if wTx == nil {
 		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
 	}
