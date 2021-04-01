@@ -238,7 +238,16 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
 	attributes := make([]*types.Attribute, 0)
 	attributes = append(attributes, &txAttr)
-
+	test := &types.Transaction{
+		TxType:     types.ReturnSideChainDepositCoin,
+		Payload:    txPayload,
+		Attributes: attributes,
+		Inputs:     txInputs,
+		Outputs:    txOutputs,
+		Programs:   []*program.Program{p},
+		LockTime:   uint32(0),
+	}
+	log.Info("initial ",test.String())
 	return &types.Transaction{
 		TxType:     types.ReturnSideChainDepositCoin,
 		Payload:    txPayload,

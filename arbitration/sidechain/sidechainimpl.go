@@ -329,8 +329,10 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			wTx = tx
 		}
 
+		log.Info("Before serialze " , wTx.String())
+
 		buf := new(bytes.Buffer)
-		if err := tx.Serialize(buf); err != nil {
+		if err := wTx.Serialize(buf); err != nil {
 			log.Warn("tx serialize error " , err.Error())
 		}
 
