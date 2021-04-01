@@ -51,13 +51,14 @@ func (i *IllegalDepositTx) Hash() common.Uint256 {
 }
 
 func (i *IllegalDepositTx) InitSign(newSign []byte) error {
-	i.DepositTxs.Signs = [][]byte{newSign}
+	//i.DepositTxs.Signs = [][]byte{newSign}
 	return nil
 }
 
 func (i *IllegalDepositTx) MergeSign(newSign []byte, targetCodeHash *common.Uint160) (int, error) {
-	i.DepositTxs.Signs = append(i.DepositTxs.Signs, newSign)
-	return len(i.DepositTxs.Signs), nil
+	//i.DepositTxs.Signs = append(i.DepositTxs.Signs, newSign)
+	//return len(i.DepositTxs.Signs), nil
+	return 0 , nil
 }
 
 func (i *IllegalDepositTx) Serialize(w io.Writer) error {

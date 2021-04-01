@@ -12,7 +12,9 @@ func MoniterFailedDepositTransfer() {
 		select {
 		case <-time.After(time.Second * 30):
 			log.Info("Start Monitor Failed Deposit Transfer")
+			log.Info("Start Monitor Failed Deposit Transfer 111")
 			currentArbitrator, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
+			log.Info("Start Monitor Failed Deposit Transfer 222")
 			if !ok {
 				log.Error("[MoniterFailedDepositTransfer] Unable to get current arbiter")
 				break
