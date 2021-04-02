@@ -327,9 +327,11 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			continue
 		}
 		log.Info("sdfasdasdfaf111")
-		if tx.GetSize() < int(pact.MaxBlockContextSize) {
+		log.Info("Before serialze ")
+		log.Info("Before serialze " , tx.String())
+		//if tx.GetSize() < int(pact.MaxBlockContextSize) {
 			wTx = tx
-		}
+		//}
 
 		//log.Info("Before serialze " , wTx.String())
 
