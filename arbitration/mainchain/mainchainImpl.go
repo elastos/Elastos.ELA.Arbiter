@@ -239,17 +239,12 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 
 	p := &program.Program{redeemScript, nil}
 
-	// Create attribute
-	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*types.Attribute, 0)
-	attributes = append(attributes, &txAttr)
-
 	log.Info("lllll")
 	return &types.Transaction{
 		Version: 	types.TxVersion09,
 		TxType:     types.ReturnSideChainDepositCoin,
 		Payload:    txPayload,
-		Attributes: attributes,
+		Attributes: []*types.Attribute{},
 		Inputs:     txInputs,
 		Outputs:    txOutputs,
 		Programs:   []*program.Program{p},

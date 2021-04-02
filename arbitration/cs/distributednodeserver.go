@@ -172,6 +172,7 @@ func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.D
 		return nil, errors.New("transaction already in process")
 	}
 	dns.unsolvedContents[itemContent.Hash()] = itemContent
+	log.Info("unsolvedContents hash ", itemContent.Hash())
 	signs := make(map[common.Uint160]bool)
 	signs[programHash.ToCodeHash()] = true
 	dns.unsolvedContentsSignature[itemContent.Hash()] = signs
@@ -203,6 +204,7 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return errors.New("can not find proposal")
 	}
 	hash := transactionItem.ItemContent.Hash()
+	log.Info("Receiving content hash ", hash.String())
 	txn, ok := dns.unsolvedContents[hash]
 	if !ok {
 		dns.mux.Unlock()
