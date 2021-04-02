@@ -129,11 +129,14 @@ func (d *TxDistributedContent) Check(client interface{}) error {
 }
 
 func (d *TxDistributedContent) CurrentBlockHeight() (uint32, error) {
-	withdrawPayload, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
-	if !ok {
-		return 0, errors.New("invalid payload type")
+	switch pl := d.Tx.Payload.(type) {
+	case *payload.WithdrawFromSideChain:
+		return pl.BlockHeight, nil
+	case *payload.IllegalDepositTxs:
+		return pl.Height, nil
+	default:
+		return 0 , errors.New("invalid payload type")
 	}
-	return withdrawPayload.BlockHeight, nil
 }
 
 func (d *TxDistributedContent) Serialize(w io.Writer) error {
