@@ -206,6 +206,8 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
+				Type:        types.OTNone,
+				Payload:     &outputpayload.DefaultOutput{},
 			}
 			txOutputs = append(txOutputs, change)
 			totalOutputAmount = 0
