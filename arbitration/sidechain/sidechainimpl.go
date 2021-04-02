@@ -331,33 +331,35 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			wTx = tx
 		}
 
-		log.Info("Before serialze " , wTx.String())
+		//log.Info("Before serialze " , wTx.String())
 
+		log.Info("Before serialze " , "111 ")
 		buf := new(bytes.Buffer)
 		if err := wTx.Serialize(buf); err != nil {
 			log.Warn("tx serialize error " , err.Error())
 		}
 
 		log.Info(hex.EncodeToString(buf.Bytes()))
-
+		log.Info("222221111")
 		var txD types.Transaction
 		err := txD.Deserialize(bytes.NewReader(buf.Bytes()))
 		if err != nil {
 			log.Warn("tx deserialize error " , err.Error() , txD.String())
 		}
-
+		log.Info("2222211113333")
 		testPayload , k := txD.Payload.(*payload.IllegalDepositTxs)
 		if !k {
 			log.Error("payload deserialize error")
 		}else {
 			log.Info(testPayload.Height,testPayload.GenesisBlockAddress,testPayload.DepositTxs[0].String())
 		}
-
+		log.Info("22222111133332222")
 	}
 	log.Info("111111")
 	if wTx == nil {
 		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
 	}
+	log.Info("22222111133331111")
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
 	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
 
