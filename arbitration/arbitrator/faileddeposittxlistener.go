@@ -75,10 +75,10 @@ func MoniterFailedDepositTransfer() {
 					//	}
 					//}
 
-					//if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-					//	log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
-					//	break
-					//}
+					if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
+						break
+					}
 					log.Info("111")
 					err := curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {

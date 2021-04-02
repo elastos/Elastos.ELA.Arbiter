@@ -300,7 +300,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		if !crypto.Equal(targetPk, onDutyArbitratorPk) {
-			return errors.New("Can not sign without current arbitrator's signing.")
+			return errors.New("Can not sign without current arbitrator's signing. onduty arbiter is not the targetPk")
 		}
 
 		buf := new(bytes.Buffer)
@@ -311,7 +311,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 
 		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
 		if err != nil {
-			return errors.New("Can not sign without current arbitrator's signing.")
+			return errors.New("Can not sign without current arbitrator's signing."+ err.Error())
 		}
 	}
 
