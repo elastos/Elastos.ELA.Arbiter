@@ -212,7 +212,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 			break
 		}
 	}
-
+	log.Info("lllll111")
 	if totalOutputAmount > 0 {
 		return nil, errors.New("available token is not enough")
 	}
@@ -222,7 +222,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	if err != nil {
 		return nil, err
 	}
-
+	log.Info("lllll111222")
 	// Create payload
 	chainHeight, err := mcFunc.GetMainNodeCurrentHeight()
 	if err != nil {
@@ -242,6 +242,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	attributes := make([]*types.Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
+	log.Info("lllll")
 	return &types.Transaction{
 		Version: 	types.TxVersion09,
 		TxType:     types.ReturnSideChainDepositCoin,

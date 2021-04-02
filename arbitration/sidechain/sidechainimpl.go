@@ -322,9 +322,11 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 
 		tx := currentArbitrator.CreateFailedDepositTransaction(
 			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
+		log.Info("sdfasdasdfaf")
 		if tx == nil {
 			continue
 		}
+		log.Info("sdfasdasdfaf111")
 		if tx.GetSize() < int(pact.MaxBlockContextSize) {
 			wTx = tx
 		}

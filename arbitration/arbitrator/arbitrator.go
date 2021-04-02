@@ -141,7 +141,7 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
-		log.Warn(err.Error())
+		log.Warn(err.Error(), 12324)
 		return nil
 	}
 	if ftx == nil {
@@ -156,10 +156,27 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	//// Create transaction outputs
 	//var txOutputs []*types.Output
 	//// Check if from address is valid
+	//assetID := SystemAssetId
+	//programhash, _ := common.Uint168FromAddress("EXr8pYTR5Z56Ni9Vg9r5UnNg2MCQ6enm93")
+	//txOutputs = append(txOutputs , &types.Output{
+	//	AssetID:     common.Uint256(assetID),
+	//	ProgramHash: *programhash,
+	//	Value:       common.Fixed64(100000000),
+	//	OutputLock:  0,
+	//	Type:        types.OTNone,
+	//	Payload:     &outputpayload.DefaultOutput{},
+	//})
 	//
 	//// Create transaction inputs
 	//var txInputs []*types.Input
 	//
+	//txInputs = append(txInputs , &types.Input{
+	//	Previous:types.OutPoint{
+	//		TxID:common.Uint256(assetID),
+	//		Index:10,
+	//	},
+	//	Sequence:0,
+	//})
 	//// Create redeem script
 	////redeemScript, _ := CreateRedeemScript()
 	//
@@ -177,7 +194,7 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	//
 	////p := &program.Program{redeemScript, nil}
 	//
-	//// Create attribute
+	////Create attribute
 	//txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
 	//attributes := make([]*types.Attribute, 0)
 	//attributes = append(attributes, &txAttr)
@@ -191,6 +208,7 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	//	Programs:   []*program.Program{},
 	//	LockTime:   uint32(0),
 	//}
+	//
 	//return test
 }
 
