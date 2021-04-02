@@ -140,7 +140,6 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	log.Info("1211111")
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
-	log.Info("ftx , ", ftx.String())
 	if err != nil {
 		log.Warn(err.Error())
 		return nil

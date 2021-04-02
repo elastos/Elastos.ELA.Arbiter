@@ -10,7 +10,7 @@ import (
 func MoniterFailedDepositTransfer() {
 	for {
 		select {
-		case <-time.After(time.Second * 10):
+		case <-time.After(time.Second * 30):
 			log.Info("Start Monitor Failed Deposit Transfer")
 			log.Info("Start Monitor Failed Deposit Transfer 111")
 			currentArbitrator, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
