@@ -18,6 +18,7 @@ import (
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 )
 
 type MainChainImpl struct {
@@ -172,6 +173,8 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 			ProgramHash: *programhash,
 			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
 			OutputLock:  0,
+			Type:        types.OTNone,
+			Payload:     &outputpayload.DefaultOutput{},
 		}
 		txOutputs = append(txOutputs, txOutput)
 		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
