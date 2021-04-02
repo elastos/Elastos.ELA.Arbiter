@@ -151,6 +151,48 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	}
 
 	return ftx
+
+	//withdrawBank := sideChain.GetKey()
+	//log.Info("withdrawBank address",withdrawBank)
+	//// Create transaction outputs
+	//var txOutputs []*types.Output
+	//// Check if from address is valid
+	//
+	//// Create transaction inputs
+	//var txInputs []*types.Input
+	//
+	//// Create redeem script
+	////redeemScript, _ := CreateRedeemScript()
+	//
+	//// Create payload
+	//chainHeight, _ := mcFunc.GetMainNodeCurrentHeight()
+	//
+	//str:= "643aa97b8c1c3b05fdbd92a4e81784c3f87e20d2848c4c3eb7ae0b4827f473af"
+	//
+	//Uint256 , _ := common.Uint256FromHexString(str)
+	//txPayload := &payload.IllegalDepositTxs{
+	//	Height:              chainHeight,
+	//	GenesisBlockAddress: withdrawBank,
+	//	DepositTxs:          []common.Uint256{*Uint256},
+	//}
+	//
+	////p := &program.Program{redeemScript, nil}
+	//
+	//// Create attribute
+	//txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	//attributes := make([]*types.Attribute, 0)
+	//attributes = append(attributes, &txAttr)
+	//test := &types.Transaction{
+	//	Version: 	types.TxVersion09,
+	//	TxType:     types.ReturnSideChainDepositCoin,
+	//	Payload:    txPayload,
+	//	Attributes: attributes,
+	//	Inputs:     txInputs,
+	//	Outputs:    txOutputs,
+	//	Programs:   []*program.Program{},
+	//	LockTime:   uint32(0),
+	//}
+	//return test
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,

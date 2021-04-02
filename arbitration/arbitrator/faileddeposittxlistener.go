@@ -10,7 +10,7 @@ import (
 func MoniterFailedDepositTransfer() {
 	for {
 		select {
-		case <-time.After(time.Second * 30):
+		case <-time.After(time.Second * 10):
 			log.Info("Start Monitor Failed Deposit Transfer")
 			log.Info("Start Monitor Failed Deposit Transfer 111")
 			currentArbitrator, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().(*ArbitratorImpl)
@@ -75,10 +75,10 @@ func MoniterFailedDepositTransfer() {
 					//	}
 					//}
 
-					if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
-						break
-					}
+					//if !ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+					//	log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
+					//	break
+					//}
 					log.Info("111")
 					err := curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {

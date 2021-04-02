@@ -336,7 +336,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			log.Warn("tx serialize error " , err.Error())
 		}
 
-
+		log.Info(hex.EncodeToString(buf.Bytes()))
 
 		var txD types.Transaction
 		err := txD.Deserialize(bytes.NewReader(buf.Bytes()))
