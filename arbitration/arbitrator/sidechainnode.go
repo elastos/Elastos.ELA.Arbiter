@@ -14,4 +14,5 @@ type SideChainNode interface {
 	GetCurrentConfig() *config.SideNodeConfig
 	SendTransaction(txHash *common.Uint256) (rpc.Response, error)
 	SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error)
+	IsSendSmallCrxTx(tx string) bool
 }

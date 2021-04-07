@@ -25,6 +25,12 @@ type SideChainImpl struct {
 
 	Key           string
 	CurrentConfig *config.SideNodeConfig
+	DoneSmallCrs  map[string]bool
+}
+
+func (sc *SideChainImpl) IsSendSmallCrxTx(tx string) bool {
+	_, ok := sc.DoneSmallCrs[tx]
+	return ok
 }
 
 func (sc *SideChainImpl) GetKey() string {
@@ -96,7 +102,8 @@ func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, 
 
 	if response.Error != nil {
 		log.Info("response: ", response.Error.Message)
-	} else {
+	} else if r, ok := response.Result.(bool); ok && r {
+		sc.DoneSmallCrs[hash] = true
 		log.Info("response:", response)
 	}
 

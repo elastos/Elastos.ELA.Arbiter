@@ -39,8 +39,8 @@ func MoniterFailedDepositTransfer() {
 
 					//Add Test Data
 					txid := "de5a9ce6542a7ff603c6cbe38b31f7115b8e3e0a6d76da16630f13c27154ac3d"
-					amount := common.Fixed64(1000001000)
-					cross := common.Fixed64(1000000000)
+					amount := common.Fixed64(480001000)
+					cross := common.Fixed64(480000000)
 					id, _ := common.Uint256FromHexString(txid)
 					failedTxs = append(failedTxs, base.FailedDepositTx{
 						Txid: id,
@@ -48,6 +48,16 @@ func MoniterFailedDepositTransfer() {
 							DepositAssets: []*base.DepositAssets{
 								{
 									TargetAddress:    "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
+									Amount:           &amount,
+									CrossChainAmount: &cross,
+								},
+								{
+									TargetAddress:    "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
+									Amount:           &amount,
+									CrossChainAmount: &cross,
+								},
+								{
+									TargetAddress:    "EQDZ4T6YyVkg9mb2cAuLEu8iBKbajQAywF",
 									Amount:           &amount,
 									CrossChainAmount: &cross,
 								},
@@ -82,7 +92,7 @@ func MoniterFailedDepositTransfer() {
 					log.Info("111")
 					err := curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
-						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed" , err.Error())
+						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
 						break
 					}
 				}
