@@ -86,9 +86,9 @@ func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, 
 	return response, nil
 }
 
-func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte) (rpc.Response, error) {
+func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error) {
 	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", hex.EncodeToString(signature)).Add("rawTx", tx), sc.CurrentConfig.Rpc)
+	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", hex.EncodeToString(signature)).Add("rawTx", tx).Add("txHash", hash), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
@@ -328,17 +328,17 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 		}
 		log.Info("sdfasdasdfaf111")
 		log.Info("Before serialze ")
-		log.Info("Before serialze " , tx.String())
+		log.Info("Before serialze ", tx.String())
 		//if tx.GetSize() < int(pact.MaxBlockContextSize) {
-			wTx = tx
+		wTx = tx
 		//}
 
 		//log.Info("Before serialze " , wTx.String())
 
-		log.Info("Before serialze " , "111 ")
+		log.Info("Before serialze ", "111 ")
 		buf := new(bytes.Buffer)
 		if err := wTx.Serialize(buf); err != nil {
-			log.Warn("tx serialize error " , err.Error())
+			log.Warn("tx serialize error ", err.Error())
 		}
 
 		log.Info(hex.EncodeToString(buf.Bytes()))
@@ -346,14 +346,14 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 		var txD types.Transaction
 		err := txD.Deserialize(bytes.NewReader(buf.Bytes()))
 		if err != nil {
-			log.Warn("tx deserialize error " , err.Error() , txD.String())
+			log.Warn("tx deserialize error ", err.Error(), txD.String())
 		}
 		log.Info("2222211113333")
-		testPayload , k := txD.Payload.(*payload.IllegalDepositTxs)
+		testPayload, k := txD.Payload.(*payload.IllegalDepositTxs)
 		if !k {
 			log.Error("payload deserialize error")
-		}else {
-			log.Info(testPayload.Height,testPayload.GenesisBlockAddress,testPayload.DepositTxs[0].String())
+		} else {
+			log.Info(testPayload.Height, testPayload.GenesisBlockAddress, testPayload.DepositTxs[0].String())
 		}
 		log.Info("22222111133332222")
 	}

@@ -302,7 +302,7 @@ func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCros
 		tx.MainTx.Serialize(buf)
 		rawTx := hex.EncodeToString(buf.Bytes())
 		signature := tx.Signature
-		_, err := sideChain.SendSmallCrossTransaction(rawTx, signature)
+		_, err := sideChain.SendSmallCrossTransaction(rawTx, signature, tx.MainTx.Hash().String())
 		if err != nil {
 			log.Info("Send deposit transaction Error", err.Error())
 		}

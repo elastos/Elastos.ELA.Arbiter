@@ -2,6 +2,7 @@ package cs
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"io"
@@ -110,7 +111,7 @@ func (item *DistributedItem) GetSignedData() []byte {
 }
 
 func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
-	log.Info("item.signedData length ",  len(item.signedData))
+	log.Info("item.signedData length ", len(item.signedData))
 	if len(item.signedData) != crypto.SignatureScriptLength*2 {
 		return nil, "ParseFeedbackSignedData invalid sign data length.", nil
 	}
@@ -269,9 +270,9 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
 	newSign = append(newSign, signature...)
-	log.Info("appendSignature newSign " , len(newSign))
+	log.Info("appendSignature newSign ", len(newSign))
 	signedData := item.signedData
-	log.Info("appendSignature signedData " , len(item.signedData))
+	log.Info("appendSignature signedData ", len(item.signedData))
 	if !isFeedback {
 		if signedData == nil {
 			signedData = []byte{}
@@ -302,7 +303,9 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		if !crypto.Equal(targetPk, onDutyArbitratorPk) {
-			return errors.New("Can not sign without current arbitrator's signing. onduty arbiter is not the targetPk")
+			tarP, _ := targetPk.EncodePoint(true)
+			onP, _ := onDutyArbitratorPk.EncodePoint(true)
+			return errors.New("Can not sign without current arbitrator's signing. onduty arbiter is not the targetPk , actual pubkey " + hex.EncodeToString(tarP) + " onduty publicKey " + hex.EncodeToString(onP))
 		}
 
 		buf := new(bytes.Buffer)
@@ -313,7 +316,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 
 		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
 		if err != nil {
-			return errors.New("Can not sign without current arbitrator's signing."+ err.Error())
+			return errors.New("Can not sign without current arbitrator's signing." + err.Error())
 		}
 	}
 
@@ -322,6 +325,6 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 	buf.Write(newSign)
 
 	item.signedData = buf.Bytes()
-	log.Info("appendSignature merge  " , item.signedData)
+	log.Info("appendSignature merge  ", item.signedData)
 	return nil
 }

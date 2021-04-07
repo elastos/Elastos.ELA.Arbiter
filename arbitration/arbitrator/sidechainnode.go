@@ -13,5 +13,5 @@ type SideChainNode interface {
 	GetBlockByHeight(height uint32) (*base.BlockInfo, error)
 	GetCurrentConfig() *config.SideNodeConfig
 	SendTransaction(txHash *common.Uint256) (rpc.Response, error)
-	SendSmallCrossTransaction(tx string, signature []byte) (rpc.Response, error)
+	SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error)
 }
