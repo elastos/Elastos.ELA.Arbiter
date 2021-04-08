@@ -16,9 +16,11 @@ import (
 )
 
 type MainChain interface {
-	CreateWithdrawTransaction(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
-		mcFunc MainChainFunc) (*types.Transaction, error)
 	CreateFailedDepositTransaction(sideChain SideChain, failedDepositTxs []*base.FailedDepositTx,
+		mcFunc MainChainFunc) (*types.Transaction, error)
+	CreateWithdrawTransactionV0(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
+		mcFunc MainChainFunc) (*types.Transaction, error)
+	CreateWithdrawTransactionV1(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
 		mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error

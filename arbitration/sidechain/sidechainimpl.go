@@ -324,6 +324,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
 
 	var wTx *types.Transaction
 	var targetIndex int
@@ -335,7 +336,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		}
 
 		tx := currentArbitrator.CreateWithdrawTransaction(
-			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
+			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
 		if tx == nil {
 			continue
 		}
