@@ -231,7 +231,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 		return nil, err
 	}
 
-	txPayload := &payload.IllegalDepositTxs{
+	txPayload := &payload.ReturnSideChainDepositCoin{
 		Height:              chainHeight,
 		GenesisBlockAddress: withdrawBank,
 		DepositTxs:          txHashes,

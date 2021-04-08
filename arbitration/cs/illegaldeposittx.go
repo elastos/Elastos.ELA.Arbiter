@@ -14,7 +14,7 @@ import (
 )
 
 type IllegalDepositTx struct {
-	DepositTxs *payload.IllegalDepositTxs
+	DepositTxs *payload.ReturnSideChainDepositCoin
 
 	hash *common.Uint256
 }
@@ -62,17 +62,17 @@ func (i *IllegalDepositTx) MergeSign(newSign []byte, targetCodeHash *common.Uint
 }
 
 func (i *IllegalDepositTx) Serialize(w io.Writer) error {
-	return i.DepositTxs.Serialize(w, payload.IllegalDepositTxsVersion)
+	return i.DepositTxs.Serialize(w, payload.ReturnSideChainDepositCoinVersion)
 }
 
 func (i *IllegalDepositTx) SerializeUnsigned(w io.Writer) error {
-	return i.DepositTxs.SerializeUnsigned(w, payload.IllegalDepositTxsVersion)
+	return i.DepositTxs.SerializeUnsigned(w, payload.ReturnSideChainDepositCoinVersion)
 }
 
 func (i *IllegalDepositTx) Submit() error {
 	var err error
 	buf := new(bytes.Buffer)
-	if err = i.DepositTxs.Serialize(buf, payload.IllegalDepositTxsVersion); err != nil {
+	if err = i.DepositTxs.Serialize(buf, payload.ReturnSideChainDepositCoinVersion); err != nil {
 		return err
 	}
 

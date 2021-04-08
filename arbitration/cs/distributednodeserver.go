@@ -115,7 +115,7 @@ func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.Si
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs) error {
+func (dns *DistributedNodeServer) BroadcastIllegalDepositTxsData(data *payload.ReturnSideChainDepositCoin) error {
 
 	proposal, err := dns.generateDistributedProposal(&IllegalDepositTx{DepositTxs: data}, &DistrubutedItemFuncImpl{})
 	if err != nil {

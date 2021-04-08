@@ -183,7 +183,7 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 			return errors.New("RawTransaction deserialization failed." + err.Error())
 		}
 	case IllegalDepositTxs:
-		item.ItemContent = &IllegalDepositTx{DepositTxs: new(payload.IllegalDepositTxs)}
+		item.ItemContent = &IllegalDepositTx{DepositTxs: new(payload.ReturnSideChainDepositCoin)}
 		if err = item.ItemContent.Deserialize(r); err != nil {
 			return errors.New("RawTransaction deserialization failed." + err.Error())
 		}

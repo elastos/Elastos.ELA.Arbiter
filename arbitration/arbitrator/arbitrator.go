@@ -59,7 +59,7 @@ type Arbitrator interface {
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
-	BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs)
+	BroadcastIllegalDepositTxsData(data *payload.ReturnSideChainDepositCoin)
 
 	CheckAndRemoveCrossChainTransactionsFromDBLoop()
 }
@@ -326,7 +326,7 @@ func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *payload.SidechainI
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastIllegalDepositTxsData(data *payload.IllegalDepositTxs) {
+func (ar *ArbitratorImpl) BroadcastIllegalDepositTxsData(data *payload.ReturnSideChainDepositCoin) {
 	if err := ar.mainChainImpl.BroadcastIllegalDepositTxsData(data); err != nil {
 		log.Warn(err.Error())
 	}

@@ -356,7 +356,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 			log.Warn("tx deserialize error ", err.Error(), txD.String())
 		}
 		log.Info("2222211113333")
-		testPayload, k := txD.Payload.(*payload.IllegalDepositTxs)
+		testPayload, k := txD.Payload.(*payload.ReturnSideChainDepositCoin)
 		if !k {
 			log.Error("payload deserialize error")
 		} else {

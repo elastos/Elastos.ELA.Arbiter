@@ -39,7 +39,7 @@ func (d *TxDistributedContent) Submit() error {
 		for _, hash := range pl.SideChainTransactionHashes {
 			transactionHashes = append(transactionHashes, hash.String())
 		}
-	case *payload.IllegalDepositTxs:
+	case *payload.ReturnSideChainDepositCoin:
 		log.Info("Submit IllegalDepositTxs transaction")
 		for _, hash := range pl.DepositTxs {
 			transactionHashes = append(transactionHashes, hash.String())
@@ -132,7 +132,7 @@ func (d *TxDistributedContent) CurrentBlockHeight() (uint32, error) {
 	switch pl := d.Tx.Payload.(type) {
 	case *payload.WithdrawFromSideChain:
 		return pl.BlockHeight, nil
-	case *payload.IllegalDepositTxs:
+	case *payload.ReturnSideChainDepositCoin:
 		return pl.Height, nil
 	default:
 		return 0 , errors.New("invalid payload type")
@@ -321,7 +321,7 @@ func checkWithdrawTransaction(txn *types.Transaction,
 		if err != nil {
 			return err
 		}
-	case *payload.IllegalDepositTxs:
+	case *payload.ReturnSideChainDepositCoin:
 		err := checkIllegalDepositTxPayload(txn, clientFunc, mainFunc, pl)
 		if err != nil {
 			return err
@@ -334,7 +334,7 @@ func checkWithdrawTransaction(txn *types.Transaction,
 }
 
 func checkIllegalDepositTxPayload(txn *types.Transaction,
-	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl, payloadIllegalDeposit *payload.IllegalDepositTxs) error {
+	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl, payloadIllegalDeposit *payload.ReturnSideChainDepositCoin) error {
 	// check if side chain exist.
 	sideChain, exchangeRate, err := clientFunc.GetSideChainAndExchangeRate(payloadIllegalDeposit.GenesisBlockAddress)
 	if err != nil {
