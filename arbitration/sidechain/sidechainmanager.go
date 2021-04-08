@@ -74,10 +74,11 @@ func Init() {
 		side := &SideChainImpl{
 			Key:           sideConfig.GenesisBlockAddress,
 			CurrentConfig: sideConfig,
+			DoneSmallCrs:  make(map[string]bool),
 		}
 
 		sideChainManager.AddChain(sideConfig.GenesisBlockAddress, side)
-		log.Infof("Init Sidechain config ", side.Key , side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GenesisBlock)
+		log.Infof("Init Sidechain config ", side.Key, side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GenesisBlock)
 	}
 	currentArbitrator.SetSideChainManager(sideChainManager)
 }
