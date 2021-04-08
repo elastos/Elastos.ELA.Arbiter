@@ -16,9 +16,9 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract/program"
 	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
-	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 )
 
 type MainChainImpl struct {
@@ -131,8 +131,13 @@ func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.
 	existAsset := make(map[string]base.DepositAssets, 0)
 	for _, asset := range result.DepositAssets {
 		if a, ok := existAsset[asset.TargetAddress]; ok {
-			*a.Amount += *asset.Amount + fee
-			*a.CrossChainAmount += *asset.CrossChainAmount
+			newAmt := *a.Amount + *asset.Amount + fee
+			newCrsAmt := *a.CrossChainAmount + *asset.CrossChainAmount
+			existAsset[asset.TargetAddress] = base.DepositAssets{
+				TargetAddress:    a.TargetAddress,
+				Amount:           &newAmt,
+				CrossChainAmount: &newCrsAmt,
+			}
 		} else {
 			existAsset[asset.TargetAddress] = *asset
 		}
@@ -150,7 +155,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
-	log.Info("withdrawBank address",withdrawBank)
+	log.Info("withdrawBank address", withdrawBank)
 	exchangeRate, err := sideChain.GetExchangeRate()
 	if err != nil {
 		return nil, err
@@ -162,8 +167,9 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
+	log.Info("withdrawInfo :", withdrawInfo)
 	for _, withdraw := range withdrawInfo.DepositAssets {
-		log.Info(333,withdraw.TargetAddress,withdraw.Amount,withdraw.CrossChainAmount)
+		log.Info(333, withdraw.TargetAddress, withdraw.Amount, withdraw.CrossChainAmount)
 		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
 			return nil, err
@@ -195,7 +201,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 			totalOutputAmount = 0
 			break
 		} else if *utxo.Amount > totalOutputAmount {
-			log.Info("here",withdrawBank)
+			log.Info("here", withdrawBank)
 			programHash, err := common.Uint168FromAddress(withdrawBank)
 			if err != nil {
 				log.Info("here")
@@ -241,7 +247,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 
 	log.Info("lllll")
 	return &types.Transaction{
-		Version: 	types.TxVersion09,
+		Version:    types.TxVersion09,
 		TxType:     types.ReturnSideChainDepositCoin,
 		Payload:    txPayload,
 		Attributes: []*types.Attribute{},
