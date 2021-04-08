@@ -124,9 +124,10 @@ func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.
 	for _, tx := range txs {
 		for _, asset := range tx.DepositInfo.DepositAssets {
 			result.DepositAssets = append(result.DepositAssets, asset)
-			sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
 		}
+		sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
 	}
+
 
 	existAsset := make(map[string]base.DepositAssets, 0)
 	for _, asset := range result.DepositAssets {
@@ -146,7 +147,7 @@ func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.
 	for _, v := range existAsset {
 		returnResult.DepositAssets = append(returnResult.DepositAssets, &v)
 	}
-	log.Info("Tx targetaddress 222 ", returnResult.DepositAssets[0].TargetAddress)
+	log.Info("Tx targetaddress 222 ", returnResult.DepositAssets[0].TargetAddress, sideChainTxHashes)
 	return returnResult, sideChainTxHashes
 }
 
@@ -167,7 +168,8 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
-	log.Info("withdrawInfo :", withdrawInfo)
+	log.Info("withdrawInfo :", len(withdrawInfo.DepositAssets))
+
 	for _, withdraw := range withdrawInfo.DepositAssets {
 		log.Info(333, withdraw.TargetAddress, withdraw.Amount, withdraw.CrossChainAmount)
 		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
