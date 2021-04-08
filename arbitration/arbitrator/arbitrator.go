@@ -48,8 +48,9 @@ type Arbitrator interface {
 	SendSmallCrossDepositTransactions(spvTxs []*SmallCrossTransaction, genesisAddress string)
 
 	//withdraw
-	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
-		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
 		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
@@ -160,14 +161,27 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
-	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
 
-	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(
-		sideChain, withdrawTxs, mcFunc)
-	if err != nil {
-		log.Warn(err.Error())
-		return nil
+	var withdrawTransaction *types.Transaction
+	if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
+		var err error
+		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV1(
+			sideChain, withdrawTxs, mcFunc)
+		if err != nil {
+			log.Warn(err.Error())
+			return nil
+		}
+	} else {
+		var err error
+		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV0(
+			sideChain, withdrawTxs, mcFunc)
+		if err != nil {
+			log.Warn(err.Error())
+			return nil
+		}
 	}
+
 	if withdrawTransaction == nil {
 		log.Warn("Created an empty withdraw transaction.")
 		return nil

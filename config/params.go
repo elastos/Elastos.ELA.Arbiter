@@ -68,6 +68,7 @@ var (
 			CRClaimDPOSNodeStartHeight:  532650,
 			NewP2PProtocolVersionHeight: 532650,
 			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			NewCrossChainTransactionHeight: 2000000, // todo fix me
 			ReturnDepositTransactionFee: 100,     //todo fix me
 		},
 	}
@@ -139,6 +140,7 @@ var (
 			CRClaimDPOSNodeStartHeight:  646700,
 			NewP2PProtocolVersionHeight: 646700,
 			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			NewCrossChainTransactionHeight: 2000000, // todo fix me
 			ReturnDepositTransactionFee: 100,     //todo fix me
 		},
 	}
@@ -210,9 +212,10 @@ var (
 				"02fa3e0d14e0e93ca41c3c0f008679e417cf2adb6375dd4bbbee9ed8e8db606a56",
 				"03ab3ecd1148b018d480224520917c6c3663a3631f198e3b25cf4c9c76786b7850",
 			},
-			CRClaimDPOSNodeStartHeight:  751400,
-			NewP2PProtocolVersionHeight: 751400,
-			DPOSNodeCrossChainHeight:    1000000, // todo fix me
+			CRClaimDPOSNodeStartHeight:     751400,
+			NewP2PProtocolVersionHeight:    751400,
+			DPOSNodeCrossChainHeight:       1000000, // todo fix me
+			NewCrossChainTransactionHeight: 2000000, // todo fix me
 		},
 	}
 )
