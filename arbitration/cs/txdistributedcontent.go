@@ -442,8 +442,8 @@ func checkIllegalDepositTxPayload(txn *types.Transaction,
 				CrossChainAssets: []*base.DepositOutputInfo{
 					{
 						CrossChainAddress: "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
-						CrossChainAmount:  "20.0",
-						OutputAmount:      "20.00002100",
+						CrossChainAmount:  "10.0",
+						OutputAmount:      "10.00001000",
 					},
 				},
 			}
