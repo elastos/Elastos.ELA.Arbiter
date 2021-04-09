@@ -128,27 +128,26 @@ func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.
 		sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
 	}
 
-
-	existAsset := make(map[string]base.DepositAssets, 0)
-	for _, asset := range result.DepositAssets {
-		if a, ok := existAsset[asset.TargetAddress]; ok {
-			newAmt := *a.Amount + *asset.Amount + fee
-			newCrsAmt := *a.CrossChainAmount + *asset.CrossChainAmount
-			existAsset[asset.TargetAddress] = base.DepositAssets{
-				TargetAddress:    a.TargetAddress,
-				Amount:           &newAmt,
-				CrossChainAmount: &newCrsAmt,
-			}
-		} else {
-			existAsset[asset.TargetAddress] = *asset
-		}
-	}
-	returnResult := new(base.DepositInfo)
-	for _, v := range existAsset {
-		returnResult.DepositAssets = append(returnResult.DepositAssets, &v)
-	}
-	log.Info("Tx targetaddress 222 ", returnResult.DepositAssets[0].TargetAddress, sideChainTxHashes)
-	return returnResult, sideChainTxHashes
+	//existAsset := make(map[string]base.DepositAssets, 0)
+	//for _, asset := range result.DepositAssets {
+	//	if a, ok := existAsset[asset.TargetAddress]; ok {
+	//		newAmt := *a.Amount + *asset.Amount + fee
+	//		newCrsAmt := *a.CrossChainAmount + *asset.CrossChainAmount
+	//		existAsset[asset.TargetAddress] = base.DepositAssets{
+	//			TargetAddress:    a.TargetAddress,
+	//			Amount:           &newAmt,
+	//			CrossChainAmount: &newCrsAmt,
+	//		}
+	//	} else {
+	//		existAsset[asset.TargetAddress] = *asset
+	//	}
+	//}
+	//returnResult := new(base.DepositInfo)
+	//for _, v := range existAsset {
+	//	returnResult.DepositAssets = append(returnResult.DepositAssets, &v)
+	//}
+	log.Info("Tx targetaddress 222 ", result.DepositAssets[0].TargetAddress, sideChainTxHashes)
+	return result, sideChainTxHashes
 }
 
 func (mc *MainChainImpl) CreateFailedDepositTransaction(

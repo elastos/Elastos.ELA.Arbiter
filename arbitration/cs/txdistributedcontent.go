@@ -135,7 +135,7 @@ func (d *TxDistributedContent) CurrentBlockHeight() (uint32, error) {
 	case *payload.ReturnSideChainDepositCoin:
 		return pl.Height, nil
 	default:
-		return 0 , errors.New("invalid payload type")
+		return 0, errors.New("invalid payload type")
 	}
 }
 
@@ -317,7 +317,7 @@ func checkWithdrawTransaction(txn *types.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
 	switch pl := txn.Payload.(type) {
 	case *payload.WithdrawFromSideChain:
-		err :=checkWithdrawFromSidechainPayload(txn, clientFunc, mainFunc, pl)
+		err := checkWithdrawFromSidechainPayload(txn, clientFunc, mainFunc, pl)
 		if err != nil {
 			return err
 		}
@@ -340,7 +340,7 @@ func checkIllegalDepositTxPayload(txn *types.Transaction,
 	if err != nil {
 		return err
 	}
-	log.Info("txn ," ,txn.String())
+	log.Info("txn ,", txn.String())
 	var transactionHashes []string
 	for _, hash := range payloadIllegalDeposit.DepositTxs {
 		transactionHashes = append(transactionHashes, hash.String())
@@ -353,16 +353,89 @@ func checkIllegalDepositTxPayload(txn *types.Transaction,
 		transactionHashes, payloadIllegalDeposit.GenesisBlockAddress)
 	if err != nil || len(sideChainTxs) != len(payloadIllegalDeposit.DepositTxs) {
 		log.Info("[checkIllegalDepositTxPayload], need to get side chain transaction from rpc")
+		//// TODO need parseUserFailedDepositTransactions to get the same data txs
+		//var failedTxs []*base.FailedDepositTx
+		//for _ , tx :=range payloadIllegalDeposit.DepositTxs {
+		//	exist, err := sideChain.GetIllegalDeositTransaction(tx.String())
+		//	if err != nil || !exist {
+		//		return errors.New("[checkIllegalDepositTxPayload] failed, unknown side chain transactions")
+		//	}
+		//
+		//	originTx , err := rpc.GetTransaction(tx.String() , config.Parameters.MainNode.Rpc)
+		//	if err !=nil {
+		//		log.Errorf(err.Error())
+		//		break
+		//	}
+		//	referTxid := originTx.Inputs[0].Previous.TxID
+		//	referIndex := originTx.Inputs[0].Previous.Index
+		//
+		//	referTxn , err := rpc.GetTransaction(referTxid.String(), config.Parameters.MainNode.Rpc)
+		//	if err !=nil {
+		//		log.Errorf(err.Error())
+		//		break
+		//	}
+		//	originHash := originTx.Hash()
+		//	payload, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+		//	if !ok {
+		//		log.Errorf("Invalid payload type need TransferCrossChainAsset")
+		//		break
+		//	}
+		//	address := referTxn.Outputs[referIndex].ProgramHash.String()
+		//	for i , cca :=range payload.CrossChainAmounts {
+		//		idx := payload.OutputIndexes[i]
+		//		amount := originTx.Outputs[idx].Value
+		//		failedTxs = append(failedTxs ,&base.FailedDepositTx{
+		//			Txid: &originHash,
+		//			DepositInfo: &base.DepositInfo{
+		//				DepositAssets: []*base.DepositAssets{
+		//					{
+		//						TargetAddress:    address,
+		//						Amount:           &amount,
+		//						CrossChainAmount: &cca,
+		//					},
+		//				},
+		//			}})
+		//	}
+		//}
+		//withdrawInfo, _ := parseUserFailedDepositTransactions(failedTxs, config.Parameters.ReturnDepositTransactionFee)
+		//for _, tx := range withdrawInfo.DepositAssets {
+		//	tx := &base.DepositTxsInfo{
+		//		CrossChainAssets: []*base.DepositOutputInfo{
+		//			{
+		//				CrossChainAddress: tx.TargetAddress,
+		//				CrossChainAmount:  tx.CrossChainAmount.String(),
+		//				OutputAmount:      tx.Amount.String(),
+		//			},
+		//		},
+		//	}
+		//	log.Info(1)
+		//	txID, _ := common.Uint256FromHexString(tx.TxID)
+		//	var depositAssets []*base.DepositAssets
+		//	for _, cs := range tx.CrossChainAssets {
+		//		csAmount, err := common.StringToFixed64(cs.CrossChainAmount)
+		//		if err != nil {
+		//			return errors.New("[checkIllegalDepositTxPayload] invalid cross chain amount in tx")
+		//		}
+		//		opAmount, err := common.StringToFixed64(cs.OutputAmount)
+		//		if err != nil {
+		//			return errors.New("[checkIllegalDepositTxPayload] invalid output amount in tx")
+		//		}
+		//		depositAssets = append(depositAssets, &base.DepositAssets{
+		//			TargetAddress:    cs.CrossChainAddress,
+		//			Amount:           opAmount,
+		//			CrossChainAmount: csAmount,
+		//		})
+		//	}
+		//	log.Info(2)
+		//	txs = append(txs, &base.FailedDepositTx{
+		//		Txid: txID,
+		//		DepositInfo: &base.DepositInfo{
+		//			DepositAssets: depositAssets,
+		//		},
+		//	})
+		//}
 		for _, txHash := range payloadIllegalDeposit.DepositTxs {
-			//tx, err := sideChain.GetIllegalDeositTransaction(txHash.String())
-			//if err != nil {
-			//	return errors.New("[checkIllegalDepositTxPayload] failed, unknown side chain transactions")
-			//}
-			//
-			//txID, err := common.Uint256FromHexString(tx.TxID)
-			//if err != nil {
-			//	return errors.New("[checkIllegalDepositTxPayload] failed, invalid txID")
-			//}
+
 			log.Info("[checkIllegalDepositTxPayload] , txHash  , key ", txHash, sideChain.GetKey())
 			tx := &base.DepositTxsInfo{
 				TxID: "de5a9ce6542a7ff603c6cbe38b31f7115b8e3e0a6d76da16630f13c27154ac3d",
@@ -499,4 +572,39 @@ func checkIllegalDepositTxPayload(txn *types.Transaction,
 	log.Info(11)
 	log.Info("[checkIllegalDepositTxPayload] success")
 	return nil
+}
+
+func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.Fixed64) (
+	*base.DepositInfo, []common.Uint256) {
+
+	log.Info("Tx targetaddress 1111 ", txs[0].DepositInfo.DepositAssets[0].TargetAddress)
+	result := new(base.DepositInfo)
+	var sideChainTxHashes []common.Uint256
+	for _, tx := range txs {
+		for _, asset := range tx.DepositInfo.DepositAssets {
+			result.DepositAssets = append(result.DepositAssets, asset)
+		}
+		sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
+	}
+
+	//existAsset := make(map[string]base.DepositAssets, 0)
+	//for _, asset := range result.DepositAssets {
+	//	if a, ok := existAsset[asset.TargetAddress]; ok {
+	//		newAmt := *a.Amount + *asset.Amount + fee
+	//		newCrsAmt := *a.CrossChainAmount + *asset.CrossChainAmount
+	//		existAsset[asset.TargetAddress] = base.DepositAssets{
+	//			TargetAddress:    a.TargetAddress,
+	//			Amount:           &newAmt,
+	//			CrossChainAmount: &newCrsAmt,
+	//		}
+	//	} else {
+	//		existAsset[asset.TargetAddress] = *asset
+	//	}
+	//}
+	//returnResult := new(base.DepositInfo)
+	//for _, v := range existAsset {
+	//	returnResult.DepositAssets = append(returnResult.DepositAssets, &v)
+	//}
+	log.Info("Tx targetaddress 222 ", result.DepositAssets[0].TargetAddress, sideChainTxHashes)
+	return result, sideChainTxHashes
 }

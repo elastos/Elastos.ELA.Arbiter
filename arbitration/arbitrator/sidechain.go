@@ -14,7 +14,7 @@ type SideChain interface {
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
 	GetWithdrawTransaction(txHash string) (*base.WithdrawTxInfo, error)
-	GetIllegalDeositTransaction(txHash string) (*base.DepositTxsInfo, error)
+	GetIllegalDeositTransaction(txHash string) (bool, error)
 	CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error)
 	CheckIllegalDepositTx(depositTxs []common.Uint256) (bool, error)
 }

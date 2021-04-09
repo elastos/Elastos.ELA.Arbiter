@@ -186,13 +186,13 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 	return txInfo, nil
 }
 
-func (sc *SideChainImpl) GetIllegalDeositTransaction(txHash string) (*base.DepositTxsInfo, error) {
-	txInfo, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
+func (sc *SideChainImpl) GetIllegalDeositTransaction(txHash string) (bool, error) {
+	exist, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
 	if err != nil {
-		return nil, err
+		return false, err
 	}
 
-	return txInfo, nil
+	return exist, nil
 }
 
 func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error) {
