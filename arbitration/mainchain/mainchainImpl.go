@@ -241,6 +241,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 				Version:                  0,
 				GenesisBlockAddress:      withdrawBank,
 				SideChainTransactionHash: txHashes[i],
+				// todo complete me
 				TargetData:               nil,
 			},
 		}
