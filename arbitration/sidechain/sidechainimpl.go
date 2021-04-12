@@ -187,7 +187,11 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 }
 
 func (sc *SideChainImpl) GetIllegalDeositTransaction(txHash string) (bool, error) {
-	exist, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
+	currHeight, err := sc.GetCurrentHeight()
+	if err != nil {
+		return false, err
+	}
+	exist, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc, currHeight)
 	if err != nil {
 		return false, err
 	}

@@ -276,7 +276,7 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	return tx, nil
 }
 
-func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (bool, error) {
+func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig, height uint32) (bool, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
 		return false, err
@@ -284,13 +284,22 @@ func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcC
 	reversedHashBytes := common.BytesReverse(hashBytes)
 	reversedHashStr := common.BytesToHexString(reversedHashBytes)
 
-	result, err := CallAndUnmarshalResponse("isdeposittxexist", Param("txid", reversedHashStr), config)
+	result, err := CallAndUnmarshal("getfaileddeposittransactions", Param("height", height), config)
 	if err != nil {
 		return false, err
 	}
-	exist , ok := result.Result.(bool)
 
-	return (ok && exist) , nil
+	var fTxs []string
+	if err := Unmarshal(&result, &fTxs); err != nil {
+		return false, errors.New("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
+	}
+	for _, tx := range fTxs {
+		if tx == reversedHashStr {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
@@ -479,27 +488,26 @@ func Unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-
-func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, error){
+func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, error) {
 	param := make(map[string]interface{})
 	param["txid"] = tx
 	resp, err := CallAndUnmarshalResponse("getrawtransaction", param,
 		config)
 	if err != nil {
-		return nil , errors.New("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc " + err.Error())
+		return nil, errors.New("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc " + err.Error())
 	}
-	rawTx , ok := resp.Result.(string)
+	rawTx, ok := resp.Result.(string)
 	if !ok {
-		return nil , errors.New("[MoniterFailedDepositTransfer] Getrawtransaction rpc result not correct ")
+		return nil, errors.New("[MoniterFailedDepositTransfer] Getrawtransaction rpc result not correct ")
 	}
 	buf, err := hex.DecodeString(rawTx)
 	if err != nil {
-		return nil , errors.New("[MoniterFailedDepositTransfer] Invalid data from GetSmallCrossTransferTxs " + err.Error())
+		return nil, errors.New("[MoniterFailedDepositTransfer] Invalid data from GetSmallCrossTransferTxs " + err.Error())
 	}
 	var txn types.Transaction
 	err = txn.Deserialize(bytes.NewReader(buf))
 	if err != nil {
-		return nil ,  errors.New("[MoniterFailedDepositTransfer] Decode transaction error " + err.Error())
+		return nil, errors.New("[MoniterFailedDepositTransfer] Decode transaction error " + err.Error())
 	}
-	return &txn , nil
+	return &txn, nil
 }

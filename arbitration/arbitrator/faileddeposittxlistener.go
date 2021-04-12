@@ -2,8 +2,11 @@ package arbitrator
 
 import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"time"
 )
 
@@ -24,76 +27,83 @@ func MoniterFailedDepositTransfer() {
 				cfg := curr.GetCurrentConfig()
 				if cfg.SupportQuickRecharge {
 					log.Info("11")
-					//resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", nil,
-					//	cfg.Rpc)
-					//if err != nil {
-					//	log.Errorf("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ")
-					//	break
-					//}
-					//var fTxs []string
-					//if err := rpc.Unmarshal(&resp, &fTxs); err != nil {
-					//	log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
-					//	break
-					//}
+					param := make(map[string]interface{})
+					height, err := curr.GetCurrentHeight()
+					if err != nil {
+						log.Errorf("[MoniterFailedDepositTransfer] Unable to call get current height")
+						break
+					}
+					param["height"] = height
+					resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", param,
+						cfg.Rpc)
+					if err != nil {
+						log.Errorf("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ")
+						break
+					}
+					var fTxs []string
+					if err := rpc.Unmarshal(&resp, &fTxs); err != nil {
+						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
+						break
+					}
 					var failedTxs []base.FailedDepositTx
-					//for _ , tx :=range fTxs {
-					//	originTx , err := rpc.GetTransaction(tx , config.Parameters.MainNode.Rpc)
-					//	if err !=nil {
-					//		log.Errorf(err.Error())
-					//		break
-					//	}
-					//	referTxid := originTx.Inputs[0].Previous.TxID
-					//	referIndex := originTx.Inputs[0].Previous.Index
-					//
-					//	referTxn , err := rpc.GetTransaction(referTxid.String(), config.Parameters.MainNode.Rpc)
-					//	if err !=nil {
-					//		log.Errorf(err.Error())
-					//		break
-					//	}
-					//	originHash := originTx.Hash()
-					//	payload, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
-					//	if !ok {
-					//		log.Errorf("Invalid payload type need TransferCrossChainAsset")
-					//		break
-					//	}
-					//	address := referTxn.Outputs[referIndex].ProgramHash.String()
-					//	for i , cca :=range payload.CrossChainAmounts {
-					//		idx := payload.OutputIndexes[i]
-					//		amount := originTx.Outputs[idx].Value
-					//		failedTxs = append(failedTxs ,base.FailedDepositTx{
-					//			Txid: &originHash,
-					//			DepositInfo: &base.DepositInfo{
-					//				DepositAssets: []*base.DepositAssets{
-					//					{
-					//						TargetAddress:    address,
-					//						Amount:           &amount,
-					//						CrossChainAmount: &cca,
-					//					},
-					//				},
-					//			}})
-					//		}
-					//	}
+					for _, tx := range fTxs {
+						originTx, err := rpc.GetTransaction(tx, config.Parameters.MainNode.Rpc)
+						if err != nil {
+							log.Errorf(err.Error())
+							break
+						}
+						referTxid := originTx.Inputs[0].Previous.TxID
+						referIndex := originTx.Inputs[0].Previous.Index
+
+						referTxn, err := rpc.GetTransaction(referTxid.String(), config.Parameters.MainNode.Rpc)
+						if err != nil {
+							log.Errorf(err.Error())
+							break
+						}
+						originHash := originTx.Hash()
+						payload, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+						if !ok {
+							log.Errorf("Invalid payload type need TransferCrossChainAsset")
+							break
+						}
+						address := referTxn.Outputs[referIndex].ProgramHash.String()
+						for i, cca := range payload.CrossChainAmounts {
+							idx := payload.OutputIndexes[i]
+							amount := originTx.Outputs[idx].Value
+							failedTxs = append(failedTxs, base.FailedDepositTx{
+								Txid: &originHash,
+								DepositInfo: &base.DepositInfo{
+									DepositAssets: []*base.DepositAssets{
+										{
+											TargetAddress:    address,
+											Amount:           &amount,
+											CrossChainAmount: &cca,
+										},
+									},
+								}})
+						}
+					}
 
 					// need to form the testdata struct.failedTxs according to fTxs from sidechain
 					//var failedTxs []base.FailedDepositTx
 
 					//Add Test Data
-					txid := "de5a9ce6542a7ff603c6cbe38b31f7115b8e3e0a6d76da16630f13c27154ac3d"
-					amount := common.Fixed64(1000001000)
-					cross := common.Fixed64(1000000000)
-					id, _ := common.Uint256FromHexString(txid)
-					failedTxs = append(failedTxs, base.FailedDepositTx{
-						Txid: id,
-						DepositInfo: &base.DepositInfo{
-							DepositAssets: []*base.DepositAssets{
-								{
-									TargetAddress:    "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
-									Amount:           &amount,
-									CrossChainAmount: &cross,
-								},
-							},
-						},
-					})
+					//txid := "de5a9ce6542a7ff603c6cbe38b31f7115b8e3e0a6d76da16630f13c27154ac3d"
+					//amount := common.Fixed64(1000001000)
+					//cross := common.Fixed64(1000000000)
+					//id, _ := common.Uint256FromHexString(txid)
+					//failedTxs = append(failedTxs, base.FailedDepositTx{
+					//	Txid: id,
+					//	DepositInfo: &base.DepositInfo{
+					//		DepositAssets: []*base.DepositAssets{
+					//			{
+					//				TargetAddress:    "EWY9yB7kreywqjesdaU52eSnbRDBNEDCTy",
+					//				Amount:           &amount,
+					//				CrossChainAmount: &cross,
+					//			},
+					//		},
+					//	},
+					//})
 
 					//fullfil target address
 					//for _ , ftx := range failedTxs {
@@ -120,7 +130,7 @@ func MoniterFailedDepositTransfer() {
 						break
 					}
 					log.Info("111")
-					err := curr.SendFailedDepositTxs(failedTxs)
+					err = curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
 						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
 						break
