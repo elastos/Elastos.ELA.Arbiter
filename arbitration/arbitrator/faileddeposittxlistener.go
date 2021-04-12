@@ -45,6 +45,7 @@ func MoniterFailedDepositTransfer() {
 						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
 						break
 					}
+					log.Infof("respose data %v \n" , fTxs)
 					var failedTxs []base.FailedDepositTx
 					for _, tx := range fTxs {
 						originTx, err := rpc.GetTransaction(tx, config.Parameters.MainNode.Rpc)
