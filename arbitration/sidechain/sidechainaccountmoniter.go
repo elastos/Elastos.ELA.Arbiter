@@ -75,7 +75,7 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 	return item.OnIllegalEvidenceFound(evidence)
 }
 
-func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
+func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain) {
 	for {
 		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
 
@@ -163,6 +163,77 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
 				}
 			}
+
+			// Start handle failed deposit transaction
+			log.Info("Start Monitor Failed Deposit Transfer current height ", chainHeight)
+			if sideNode.SupportQuickRecharge {
+				log.Info("11")
+				param := make(map[string]interface{})
+				param["height"] = chainHeight
+				resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", param,
+					sideNode.Rpc)
+				if err != nil {
+					log.Error("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ", err.Error())
+					break
+				}
+				var fTxs []string
+				if err := rpc.Unmarshal(&resp, &fTxs); err != nil {
+					log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error", err.Error())
+					break
+				}
+				log.Infof("respose data %v \n", fTxs)
+				var failedTxs []base.FailedDepositTx
+				for _, tx := range fTxs {
+					originTx, err := rpc.GetTransaction(tx, config.Parameters.MainNode.Rpc)
+					if err != nil {
+						log.Errorf(err.Error())
+						break
+					}
+					referTxid := originTx.Inputs[0].Previous.TxID
+					referIndex := originTx.Inputs[0].Previous.Index
+
+					referTxn, err := rpc.GetTransaction(referTxid.String(), config.Parameters.MainNode.Rpc)
+					if err != nil {
+						log.Errorf(err.Error())
+						break
+					}
+					originHash := originTx.Hash()
+					payload, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+					if !ok {
+						log.Error("Invalid payload type need TransferCrossChainAsset")
+						break
+					}
+					address := referTxn.Outputs[referIndex].ProgramHash.String()
+					for i, cca := range payload.CrossChainAmounts {
+						idx := payload.OutputIndexes[i]
+						amount := originTx.Outputs[idx].Value
+						failedTxs = append(failedTxs, base.FailedDepositTx{
+							Txid: &originHash,
+							DepositInfo: &base.DepositInfo{
+								DepositAssets: []*base.DepositAssets{
+									{
+										TargetAddress:    address,
+										Amount:           &amount,
+										CrossChainAmount: &cca,
+									},
+								},
+							}})
+					}
+				}
+				log.Infof(" failed tx before sending %v", failedTxs)
+
+				if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+					log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
+					break
+				}
+				log.Info("111")
+				err = curr.SendFailedDepositTxs(failedTxs)
+				if err != nil {
+					log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
+					break
+				}
+			}
+			log.Info("End Monitor Failed Deposit Transfer")
 
 		}
 

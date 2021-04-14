@@ -30,22 +30,22 @@ func MoniterFailedDepositTransfer() {
 					param := make(map[string]interface{})
 					height, err := curr.GetCurrentHeight()
 					if err != nil {
-						log.Errorf("[MoniterFailedDepositTransfer] Unable to call get current height")
+						log.Error("[MoniterFailedDepositTransfer] Unable to call get current height", err.Error())
 						break
 					}
 					param["height"] = height
 					resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", param,
 						cfg.Rpc)
 					if err != nil {
-						log.Errorf("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ")
+						log.Error("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ", err.Error())
 						break
 					}
 					var fTxs []string
 					if err := rpc.Unmarshal(&resp, &fTxs); err != nil {
-						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
+						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error", err.Error())
 						break
 					}
-					log.Infof("respose data %v \n" , fTxs)
+					log.Infof("respose data %v \n", fTxs)
 					var failedTxs []base.FailedDepositTx
 					for _, tx := range fTxs {
 						originTx, err := rpc.GetTransaction(tx, config.Parameters.MainNode.Rpc)
@@ -64,7 +64,7 @@ func MoniterFailedDepositTransfer() {
 						originHash := originTx.Hash()
 						payload, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
 						if !ok {
-							log.Errorf("Invalid payload type need TransferCrossChainAsset")
+							log.Error("Invalid payload type need TransferCrossChainAsset")
 							break
 						}
 						address := referTxn.Outputs[referIndex].ProgramHash.String()
@@ -84,7 +84,7 @@ func MoniterFailedDepositTransfer() {
 								}})
 						}
 					}
-
+					log.Infof(" failed tx before sending %v", failedTxs)
 					// need to form the testdata struct.failedTxs according to fTxs from sidechain
 					//var failedTxs []base.FailedDepositTx
 

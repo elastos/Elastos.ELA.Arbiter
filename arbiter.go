@@ -92,12 +92,9 @@ func init() {
 func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
 	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
 
-	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
+	for i, side := range arbitrator.GetSideChainManager().GetAllChains() {
 		monitor.AddListener(side)
-	}
-
-	for _, node := range config.Parameters.SideNodeList {
-		go monitor.SyncChainData(node)
+		go monitor.SyncChainData(config.Parameters.SideNodeList[i], side)
 	}
 }
 
@@ -178,9 +175,6 @@ func main() {
 
 	log.Info("10. Start small crosschain transfer monitor.")
 	go arbitrator.MoniterSmallCrossTransfer()
-
-	log.Info("11. Start failed deposit transfer monitor.")
-	go arbitrator.MoniterFailedDepositTransfer()
 
 	select {}
 }
