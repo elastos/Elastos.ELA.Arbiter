@@ -130,6 +130,7 @@ type WithdrawOutputInfo struct {
 	CrossChainAddress string `json:"crosschainaddress"`
 	CrossChainAmount  string `json:"crosschainamount"`
 	OutputAmount      string `json:"outputamount"`
+	TargetData        string `json:"targetdata"`
 }
 
 type WithdrawTxInfo struct {

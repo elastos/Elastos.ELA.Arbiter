@@ -9,10 +9,13 @@ import (
 	"github.com/elastos/Elastos.ELA/core/types"
 )
 
+const MaxTargetDataSize uint32 = 1024
+
 type WithdrawAsset struct {
 	TargetAddress    string
 	Amount           *common.Fixed64
 	CrossChainAmount *common.Fixed64
+	TargetData       []byte
 }
 
 type WithdrawInfo struct {
@@ -72,6 +75,10 @@ func (info *WithdrawInfo) Serialize(w io.Writer) error {
 		if err := common.WriteElements(w, withdraw.Amount, withdraw.CrossChainAmount); err != nil {
 			return errors.New("[Serialize] write withdraw assets failed")
 		}
+
+		if err := common.WriteVarBytes(w, withdraw.TargetData); err != nil {
+			return errors.New("[Serialize] write withdraw TargetData failed")
+		}
 	}
 
 	return nil
@@ -95,6 +102,16 @@ func (info *WithdrawInfo) Deserialize(r io.Reader) error {
 
 		if err := common.ReadElements(r, withdraw.Amount, withdraw.CrossChainAmount); err != nil {
 			return errors.New("[Deserialize] read withdraw assets failed")
+		}
+
+		withdraw.TargetData = []byte{}
+		targetData, err := common.ReadVarBytes(r, MaxTargetDataSize, "target data")
+		if err != nil  {
+			if err != io.ErrShortBuffer {
+				return errors.New("[Deserialize] read withdraw TargetData failed")
+			}
+		} else {
+			withdraw.TargetData = targetData
 		}
 
 		info.WithdrawAssets = append(info.WithdrawAssets, withdraw)
