@@ -16,5 +16,3 @@ require (
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 	gopkg.in/cheggaaa/pb.v1 v1.0.28
 )
-
-replace github.com/elastos/Elastos.ELA => /Users/jiangzehua/work/elastos/src/github.com/elastos/Elastos.ELA
