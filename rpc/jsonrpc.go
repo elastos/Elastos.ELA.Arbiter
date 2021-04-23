@@ -229,34 +229,6 @@ func CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo, config *confi
 	return result, nil
 }
 
-func CheckIllegalDepositTx(checkTxs []common.Uint256, config *config.RpcConfig) (bool, error) {
-	resp, err := CallAndUnmarshal("getfaileddeposittransactions", nil,
-		config)
-	if err != nil {
-		return false, err
-	}
-
-	var ftxs []string
-	if err := Unmarshal(&resp, &ftxs); err != nil {
-		return false, err
-	}
-
-	for _, oriTx := range checkTxs {
-		var find bool
-		for _, compTx := range ftxs {
-			if oriTx.String() == compTx {
-				find = true
-				break
-			}
-		}
-		if !find {
-			return false, errors.New("Can not find failed tx")
-		}
-	}
-
-	return true, nil
-}
-
 func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (*base.WithdrawTxInfo, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {

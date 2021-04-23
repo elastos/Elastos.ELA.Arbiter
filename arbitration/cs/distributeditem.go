@@ -25,7 +25,7 @@ const (
 
 	TxDistribute      DistributeContentType = 0x00
 	IllegalDistribute DistributeContentType = 0x01
-	IllegalDepositTxs DistributeContentType = 0x02
+	//IllegalDepositTxs DistributeContentType = 0x02
 )
 
 type DistributedItem struct {
