@@ -199,10 +199,6 @@ func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDat
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
 }
 
-func (sc *SideChainImpl) CheckIllegalDepositTx(depositTxs []common.Uint256) (bool, error) {
-	return rpc.CheckIllegalDepositTx(depositTxs, sc.CurrentConfig.Rpc)
-}
-
 func (sc *SideChainImpl) SendFailedDepositTxs(tx []base.FailedDepositTx, sideHeight uint32) error {
 	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx, sideHeight)
 }

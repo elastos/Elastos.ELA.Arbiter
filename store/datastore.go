@@ -98,7 +98,6 @@ type DataStoreSideChain interface {
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error)
 	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
-	GetFailedDepositSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.FailedDepositTx, error)
 }
 
 type DataStoreImpl struct {
@@ -459,37 +458,6 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 		txs = append(txs, tx)
 
 	}
-	return txs, nil
-}
-
-func (store *DataStoreSideChainImpl) GetFailedDepositSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.FailedDepositTx, error) {
-	store.mux.Lock()
-	defer store.mux.Unlock()
-
-	var txs []*base.FailedDepositTx
-	for _, txHash := range transactionHashes {
-		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
-		if err != nil {
-			return nil, err
-		}
-
-		for rows.Next() {
-			var transactionBytes []byte
-			err = rows.Scan(&transactionBytes)
-			if err != nil {
-				rows.Close()
-				return nil, err
-			}
-
-			tx := new(base.FailedDepositTx)
-			reader := bytes.NewReader(transactionBytes)
-			tx.Deserialize(reader)
-
-			txs = append(txs, tx)
-		}
-		rows.Close()
-	}
-
 	return txs, nil
 }
 
