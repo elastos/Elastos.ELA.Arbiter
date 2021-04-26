@@ -115,19 +115,6 @@ func parseUserWithdrawTransactions(txs []*base.WithdrawTx) (
 	return result, sideChainTxHashes
 }
 
-func parseUserFailedDepositTransactions(txs []*base.FailedDepositTx, fee common.Fixed64) (
-	*base.DepositInfo, []common.Uint256) {
-	result := new(base.DepositInfo)
-	var sideChainTxHashes []common.Uint256
-	for _, tx := range txs {
-		for _, asset := range tx.DepositInfo.DepositAssets {
-			result.DepositAssets = append(result.DepositAssets, asset)
-		}
-		sideChainTxHashes = append(sideChainTxHashes, *tx.Txid)
-	}
-	return result, sideChainTxHashes
-}
-
 func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	sideChain arbitrator.SideChain, failedDepositTxs []*base.FailedDepositTx,
 	mcFunc arbitrator.MainChainFunc, sideHeight uint32) (*types.Transaction, error) {
@@ -143,23 +130,28 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	var txOutputs []*types.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
-	withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
+	//withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
 
-	for _, withdraw := range withdrawInfo.DepositAssets {
-		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
+	for _, tx := range failedDepositTxs {
+		programhash, err := common.Uint168FromAddress(tx.DepositInfo.TargetAddress)
 		if err != nil {
 			return nil, err
 		}
 		txOutput := &types.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
-			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
-			OutputLock:  0,
-			Type:        types.OTNone,
-			Payload:     &outputpayload.DefaultOutput{},
+			Value: common.Fixed64(float64(*tx.DepositInfo.Amount-
+				config.Parameters.ReturnDepositTransactionFee) / exchangeRate),
+			OutputLock: 0,
+			Type:       types.OTReturnSideChainDepositCoin,
+			Payload: &outputpayload.ReturnSideChainDeposit{
+				Version:                0,
+				GenesisBlockAddress:    withdrawBank,
+				DepositTransactionHash: common.Uint256{},
+			},
 		}
 		txOutputs = append(txOutputs, txOutput)
-		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
+		totalOutputAmount += common.Fixed64(float64(*tx.DepositInfo.Amount) / exchangeRate)
 	}
 	log.Info("totalOutputAmount ", totalOutputAmount)
 
@@ -205,12 +197,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 		return nil, err
 	}
 
-	txPayload := &payload.ReturnSideChainDepositCoin{
-		Height:              sideHeight,
-		GenesisBlockAddress: withdrawBank,
-		DepositTxs:          txHashes,
-	}
-
+	txPayload := &payload.ReturnSideChainDepositCoin{}
 	p := &program.Program{redeemScript, nil}
 
 	return &types.Transaction{

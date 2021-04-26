@@ -24,14 +24,10 @@ type WithdrawTx struct {
 	WithdrawInfo *WithdrawInfo
 }
 
-type DepositAssets struct {
+type DepositInfo struct {
 	TargetAddress    string
 	Amount           *common.Fixed64
 	CrossChainAmount *common.Fixed64
-}
-
-type DepositInfo struct {
-	DepositAssets []*DepositAssets
 }
 
 type FailedDepositTx struct {
@@ -134,44 +130,25 @@ func (t *WithdrawTx) Deserialize(r io.Reader) error {
 }
 
 func (info *DepositInfo) Serialize(w io.Writer) error {
-	if err := common.WriteVarUint(w, uint64(len(info.DepositAssets))); err != nil {
-		return errors.New("[Serialize] write len withdraw assets failed")
+	if err := common.WriteVarString(w, info.TargetAddress); err != nil {
+		return errors.New("[Serialize] write withdraw target address failed")
 	}
 
-	for _, withdraw := range info.DepositAssets {
-		if err := common.WriteVarString(w, withdraw.TargetAddress); err != nil {
-			return errors.New("[Serialize] write withdraw target address failed")
-		}
-
-		if err := common.WriteElements(w, withdraw.Amount, withdraw.CrossChainAmount); err != nil {
-			return errors.New("[Serialize] write withdraw assets failed")
-		}
+	if err := common.WriteElements(w, info.Amount, info.CrossChainAmount); err != nil {
+		return errors.New("[Serialize] write withdraw assets failed")
 	}
 
 	return nil
 }
 
 func (info *DepositInfo) Deserialize(r io.Reader) error {
-	count, err := common.ReadVarUint(r, 0)
-	if err != nil {
-		return errors.New("[Deserialize] read len withdraw assets failed")
+	var err error
+	if info.TargetAddress, err = common.ReadVarString(r); err != nil {
+		return errors.New("[Deserialize] read withdraw target address failed")
 	}
 
-	info.DepositAssets = make([]*DepositAssets, 0)
-	for i := uint64(0); i < count; i++ {
-		withdraw := &DepositAssets{
-			Amount:           new(common.Fixed64),
-			CrossChainAmount: new(common.Fixed64),
-		}
-		if withdraw.TargetAddress, err = common.ReadVarString(r); err != nil {
-			return errors.New("[Deserialize] read withdraw target address failed")
-		}
-
-		if err := common.ReadElements(r, withdraw.Amount, withdraw.CrossChainAmount); err != nil {
-			return errors.New("[Deserialize] read withdraw assets failed")
-		}
-
-		info.DepositAssets = append(info.DepositAssets, withdraw)
+	if err := common.ReadElements(r, &info.Amount, &info.CrossChainAmount); err != nil {
+		return errors.New("[Deserialize] read withdraw assets failed")
 	}
 
 	return nil

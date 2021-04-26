@@ -27,7 +27,6 @@ type DistributedNodeServer struct {
 	mux                       *sync.Mutex
 	withdrawMux               *sync.Mutex
 	unsolvedContents          map[common.Uint256]base.DistributedContent
-	unsolvedContentsSignature map[common.Uint256]map[common.Uint160]bool
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -39,9 +38,6 @@ func (dns *DistributedNodeServer) tryInit() {
 	}
 	if dns.unsolvedContents == nil {
 		dns.unsolvedContents = make(map[common.Uint256]base.DistributedContent)
-	}
-	if dns.unsolvedContentsSignature == nil {
-		dns.unsolvedContentsSignature = make(map[common.Uint256]map[common.Uint160]bool)
 	}
 }
 
@@ -156,10 +152,6 @@ func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.D
 		return nil, errors.New("transaction already in process")
 	}
 	dns.unsolvedContents[itemContent.Hash()] = itemContent
-	log.Info("unsolvedContents hash ", itemContent.Hash())
-	signs := make(map[common.Uint160]bool)
-	signs[programHash.ToCodeHash()] = true
-	dns.unsolvedContentsSignature[itemContent.Hash()] = signs
 
 	return buf.Bytes(), nil
 }
@@ -196,24 +188,16 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	}
 	dns.mux.Unlock()
 	targetCodeHash := transactionItem.TargetArbitratorProgramHash.ToCodeHash()
-
-	signs := dns.unsolvedContentsSignature[hash]
-	if _, ok := signs[targetCodeHash]; ok {
-		log.Warn("arbiter already signed ")
-		return nil
-	}
 	signedCount, err := txn.MergeSign(newSign, &targetCodeHash)
 	if err != nil {
 		return err
 	}
-	signs[targetCodeHash] = true
 	pk, _ := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
 	log.Info("receive signature from ", hex.EncodeToString(pk))
 	if signedCount >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
 		dns.mux.Lock()
 		delete(dns.unsolvedContents, hash)
-		delete(dns.unsolvedContentsSignature, hash)
 		dns.mux.Unlock()
 
 		if err = txn.Submit(); err != nil {

@@ -178,7 +178,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						continue
 					}
 					log.Infof("respose data %v \n", fTxs)
-					var failedTxs []base.FailedDepositTx
+					var failedTxs []*base.FailedDepositTx
 					for _, tx := range fTxs {
 						txnBytes, err := common.HexStringToBytes(tx)
 						if err != nil {
@@ -211,24 +211,22 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							log.Error("program hash to address error", err.Error())
 							continue
 						}
+						var returnAmt common.Fixed64
+						var ccaAmt common.Fixed64
 						for i, cca := range payload.CrossChainAmounts {
 							idx := payload.OutputIndexes[i]
 							amount := originTx.Outputs[idx].Value
-							returnAmt := amount - config.Parameters.ReturnDepositTransactionFee
-							ccaAmt := cca - config.Parameters.ReturnDepositTransactionFee
-							log.Info("returnAmt ccaAmt ",returnAmt,ccaAmt)
-							failedTxs = append(failedTxs, base.FailedDepositTx{
-								Txid: &originHash,
-								DepositInfo: &base.DepositInfo{
-									DepositAssets: []*base.DepositAssets{
-										{
-											TargetAddress:    address,
-											Amount:           &returnAmt,
-											CrossChainAmount: &ccaAmt,
-										},
-									},
-								}})
+							returnAmt += amount
+							ccaAmt += cca
 						}
+						failedTxs = append(failedTxs, &base.FailedDepositTx{
+							Txid: &originHash,
+							DepositInfo: &base.DepositInfo{
+								TargetAddress:    address,
+								Amount:           &returnAmt,
+								CrossChainAmount: &ccaAmt,
+							},
+						})
 					}
 					log.Infof(" failed tx before sending %v", failedTxs)
 
