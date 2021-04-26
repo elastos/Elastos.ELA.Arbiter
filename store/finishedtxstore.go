@@ -39,6 +39,11 @@ const (
 				TransactionData BLOB,
 				RecordTime TEXT
 			);`
+	CreateReturnDepositTransactionsTable = `CREATE TABLE IF NOT EXISTS ReturnDepositTransactions (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				TransactionData BLOB,
+				RecordTime TEXT
+			);`
 )
 
 var (
@@ -110,7 +115,10 @@ func initFinishedTxsDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	_, err = db.Exec(CreateReturnDepositTransactionsTable)
+	if err != nil {
+		return nil, err
+	}
 	return db, nil
 }
 

@@ -2,7 +2,6 @@ package cs
 
 import (
 	"bytes"
-	"encoding/hex"
 	"errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
@@ -40,6 +39,7 @@ type DistributedItem struct {
 
 type DistrubutedItemFunc interface {
 	GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error)
+	GetCurrentHeight() (uint32, error)
 }
 
 type DistrubutedItemFuncImpl struct {
@@ -261,13 +261,17 @@ func (itemFunc *DistrubutedItemFuncImpl) GetArbitratorGroupInfoByHeight(height u
 	return rpc.GetArbitratorGroupInfoByHeight(height)
 }
 
+func (itemFunc *DistrubutedItemFuncImpl) GetCurrentHeight() (uint32, error) {
+	return rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+}
+
 func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool, itemFunc DistrubutedItemFunc) error {
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
 	newSign = append(newSign, signature...)
-	log.Info("appendSignature newSign ", len(newSign))
+
 	signedData := item.signedData
-	log.Info("appendSignature signedData ", len(item.signedData))
+
 	if !isFeedback {
 		if signedData == nil {
 			signedData = []byte{}
@@ -282,30 +286,12 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		sign := signedData[1:]
 		targetPk := item.TargetArbitratorPublicKey
 
-		//blockHeight, err := item.ItemContent.CurrentBlockHeight()
-		//if err != nil {
-		//	return err
-		//}
-		//groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(blockHeight)
-		//if err != nil {
-		//	return err
-		//}
-		//
-		//onDutyArbitratorPk, err :=
-		//	base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
-		//if err != nil {
-		//	return err
-		//}
-
-		height, err := rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+		blockHeight, err := itemFunc.GetCurrentHeight()
 		if err != nil {
-			log.Info("[appendSignature] rpc get current height failed")
 			return err
 		}
-
-		groupInfo, err := rpc.GetArbitratorGroupInfoByHeight(height)
+		groupInfo, err := itemFunc.GetArbitratorGroupInfoByHeight(blockHeight)
 		if err != nil {
-			log.Info("[appendSignature] get arbitrator group info failed")
 			return err
 		}
 
@@ -316,9 +302,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		if !crypto.Equal(targetPk, onDutyArbitratorPk) {
-			tarP, _ := targetPk.EncodePoint(true)
-			onP, _ := onDutyArbitratorPk.EncodePoint(true)
-			return errors.New("Can not sign without current arbitrator's signing. onduty arbiter is not the targetPk , actual pubkey " + hex.EncodeToString(tarP) + " onduty publicKey " + hex.EncodeToString(onP))
+			return errors.New("Can not sign without current arbitrator's signing.")
 		}
 
 		buf := new(bytes.Buffer)
@@ -329,7 +313,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 
 		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
 		if err != nil {
-			return errors.New("Can not sign without current arbitrator's signing." + err.Error())
+			return errors.New("Can not sign without current arbitrator's signing.")
 		}
 	}
 
@@ -338,6 +322,6 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 	buf.Write(newSign)
 
 	item.signedData = buf.Bytes()
-	log.Info("appendSignature merge  ", item.signedData)
+
 	return nil
 }

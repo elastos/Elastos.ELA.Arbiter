@@ -249,27 +249,25 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	return tx, nil
 }
 
-func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig, height uint32) (bool, error) {
+func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (bool, error) {
 	hashBytes, err := common.HexStringToBytes(transactionHash)
 	if err != nil {
 		return false, err
 	}
 	hashStr := common.BytesToHexString(hashBytes)
-	log.Info("GetDepositTransactionInfoByHash hashStr ", hashStr, " height ", height)
-	result, err := CallAndUnmarshal("getfaileddeposittransactions", Param("height", height), config)
+	log.Info("get failed deposit transaction by hash:", hashStr)
+	result, err := CallAndUnmarshal("getfaileddeposittransactionbyhash", Param("hash", hashStr), config)
 	if err != nil {
 		return false, err
 	}
 
-	var fTxs []string
-	if err := Unmarshal(&result, &fTxs); err != nil {
+	var tx string
+	if err := Unmarshal(&result, &tx); err != nil {
 		return false, errors.New("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
 	}
-	log.Infof("Result %v", fTxs)
-	for _, tx := range fTxs {
-		if tx == hashStr {
-			return true, nil
-		}
+	log.Infof("Result %v", tx)
+	if tx == hashStr {
+		return true, nil
 	}
 
 	return false, nil
