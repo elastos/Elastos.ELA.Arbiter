@@ -19,12 +19,10 @@ Elastos ELA Arbiter
     - [3. Install Go distribution 1.9](#3-install-go-distribution-19)
 - [Configure the node](#configure-the-node)
 - [Build the node](#build-the-node)
-    - [1. Setup basic workspace](#1-setup-basic-workspace)
-    - [2. Set correct environment variables](#2-set-correct-environment-variables)
-    - [3. Check Go version](#3-check-go-version)
-    - [4. Clone source code to $GOPATH/src/github/elastos folder](#4-clone-source-code-to-gopathsrcgithubelastos-folder)
-    - [5. Make](#5-make)
-    - [6. Run the node on Mac](#6-run-the-node-on-mac)
+    - [1. Check Go version](#1-check-go-version)
+    - [2. Clone source code](#2-clone-source-code)
+    - [3. Make](#3-make)
+    - [4. Run the node](#4-run-the-node)
 - [Interact with the node](#interact-with-the-node)
     - [1. JSON RPC API of the node](#1-json-rpc-api-of-the-node)
 - [Contribution](#contribution)
@@ -42,12 +40,12 @@ $ uname -srm
 Darwin 16.7.0 x86_64
 ```
 
-#### 2. Install Go distribution 1.9
+#### 2. Install Go distribution 1.13
 
-Use Homebrew to install Golang 1.9.
+Use Homebrew to install Golang 1.13.
 
 ```shell
-$ brew install go@1.9
+$ brew install go@1.13
 ```
 
 > If you install older version, such as v1.8, you may get missing math/bits package error when build.
@@ -70,13 +68,16 @@ Ubuntu 16.04.3 LTS \n \l
 $ sudo apt-get install -y git
 ```
 
-#### 3. Install Go distribution 1.9
+#### 3. Install Go distribution 1.13
 
 ```shell
-$ sudo apt-get install -y software-properties-common
-$ sudo add-apt-repository -y ppa:gophers/archive
-$ sudo apt update
-$ sudo apt-get install -y golang-1.9-go
+$ curl -O https://storage.googleapis.com/golang/go1.13.5.linux-amd64.tar.gz
+$ tar -xvf go1.13.5.linux-amd64.tar.gz
+$ sudo chown -R root:root ./go
+$ sudo mv go /usr/local
+$ export GOPATH=$HOME/go
+$ export PATH=$PATH:/usr/local/go/bin:$GOPATH/bin
+$ source ~/.profile
 ```
 
 > If you install older version, such as v1.8, you may get missing math/bits package error when build.
@@ -99,54 +100,36 @@ Make sure to modify the parameters to what your own specification.
 
 ## Build the node
 
-#### 1. Setup basic workspace
-In this instruction we use ~/dev/src/github.com/elastos as our working directory. If you clone the source code to a different directory, please make sure you change other environment variables accordingly (not recommended). 
-
-```shell
-$ mkdir -p ~/dev/bin
-$ mkdir -p ~/dev/src/github.com/elastos/
-```
-
-#### 2. Set correct environment variables
-
-```shell
-export GOROOT=/usr/local/opt/go@1.9/libexec
-export GOPATH=$HOME/dev
-export GOBIN=$GOPATH/bin
-export PATH=$GOROOT/bin:$PATH
-export PATH=$GOBIN:$PATH
-```
-
-#### 3. Check Go version
+#### 1. Check Go version
 
 Check the golang version. Make sure they are the following version number or above.
 
 ```shell
 $ go version
-go version go1.13.4 darwin/amd64
+go version go1.13.5 darwin/amd64
 ```
 
 If you cannot see the version number, there must be something wrong when install.
 
-#### 4. Clone source code to $GOPATH/src/github/elastos folder
-Make sure you are in the folder of $GOPATH/src/github.com/elastos
+#### 2. Clone source code
+Make sure you are in the folder
 ```shell
 $ git clone https://github.com/elastos/Elastos.ELA.Arbiter.git
 ```
 
-If clone works successfully, you should see folder structure like $GOPATH/src/github.com/elastos/Elastos.ELA.Arbiter/Makefile
+If clone works successfully, you should see folder structure like Elastos.ELA.Arbiter/Makefile
 
-#### 5. Make
+#### 3. Make
 
 Build the node.
 ```shell
-$ cd $GOPATH/src/github.com/elastos/Elastos.ELA.Arbiter
+$ cd Elastos.ELA.Arbiter
 $ make
 ```
 
 If you did not see any error message, congratulations, you have made the arbiter full node.
 
-#### 6. Run the node on Mac
+#### 4. Run the node
 
 Run the node.
 ```shell

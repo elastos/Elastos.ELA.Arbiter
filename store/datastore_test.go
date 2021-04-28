@@ -42,7 +42,8 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 	tx := &types.Transaction{Payload: new(payload.WithdrawFromSideChain)}
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
-	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10}); err != nil {
+	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash,
+		genesisBlockAddress, buf.Bytes(), 10}); err != nil {
 		t.Error("Add side chain transaction error.")
 	}
 

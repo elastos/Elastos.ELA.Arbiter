@@ -67,6 +67,7 @@ type Configuration struct {
 	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
 	CRClaimDPOSNodeStartHeight   uint32           `json:"CRClaimDPOSNodeStartHeight"`
 	NewP2PProtocolVersionHeight  uint64           `json:"NewP2PProtocolVersionHeight"`
+	DPOSNodeCrossChainHeight     uint32           `json:"DPOSNodeCrossChainHeight"`
 	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
 	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
@@ -153,6 +154,9 @@ func GetSpvChainParams() *elacfg.Params {
 	}
 	if Parameters.NewP2PProtocolVersionHeight > 0 {
 		params.NewP2PProtocolVersionHeight = Parameters.NewP2PProtocolVersionHeight
+	}
+	if Parameters.DPOSNodeCrossChainHeight > 0 {
+		params.DPOSNodeCrossChainHeight = Parameters.DPOSNodeCrossChainHeight
 	}
 	params.DNSSeeds = nil
 	return params
