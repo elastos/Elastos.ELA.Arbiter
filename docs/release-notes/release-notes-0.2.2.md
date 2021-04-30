@@ -1,4 +1,4 @@
-Elastos.ELA.Arbiter version 0.3.0 is now available from:
+Elastos.ELA.Arbiter version 0.2.2 is now available from:
 
   <https://download.elastos.org/elastos-arbiter/elastos-arbitier-v0.3.0/>
 
@@ -11,7 +11,7 @@ Please report bugs using the issue tracker at GitHub:
 How to Upgrade
 ==============
 
-If you are running version release_v0.2.0 and before, you should shut it down and wait until
+If you are running version release_v0.2.1 and before, you should shut it down and wait until
  it has completely closed, then just copy over `arbiter` (on Linux).
 
 However, as usual, config, keystore and chaindata files are compatible.
@@ -34,7 +34,7 @@ Notable changes
 
 Ignore WithdrawFromSideChain transaction with no CrossChainAssets.
 
-0.3.0 change log
+0.2.2 change log
 =================
 
 Detailed release notes follow
