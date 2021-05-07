@@ -409,7 +409,7 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 			return err
 		}
 
-		exist, err := sideChain.GetIllegalDepositTransaction(opl.DepositTransactionHash.String())
+		exist, err := sideChain.GetFailedDepositTransaction(opl.DepositTransactionHash.String())
 		if err != nil || !exist {
 			return errors.New("[checkReturnDepositTxPayload] failed, unknown side chain transactions")
 		}
@@ -439,23 +439,51 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 		if err != nil {
 			return errors.New("[checkReturnDepositTxPayload] ProgramHash can not transfer to address")
 		}
-		var depositAmount common.Fixed64
-		for _, output := range originTx.Outputs {
-			if bytes.Compare(output.ProgramHash[0:1], []byte{byte(contract.PrefixCrossChain)}) != 0 {
-				continue
-			}
-
-			crossChainHash, err := common.Uint168FromAddress(opl.GenesisBlockAddress)
-			if err != nil {
-				return err
-			}
-			if !crossChainHash.IsEqual(output.ProgramHash) {
-				continue
-			}
-
-			depositAmount += output.Value
+		crossChainHash, err := common.Uint168FromAddress(opl.GenesisBlockAddress)
+		if err != nil {
+			return err
 		}
-		if o.Value != depositAmount-config.Parameters.ReturnDepositTransactionFee {
+
+		var crossChainAmount common.Fixed64
+		switch originTx.PayloadVersion {
+		case payload.TransferCrossChainVersion:
+			p, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+			if !ok {
+				log.Error("Invalid payload type need TransferCrossChainAsset")
+				continue
+			}
+
+			for i, cca := range p.CrossChainAmounts {
+				idx := p.OutputIndexes[i]
+				// output to current side chain
+				if !crossChainHash.IsEqual(originTx.Outputs[idx].ProgramHash) {
+					continue
+				}
+				crossChainAmount += cca
+			}
+		case payload.TransferCrossChainVersionV1:
+			_, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+			if !ok {
+				log.Error("Invalid payload type need TransferCrossChainAsset")
+				continue
+			}
+			for _, o := range originTx.Outputs {
+				if o.Type != types.OTCrossChain {
+					continue
+				}
+				// output to current side chain
+				if !crossChainHash.IsEqual(o.ProgramHash) {
+					continue
+				}
+				p, ok := o.Payload.(*outputpayload.CrossChainOutput)
+				if !ok {
+					continue
+				}
+				crossChainAmount += p.TargetAmount
+			}
+		}
+
+		if o.Value != crossChainAmount-config.Parameters.ReturnDepositTransactionFee {
 			return errors.New("[checkReturnDepositTxPayload] invalid output amount")
 		}
 		outputAddr, err := o.ProgramHash.ToAddress()

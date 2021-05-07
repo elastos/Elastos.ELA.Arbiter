@@ -2,6 +2,8 @@ package sidechain
 
 import (
 	"errors"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"sync"
 	"time"
 
@@ -200,31 +202,65 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							log.Errorf(err.Error())
 							continue
 						}
-						originHash := originTx.Hash()
-						payload, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
-						if !ok {
-							log.Error("Invalid payload type need TransferCrossChainAsset")
-							continue
-						}
 						address, err := referTxn.Outputs[referIndex].ProgramHash.ToAddress()
 						if err != nil {
 							log.Error("program hash to address error", err.Error())
 							continue
 						}
-						var returnAmt common.Fixed64
-						var ccaAmt common.Fixed64
-						for i, cca := range payload.CrossChainAmounts {
-							idx := payload.OutputIndexes[i]
-							amount := originTx.Outputs[idx].Value
-							returnAmt += amount
-							ccaAmt += cca
+						crossChainHash, err := common.Uint168FromAddress(sideNode.GenesisBlockAddress)
+						if err != nil {
+							log.Error("GenesisBlockAddress to hash error", err.Error())
+							continue
+						}
+						originHash := originTx.Hash()
+						var depositAmount common.Fixed64
+						var crossChainAmount common.Fixed64
+						switch originTx.PayloadVersion {
+						case payload.TransferCrossChainVersion:
+							p, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							if !ok {
+								log.Error("Invalid payload type need TransferCrossChainAsset")
+								continue
+							}
+
+							for i, cca := range p.CrossChainAmounts {
+								idx := p.OutputIndexes[i]
+								// output to current side chain
+								if !crossChainHash.IsEqual(originTx.Outputs[idx].ProgramHash) {
+									continue
+								}
+								amount := originTx.Outputs[idx].Value
+								depositAmount += amount
+								crossChainAmount += cca
+							}
+						case payload.TransferCrossChainVersionV1:
+							_, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							if !ok {
+								log.Error("Invalid payload type need TransferCrossChainAsset")
+								continue
+							}
+							for _, o := range originTx.Outputs {
+								if o.Type != types.OTCrossChain {
+									continue
+								}
+								// output to current side chain
+								if !crossChainHash.IsEqual(o.ProgramHash) {
+									continue
+								}
+								p, ok := o.Payload.(*outputpayload.CrossChainOutput)
+								if !ok {
+									continue
+								}
+								depositAmount += o.Value
+								crossChainAmount += p.TargetAmount
+							}
 						}
 						failedTxs = append(failedTxs, &base.FailedDepositTx{
 							Txid: &originHash,
 							DepositInfo: &base.DepositInfo{
 								TargetAddress:    address,
-								Amount:           &returnAmt,
-								CrossChainAmount: &ccaAmt,
+								Amount:           &depositAmount,
+								CrossChainAmount: &crossChainAmount,
 							},
 						})
 					}
