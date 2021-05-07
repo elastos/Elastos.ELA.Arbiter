@@ -130,7 +130,6 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	var txOutputs []*types.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
-	//withdrawInfo, txHashes := parseUserFailedDepositTransactions(failedDepositTxs, config.Parameters.ReturnDepositTransactionFee)
 
 	for _, tx := range failedDepositTxs {
 		programhash, err := common.Uint168FromAddress(tx.DepositInfo.TargetAddress)
@@ -140,18 +139,18 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 		txOutput := &types.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
-			Value: common.Fixed64(float64(*tx.DepositInfo.Amount-
+			Value: common.Fixed64(float64(*tx.DepositInfo.CrossChainAmount-
 				config.Parameters.ReturnDepositTransactionFee) / exchangeRate),
 			OutputLock: 0,
 			Type:       types.OTReturnSideChainDepositCoin,
 			Payload: &outputpayload.ReturnSideChainDeposit{
 				Version:                0,
 				GenesisBlockAddress:    withdrawBank,
-				DepositTransactionHash: common.Uint256{},
+				DepositTransactionHash: *tx.Txid,
 			},
 		}
 		txOutputs = append(txOutputs, txOutput)
-		totalOutputAmount += common.Fixed64(float64(*tx.DepositInfo.Amount) / exchangeRate)
+		totalOutputAmount += common.Fixed64(float64(*tx.DepositInfo.CrossChainAmount) / exchangeRate)
 	}
 	log.Info("totalOutputAmount ", totalOutputAmount)
 

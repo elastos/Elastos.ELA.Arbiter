@@ -186,7 +186,7 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 	return txInfo, nil
 }
 
-func (sc *SideChainImpl) GetIllegalDepositTransaction(txHash string) (bool, error) {
+func (sc *SideChainImpl) GetFailedDepositTransaction(txHash string) (bool, error) {
 	exist, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
 	if err != nil {
 		return false, err
