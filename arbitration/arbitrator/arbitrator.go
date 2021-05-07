@@ -145,14 +145,16 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
-		log.Warn(err.Error())
+		log.Warn("[CreateFailedDepositTransaction]" + err.Error())
 		return nil
 	}
 	log.Info("ftx %v", ftx)
 	if ftx == nil {
-		log.Warn("Created an empty withdraw transaction.")
+		log.Warn("[CreateFailedDepositTransaction] failed to create an failed deposit transaction.")
 		return nil
 	}
+
+	log.Info("[CreateFailedDepositTransaction] succeed")
 
 	return ftx
 }

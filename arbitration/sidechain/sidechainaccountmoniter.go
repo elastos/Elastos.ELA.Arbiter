@@ -302,7 +302,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					log.Info("[SyncSideChain] Start side chain mining, genesis address: [", sideNode.GenesisBlockAddress, "]")
 				}
 			}
-
 		}
 	}
 }
@@ -343,12 +342,12 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		for _, withdraw := range txn.CrossChainAssets {
 			opAmount, err := common.StringToFixed64(withdraw.OutputAmount)
 			if err != nil {
-				log.Warn("Find output to destroy address, but have invlaid corss chain output amount")
+				log.Warn("Find output to destroy address, but have invalid cross chain output amount")
 				continue
 			}
 			csAmount, err := common.StringToFixed64(withdraw.CrossChainAmount)
 			if err != nil {
-				log.Warn("Find output to destroy address, but have invlaid corss chain amount")
+				log.Warn("Find output to destroy address, but have invalid cross chain amount")
 				continue
 			}
 			programHash, err := common.Uint168FromAddress(withdraw.CrossChainAddress)
