@@ -37,7 +37,7 @@ func (d *TxDistributedContent) Submit() error {
 	case *payload.ReturnSideChainDepositCoin:
 		return d.SubmitReturnSideChainDepositCoin()
 	default:
-		return errors.New("received proposal feed back but withdraw transaction has invalid payload")
+		return errors.New("received proposal feed back but transaction has invalid payload")
 	}
 }
 
