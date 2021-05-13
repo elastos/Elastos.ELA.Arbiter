@@ -22,9 +22,9 @@ type DistributeContentType byte
 const (
 	MaxRedeemScriptDataSize = 10000
 
-	TxDistribute      DistributeContentType = 0x00
-	IllegalDistribute DistributeContentType = 0x01
-	//IllegalDepositTxs DistributeContentType = 0x02
+	TxDistribute            DistributeContentType = 0x00
+	IllegalDistribute       DistributeContentType = 0x01
+	ReturnDepositDistribute DistributeContentType = 0x02
 )
 
 type DistributedItem struct {
@@ -183,7 +183,11 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 			return errors.New("RawTransaction deserialization failed." + err.Error())
 		}
 	case IllegalDistribute:
-
+	case ReturnDepositDistribute:
+		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
+		if err = item.ItemContent.Deserialize(r); err != nil {
+			return errors.New("RawTransaction deserialization failed." + err.Error())
+		}
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
