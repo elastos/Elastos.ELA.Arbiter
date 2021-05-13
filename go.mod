@@ -3,7 +3,7 @@ module github.com/elastos/Elastos.ELA.Arbiter
 go 1.13
 
 require (
-	github.com/elastos/Elastos.ELA v0.6.1-0.20210511141129-e3601fb7777d
+	github.com/elastos/Elastos.ELA v0.6.1-0.20210513062830-65a4131e0fd2
 	github.com/elastos/Elastos.ELA.SPV v0.0.6-0.20201116073854-1b999e20b3f7
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/itchyny/base58-go v0.1.0

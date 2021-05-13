@@ -15,7 +15,6 @@ func MoniterSmallCrossTransfer() {
 	for {
 		select {
 		case <-time.After(time.Second * 1):
-			log.Info("Start Monitor Small Cross Transfer")
 			resp, err := rpc.CallAndUnmarshal("getsmallcrosstransfertxs", nil,
 				config.Parameters.MainNode.Rpc)
 			if err != nil {

@@ -24,9 +24,9 @@ const (
 )
 
 type DistributedNodeServer struct {
-	mux                       *sync.Mutex
-	withdrawMux               *sync.Mutex
-	unsolvedContents          map[common.Uint256]base.DistributedContent
+	mux              *sync.Mutex
+	withdrawMux      *sync.Mutex
+	unsolvedContents map[common.Uint256]base.DistributedContent
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -89,7 +89,15 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transaction) error {
 
-	proposal, err := dns.generateDistributedProposal(&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
+	var cType DistributeContentType
+	switch txn.TxType {
+	case types.WithdrawFromSideChain:
+		cType = TxDistribute
+	case types.ReturnCRDepositCoin:
+		cType = ReturnDepositDistribute
+	}
+	proposal, err := dns.generateDistributedProposal(cType,
+		&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
 	}
@@ -101,7 +109,8 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transacti
 
 func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error {
 
-	proposal, err := dns.generateDistributedProposal(&IllegalDistributedContent{Evidence: data}, &DistrubutedItemFuncImpl{})
+	proposal, err := dns.generateDistributedProposal(IllegalDistribute,
+		&IllegalDistributedContent{Evidence: data}, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
 	}
@@ -111,7 +120,9 @@ func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.Si
 	return nil
 }
 
-func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.DistributedContent, itemFunc DistrubutedItemFunc) ([]byte, error) {
+func (dns *DistributedNodeServer) generateDistributedProposal(
+	txType DistributeContentType, itemContent base.DistributedContent,
+	itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
@@ -127,6 +138,7 @@ func (dns *DistributedNodeServer) generateDistributedProposal(itemContent base.D
 		ItemContent:                 itemContent,
 		TargetArbitratorPublicKey:   currentArbitrator.GetPublicKey(),
 		TargetArbitratorProgramHash: programHash,
+		Type:                        txType,
 	}
 
 	if err = transactionItem.InitScript(currentArbitrator); err != nil {

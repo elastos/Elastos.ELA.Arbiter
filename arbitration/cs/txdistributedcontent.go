@@ -123,6 +123,9 @@ func (d *TxDistributedContent) SubmitReturnSideChainDepositCoin() error {
 		genesisAddresses = append(genesisAddresses, opl.GenesisBlockAddress)
 	}
 
+	if err != nil {
+		log.Warn("send return side chain deposit coin transaction err:", err)
+	}
 	if err != nil || resp.Error != nil && resp.Code != MCErrDoubleSpend {
 		log.Warn("failed to send return side chain deposit coin transaction, move to finished db, txHash:", d.Tx.Hash().String(), ", code: ", resp.Code, ", result:", resp.Result)
 
