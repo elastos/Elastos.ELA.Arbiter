@@ -139,7 +139,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 		txOutput := &types.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
-			Value: common.Fixed64(float64(*tx.DepositInfo.CrossChainAmount-
+			Value: common.Fixed64(float64(*tx.DepositInfo.Amount-
 				config.Parameters.ReturnDepositTransactionFee) / exchangeRate),
 			OutputLock: 0,
 			Type:       types.OTReturnSideChainDepositCoin,
@@ -150,7 +150,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 			},
 		}
 		txOutputs = append(txOutputs, txOutput)
-		totalOutputAmount += common.Fixed64(float64(*tx.DepositInfo.CrossChainAmount) / exchangeRate)
+		totalOutputAmount += common.Fixed64(float64(*tx.DepositInfo.Amount) / exchangeRate)
 	}
 	log.Info("totalOutputAmount ", totalOutputAmount)
 
