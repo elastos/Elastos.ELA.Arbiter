@@ -289,6 +289,22 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	return removeTxs, nil
 }
 
+func GetExistReturnDepositTransactions(txs []string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txs"] = txs
+	result, err := CallAndUnmarshal("getexistreturndeposittransactions",
+		parameter, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	if err := Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
+	return removeTxs, nil
+}
+
 func GetExistDepositTransactions(txs []string, config *config.RpcConfig) ([]string, error) {
 	parameter := make(map[string]interface{})
 	parameter["txs"] = txs

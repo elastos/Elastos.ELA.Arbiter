@@ -19,7 +19,7 @@ type MainChain interface {
 	CreateWithdrawTransaction(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
 		mcFunc MainChainFunc) (*types.Transaction, error)
 	CreateFailedDepositTransaction(sideChain SideChain, failedDepositTxs []*base.FailedDepositTx,
-		mcFunc MainChainFunc, sideHeight uint32) (*types.Transaction, error)
+		mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
