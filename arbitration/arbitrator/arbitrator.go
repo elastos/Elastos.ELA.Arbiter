@@ -52,7 +52,7 @@ type Arbitrator interface {
 		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
-		sideChain SideChain, mcFunc MainChainFunc, sideHeight uint32) *types.Transaction
+		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
 
 	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
@@ -91,6 +91,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
 		ar.ProcessDepositTransactions()
 		ar.processWithdrawTransactions()
+		ar.processReturnDepositTransactions()
 		ar.ProcessSideChainPowTransaction()
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
@@ -106,6 +107,12 @@ func (ar *ArbitratorImpl) ProcessDepositTransactions() {
 func (ar *ArbitratorImpl) processWithdrawTransactions() {
 	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
 		go sc.SendCachedWithdrawTxs()
+	}
+}
+
+func (ar *ArbitratorImpl) processReturnDepositTransactions() {
+	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+		go sc.SendCachedReturnDepositTxs()
 	}
 }
 
@@ -134,9 +141,9 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
-	sideChain SideChain, mcFunc MainChainFunc, sideHeight uint32) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
-		sideChain, withdrawTxs, mcFunc, sideHeight)
+		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
 		log.Warn(err.Error())
 		return nil

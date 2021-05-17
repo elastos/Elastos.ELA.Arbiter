@@ -199,8 +199,8 @@ func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDat
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
 }
 
-func (sc *SideChainImpl) SendFailedDepositTxs(tx []*base.FailedDepositTx, sideHeight uint32) error {
-	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx, sideHeight)
+func (sc *SideChainImpl) SendFailedDepositTxs(tx []*base.FailedDepositTx) error {
+	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx)
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() {
@@ -246,6 +246,61 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 		err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(receivedTxs)
 		if err != nil {
 			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
+			return
+		}
+	}
+}
+
+func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
+	log.Info("[SendCachedReturnDepositTxs] start")
+	defer log.Info("[SendCachedReturnDepositTxs] end")
+
+	txBytes, txHashes, err := store.FinishedTxsDbCache.GetAllReturnDepositTx(sc.GetKey())
+	if err != nil {
+		log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
+		return
+	}
+
+	if len(txHashes) == 0 {
+		log.Info("No cached return deposit transaction need to send")
+		return
+	}
+
+	receivedTxs, err := rpc.GetExistReturnDepositTransactions(txHashes)
+	if err != nil {
+		log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
+		return
+	}
+
+	unsolvedTxs, indexes := base.SubstractReturnDepositTransactionHashes(txHashes, receivedTxs)
+	if len(unsolvedTxs) != 0 {
+		var failedTxs []*base.FailedDepositTx
+		for _, index := range indexes {
+			if len(txBytes) <= index {
+				log.Errorf("[SendCachedReturnDepositTxs] index is out of range max %d,actual %d", len(txBytes)-1, index)
+				return
+			}
+			txByte := txBytes[index]
+			failedTx := new(base.FailedDepositTx)
+			err := failedTx.Deserialize(bytes.NewBuffer(txByte))
+			if err != nil {
+				log.Errorf("[SendCachedReturnDepositTxs] tx deserialize error %s", err.Error())
+				return
+			}
+			failedTxs = append(failedTxs, failedTx)
+		}
+		log.Infof("[SendCachedReturnDepositTxs] failed tx before sending %v", failedTxs)
+		err = sc.SendFailedDepositTxs(failedTxs)
+		if err != nil {
+			log.Error("[SendCachedReturnDepositTxs] SendFailedDepositTxs failed", err.Error())
+			return
+		}
+	}
+
+	if len(receivedTxs) != 0 {
+		err = store.FinishedTxsDbCache.RemoveReturnDepositTxs(receivedTxs)
+		if err != nil {
+			log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
 			return
 		}
 	}
@@ -298,7 +353,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	return nil
 }
 
-func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []*base.FailedDepositTx, sideHeight uint32) error {
+func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []*base.FailedDepositTx) error {
 	if len(failedTxs) == 0 {
 		return nil
 	}
@@ -314,7 +369,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 		}
 
 		tx := currentArbitrator.CreateFailedDepositTransaction(
-			failedTxs[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, sideHeight)
+			failedTxs[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
 		if tx == nil {
 			continue
 		}

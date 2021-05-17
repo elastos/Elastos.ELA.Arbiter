@@ -1,6 +1,7 @@
 package sidechain
 
 import (
+	"bytes"
 	"errors"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
@@ -255,14 +256,26 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 								crossChainAmount += p.TargetAmount
 							}
 						}
-						failedTxs = append(failedTxs, &base.FailedDepositTx{
+						failedTx := &base.FailedDepositTx{
 							Txid: &originHash,
 							DepositInfo: &base.DepositInfo{
 								TargetAddress:    address,
 								Amount:           &depositAmount,
 								CrossChainAmount: &crossChainAmount,
-							},
-						})
+							}}
+						failedTxs = append(failedTxs, failedTx)
+						buf := new(bytes.Buffer)
+						err = failedTx.Serialize(buf)
+						if err != nil {
+							log.Warn("[MoniterFailedDepositTransfer] failedTx serialize error", err.Error())
+							continue
+						}
+						// add to return deposit table
+						err = store.FinishedTxsDbCache.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
+						if err != nil {
+							log.Warn("[MoniterFailedDepositTransfer] AddReturnDepositTx error")
+							continue
+						}
 					}
 					log.Infof(" failed tx before sending %v", failedTxs)
 
@@ -270,7 +283,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
 						continue
 					}
-					err = curr.SendFailedDepositTxs(failedTxs, currentHeight)
+					err = curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
 						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
 						continue

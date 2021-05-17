@@ -117,7 +117,7 @@ func parseUserWithdrawTransactions(txs []*base.WithdrawTx) (
 
 func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	sideChain arbitrator.SideChain, failedDepositTxs []*base.FailedDepositTx,
-	mcFunc arbitrator.MainChainFunc, sideHeight uint32) (*types.Transaction, error) {
+	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
