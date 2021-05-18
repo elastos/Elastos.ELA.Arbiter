@@ -382,6 +382,10 @@ func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {
 		if err != nil {
 			log.Warn("Check and remove withdraw transactions from db error:", err)
 		}
+		err = ar.GetSideChainManager().CheckAndRemoveReturnDepositTransactionsFromDB()
+		if err != nil {
+			log.Warn("Check and remove return deposit transactions from db error:", err)
+		}
 		log.Info("Check and remove cross chain transactions from dbcache finished")
 		time.Sleep(time.Millisecond * config.Parameters.ClearTransactionInterval)
 	}
