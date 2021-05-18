@@ -63,6 +63,29 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromD
 	return nil
 }
 
+func (sideManager *SideChainManagerImpl) CheckAndRemoveReturnDepositTransactionsFromDB() error {
+	txHashes, err := store.FinishedTxsDbCache.GetAllReturnDepositTxs()
+	if err != nil {
+		return err
+	}
+	if len(txHashes) == 0 {
+		return nil
+	}
+	receivedTxs, err := rpc.GetExistReturnDepositTransactions(txHashes)
+	if err != nil {
+		return err
+	}
+
+	if len(receivedTxs) != 0 {
+		err = store.FinishedTxsDbCache.RemoveReturnDepositTxs(receivedTxs)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func Init() {
 	currentArbitrator, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().(*arbitrator.ArbitratorImpl)
 	if !ok {

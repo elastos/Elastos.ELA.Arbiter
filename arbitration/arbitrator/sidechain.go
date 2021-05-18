@@ -23,4 +23,5 @@ type SideChainManager interface {
 
 	StartSideChainMining()
 	CheckAndRemoveWithdrawTransactionsFromDB() error
+	CheckAndRemoveReturnDepositTransactionsFromDB() error
 }

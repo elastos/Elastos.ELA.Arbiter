@@ -71,6 +71,7 @@ type FinishedTransactionsDataStore interface {
 	GetSideChainTx(sideChainTransactionId uint64) ([]byte, error)
 	GetReturnDepositTx(txid string) ([]byte, error)
 	GetAllReturnDepositTx(genesisBlockAddress string) ([][]byte, []string, error)
+	GetAllReturnDepositTxs() ([]string, error)
 	RemoveReturnDepositTxs(transactionHashes []string) error
 	ResetDataStore() error
 }
@@ -518,6 +519,29 @@ func (store *FinishedTxsDataStoreImpl) GetAllReturnDepositTx(genesisBlockAddress
 	}
 
 	return transactionArrayBytes, transactionArrayHash, nil
+}
+
+func (store *FinishedTxsDataStoreImpl) GetAllReturnDepositTxs() ([]string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash FROM ReturnDepositTransactions`)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	transactionArrayHash := make([]string, 0)
+	for rows.Next() {
+		var transactionHash string
+		err = rows.Scan(&transactionHash)
+		if err != nil {
+			return nil, err
+		}
+		transactionArrayHash = append(transactionArrayHash, transactionHash)
+	}
+
+	return transactionArrayHash, nil
 }
 
 func (store *FinishedTxsDataStoreImpl) RemoveReturnDepositTxs(transactionHashes []string) error {
