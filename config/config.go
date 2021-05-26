@@ -73,6 +73,7 @@ type Configuration struct {
 	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
 	RpcConfiguration             RpcConfiguration `json:"RpcConfiguration"`
 	DPoSNetAddress               string           `json:"DPoSNetAddress"`
+	WalletPath                   string           `json:"WalletPath"`
 }
 
 type RpcConfig struct {
