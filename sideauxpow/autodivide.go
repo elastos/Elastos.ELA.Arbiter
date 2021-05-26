@@ -124,7 +124,7 @@ func SidechainAccountDivide() {
 						Amount:  &amount,
 					})
 				}
-				divideTransfer(DefaultKeystoreFile, outputs)
+				divideTransfer(config.Parameters.WalletPath, outputs)
 			}
 		}
 	}

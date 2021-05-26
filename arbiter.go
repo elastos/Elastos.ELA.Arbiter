@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"io"
 	"net/http"
 	"os"
@@ -74,13 +75,24 @@ func init() {
 		arbiterMaxLogsFolderSize,
 	)
 
+	var walletPath string
+	var pstr string
+	flag.StringVar(&walletPath, "wallet", "", "wallet path, default: keystore.dat")
+	flag.StringVar(&walletPath, "w", "", "wallet path, default: keystore.dat")
+	flag.StringVar(&pstr, "p", "", "wallet password")
+	flag.Parse()
+	if walletPath != "" {
+		config.Parameters.WalletPath = walletPath
+	}
+
 	log.Info("Init wallet.")
-	passwd, err := password.GetAccountPassword()
+	passwd, err := password.GetAccountPassword(pstr)
 	if err != nil {
 		log.Fatal("Get password error.")
 		os.Exit(1)
 	}
-	c, err := account.Open(sideauxpow.DefaultKeystoreFile, passwd)
+
+	c, err := account.Open(config.Parameters.WalletPath, passwd)
 	if err != nil || c == nil {
 		log.Fatal("error: open wallet failed, ", err)
 		os.Exit(1)

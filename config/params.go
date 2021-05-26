@@ -42,6 +42,7 @@ var (
 				WhiteIPList: []string{"127.0.0.1"},
 			},
 			DPoSNetAddress:    "127.0.0.1:22339",
+			WalletPath: "keystore.dat",
 			CRCOnlyDPOSHeight: 211000,
 			CRCCrossChainArbiters: []string{
 				"0306e3deefee78e0e25f88e98f1f3290ccea98f08dd3a890616755f1a066c4b9b8",
@@ -111,6 +112,7 @@ var (
 				WhiteIPList: []string{"0.0.0.0"},
 			},
 			DPoSNetAddress:    "127.0.0.1:21339",
+			WalletPath: "keystore.dat",
 			CRCOnlyDPOSHeight: 211000,
 			CRCCrossChainArbiters: []string{
 				"03e435ccd6073813917c2d841a0815d21301ec3286bc1412bb5b099178c68a10b6",
@@ -183,6 +185,7 @@ var (
 				WhiteIPList: []string{"0.0.0.0"},
 			},
 			DPoSNetAddress:    "127.0.0.1:20339",
+			WalletPath: "keystore.dat",
 			CRCOnlyDPOSHeight: 343400,
 			CRCCrossChainArbiters: []string{
 				"02089d7e878171240ce0e3633d3ddc8b1128bc221f6b5f0d1551caa717c7493062",
