@@ -63,9 +63,7 @@
         "SyncStartHeight": 0,       // The height at which synchronization begins.
         "ExchangeRate": 1.0,
         "GenesisBlock": "6afc2eb01956dfe192dc4cd065efdf6c3c80448776ca367a7246d279e228ff0a",
-        "MiningAddr": "EQ3h7C9hHe1WWDaNyYRtAe3Lx8zV9eHpjM",
         "PowChain": false,
-        "PayToAddr": "8VYXVxKKSAxkmRrfmGpQR2Kc66XhG6m3ta"
       }
     ],
     "OriginCrossChainArbiters": [                                                  // The publickey list of arbiters before CRCOnlyDPOSHeight
