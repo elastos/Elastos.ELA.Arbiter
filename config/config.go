@@ -163,7 +163,7 @@ func GetSpvChainParams() *elacfg.Params {
 	return params
 }
 
-func init() {
+func Initialize() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)
