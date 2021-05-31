@@ -4,18 +4,18 @@
       "Rpc": {
         "IpAddress": "127.0.0.1",
         "HttpJsonPort": 20336,
-        "User": "",
-        "Pass": ""
+        "User": "User",
+        "Pass": "Password"
       }
     },
     "SideNodeList": [{
         "Rpc": {
           "IpAddress": "127.0.0.1",
           "HttpJsonPort": 20606,
-          "User": "",
-          "Pass": ""
+          "User": "User",
+          "Pass": "Password"
         },
-        "SyncStartHeight": 401000,
+        "SyncStartHeight": 914300,
         "ExchangeRate": 1.0,
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
         "MiningAddr": "EWgV4gokrbAahWB2RjF35yoPL3awfVrv64",
@@ -25,23 +25,19 @@
       {
         "Rpc": {
           "IpAddress": "127.0.0.1",
-          "HttpJsonPort": 20632,
-          "User": "",
-          "Pass": ""
+          "HttpJsonPort": 20632
         },
-        "SyncStartHeight": 2515000,
+        "SyncStartHeight": 6551000,
         "ExchangeRate": 1.0,
         "GenesisBlock": "6afc2eb01956dfe192dc4cd065efdf6c3c80448776ca367a7246d279e228ff0a",
-        "MiningAddr": "EUZs18aHmfc1yvVJQZmBevYVhbMiyxAdsb",
-        "PowChain": false,
-        "PayToAddr": "EZQpPfZrqYJx6WP1aPc7yDwk94jVc8tLwK"
+        "PowChain": false
       }
     ],
     "RpcConfiguration": {
-      "User": "",
-      "Pass": "",
+      "User": "User",
+      "Pass": "Password",
       "WhiteIPList": [
-        ""
+        "127.0.0.1"
       ]
     }
   }
