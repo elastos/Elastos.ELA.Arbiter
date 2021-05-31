@@ -38,7 +38,65 @@ const (
 	defaultArbiterMaxLogsFolderSize int64 = 2 * 1024
 )
 
+var walletPath string
+var pstr string
+
 func init() {
+	v := versionFlag{}
+	flag.Var(&v, "v", "print version and exit")
+	flag.StringVar(&walletPath, "wallet", "", "wallet path, default: keystore.dat")
+	flag.StringVar(&walletPath, "w", "", "wallet path, default: keystore.dat")
+	flag.StringVar(&pstr, "p", "", "wallet password")
+	flag.Parse()
+}
+
+type versionFlag struct{}
+
+func (versionFlag) IsBoolFlag() bool  { return true }
+func (versionFlag) Get() interface{}  { return nil }
+func (r *versionFlag) String() string { return config.Version }
+func (r *versionFlag) Set(s string) error {
+	println("arbiter version", config.Version)
+	os.Exit(0)
+	return nil
+}
+
+func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
+	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
+
+	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
+		monitor.AddListener(side)
+	}
+
+	for _, node := range config.Parameters.SideNodeList {
+		go monitor.SyncChainData(node)
+	}
+}
+
+func initP2P(arbitrator arbitrator.Arbitrator) error {
+	pk, err := arbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	var id peer.PID
+	copy(id[:], pk)
+	if err := cs.InitP2PClient(id); err != nil {
+		return err
+	}
+
+	//register p2p client listener
+	if err := mainchain.InitMainChain(arbitrator); err != nil {
+		return err
+	}
+
+	cs.P2PClientSingleton.Start()
+	return nil
+}
+
+func initialize() {
+	config.Initialize()
+
 	spvMaxPerLogFileSize := defaultSpvMaxPerLogFileSize
 	spvMaxLogsFolderSize := defaultSpvMaxLogsFolderSize
 	if config.Parameters.MaxPerLogSize > 0 {
@@ -75,15 +133,10 @@ func init() {
 		arbiterMaxLogsFolderSize,
 	)
 
-	var walletPath string
-	var pstr string
-	flag.StringVar(&walletPath, "wallet", "", "wallet path, default: keystore.dat")
-	flag.StringVar(&walletPath, "w", "", "wallet path, default: keystore.dat")
-	flag.StringVar(&pstr, "p", "", "wallet password")
-	flag.Parse()
 	if walletPath != "" {
 		config.Parameters.WalletPath = walletPath
 	}
+	log.Info("path:", walletPath)
 
 	log.Info("Init wallet.")
 	passwd, err := password.GetAccountPassword(pstr)
@@ -103,41 +156,8 @@ func init() {
 	sidechain.Init()
 }
 
-func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
-	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
-
-	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
-		monitor.AddListener(side)
-	}
-
-	for _, node := range config.Parameters.SideNodeList {
-		go monitor.SyncChainData(node)
-	}
-}
-
-func initP2P(arbitrator arbitrator.Arbitrator) error {
-	pk, err := arbitrator.GetPublicKey().EncodePoint(true)
-	if err != nil {
-		return err
-	}
-
-	var id peer.PID
-	copy(id[:], pk)
-	if err := cs.InitP2PClient(id); err != nil {
-		return err
-	}
-
-	//register p2p client listener
-	if err := mainchain.InitMainChain(arbitrator); err != nil {
-		return err
-	}
-
-	cs.P2PClientSingleton.Start()
-	return nil
-}
-
 func main() {
-	log.Info("Arbiter version: ", config.Version)
+	initialize()
 
 	log.Info("1. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()
