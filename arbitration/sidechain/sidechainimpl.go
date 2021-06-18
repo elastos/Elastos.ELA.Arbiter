@@ -20,6 +20,8 @@ import (
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 )
 
+const MinCrossChainTxFee common.Fixed64 = 10000
+
 type SideChainImpl struct {
 	mux sync.Mutex
 
@@ -318,6 +320,16 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 
 	targetTransactions := make([]*base.WithdrawTx, 0)
 	for _, tx := range unsolvedTransactions {
+		var ignore bool
+		for _, w := range tx.WithdrawInfo.WithdrawAssets {
+			if *w.Amount - *w.CrossChainAmount < MinCrossChainTxFee {
+				ignore = true
+				break
+			}
+		}
+		if ignore {
+			continue
+		}
 		if len(tx.WithdrawInfo.WithdrawAssets) != 0 {
 			targetTransactions = append(targetTransactions, tx)
 		}
