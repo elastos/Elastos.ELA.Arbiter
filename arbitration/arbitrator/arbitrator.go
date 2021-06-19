@@ -50,6 +50,8 @@ type Arbitrator interface {
 	//withdraw
 	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
 		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+	// invalid withdraw
+	SendInvalidWithdrawTransactions(knownTx []*InvalidWithdrawTransaction, genesisAddress string)
 
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
@@ -271,6 +273,33 @@ func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCros
 		if err != nil {
 			log.Info("Send deposit transaction Error", err.Error())
 		}
+	}
+}
+
+func (ar *ArbitratorImpl) SendInvalidWithdrawTransactions(knownTx []*InvalidWithdrawTransaction, genesisAddress string) {
+	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+	if !ok {
+		log.Error("[SendInvalidWithdrawTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		return
+	}
+	hashes := make([]string, 0)
+	for _, tx := range knownTx {
+		signature := tx.Signature
+		hash := tx.Txid.String()
+		if sideChain.IsSendSmallCrxTx(hash) {
+			continue
+		}
+		_, err := sideChain.SendInvalidWithdrawTransaction(signature, hash)
+		if err != nil {
+			log.Error("Send invalid withdraw transaction Error", err.Error())
+		}
+		hashes = append(hashes, hash)
+	}
+
+	// todo remove from db when real succeed?
+	err := store.DbCache.SideChainStore.RemoveSideChainTxs(hashes)
+	if err != nil {
+		log.Error("failed to remove failed withdraw transaction from db")
 	}
 }
 

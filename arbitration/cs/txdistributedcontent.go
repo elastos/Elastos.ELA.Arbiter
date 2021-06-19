@@ -523,6 +523,10 @@ func checkWithdrawTransactionV1(txn *types.Transaction,
 		}
 	}
 
+	if len(transactionHashes) == 0 {
+		return errors.New("invalid withdraw transaction count")
+	}
+
 	genesisAddress := sideChain.GetKey()
 	// check if withdraw transactions exist in db, if not found then will check
 	// by the rpc interface of the side chain.

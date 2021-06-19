@@ -48,6 +48,11 @@ type SmallCrossTransaction struct {
 	Signature []byte
 }
 
+type InvalidWithdrawTransaction struct {
+	Txid      *common.Uint256
+	Signature []byte
+}
+
 type MainChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
@@ -106,7 +111,7 @@ func (info *WithdrawInfo) Deserialize(r io.Reader) error {
 
 		withdraw.TargetData = []byte{}
 		targetData, err := common.ReadVarBytes(r, MaxTargetDataSize, "target data")
-		if err != nil  {
+		if err != nil {
 			if err != io.ErrShortBuffer {
 				return errors.New("[Deserialize] read withdraw TargetData failed")
 			}
