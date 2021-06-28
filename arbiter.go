@@ -174,7 +174,11 @@ func main() {
 	go sideauxpow.SidechainAccountDivide()
 
 	log.Info("10. Start small crosschain transfer monitor.")
-	go arbitrator.MoniterSmallCrossTransfer()
+	go arbitrator.MonitorSmallCrossTransfer()
+
+
+	log.Info("11. Start invalid withdraw transaction monitor.")
+	go arbitrator.MonitorInvalidWithdrawTransaction()
 
 	sidechain.Initialized = true
 

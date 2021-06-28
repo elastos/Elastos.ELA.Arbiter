@@ -114,6 +114,22 @@ func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, 
 	return response, nil
 }
 
+func (sc *SideChainImpl) GetProcessedInvalidWithdrawTransactions(txs []string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txs"] = txs
+	result, err := rpc.CallAndUnmarshal("getprocessedinvalidwithdrawtransactions", parameter, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	if err := rpc.Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
+	return removeTxs, nil
+}
+
+
 func (sc *SideChainImpl) SendInvalidWithdrawTransaction(signature []byte, hash string) (rpc.Response, error) {
 	log.Info("[Rpc-SendInvalidWithdrawTransaction] Send to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
 	response, err := rpc.CallAndUnmarshalResponse("sendinvalidwithdrawtransaction",
@@ -126,7 +142,6 @@ func (sc *SideChainImpl) SendInvalidWithdrawTransaction(signature []byte, hash s
 	if response.Error != nil {
 		log.Info("response: ", response.Error.Message)
 	} else if r, ok := response.Result.(bool); ok && r {
-		sc.DoneSmallCrs[hash] = true
 		log.Info("response:", response)
 	}
 
@@ -339,10 +354,9 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return nil
 	}
 
-	invalidTransactions := make([]*base.WithdrawTx, 0)
 	targetTransactions := make([]*base.WithdrawTx, 0)
 	for _, tx := range unsolvedTransactions {
-		var ignore bool
+		ignore := false
 		for _, w := range tx.WithdrawInfo.WithdrawAssets {
 			if *w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
 				ignore = true
@@ -350,7 +364,6 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 			}
 		}
 		if ignore {
-			invalidTransactions = append(invalidTransactions, tx)
 			continue
 		}
 		if len(tx.WithdrawInfo.WithdrawAssets) != 0 {
@@ -385,30 +398,6 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
 	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
-
-	// broadcast invalid withdraw transaction
-	invalidTxs := make([]*base.InvalidWithdrawTransaction, 0)
-	for _, tx := range invalidTransactions {
-		buf := new(bytes.Buffer)
-		if err := tx.Txid.Serialize(buf); err != nil {
-			log.Error("failed to serialize invalid transaction hash")
-			continue
-		}
-		signature, err := currentArbitrator.Sign(buf.Bytes())
-		if err != nil {
-			log.Error("failed to sign invalid transaction hash")
-		}
-		invalidTxs = append(invalidTxs, &base.InvalidWithdrawTransaction{
-			Txid:      tx.Txid,
-			Signature: signature,
-		})
-	}
-	if len(invalidTxs) == 0 {
-		return nil
-	}
-	currentArbitrator.SendInvalidWithdrawTransactions(invalidTxs, sc.Key)
-	log.Info("[SendInvalidWithdrawTransactions] transactions count: ", len(invalidTxs))
-
 	return nil
 }
 

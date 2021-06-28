@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func MoniterSmallCrossTransfer() {
+func MonitorSmallCrossTransfer() {
 	for {
 		select {
 		case <-time.After(time.Second * 1):

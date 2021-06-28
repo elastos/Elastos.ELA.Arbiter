@@ -48,11 +48,6 @@ type SmallCrossTransaction struct {
 	Signature []byte
 }
 
-type InvalidWithdrawTransaction struct {
-	Txid      *common.Uint256
-	Signature []byte
-}
-
 type MainChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
