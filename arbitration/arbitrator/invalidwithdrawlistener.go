@@ -17,7 +17,7 @@ const MinCrossChainTxFee common.Fixed64 = 10000
 func MonitorInvalidWithdrawTransaction() {
 	for {
 		select {
-		case <-time.After(time.Second * 1):
+		case <-time.After(time.Second * 5):
 			mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
 			if mainChainHeight > config.Parameters.ProcessInvalidWithdrawHeight {
 				continue
@@ -26,7 +26,9 @@ func MonitorInvalidWithdrawTransaction() {
 			currentArbitrator := ArbitratorGroupSingleton.GetCurrentArbitrator()
 			ar := ArbitratorGroupSingleton.listener.(*ArbitratorImpl)
 			for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
-				// todo support to choose which side chain need to process invalid withdraw transaction
+				if !sc.GetCurrentConfig().SupportInvalidWithdraw {
+					continue
+				}
 				txHashes, _, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 				if err != nil {
 					continue
