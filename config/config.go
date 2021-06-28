@@ -76,6 +76,7 @@ type Configuration struct {
 	DPoSNetAddress                 string           `json:"DPoSNetAddress"`
 	ReturnDepositTransactionFee    common.Fixed64   `json:"ReturnDepositTransactionFee"`
 	NewCrossChainTransactionHeight uint32           `json:"NewCrossChainTransactionHeight"`
+	ProcessInvalidWithdrawHeight   uint32           `json:"ProcessInvalidWithdrawHeight"`
 }
 
 type RpcConfig struct {

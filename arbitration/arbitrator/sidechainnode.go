@@ -15,6 +15,7 @@ type SideChainNode interface {
 	SendTransaction(txHash *common.Uint256) (rpc.Response, error)
 	SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error)
 	IsSendSmallCrxTx(tx string) bool
-	
+
+	GetProcessedInvalidWithdrawTransactions(txs []string) ([]string, error)
 	SendInvalidWithdrawTransaction(signature []byte, hash string) (rpc.Response, error)
 }
