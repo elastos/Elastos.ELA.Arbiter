@@ -358,7 +358,13 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	for _, tx := range unsolvedTransactions {
 		ignore := false
 		for _, w := range tx.WithdrawInfo.WithdrawAssets {
-			if *w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
+			if *w.CrossChainAmount <= 0 ||
+				*w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
+				ignore = true
+				break
+			}
+			_, err := common.Uint168FromAddress(w.TargetAddress)
+			if err != nil {
 				ignore = true
 				break
 			}
