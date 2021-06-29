@@ -95,7 +95,6 @@ func MonitorSmallCrossTransfer() {
 				}
 				ArbitratorGroupSingleton.GetCurrentArbitrator().SendSmallCrossDepositTransactions(knownTxs, xAddr)
 			}
-			log.Info("End Monitor Small Cross Transfer")
 		}
 	}
 
