@@ -142,7 +142,6 @@ func GetArbitratorGroupInfoByHeight(height uint32) (*ArbitratorGroupInfo, error)
 }
 
 func GetCurrentHeight(config *config.RpcConfig) (uint32, error) {
-	log.Info("call get current height ", config.IpAddress, config.HttpJsonPort)
 	result, err := CallAndUnmarshal("getblockcount", nil, config)
 	if err != nil {
 		return 0, err

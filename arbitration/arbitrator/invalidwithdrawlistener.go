@@ -19,7 +19,7 @@ func MonitorInvalidWithdrawTransaction() {
 		select {
 		case <-time.After(time.Second * 5):
 			mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
-			if mainChainHeight > config.Parameters.ProcessInvalidWithdrawHeight {
+			if mainChainHeight < config.Parameters.ProcessInvalidWithdrawHeight {
 				continue
 			}
 
@@ -47,6 +47,7 @@ func MonitorInvalidWithdrawTransaction() {
 					continue
 				}
 
+				log.Info("Found unsolvedTransactions count:", len(unsolvedTransactions))
 				// get all invalid transactions
 				invalidTransactions := make([]*base.WithdrawTx, 0)
 				for _, tx := range unsolvedTransactions {
@@ -76,16 +77,28 @@ func MonitorInvalidWithdrawTransaction() {
 				// get all not processed invalid withdraw transactions
 				allHashes := make([]string, 0)
 				for _, tx := range invalidTransactions {
-					allHashes = append(allHashes, tx.Txid.String())
+					allHashes = append(allHashes, common.ToReversedString(*tx.Txid))
 				}
 				processedTxs, err := sc.GetProcessedInvalidWithdrawTransactions(allHashes)
 				if err != nil {
 					log.Error("[GetProcessedInvalidWithdrawTransactions] Error:", err)
-					return
+					continue
 				}
+				log.Info("[GetProcessedInvalidWithdrawTransactions] processedTxs:", processedTxs)
 
 				// remove already processed invalid withdraw transactions
-				err = store.DbCache.SideChainStore.RemoveSideChainTxs(processedTxs)
+
+				reversedProcessedTxs := make([]string, 0)
+				for _, t := range processedTxs {
+					bytes, err := common.FromReversedString(t)
+					if err != nil {
+						log.Error("invalid processed tx:", t)
+						continue
+					}
+					reversedProcessedTxs = append(reversedProcessedTxs, common.BytesToHexString(bytes))
+				}
+
+				err = store.DbCache.SideChainStore.RemoveSideChainTxs(reversedProcessedTxs)
 				if err != nil {
 					log.Error("failed to remove failed withdraw transaction from db")
 				}
@@ -107,7 +120,8 @@ func MonitorInvalidWithdrawTransaction() {
 
 					// sign transaction hash
 					buf := new(bytes.Buffer)
-					if err := tx.Txid.Serialize(buf); err != nil {
+					withdrawTxHash, err := common.Uint256FromHexString(common.ToReversedString(*tx.Txid))
+					if err := withdrawTxHash.Serialize(buf); err != nil {
 						log.Error("failed to serialize invalid transaction hash")
 						continue
 					}
@@ -118,9 +132,9 @@ func MonitorInvalidWithdrawTransaction() {
 					}
 
 					// send transaction to side chain.
-					_, err = sc.SendInvalidWithdrawTransaction(signature, txHash)
+					_, err = sc.SendInvalidWithdrawTransaction(signature, common.ToReversedString(*tx.Txid))
 					if err != nil {
-						log.Error("Send invalid withdraw transaction Error", err.Error())
+						log.Error("[SendInvalidWithdrawTransactions] Error", err.Error())
 					} else {
 						log.Info("[SendInvalidWithdrawTransactions] transactions hash: ", txHash)
 					}
