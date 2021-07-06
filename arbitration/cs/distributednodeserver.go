@@ -24,9 +24,10 @@ const (
 )
 
 type DistributedNodeServer struct {
-	mux              *sync.Mutex
-	withdrawMux      *sync.Mutex
-	unsolvedContents map[common.Uint256]base.DistributedContent
+	mux                       *sync.Mutex
+	withdrawMux               *sync.Mutex
+	unsolvedContents          map[common.Uint256]base.DistributedContent
+	unsolvedContentsSignature map[common.Uint256]map[common.Uint160]struct{}
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -38,6 +39,9 @@ func (dns *DistributedNodeServer) tryInit() {
 	}
 	if dns.unsolvedContents == nil {
 		dns.unsolvedContents = make(map[common.Uint256]base.DistributedContent)
+	}
+	if dns.unsolvedContentsSignature == nil {
+		dns.unsolvedContentsSignature = make(map[common.Uint256]map[common.Uint160]struct{})
 	}
 }
 
@@ -165,6 +169,10 @@ func (dns *DistributedNodeServer) generateDistributedProposal(
 	}
 	dns.unsolvedContents[itemContent.Hash()] = itemContent
 
+	signs := make(map[common.Uint160]struct{})
+	signs[programHash.ToCodeHash()] = struct{}{}
+	dns.unsolvedContentsSignature[itemContent.Hash()] = signs
+
 	return buf.Bytes(), nil
 }
 
@@ -192,24 +200,34 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return errors.New("can not find proposal")
 	}
 	hash := transactionItem.ItemContent.Hash()
-	log.Info("Receiving content hash ", hash.String())
 	txn, ok := dns.unsolvedContents[hash]
 	if !ok {
 		dns.mux.Unlock()
 		return errors.New("can not find proposal")
 	}
 	dns.mux.Unlock()
+
 	targetCodeHash := transactionItem.TargetArbitratorProgramHash.ToCodeHash()
+
+	signs := dns.unsolvedContentsSignature[hash]
+	if _, ok := signs[targetCodeHash]; ok {
+		log.Warn("arbiter already signed ")
+		return nil
+	}
+
 	signedCount, err := txn.MergeSign(newSign, &targetCodeHash)
 	if err != nil {
 		return err
 	}
+	dns.unsolvedContentsSignature[hash][targetCodeHash] = struct{}{}
+
 	pk, _ := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
 	log.Info("receive signature from ", hex.EncodeToString(pk))
 	if signedCount >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
 		dns.mux.Lock()
 		delete(dns.unsolvedContents, hash)
+		delete(dns.unsolvedContentsSignature, hash)
 		dns.mux.Unlock()
 
 		if err = txn.Submit(); err != nil {

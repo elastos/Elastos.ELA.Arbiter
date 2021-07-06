@@ -20,6 +20,8 @@ import (
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 )
 
+const MinCrossChainTxFee common.Fixed64 = 10000
+
 type SideChainImpl struct {
 	mux sync.Mutex
 
@@ -94,7 +96,9 @@ func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, 
 
 func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error) {
 	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
-	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction", rpc.Param("signature", hex.EncodeToString(signature)).Add("rawTx", tx).Add("txHash", hash), sc.CurrentConfig.Rpc)
+	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction",
+		rpc.Param("signature", hex.EncodeToString(signature)).
+			Add("rawTx", tx).Add("txHash", hash), sc.CurrentConfig.Rpc)
 	if err != nil {
 		return rpc.Response{}, err
 	}
@@ -104,6 +108,40 @@ func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, 
 		log.Info("response: ", response.Error.Message)
 	} else if r, ok := response.Result.(bool); ok && r {
 		sc.DoneSmallCrs[hash] = true
+		log.Info("response:", response)
+	}
+
+	return response, nil
+}
+
+func (sc *SideChainImpl) GetProcessedInvalidWithdrawTransactions(txs []string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txs"] = txs
+	result, err := rpc.CallAndUnmarshal("getprocessedinvalidwithdrawtransactions", parameter, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	if err := rpc.Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
+	return removeTxs, nil
+}
+
+
+func (sc *SideChainImpl) SendInvalidWithdrawTransaction(signature []byte, hash string) (rpc.Response, error) {
+	log.Info("[Rpc-SendInvalidWithdrawTransaction] Send to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
+	response, err := rpc.CallAndUnmarshalResponse("sendinvalidwithdrawtransaction",
+		rpc.Param("signature", hex.EncodeToString(signature)).Add("txHash", hash), sc.CurrentConfig.Rpc)
+	if err != nil {
+		return rpc.Response{}, err
+	}
+	log.Info("[Rpc-SendInvalidWithdrawTransaction] Send invalid withdraw transaction finished")
+
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else if r, ok := response.Result.(bool); ok && r {
 		log.Info("response:", response)
 	}
 
@@ -318,6 +356,22 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 
 	targetTransactions := make([]*base.WithdrawTx, 0)
 	for _, tx := range unsolvedTransactions {
+		ignore := false
+		for _, w := range tx.WithdrawInfo.WithdrawAssets {
+			if *w.CrossChainAmount <= 0 ||
+				*w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
+				ignore = true
+				break
+			}
+			_, err := common.Uint168FromAddress(w.TargetAddress)
+			if err != nil {
+				ignore = true
+				break
+			}
+		}
+		if ignore {
+			continue
+		}
 		if len(tx.WithdrawInfo.WithdrawAssets) != 0 {
 			targetTransactions = append(targetTransactions, tx)
 		}
@@ -350,7 +404,6 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
 	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
-
 	return nil
 }
 

@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-func MoniterSmallCrossTransfer() {
+func MonitorSmallCrossTransfer() {
 	for {
 		select {
 		case <-time.After(time.Second * 1):
@@ -95,7 +95,6 @@ func MoniterSmallCrossTransfer() {
 				}
 				ArbitratorGroupSingleton.GetCurrentArbitrator().SendSmallCrossDepositTransactions(knownTxs, xAddr)
 			}
-			log.Info("End Monitor Small Cross Transfer")
 		}
 	}
 
