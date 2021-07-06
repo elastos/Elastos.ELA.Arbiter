@@ -6,13 +6,11 @@ import (
 	"io"
 )
 
-
 type RegisteredSideChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
 	RegisteredSideChain *RegisteredSideChain
 }
-
 
 type RegisteredSideChain struct {
 	// Name of side chain
@@ -36,6 +34,9 @@ type RegisteredSideChain struct {
 	// Genesis block difficulty of side chain
 	GenesisBlockDifficulty string
 
+	// Upgrade types of proposals
+	UpgradeProposalType uint16
+
 	// SideChain rpc port
 	HttpJsonPort uint16
 
@@ -48,7 +49,6 @@ type RegisteredSideChain struct {
 	// Password of rpc
 	Pass string
 }
-
 
 func (sc *RegisteredSideChain) Serialize(w io.Writer) error {
 	if err := common.WriteVarString(w, sc.SideChainName); err != nil {
@@ -83,7 +83,9 @@ func (sc *RegisteredSideChain) Serialize(w io.Writer) error {
 	if err := common.WriteVarString(w, sc.GenesisBlockDifficulty); err != nil {
 		return errors.New("failed to serialize GenesisTimestamp")
 	}
-
+	if err := common.WriteUint16(w, sc.UpgradeProposalType); err != nil {
+		return errors.New("failed to serialize UpgradeProposalType")
+	}
 	if err := common.WriteUint16(w, sc.HttpJsonPort); err != nil {
 		return errors.New("failed to serialize HttpJsonPort")
 	}
@@ -147,6 +149,11 @@ func (sc *RegisteredSideChain) Deserialize(r io.Reader) error {
 		return errors.New("[CRCProposal], GenesisBlockDifficulty deserialize failed")
 	}
 
+	sc.UpgradeProposalType, err = common.ReadUint16(r)
+	if err != nil {
+		return errors.New("[CRCProposal], UpgradeProposalType deserialize failed")
+	}
+
 	sc.HttpJsonPort, err = common.ReadUint16(r)
 	if err != nil {
 		return errors.New("[CRCProposal], HttpJsonPort deserialize failed")
@@ -169,5 +176,3 @@ func (sc *RegisteredSideChain) Deserialize(r io.Reader) error {
 
 	return nil
 }
-
-
