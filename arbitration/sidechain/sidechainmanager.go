@@ -49,7 +49,7 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain() error {
 
 		sideManager.AddChain(transaction.GenesisBlockAddress, side)
 		SideChainAccountMonitor.AddListener(side)
-		go SideChainAccountMonitor.SyncChainData(side.CurrentConfig)
+		go SideChainAccountMonitor.SyncChainData(side.CurrentConfig, side)
 
 		err = store.DbCache.RegisteredSideChainStore.RemoveRegisteredSideChainTx(transaction.TransactionHash, transaction.GenesisBlockAddress)
 		if err != nil {
