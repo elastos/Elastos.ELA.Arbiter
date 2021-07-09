@@ -165,7 +165,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				}
 
 				// Start handle failed deposit transaction
-				log.Info("Start Monitor Failed Deposit Transfer current height ", currentHeight)
 				if sideNode.SupportQuickRecharge {
 					param := make(map[string]interface{})
 					param["height"] = currentHeight
@@ -180,7 +179,9 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error", err.Error())
 						continue
 					}
-					log.Infof("respose data %v \n", fTxs)
+					if len(fTxs) != 0 {
+						log.Infof("getfaileddeposittransactions respose data %v \n", fTxs)
+					}
 					var failedTxs []*base.FailedDepositTx
 					for _, tx := range fTxs {
 						txnBytes, err := common.HexStringToBytes(tx)
@@ -277,7 +278,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							continue
 						}
 					}
-					log.Infof(" failed tx before sending %v", failedTxs)
+					log.Infof("failed deposit transactions before sending %v", failedTxs)
 
 					if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
 						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
@@ -289,7 +290,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						continue
 					}
 				}
-				log.Info("End Monitor Failed Deposit Transfer")
 			}
 			// Update wallet height
 			currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)

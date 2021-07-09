@@ -475,7 +475,7 @@ func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	for _, tx := range txs {
 		sc, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(tx.GenesisBlockAddress)
 		if !ok {
-			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get chain from genesis addres failed.")
+			log.Warn("[CheckAndRemoveDepositTransactionsFromDB] Get chain from genesis address failed.")
 			continue
 		}
 
