@@ -36,6 +36,7 @@ func StartRPCServer(pServer *http.Server) {
 	mainMux["getgitversion"] = servers.GetGitVersion
 	mainMux["getspvheight"] = servers.GetSPVHeight
 	mainMux["getarbiterpeersinfo"] = servers.GetArbiterPeersInfo
+	mainMux["setregistersidechainrpcinfo"] = servers.SetRegisterSideChainRPCInfo
 
 	rpcServeMux := http.NewServeMux()
 	rpcServeMux.HandleFunc("/", Handle)

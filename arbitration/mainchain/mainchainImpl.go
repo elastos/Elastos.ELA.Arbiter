@@ -420,7 +420,8 @@ func (mc *MainChainImpl) SyncChainData() uint32 {
 		log.Error("update peers failed", err.Error())
 	}
 
-	transactions, err := rpc.GetRegisterTransactionByHeight(currentHeight, config.Parameters.MainNode.Rpc)
+	transactions, err := rpc.GetRegisterTransactionByHeight(config.Parameters.MainNode.Rpc)
+	log.Info(" RegisterTransaction count ", len(transactions))
 	if err != nil {
 		log.Error("GetRegisterTransactionByHeight failed ", err.Error())
 		return currentHeight
@@ -430,7 +431,10 @@ func (mc *MainChainImpl) SyncChainData() uint32 {
 			log.Error("HasRegisteredSideChainTx failed ", err.Error())
 			return currentHeight
 		} else if !exist {
-			store.DbCache.RegisteredSideChainStore.AddRegisteredSideChainTxs(transactions)
+			_, err := store.DbCache.RegisteredSideChainStore.AddRegisteredSideChainTxs(transactions)
+			if err != nil {
+				log.Error("AddRegisteredSideChainTxs failed", err.Error())
+			}
 		} else {
 			log.Warn("Sidechain with genesisblockaddress ", v.GenesisBlockAddress, " already exists")
 		}

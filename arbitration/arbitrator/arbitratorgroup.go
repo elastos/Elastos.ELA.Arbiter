@@ -110,12 +110,6 @@ func (group *ArbitratorGroupImpl) SyncFromMainNode() error {
 	group.lastSyncTime = &currentTime
 	group.mux.Unlock()
 
-	err = group.currentArbitrator.GetSideChainManager().OnReceivedRegisteredSideChain()
-	if err != nil {
-		log.Info("[SyncFromMainNode] OnReceivedRegisteredSideChain failed , at height ", currentHeight)
-		return err
-	}
-
 	group.CheckOnDutyStatus(currentHeight)
 	return nil
 }

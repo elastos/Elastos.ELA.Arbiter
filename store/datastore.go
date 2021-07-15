@@ -346,6 +346,19 @@ func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress strin
 		if height == ResetHeightCode {
 			height = 0
 		}
+
+		sideChainExistRow := store.QueryRow("SELECT EXISTS(SELECT true FROM SideHeightInfo WHERE GenesisBlockAddress=?)", genesisBlockAddress)
+		var exist bool
+		sideChainExistRow.Scan(&exist)
+
+		if !exist {
+			stmt, err := store.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
+			if err != nil {
+				return uint32(0)
+			}
+			stmt.Exec(genesisBlockAddress, uint32(0))
+		}
+
 		// Insert current height
 		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=? WHERE GenesisBlockAddress=?")
 		if err != nil {
