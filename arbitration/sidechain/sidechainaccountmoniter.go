@@ -23,7 +23,7 @@ import (
 const sideChainHeightInterval uint32 = 1000
 
 var (
-	Initialized bool
+	Initialized             bool
 	SideChainAccountMonitor SideChainAccountMonitorImpl
 )
 
@@ -86,7 +86,6 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain) {
 	for {
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
-
 		if !Initialized {
 			log.Info("Not initialized yet")
 			continue
@@ -98,8 +97,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 			if currentHeight < sideNode.SyncStartHeight {
 				currentHeight = sideNode.SyncStartHeight
 			}
-			log.Info("[SyncSideChain] side chain:", sideNode.GenesisBlockAddress,
-				"current height:", currentHeight, " chain height:", chainHeight)
 			count := uint32(1)
 			for currentHeight < chainHeight {
 				if currentHeight >= 6 {
@@ -169,6 +166,8 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 
 				// Start handle failed deposit transaction
 				if sideNode.SupportQuickRecharge {
+					// Start handle failed deposit transaction
+					log.Info("Start Monitor Failed Deposit Transfer current height ", currentHeight)
 					param := make(map[string]interface{})
 					param["height"] = currentHeight
 					resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", param,
@@ -292,6 +291,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
 						continue
 					}
+					log.Info("End Monitor Failed Deposit Transfer")
 				}
 			}
 			// Update wallet height

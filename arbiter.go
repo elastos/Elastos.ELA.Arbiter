@@ -173,7 +173,6 @@ func main() {
 	store.FinishedTxsDbCache = finishedDataStore
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	sidechain.LoadRegisterSideChain(currentArbitrator)
 
 	log.Info("3. Start arbitrator P2P networks.")
 	if err := initP2P(currentArbitrator); err != nil {

@@ -24,5 +24,5 @@ type SideChainManager interface {
 	StartSideChainMining()
 	CheckAndRemoveWithdrawTransactionsFromDB() error
 	CheckAndRemoveReturnDepositTransactionsFromDB() error
-	OnReceivedRegisteredSideChain() error
+	OnReceivedRegisteredSideChain(info base.RegisterSidechainRpcInfo) error
 }
