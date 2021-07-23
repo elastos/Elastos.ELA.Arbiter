@@ -331,7 +331,7 @@ func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 			}
 			failedTxs = append(failedTxs, failedTx)
 		}
-		log.Infof("[SendCachedReturnDepositTxs] failed tx before sending %v", failedTxs)
+		log.Info("[SendCachedReturnDepositTxs] failed tx before sending", failedTxs)
 		err = sc.SendFailedDepositTxs(failedTxs)
 		if err != nil {
 			log.Error("[SendCachedReturnDepositTxs] SendFailedDepositTxs failed", err.Error())
@@ -416,6 +416,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 
 func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []*base.FailedDepositTx) error {
 	if len(failedTxs) == 0 {
+		log.Warn("[CreateAndBroadcastFailedDepositTxsProposal] failed transactions count is zero")
 		return nil
 	}
 

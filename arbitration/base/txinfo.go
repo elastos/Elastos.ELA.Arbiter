@@ -164,7 +164,9 @@ func (info *DepositInfo) Deserialize(r io.Reader) error {
 		return errors.New("[Deserialize] read withdraw target address failed")
 	}
 
-	if err := common.ReadElements(r, &info.Amount, &info.CrossChainAmount); err != nil {
+	info.Amount = new(common.Fixed64)
+	info.CrossChainAmount = new(common.Fixed64)
+	if err := common.ReadElements(r, info.Amount, info.CrossChainAmount); err != nil {
 		return errors.New("[Deserialize] read withdraw assets failed")
 	}
 
@@ -191,7 +193,7 @@ func (t *FailedDepositTx) Deserialize(r io.Reader) error {
 
 	t.DepositInfo = new(DepositInfo)
 	if err := t.DepositInfo.Deserialize(r); err != nil {
-		return errors.New("[Deserialize] read withdrawInfo failed")
+		return errors.New("[Deserialize] read withdrawInfo failed:" + err.Error())
 	}
 
 	return nil
