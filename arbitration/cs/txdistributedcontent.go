@@ -196,18 +196,8 @@ func (d *TxDistributedContent) Check(client interface{}) error {
 	}
 	mainFunc := &arbitrator.MainChainFuncImpl{}
 	height := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
-	if height >= config.Parameters.NewCrossChainTransactionHeight {
-		err := checkWithdrawTransactionV1(d.Tx, clientFunc, mainFunc)
-		if err != nil {
-			return err
-		}
-	} else {
-		err := checkWithdrawTransaction(d.Tx, clientFunc, mainFunc)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+
+	return checkWithdrawTransaction(d.Tx, clientFunc, mainFunc, height)
 }
 
 func (d *TxDistributedContent) Serialize(w io.Writer) error {
@@ -384,13 +374,21 @@ func checkWithdrawFromSidechainPayload(txn *types.Transaction,
 	return nil
 }
 
-func checkWithdrawTransaction(txn *types.Transaction,
-	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
+func checkWithdrawTransaction(
+	txn *types.Transaction, clientFunc DistributedNodeClientFunc,
+	mainFunc *arbitrator.MainChainFuncImpl, height uint32) error {
 	switch pl := txn.Payload.(type) {
 	case *payload.WithdrawFromSideChain:
-		err := checkWithdrawFromSidechainPayload(txn, clientFunc, mainFunc, pl)
-		if err != nil {
-			return err
+		if height >= config.Parameters.NewCrossChainTransactionHeight {
+			err := checkWithdrawFromSideChainPayloadV1(txn, clientFunc, mainFunc)
+			if err != nil {
+				return err
+			}
+		} else {
+			err := checkWithdrawFromSidechainPayload(txn, clientFunc, mainFunc, pl)
+			if err != nil {
+				return err
+			}
 		}
 	case *payload.ReturnSideChainDepositCoin:
 		err := checkReturnDepositTxPayload(txn, clientFunc)
@@ -487,13 +485,8 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 	return nil
 }
 
-func checkWithdrawTransactionV1(txn *types.Transaction,
+func checkWithdrawFromSideChainPayloadV1(txn *types.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
-	_, ok := txn.Payload.(*payload.WithdrawFromSideChain)
-	if !ok {
-		return errors.New("check withdraw transaction failed, unknown payload type")
-	}
-
 	if txn.PayloadVersion != payload.WithdrawFromSideChainVersionV1 {
 		return errors.New("withdraw ")
 	}
