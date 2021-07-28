@@ -109,6 +109,9 @@ func SidechainAccountDivide() {
 		case <-time.After(time.Second * 60):
 			miningAddresses := make([]string, 0)
 			for _, sideNode := range config.Parameters.SideNodeList {
+				if !sideNode.PowChain {
+					continue
+				}
 				miningAddresses = append(miningAddresses, sideNode.MiningAddr)
 			}
 			warningAccounts, err := checkSideChainPowAccounts(miningAddresses, config.Parameters.MinThreshold)
@@ -124,7 +127,7 @@ func SidechainAccountDivide() {
 						Amount:  &amount,
 					})
 				}
-				divideTransfer(DefaultKeystoreFile, outputs)
+				divideTransfer(config.Parameters.WalletPath, outputs)
 			}
 		}
 	}

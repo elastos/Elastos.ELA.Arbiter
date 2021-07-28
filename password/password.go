@@ -1,7 +1,6 @@
 package password
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
@@ -44,18 +43,15 @@ func GetConfirmedPassword() ([]byte, error) {
 }
 
 // GetPassword gets node's wallet password from command line or user input
-func GetAccountPassword() ([]byte, error) {
+func GetAccountPassword(pstr string) ([]byte, error) {
 	var passwd []byte
 	var err error
-	if len(os.Args) == 1 {
+	if pstr == "" {
 		passwd, err = GetPassword()
 		if err != nil {
 			return nil, err
 		}
 	} else {
-		var pstr string
-		flag.StringVar(&pstr, "p", "", "wallet password")
-		flag.Parse()
 		if pstr == "" {
 			fmt.Println("Invaild parameter, use '-p <password>' to specify a not nil wallet password.")
 			os.Exit(1)
