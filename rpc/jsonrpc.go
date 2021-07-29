@@ -215,7 +215,6 @@ func GetRegisterTransactionByHeight(config *config.RpcConfig) ([]*base.Registere
 				GenesisHash:            *genesisHashUint256,
 				GenesisBlockDifficulty: v.GenesisBlockDifficulty,
 				GenesisTimestamp:       v.GenesisTimestamp,
-				UpgradeProposalType:    v.UpgradeProposalType,
 				HttpJsonPort:           60666,
 				IpAddr:                 "127.0.0.1",
 				User:                   "",
