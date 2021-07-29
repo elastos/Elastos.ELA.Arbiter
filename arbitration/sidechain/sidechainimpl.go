@@ -274,7 +274,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	if len(unsolvedTxs) != 0 {
 		err := sc.CreateAndBroadcastWithdrawProposal(unsolvedTxs)
 		if err != nil {
-			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
+			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed" + err.Error())
 		}
 	}
 
