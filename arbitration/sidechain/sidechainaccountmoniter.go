@@ -370,6 +370,7 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 				TargetAddress:    withdraw.CrossChainAddress,
 				Amount:           opAmount,
 				CrossChainAmount: csAmount,
+				TargetData:       []byte(withdraw.TargetData),
 			})
 		}
 
