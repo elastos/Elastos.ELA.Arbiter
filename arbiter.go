@@ -1,6 +1,12 @@
 package main
 
 import (
+	"flag"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/cs"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/mainchain"
@@ -15,10 +21,6 @@ import (
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/utils/elalog"
-	"io"
-	"net/http"
-	"os"
-	"path/filepath"
 )
 
 var (
@@ -35,7 +37,32 @@ const (
 	defaultArbiterMaxLogsFolderSize int64 = 2 * 1024
 )
 
+var walletPath string
+var pstr string
+
 func init() {
+	v := versionFlag{}
+	flag.Var(&v, "v", "print version and exit")
+	flag.StringVar(&walletPath, "wallet", "", "wallet path, default: keystore.dat")
+	flag.StringVar(&walletPath, "w", "", "wallet path, default: keystore.dat")
+	flag.StringVar(&pstr, "p", "", "wallet password")
+	flag.Parse()
+}
+
+type versionFlag struct{}
+
+func (versionFlag) IsBoolFlag() bool  { return true }
+func (versionFlag) Get() interface{}  { return nil }
+func (r *versionFlag) String() string { return config.Version }
+func (r *versionFlag) Set(s string) error {
+	println("arbiter version", config.Version)
+	os.Exit(0)
+	return nil
+}
+
+func initialize() {
+	config.Initialize()
+
 	spvMaxPerLogFileSize := defaultSpvMaxPerLogFileSize
 	spvMaxLogsFolderSize := defaultSpvMaxLogsFolderSize
 	if config.Parameters.MaxPerLogSize > 0 {
@@ -72,13 +99,19 @@ func init() {
 		arbiterMaxLogsFolderSize,
 	)
 
+	if walletPath != "" {
+		config.Parameters.WalletPath = walletPath
+	}
+	log.Info("path:", walletPath)
+
 	log.Info("Init wallet.")
-	passwd, err := password.GetAccountPassword()
+	passwd, err := password.GetAccountPassword(pstr)
 	if err != nil {
 		log.Fatal("Get password error.")
 		os.Exit(1)
 	}
-	c, err := account.Open(sideauxpow.DefaultKeystoreFile, passwd)
+
+	c, err := account.Open(config.Parameters.WalletPath, passwd)
 	if err != nil || c == nil {
 		log.Fatal("error: open wallet failed, ", err)
 		os.Exit(1)
@@ -120,7 +153,7 @@ func initP2P(arbitrator arbitrator.Arbitrator) error {
 }
 
 func main() {
-	log.Info("Arbiter version: ", config.Version)
+	initialize()
 
 	log.Info("1. Init chain utxo cache.")
 	dataStore, err := store.OpenDataStore()

@@ -77,6 +77,7 @@ type Configuration struct {
 	ReturnDepositTransactionFee    common.Fixed64   `json:"ReturnDepositTransactionFee"`
 	NewCrossChainTransactionHeight uint32           `json:"NewCrossChainTransactionHeight"`
 	ProcessInvalidWithdrawHeight   uint32           `json:"ProcessInvalidWithdrawHeight"`
+	WalletPath                     string           `json:"WalletPath"`
 }
 
 type RpcConfig struct {
@@ -168,7 +169,7 @@ func GetSpvChainParams() *elacfg.Params {
 	return params
 }
 
-func init() {
+func Initialize() {
 	file, e := ioutil.ReadFile(DefaultConfigFilename)
 	if e != nil {
 		fmt.Printf("File error: %v\n", e)
