@@ -193,7 +193,7 @@ func Init(client *account.Client) {
 	currentArbitrator.InitAccount(client)
 
 	pk, _ := client.GetMainAccount().PublicKey.EncodePoint(true)
-	log.Info("#######  Init current arbiter", hex.EncodeToString(pk))
+	log.Info("Init current arbiter", hex.EncodeToString(pk))
 
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)

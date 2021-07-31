@@ -250,8 +250,6 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 		return
 	}
 
-	log.Info("##### len(txHashes):", len(txHashes), "txHashes:", txHashes, "blockHeights:", blockHeights)
-
 	if len(txHashes) == 0 {
 		log.Info("No cached withdraw transaction need to send")
 		return
@@ -267,10 +265,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 		return
 	}
 
-	log.Info("##### len(receivedTxs):", len(receivedTxs), "receivedTxs:", receivedTxs)
-
 	unsolvedTxs, _ := base.SubstractTransactionHashesAndBlockHeights(txHashes, blockHeights, receivedTxs)
-	log.Info("##### len(unsolvedTxs):", len(unsolvedTxs), "unsolvedTxs:", unsolvedTxs)
 	if len(unsolvedTxs) != 0 {
 		err := sc.CreateAndBroadcastWithdrawProposal(unsolvedTxs)
 		if err != nil {
@@ -365,13 +360,11 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 			if *w.CrossChainAmount <= 0 ||
 				*w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
 				ignore = true
-				log.Info("####### ignore tx：", tx, " because CrossChainAmount")
 				break
 			}
 			_, err := common.Uint168FromAddress(w.TargetAddress)
 			if err != nil {
 				ignore = true
-				log.Info("####### ignore tx：", tx, " because invalid TargetAddress")
 				break
 			}
 		}
@@ -382,7 +375,6 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 			targetTransactions = append(targetTransactions, tx)
 		}
 	}
-	log.Info("##### len(targetTransactions):", len(targetTransactions), "targetTransactions:", targetTransactions)
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)

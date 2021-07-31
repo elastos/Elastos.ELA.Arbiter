@@ -63,7 +63,7 @@ type Configuration struct {
 	MaxConnections                 int              `json:"MaxConnections"`
 	SideAuxPowFee                  int              `json:"SideAuxPowFee"`
 	MinThreshold                   int              `json:"MinThreshold"`
-	SmallCrossTransferThreshold    common.Fixed64   `json:"MinThreshold"`
+	SmallCrossTransferThreshold    common.Fixed64   `json:"SmallCrossTransferThreshold"`
 	DepositAmount                  int              `json:"DepositAmount"`
 	CRCOnlyDPOSHeight              uint32           `json:"CRCOnlyDPOSHeight"`
 	CRClaimDPOSNodeStartHeight     uint32           `json:"CRClaimDPOSNodeStartHeight"`
