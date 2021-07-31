@@ -226,6 +226,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
+	log.Info("CreateWithdrawTransactionV1 len(withdrawInfo.WithdrawAssets):", len(withdrawInfo.WithdrawAssets))
 	for i, withdraw := range withdrawInfo.WithdrawAssets {
 		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
@@ -246,6 +247,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 		}
 		txOutputs = append(txOutputs, txOutput)
 		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
+		log.Info("CreateWithdrawTransactionV1 txOutputs[", i, "]", txOutput.String())
 	}
 	availableUTXOs, err := mcFunc.GetWithdrawUTXOsByAmount(withdrawBank, totalOutputAmount)
 	if err != nil {
@@ -271,6 +273,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
+				Payload: &outputpayload.DefaultOutput{},
 			}
 			txOutputs = append(txOutputs, change)
 			totalOutputAmount = 0
@@ -297,6 +300,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	attributes = append(attributes, &txAttr)
 
 	return &types.Transaction{
+		Version:        0x09,
 		TxType:         types.WithdrawFromSideChain,
 		Payload:        txPayload,
 		PayloadVersion: payload.WithdrawFromSideChainVersionV1,
