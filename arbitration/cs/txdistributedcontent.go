@@ -488,13 +488,14 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 func checkWithdrawFromSideChainPayloadV1(txn *types.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
 	if txn.PayloadVersion != payload.WithdrawFromSideChainVersionV1 {
-		return errors.New("withdraw ")
+		return errors.New("invalid withdraw payload version, not WithdrawFromSideChainVersionV1")
 	}
 
 	var transactionHashes []string
 	var sideChain arbitrator.SideChain
 	var exchangeRate float64
-	for _, output := range txn.Outputs {
+	for i, output := range txn.Outputs {
+		log.Info("checkWithdrawFromSideChainPayloadV1 output[", i, "]", output.String())
 		if output.Type != types.OTWithdrawFromSideChain {
 			continue
 		}

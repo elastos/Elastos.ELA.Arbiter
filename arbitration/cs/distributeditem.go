@@ -75,7 +75,6 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 		return err
 	}
 
-	log.Info("########## main account pk:", common.BytesToHexString(pkBuf))
 	userProgramHash, err := contract.PublicKeyToStandardProgramHash(pkBuf)
 	if err != nil {
 		return err

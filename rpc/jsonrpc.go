@@ -239,7 +239,12 @@ func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
 		return nil, err
 	}
-	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs), "transactions:", txs)
+	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs))
+	for i, tx := range txs {
+		for j, asset := range tx.CrossChainAssets {
+			log.Debug("[GetWithdrawTransactionByHeight] tx[", i, "]", "assets[", j, "]:", *asset)
+		}
+	}
 
 	return txs, nil
 }

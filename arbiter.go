@@ -102,6 +102,7 @@ func initialize() {
 	if walletPath != "" {
 		config.Parameters.WalletPath = walletPath
 	}
+	log.Info("Arbiter version:", config.Version)
 	log.Info("path:", walletPath)
 
 	log.Info("Init wallet.")
@@ -209,7 +210,6 @@ func main() {
 
 	log.Info("10. Start small crosschain transfer monitor.")
 	go arbitrator.MonitorSmallCrossTransfer()
-
 
 	log.Info("11. Start invalid withdraw transaction monitor.")
 	go arbitrator.MonitorInvalidWithdrawTransaction()
