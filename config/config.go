@@ -78,6 +78,7 @@ type Configuration struct {
 	NewCrossChainTransactionHeight uint32           `json:"NewCrossChainTransactionHeight"`
 	ProcessInvalidWithdrawHeight   uint32           `json:"ProcessInvalidWithdrawHeight"`
 	WalletPath                     string           `json:"WalletPath"`
+	SchnorrStartHeight             uint32           `json:"SchnnorrStartHeight"`
 }
 
 type RpcConfig struct {
