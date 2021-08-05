@@ -22,10 +22,17 @@ type MainChain interface {
 		mcFunc MainChainFunc) (*types.Transaction, error)
 	CreateWithdrawTransactionV1(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
 		mcFunc MainChainFunc) (*types.Transaction, error)
+	CreateSchnorrWithdrawTransaction(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
+		mcFunc MainChainFunc) (*types.Transaction, error)
 
 	BroadcastWithdrawProposal(txn *types.Transaction) error
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
 	ReceiveProposalFeedback(content []byte) error
+
+	// schnorr withdraw
+	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction) error
+	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error
+	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) error
 
 	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error
