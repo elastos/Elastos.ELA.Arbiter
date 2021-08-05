@@ -240,7 +240,7 @@ func (sc *SideChainImpl) SendFailedDepositTxs(tx []*base.FailedDepositTx) error 
 	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx)
 }
 
-func (sc *SideChainImpl) SendCachedWithdrawTxs() {
+func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 	log.Info("[SendCachedWithdrawTxs] start")
 	defer log.Info("[SendCachedWithdrawTxs] end")
 
@@ -269,7 +269,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	if len(unsolvedTxs) != 0 {
 		err := sc.CreateAndBroadcastWithdrawProposal(unsolvedTxs)
 		if err != nil {
-			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed" + err.Error())
+			log.Error("[SendCachedWithdrawTxs] CreateAndBroadcastWithdrawProposal failed" + err.Error())
 		}
 	}
 
@@ -387,9 +387,18 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		if targetIndex > i {
 			targetIndex = i
 		}
-
-		tx := currentArbitrator.CreateWithdrawTransaction(
-			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
+		tx := &types.Transaction{}
+		if mainChainHeight >= config.Parameters.SchnorrStartHeight {
+			tx = currentArbitrator.CreateSchnorrWithdrawTransaction(
+				targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
+		}
+		if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
+			tx = currentArbitrator.CreateWithdrawTransactionV1(
+				targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
+		} else {
+			tx = currentArbitrator.CreateWithdrawTransactionV0(
+				targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
+		}
 		if tx == nil {
 			continue
 		}
@@ -402,7 +411,15 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
-	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
+
+	if mainChainHeight >= config.Parameters.SchnorrStartHeight {
+		currentArbitrator.BroadcastSchnorrWithdrawProposal1(wTx)
+		log.Info("[BroadcastSchnorrWithdrawProposal1] transactions count: ", targetIndex)
+	} else {
+		currentArbitrator.BroadcastWithdrawProposal(wTx)
+		log.Info("[BroadcastWithdrawProposal] transactions count: ", targetIndex)
+	}
+
 	return nil
 }
 

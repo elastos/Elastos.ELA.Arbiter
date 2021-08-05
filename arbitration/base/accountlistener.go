@@ -15,7 +15,7 @@ type AccountListener interface {
 	UpdateLastNotifySideMiningHeight(genesisBlockHash common.Uint256)
 	UpdateLastSubmitAuxpowHeight(genesisBlockHash common.Uint256)
 
-	SendCachedWithdrawTxs()
+	SendCachedWithdrawTxs(currentHeight uint32)
 	SendCachedReturnDepositTxs()
 	SendFailedDepositTxs(failedTxs []*FailedDepositTx) error
 }

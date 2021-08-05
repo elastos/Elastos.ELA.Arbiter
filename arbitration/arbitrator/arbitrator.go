@@ -48,7 +48,11 @@ type Arbitrator interface {
 	SendSmallCrossDepositTransactions(spvTxs []*SmallCrossTransaction, genesisAddress string)
 
 	//withdraw
-	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
+	CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+	CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+	CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
 		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
 
 	//failed deposit
@@ -57,6 +61,11 @@ type Arbitrator interface {
 
 	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
+
+	// schnorr withdraw
+	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction)
+	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction)
+	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction)
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
@@ -90,8 +99,11 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 	if onDuty {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
+
+		var currentHeight = store.DbCache.MainChainStore.CurrentHeight(
+			store.QueryHeightCode)
 		ar.ProcessDepositTransactions()
-		ar.processWithdrawTransactions()
+		ar.processWithdrawTransactions(currentHeight)
 		ar.processReturnDepositTransactions()
 		ar.ProcessSideChainPowTransaction()
 	} else {
@@ -105,9 +117,9 @@ func (ar *ArbitratorImpl) ProcessDepositTransactions() {
 	}
 }
 
-func (ar *ArbitratorImpl) processWithdrawTransactions() {
+func (ar *ArbitratorImpl) processWithdrawTransactions(currentHeight uint32) {
 	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
-		go sc.SendCachedWithdrawTxs()
+		go sc.SendCachedWithdrawTxs(currentHeight)
 	}
 }
 
@@ -160,30 +172,54 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	return ftx
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
+func (ar *ArbitratorImpl) CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx,
 	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
 
-	var withdrawTransaction *types.Transaction
-	if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
-		var err error
-		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV1(
-			sideChain, withdrawTxs, mcFunc)
-		if err != nil {
-			log.Warn(err.Error())
-			return nil
-		}
-	} else {
-		var err error
-		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV0(
-			sideChain, withdrawTxs, mcFunc)
-		if err != nil {
-			log.Warn(err.Error())
-			return nil
-		}
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransactionV0(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
 	}
 
 	if withdrawTransaction == nil {
-		log.Warn("Created an empty withdraw transaction.")
+		log.Warn("Created an empty withdraw transaction v0.")
+		return nil
+	}
+
+	return withdrawTransaction
+}
+
+func (ar *ArbitratorImpl) CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransactionV1(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+
+	if withdrawTransaction == nil {
+		log.Warn("Created an empty withdraw transaction v1.")
+		return nil
+	}
+
+	return withdrawTransaction
+}
+
+func (ar *ArbitratorImpl) CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+
+	withdrawTransaction, err := ar.mainChainImpl.CreateSchnorrWithdrawTransaction(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+
+	if withdrawTransaction == nil {
+		log.Warn("Created an empty Schnorr withdraw transaction.")
 		return nil
 	}
 
@@ -271,6 +307,27 @@ func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCros
 		if err != nil {
 			log.Info("Send deposit transaction Error", err.Error())
 		}
+	}
+}
+
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal1(txn *types.Transaction) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal1(txn)
+	if err != nil {
+		log.Warn(err.Error())
+	}
+}
+
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) {
+	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+	if err != nil {
+		log.Warn(err.Error())
+	}
+}
+
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) {
+	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+	if err != nil {
+		log.Warn(err.Error())
 	}
 }
 

@@ -25,6 +25,7 @@ const (
 	TxDistribute            DistributeContentType = 0x00
 	IllegalDistribute       DistributeContentType = 0x01
 	ReturnDepositDistribute DistributeContentType = 0x02
+	SchnorrWithdrawProposal DistributeContentType = 0x03
 )
 
 type DistributedItem struct {
@@ -32,6 +33,7 @@ type DistributedItem struct {
 	TargetArbitratorProgramHash *common.Uint168
 	Type                        DistributeContentType
 	ItemContent                 base.DistributedContent
+	SchnorrProposalContent      SchnorrWithdrawProposalContent
 
 	redeemScript []byte
 	signedData   []byte
@@ -107,6 +109,23 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 	return nil
 }
 
+func (item *DistributedItem) SchnorrSign1(arbitrator arbitrator.Arbitrator) error {
+	// Sign transaction
+	buf := new(bytes.Buffer)
+	err := item.SchnorrProposalContent.SerializeUnsigned(buf)
+	if err != nil {
+		return err
+	}
+
+	newSign, err := arbitrator.Sign(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	// Record signature
+	item.signedData = newSign
+	return nil
+}
+
 func (item *DistributedItem) GetSignedData() []byte {
 	return item.signedData
 }
@@ -133,6 +152,25 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
 	return sign, "", nil
 }
 
+func (item *DistributedItem) CheckFeedbackSignedData() error {
+	if len(item.signedData) == 0 {
+		return errors.New("CheckFeedbackSignedData invalid sign data length.")
+	}
+
+	buf := new(bytes.Buffer)
+	err := item.SchnorrProposalContent.SerializeUnsigned(buf)
+	if err != nil {
+		return err
+	}
+
+	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData[1:])
+	if err != nil {
+		return errors.New("CheckFeedbackSignedData invalid sign data.")
+	}
+
+	return nil
+}
+
 func (item *DistributedItem) Serialize(w io.Writer) error {
 	publickeyBytes, _ := item.TargetArbitratorPublicKey.EncodePoint(true)
 	if err := common.WriteVarBytes(w, publickeyBytes); err != nil {
@@ -144,14 +182,28 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 	if err := common.WriteUint8(w, byte(item.Type)); err != nil {
 		return err
 	}
-	if err := item.ItemContent.Serialize(w); err != nil {
-		return err
-	}
-	if err := common.WriteVarBytes(w, item.redeemScript); err != nil {
-		return errors.New("redeemScript serialization failed.")
-	}
-	if err := common.WriteVarBytes(w, item.signedData); err != nil {
-		return errors.New("signedData serialization failed.")
+	switch item.Type {
+	case TxDistribute, ReturnDepositDistribute:
+		if err := item.ItemContent.Serialize(w); err != nil {
+			return err
+		}
+		if err := common.WriteVarBytes(w, item.redeemScript); err != nil {
+			return errors.New("redeemScript serialization failed.")
+		}
+		if err := common.WriteVarBytes(w, item.signedData); err != nil {
+			return errors.New("signedData serialization failed.")
+		}
+	case IllegalDistribute:
+		if err := common.WriteVarBytes(w, item.redeemScript); err != nil {
+			return errors.New("redeemScript serialization failed.")
+		}
+		if err := common.WriteVarBytes(w, item.signedData); err != nil {
+			return errors.New("signedData serialization failed.")
+		}
+	case SchnorrWithdrawProposal:
+		if err := item.SchnorrProposalContent.Serialize(w); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -178,16 +230,15 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	item.Type = DistributeContentType(contentType)
 
 	switch item.Type {
-	case TxDistribute:
+	case TxDistribute, ReturnDepositDistribute:
 		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
 		if err = item.ItemContent.Deserialize(r); err != nil {
-			return errors.New("RawTransaction deserialization failed." + err.Error())
+			return errors.New("ItemContent deserialization failed." + err.Error())
 		}
 	case IllegalDistribute:
-	case ReturnDepositDistribute:
-		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
-		if err = item.ItemContent.Deserialize(r); err != nil {
-			return errors.New("RawTransaction deserialization failed." + err.Error())
+	case SchnorrWithdrawProposal:
+		if err = item.SchnorrProposalContent.Deserialize(r); err != nil {
+			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
 		}
 	}
 

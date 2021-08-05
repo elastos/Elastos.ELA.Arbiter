@@ -32,21 +32,51 @@ func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
 	return item.Sign(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
 }
 
+func (client *DistributedNodeClient) SignSchnorrProposal1(item *DistributedItem) error {
+	return item.SchnorrSign1(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+}
+
 func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []byte) error {
 	transactionItem := &DistributedItem{}
 	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
 		return err
 	}
 
-	if transactionItem.IsFeedback() {
-		return nil
+	switch transactionItem.Type {
+	case TxDistribute, IllegalDistribute, ReturnDepositDistribute:
+		return client.onReceivedProposal(id, transactionItem)
+	case SchnorrWithdrawProposal:
+		return client.onReceivedSchnorrProposal1(id, transactionItem)
 	}
+	return nil
+}
 
+func (client *DistributedNodeClient) onReceivedProposal(id peer.PID, transactionItem *DistributedItem) error {
 	if err := transactionItem.ItemContent.Check(client); err != nil {
 		return err
 	}
 
 	if err := client.SignProposal(transactionItem); err != nil {
+		return err
+	}
+
+	if err := client.Feedback(id, transactionItem); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, transactionItem *DistributedItem) error {
+	if len(transactionItem.signedData) == 0 {
+		return nil
+	}
+
+	if err := transactionItem.SchnorrProposalContent.Check(client); err != nil {
+		return err
+	}
+
+	if err := client.SignSchnorrProposal1(transactionItem); err != nil {
 		return err
 	}
 
