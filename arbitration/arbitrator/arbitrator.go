@@ -64,7 +64,7 @@ type Arbitrator interface {
 
 	// schnorr withdraw
 	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction)
-	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction)
+	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte)
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction)
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
@@ -317,8 +317,8 @@ func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal1(txn *types.Transacti
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) {
-	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn)
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn, pks)
 	if err != nil {
 		log.Warn(err.Error())
 	}

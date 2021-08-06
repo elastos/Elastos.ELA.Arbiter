@@ -391,7 +391,7 @@ func checkWithdrawTransaction(
 			}
 		}
 	case *payload.ReturnSideChainDepositCoin:
-		err := checkReturnDepositTxPayload(txn, clientFunc)
+		err := checkReturnDepositTxPayloadV0(txn, clientFunc)
 		if err != nil {
 			return err
 		}
@@ -400,6 +400,14 @@ func checkWithdrawTransaction(
 	}
 
 	return nil
+}
+
+func checkReturnDepositTxPayloadV0(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
+	if txn.PayloadVersion != payload.ReturnSideChainDepositCoinVersion {
+		return errors.New("invalid schnorr return deposit payload version, not ReturnSideChainDepositCoinVersion")
+	}
+
+	return checkReturnDepositTxPayload(txn, clientFunc)
 }
 
 func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
@@ -491,6 +499,11 @@ func checkWithdrawFromSideChainPayloadV1(txn *types.Transaction,
 		return errors.New("invalid withdraw payload version, not WithdrawFromSideChainVersionV1")
 	}
 
+	return checkWithdrawFromSideChainPayload(txn, clientFunc, mainFunc)
+}
+
+func checkWithdrawFromSideChainPayload(txn *types.Transaction,
+	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
 	var transactionHashes []string
 	var sideChain arbitrator.SideChain
 	var exchangeRate float64
