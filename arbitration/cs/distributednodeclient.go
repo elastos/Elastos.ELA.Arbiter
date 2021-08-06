@@ -90,9 +90,23 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, tra
 }
 
 func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, transactionItem *DistributedItem) error {
-	if len(transactionItem.signedData) == 0 {
-		return nil
+	// check if I am in public keys.
+	myself, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
 	}
+	var needDeal bool
+	for _, pk := range transactionItem.SchnorrRequestRProposalContent.Publickeys {
+		if bytes.Equal(myself, pk) {
+			needDeal = true
+			break
+		}
+	}
+	if !needDeal {
+		return errors.New("no need to deal with the shcnorr proposal 2")
+	}
+
+	// check the transaction
 	hash := transactionItem.SchnorrRequestRProposalContent.Tx.Hash()
 	if _, ok := client.CheckedTransactions[hash]; !ok {
 		if err := transactionItem.SchnorrRequestRProposalContent.Check(client); err != nil {
@@ -125,6 +139,7 @@ func (client *DistributedNodeClient) Feedback(id peer.PID, item *DistributedItem
 	switch item.Type {
 	case MultisigContent:
 		item.Type = AnswerMultisigContent
+
 	case IllegalContent:
 		item.Type = AnswerIllegalContent
 

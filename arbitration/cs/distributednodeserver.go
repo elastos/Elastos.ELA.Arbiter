@@ -31,7 +31,7 @@ type DistributedNodeServer struct {
 
 	// schnorr withdraw
 	schnorrWithdrawContentsTransaction map[common.Uint256]types.Transaction // key: nonce hash
-	schnorrWithdrawContentsSigners     map[common.Uint256]map[common.Uint168]struct{}
+	schnorrWithdrawContentsSigners     map[common.Uint256]map[string]struct{}
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -51,7 +51,7 @@ func (dns *DistributedNodeServer) tryInit() {
 		dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]types.Transaction)
 	}
 	if dns.schnorrWithdrawContentsSigners == nil {
-		dns.schnorrWithdrawContentsSigners = make(map[common.Uint256]map[common.Uint168]struct{})
+		dns.schnorrWithdrawContentsSigners = make(map[common.Uint256]map[string]struct{})
 	}
 }
 
@@ -128,7 +128,7 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal1(txn *types.T
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error {
+func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte) error {
 	var txType TransactionType
 	switch txn.TxType {
 	case types.WithdrawFromSideChain:
@@ -137,9 +137,8 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 		txType = ReturnDepositTransaction
 	}
 
-	// todo use signers and new content to create schnorr tx
 	proposal, err := dns.generateDistributedSchnorrProposal2(txn, txType, SchnorrMultisigContent2,
-		SchnorrWithdrawRequestRProposalContent{Tx: txn})
+		SchnorrWithdrawRequestRProposalContent{Tx: txn, Publickeys: pks})
 	if err != nil {
 		return err
 	}
@@ -220,6 +219,7 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal1(
 		return nil, errors.New("transaction already in process")
 	}
 	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
+	dns.schnorrWithdrawContentsSigners[content.Hash()] = make(map[string]struct{})
 	return nil, nil
 }
 
@@ -386,19 +386,46 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transa
 		dns.mux.Unlock()
 		return errors.New("can not find proposal transaction")
 	}
-	dns.mux.Unlock()
+	signers, ok := dns.schnorrWithdrawContentsSigners[hash]
+	if !ok {
+		dns.mux.Unlock()
+		return errors.New("can not find signer")
+	}
+	publickeyBytes, err := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
+	if err != nil {
+		return errors.New("invalid TargetArbitratorPublicKey")
+	}
 
-	signers := dns.schnorrWithdrawContentsSigners[hash]
-	if _, ok := signers[*transactionItem.TargetArbitratorProgramHash]; ok {
+	strPK := string(publickeyBytes)
+	if _, ok := signers[strPK]; ok {
+		dns.mux.Unlock()
 		log.Warn("arbiter already recorded the schnorr signer")
 		return nil
 	}
-	dns.schnorrWithdrawContentsSigners[hash][*transactionItem.TargetArbitratorProgramHash] = struct{}{}
+	dns.schnorrWithdrawContentsSigners[hash][strPK] = struct{}{}
+	dns.mux.Unlock()
 
 	if len(dns.schnorrWithdrawContentsSigners[hash]) >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
-		// todo record 2/3 infromation to txn payload
-		dns.BroadcastSchnorrWithdrawProposal2(&txn)
+		pks := make([][]byte, 0)
+		for k, _ := range dns.schnorrWithdrawContentsSigners[hash] {
+			pks = append(pks, []byte(k))
+		}
+
+		arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
+		pksIndex := make([]uint8, 0)
+		for i, a := range arbiters {
+			if _, ok := signers[a]; ok {
+				pksIndex = append(pksIndex, uint8(i))
+			}
+		}
+		txn.Payload = &payload.WithdrawFromSideChain{
+			Signers: pksIndex,
+		}
+
+		if err := dns.BroadcastSchnorrWithdrawProposal2(&txn, pks); err != nil {
+			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
+		}
 	}
 	return nil
 }

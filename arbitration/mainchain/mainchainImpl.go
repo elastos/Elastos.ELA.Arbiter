@@ -294,7 +294,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 		Version:        0x09,
 		TxType:         types.WithdrawFromSideChain,
 		Payload:        &payload.WithdrawFromSideChain{},
-		PayloadVersion: payload.WithdrawFromSideChainVersionV1,
+		PayloadVersion: payload.WithdrawFromSideChainVersionV2,
 		Attributes:     attributes,
 		Inputs:         txInputs,
 		Outputs:        txOutputs,

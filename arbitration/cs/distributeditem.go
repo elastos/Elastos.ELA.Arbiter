@@ -51,6 +51,7 @@ type DistributedItem struct {
 	ItemContent                    base.DistributedContent
 	SchnorrProposalContent         SchnorrWithdrawProposalContent
 	SchnorrRequestRProposalContent SchnorrWithdrawRequestRProposalContent
+
 	redeemScript                   []byte
 	signedData                     []byte
 }
