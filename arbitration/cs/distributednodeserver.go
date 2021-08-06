@@ -30,10 +30,8 @@ type DistributedNodeServer struct {
 	unsolvedContentsSignature map[common.Uint256]map[common.Uint160]struct{}
 
 	// schnorr withdraw
-	schnorrWithdrawContents        map[common.Uint256]SchnorrWithdrawProposalContent
-	schnorrWithdrawContentsSigners map[common.Uint256]map[common.Uint168]struct{}
-
-
+	schnorrWithdrawContentsTransaction map[common.Uint256]types.Transaction // key: nonce hash
+	schnorrWithdrawContentsSigners     map[common.Uint256]map[common.Uint168]struct{}
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -49,8 +47,8 @@ func (dns *DistributedNodeServer) tryInit() {
 	if dns.unsolvedContentsSignature == nil {
 		dns.unsolvedContentsSignature = make(map[common.Uint256]map[common.Uint160]struct{})
 	}
-	if dns.schnorrWithdrawContents == nil {
-		dns.schnorrWithdrawContents = make(map[common.Uint256]SchnorrWithdrawProposalContent)
+	if dns.schnorrWithdrawContentsTransaction == nil {
+		dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]types.Transaction)
 	}
 	if dns.schnorrWithdrawContentsSigners == nil {
 		dns.schnorrWithdrawContentsSigners = make(map[common.Uint256]map[common.Uint168]struct{})
@@ -109,15 +107,19 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 }
 
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal1(txn *types.Transaction) error {
-	var cType DistributeContentType
+	var txType TransactionType
 	switch txn.TxType {
 	case types.WithdrawFromSideChain:
-		cType = TxDistribute
+		txType = WithdrawTransaction
 	case types.ReturnCRDepositCoin:
-		cType = ReturnDepositDistribute
+		txType = ReturnDepositTransaction
 	}
-	proposal, err := dns.generateDistributedSchnorrProposal1(cType,
-		SchnorrWithdrawProposalContent{Tx: txn}, &DistrubutedItemFuncImpl{})
+
+	proposal, err := dns.generateDistributedSchnorrProposal1(
+		txn,
+		txType, SchnorrMultisigContent1,
+		SchnorrWithdrawProposalContent{
+			Nonce: txn.Hash().Bytes()})
 	if err != nil {
 		return err
 	}
@@ -127,17 +129,17 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal1(txn *types.T
 }
 
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error {
-	var cType DistributeContentType
+	var txType TransactionType
 	switch txn.TxType {
 	case types.WithdrawFromSideChain:
-		cType = TxDistribute
+		txType = WithdrawTransaction
 	case types.ReturnCRDepositCoin:
-		cType = ReturnDepositDistribute
+		txType = ReturnDepositTransaction
 	}
 
 	// todo use signers and new content to create schnorr tx
-	proposal, err := dns.generateDistributedSchnorrProposal2(cType,
-		SchnorrWithdrawProposalContent{Tx: txn}, &DistrubutedItemFuncImpl{})
+	proposal, err := dns.generateDistributedSchnorrProposal2(txn, txType, SchnorrMultisigContent2,
+		SchnorrWithdrawRequestRProposalContent{Tx: txn})
 	if err != nil {
 		return err
 	}
@@ -148,34 +150,20 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 }
 
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) error {
-	var cType DistributeContentType
-	switch txn.TxType {
-	case types.WithdrawFromSideChain:
-		cType = TxDistribute
-	case types.ReturnCRDepositCoin:
-		cType = ReturnDepositDistribute
-	}
-	proposal, err := dns.generateDistributedSchnorrProposal3(cType,
-		&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
-	if err != nil {
-		return err
-	}
-
-	dns.sendToArbitrator(proposal)
-
+	// todo complete me
 	return nil
 }
 
 func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transaction) error {
 
-	var cType DistributeContentType
+	var txType TransactionType
 	switch txn.TxType {
 	case types.WithdrawFromSideChain:
-		cType = TxDistribute
+		txType = WithdrawTransaction
 	case types.ReturnCRDepositCoin:
-		cType = ReturnDepositDistribute
+		txType = ReturnDepositTransaction
 	}
-	proposal, err := dns.generateDistributedProposal(cType,
+	proposal, err := dns.generateDistributedProposal(txType, MultisigContent,
 		&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
@@ -188,7 +176,7 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transacti
 
 func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error {
 
-	proposal, err := dns.generateDistributedProposal(IllegalDistribute,
+	proposal, err := dns.generateDistributedProposal(IllegalTransaction, IllegalContent,
 		&IllegalDistributedContent{Evidence: data}, &DistrubutedItemFuncImpl{})
 	if err != nil {
 		return err
@@ -200,8 +188,8 @@ func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.Si
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal1(
-	txType DistributeContentType, content SchnorrWithdrawProposalContent,
-	itemFunc DistrubutedItemFunc) ([]byte, error) {
+	txn *types.Transaction, txType TransactionType,
+	cType DistributeContentType, content SchnorrWithdrawProposalContent) ([]byte, error) {
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
@@ -215,7 +203,8 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal1(
 	transactionItem := &DistributedItem{
 		TargetArbitratorPublicKey:   currentArbitrator.GetPublicKey(),
 		TargetArbitratorProgramHash: programHash,
-		Type:                        txType,
+		TransactionType:             txType,
+		Type:                        cType,
 		SchnorrProposalContent:      content,
 	}
 
@@ -227,29 +216,30 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal1(
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 
-	if _, ok := dns.schnorrWithdrawContents[content.Hash()]; ok {
+	if _, ok := dns.schnorrWithdrawContentsTransaction[content.Hash()]; ok {
 		return nil, errors.New("transaction already in process")
 	}
-	dns.schnorrWithdrawContents[content.Hash()] = content
+	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
 	return nil, nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
-	txType DistributeContentType, itemContent SchnorrWithdrawProposalContent,
-	itemFunc DistrubutedItemFunc) ([]byte, error) {
+	txn *types.Transaction, txType TransactionType,
+	cType DistributeContentType, content SchnorrWithdrawRequestRProposalContent) ([]byte, error) {
 	//  todo finish me
 	return nil, nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
-	txType DistributeContentType, itemContent base.DistributedContent,
-	itemFunc DistrubutedItemFunc) ([]byte, error) {
+	txn *types.Transaction, txType TransactionType,
+	cType DistributeContentType, content SchnorrWithdrawRequestRProposalContent) ([]byte, error) {
 	//  todo finish me
 	return nil, nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedProposal(
-	txType DistributeContentType, itemContent base.DistributedContent,
+	txType TransactionType, cType DistributeContentType,
+	itemContent base.DistributedContent,
 	itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
 
@@ -266,7 +256,8 @@ func (dns *DistributedNodeServer) generateDistributedProposal(
 		ItemContent:                 itemContent,
 		TargetArbitratorPublicKey:   currentArbitrator.GetPublicKey(),
 		TargetArbitratorProgramHash: programHash,
-		Type:                        txType,
+		TransactionType:             txType,
+		Type:                        cType,
 	}
 
 	if err = transactionItem.InitScript(currentArbitrator); err != nil {
@@ -311,11 +302,14 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	}
 
 	switch transactionItem.Type {
-	case TxDistribute, ReturnDepositDistribute:
+	case AnswerMultisigContent:
 		return dns.receiveWithdrawProposalFeedback(transactionItem)
-	case IllegalDistribute:
-
-	case SchnorrWithdrawProposal:
+	case AnswerIllegalContent:
+	case AnswerSchnorrMultisigContent1:
+		return dns.receiveSchnorrWithdrawProposal1Feedback(transactionItem)
+	case AnswerSchnorrMultisigContent2:
+		return dns.receiveSchnorrWithdrawProposal1Feedback(transactionItem)
+	case AnswerSchnorrMultisigContent3:
 		return dns.receiveSchnorrWithdrawProposal1Feedback(transactionItem)
 	}
 
@@ -382,15 +376,15 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transa
 	}
 
 	dns.mux.Lock()
-	if dns.schnorrWithdrawContents == nil {
+	if dns.schnorrWithdrawContentsTransaction == nil {
 		dns.mux.Unlock()
 		return errors.New("can not find proposal")
 	}
 	hash := transactionItem.SchnorrProposalContent.Hash()
-	content, ok := dns.schnorrWithdrawContents[hash]
+	txn, ok := dns.schnorrWithdrawContentsTransaction[hash]
 	if !ok {
 		dns.mux.Unlock()
-		return errors.New("can not find proposal")
+		return errors.New("can not find proposal transaction")
 	}
 	dns.mux.Unlock()
 
@@ -403,7 +397,16 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transa
 
 	if len(dns.schnorrWithdrawContentsSigners[hash]) >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
-		dns.BroadcastSchnorrWithdrawProposal2(content.Tx)
+		// todo record 2/3 infromation to txn payload
+		dns.BroadcastSchnorrWithdrawProposal2(&txn)
 	}
+	return nil
+}
+
+func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transactionItem DistributedItem) error {
+	return nil
+}
+
+func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transactionItem DistributedItem) error {
 	return nil
 }

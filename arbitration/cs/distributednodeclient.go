@@ -45,10 +45,14 @@ func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []b
 	}
 
 	switch transactionItem.Type {
-	case TxDistribute, IllegalDistribute, ReturnDepositDistribute:
+	case MultisigContent:
 		return client.onReceivedProposal(id, transactionItem)
-	case SchnorrWithdrawProposal:
+	case SchnorrMultisigContent1:
 		return client.onReceivedSchnorrProposal1(id, transactionItem)
+	case SchnorrMultisigContent2:
+		return client.onReceivedSchnorrProposal2(id, transactionItem)
+	case SchnorrMultisigContent3:
+		return client.onReceivedSchnorrProposal3(id, transactionItem)
 	}
 	return nil
 }
@@ -73,13 +77,6 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, tra
 	if len(transactionItem.signedData) == 0 {
 		return nil
 	}
-	hash := transactionItem.SchnorrProposalContent.Tx.Hash()
-	if _, ok := client.CheckedTransactions[hash]; !ok {
-		if err := transactionItem.SchnorrProposalContent.Check(client); err != nil {
-			return err
-		}
-		client.CheckedTransactions[transactionItem.SchnorrProposalContent.Tx.Hash()] = struct{}{}
-	}
 
 	if err := client.SignSchnorrProposal1(transactionItem); err != nil {
 		return err
@@ -92,9 +89,55 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, tra
 	return nil
 }
 
+func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, transactionItem *DistributedItem) error {
+	if len(transactionItem.signedData) == 0 {
+		return nil
+	}
+	hash := transactionItem.SchnorrRequestRProposalContent.Tx.Hash()
+	if _, ok := client.CheckedTransactions[hash]; !ok {
+		if err := transactionItem.SchnorrRequestRProposalContent.Check(client); err != nil {
+			return err
+		}
+		client.CheckedTransactions[transactionItem.SchnorrRequestRProposalContent.Tx.Hash()] = struct{}{}
+	}
+
+	//if err := client.SignSchnorrProposal1(transactionItem); err != nil {
+	//	return err
+	//}
+	// todo return K0 Px Py
+
+	if err := client.Feedback(id, transactionItem); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (client *DistributedNodeClient) onReceivedSchnorrProposal3(id peer.PID, transactionItem *DistributedItem) error {
+	// todo return S
+	return nil
+}
+
 func (client *DistributedNodeClient) Feedback(id peer.PID, item *DistributedItem) error {
 	ar := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	item.TargetArbitratorPublicKey = ar.GetPublicKey()
+
+	switch item.Type {
+	case MultisigContent:
+		item.Type = AnswerMultisigContent
+	case IllegalContent:
+		item.Type = AnswerIllegalContent
+
+	case SchnorrMultisigContent1:
+		item.Type = AnswerSchnorrMultisigContent1
+
+	case SchnorrMultisigContent2:
+		item.Type = AnswerSchnorrMultisigContent2
+
+	case SchnorrMultisigContent3:
+		item.Type = AnswerSchnorrMultisigContent3
+
+	}
 
 	pkBuf, err := item.TargetArbitratorPublicKey.EncodePoint(true)
 	if err != nil {

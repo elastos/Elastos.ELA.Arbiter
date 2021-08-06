@@ -17,26 +17,42 @@ import (
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
+type TransactionType byte
+
+const (
+	WithdrawTransaction      TransactionType = 0x00
+	IllegalTransaction       TransactionType = 0x01
+	ReturnDepositTransaction TransactionType = 0x02
+)
+
 type DistributeContentType byte
 
 const (
-	MaxRedeemScriptDataSize = 10000
+	MultisigContent         DistributeContentType = 0x00
+	IllegalContent          DistributeContentType = 0x01
+	SchnorrMultisigContent1 DistributeContentType = 0x02
+	SchnorrMultisigContent2 DistributeContentType = 0x03
+	SchnorrMultisigContent3 DistributeContentType = 0x04
 
-	TxDistribute            DistributeContentType = 0x00
-	IllegalDistribute       DistributeContentType = 0x01
-	ReturnDepositDistribute DistributeContentType = 0x02
-	SchnorrWithdrawProposal DistributeContentType = 0x03
+	AnswerMultisigContent         DistributeContentType = 0x10
+	AnswerIllegalContent          DistributeContentType = 0x11
+	AnswerSchnorrMultisigContent1 DistributeContentType = 0x12
+	AnswerSchnorrMultisigContent2 DistributeContentType = 0x13
+	AnswerSchnorrMultisigContent3 DistributeContentType = 0x14
 )
 
-type DistributedItem struct {
-	TargetArbitratorPublicKey   *crypto.PublicKey
-	TargetArbitratorProgramHash *common.Uint168
-	Type                        DistributeContentType
-	ItemContent                 base.DistributedContent
-	SchnorrProposalContent      SchnorrWithdrawProposalContent
+const MaxRedeemScriptDataSize = 10000
 
-	redeemScript []byte
-	signedData   []byte
+type DistributedItem struct {
+	TargetArbitratorPublicKey      *crypto.PublicKey
+	TargetArbitratorProgramHash    *common.Uint168
+	TransactionType                TransactionType
+	Type                           DistributeContentType
+	ItemContent                    base.DistributedContent
+	SchnorrProposalContent         SchnorrWithdrawProposalContent
+	SchnorrRequestRProposalContent SchnorrWithdrawRequestRProposalContent
+	redeemScript                   []byte
+	signedData                     []byte
 }
 
 type DistrubutedItemFunc interface {
@@ -179,11 +195,14 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 	if err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
 		return errors.New("TargetArbitratorProgramHash serialization failed.")
 	}
+	if err := common.WriteUint8(w, byte(item.TransactionType)); err != nil {
+		return err
+	}
 	if err := common.WriteUint8(w, byte(item.Type)); err != nil {
 		return err
 	}
 	switch item.Type {
-	case TxDistribute, ReturnDepositDistribute:
+	case MultisigContent, AnswerMultisigContent:
 		if err := item.ItemContent.Serialize(w); err != nil {
 			return err
 		}
@@ -193,17 +212,23 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 		if err := common.WriteVarBytes(w, item.signedData); err != nil {
 			return errors.New("signedData serialization failed.")
 		}
-	case IllegalDistribute:
+	case IllegalContent, AnswerIllegalContent:
 		if err := common.WriteVarBytes(w, item.redeemScript); err != nil {
 			return errors.New("redeemScript serialization failed.")
 		}
 		if err := common.WriteVarBytes(w, item.signedData); err != nil {
 			return errors.New("signedData serialization failed.")
 		}
-	case SchnorrWithdrawProposal:
+	case SchnorrMultisigContent1, AnswerSchnorrMultisigContent1:
 		if err := item.SchnorrProposalContent.Serialize(w); err != nil {
 			return err
 		}
+	case SchnorrMultisigContent2, AnswerSchnorrMultisigContent2:
+		if err := item.SchnorrRequestRProposalContent.Serialize(w); err != nil {
+			return err
+		}
+	case SchnorrMultisigContent3, AnswerSchnorrMultisigContent3:
+		// todo
 	}
 
 	return nil
@@ -223,6 +248,12 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		return errors.New("TargetArbitratorProgramHash deserialization failed.")
 	}
 
+	transactionType, err := common.ReadUint8(r)
+	if err != nil {
+		return err
+	}
+	item.TransactionType = TransactionType(transactionType)
+
 	contentType, err := common.ReadUint8(r)
 	if err != nil {
 		return err
@@ -230,16 +261,22 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	item.Type = DistributeContentType(contentType)
 
 	switch item.Type {
-	case TxDistribute, ReturnDepositDistribute:
+	case MultisigContent, AnswerMultisigContent:
 		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
 		if err = item.ItemContent.Deserialize(r); err != nil {
 			return errors.New("ItemContent deserialization failed." + err.Error())
 		}
-	case IllegalDistribute:
-	case SchnorrWithdrawProposal:
+	case IllegalContent, AnswerIllegalContent:
+	case SchnorrMultisigContent1, AnswerSchnorrMultisigContent1:
 		if err = item.SchnorrProposalContent.Deserialize(r); err != nil {
 			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
 		}
+	case SchnorrMultisigContent2, AnswerSchnorrMultisigContent2:
+		if err = item.SchnorrRequestRProposalContent.Deserialize(r); err != nil {
+			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
+		}
+	case SchnorrMultisigContent3, AnswerSchnorrMultisigContent3:
+		// todo
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")

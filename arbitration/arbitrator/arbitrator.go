@@ -318,14 +318,14 @@ func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal1(txn *types.Transacti
 }
 
 func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) {
-	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn)
 	if err != nil {
 		log.Warn(err.Error())
 	}
 }
 
 func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) {
-	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(txn)
 	if err != nil {
 		log.Warn(err.Error())
 	}
