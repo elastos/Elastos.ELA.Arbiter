@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+	"github.com/elastos/Elastos.ELA/common"
 
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type DistributedNodeClient struct {
+	CheckedTransactions map[common.Uint256]struct{}
 }
 
 type DistributedNodeClientFunc interface {
@@ -71,9 +73,12 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, tra
 	if len(transactionItem.signedData) == 0 {
 		return nil
 	}
-
-	if err := transactionItem.SchnorrProposalContent.Check(client); err != nil {
-		return err
+	hash := transactionItem.SchnorrProposalContent.Tx.Hash()
+	if _, ok := client.CheckedTransactions[hash]; !ok {
+		if err := transactionItem.SchnorrProposalContent.Check(client); err != nil {
+			return err
+		}
+		client.CheckedTransactions[transactionItem.SchnorrProposalContent.Tx.Hash()] = struct{}{}
 	}
 
 	if err := client.SignSchnorrProposal1(transactionItem); err != nil {

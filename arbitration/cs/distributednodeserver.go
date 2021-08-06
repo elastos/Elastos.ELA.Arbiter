@@ -32,6 +32,8 @@ type DistributedNodeServer struct {
 	// schnorr withdraw
 	schnorrWithdrawContents        map[common.Uint256]SchnorrWithdrawProposalContent
 	schnorrWithdrawContentsSigners map[common.Uint256]map[common.Uint168]struct{}
+
+
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -375,13 +377,12 @@ func (dns *DistributedNodeServer) receiveWithdrawProposalFeedback(transactionIte
 }
 
 func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transactionItem DistributedItem) error {
-	// todo complete me
 	if err := transactionItem.CheckFeedbackSignedData(); err != nil {
 		return err
 	}
 
 	dns.mux.Lock()
-	if dns.unsolvedContents == nil {
+	if dns.schnorrWithdrawContents == nil {
 		dns.mux.Unlock()
 		return errors.New("can not find proposal")
 	}

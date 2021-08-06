@@ -642,7 +642,9 @@ func InitMainChain(ar arbitrator.Arbitrator) error {
 	cs.P2PClientSingleton.AddMainchainListener(mainChainServer)
 	currentArbitrator.SetMainChain(mainChainServer)
 
-	mainChainClient := &MainChainClientImpl{&cs.DistributedNodeClient{}}
+	mainChainClient := &MainChainClientImpl{&cs.DistributedNodeClient{
+		CheckedTransactions: make(map[common.Uint256]struct{}, 0),
+	}}
 	cs.P2PClientSingleton.AddMainchainListener(mainChainClient)
 	currentArbitrator.SetMainChainClient(mainChainClient)
 
