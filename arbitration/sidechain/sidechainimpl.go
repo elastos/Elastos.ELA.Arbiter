@@ -410,7 +410,6 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	if wTx == nil {
 		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
 	}
-	currentArbitrator.BroadcastWithdrawProposal(wTx)
 
 	if mainChainHeight >= config.Parameters.SchnorrStartHeight {
 		currentArbitrator.BroadcastSchnorrWithdrawProposal1(wTx)
