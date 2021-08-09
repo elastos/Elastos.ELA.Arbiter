@@ -209,6 +209,16 @@ func GetR(privateKey *big.Int, message [32]byte) (k0 *big.Int, rx *big.Int, ry *
 	return
 }
 
+func GetE(rxs []*big.Int, rys []*big.Int, pxs []*big.Int, pys []*big.Int, message []byte) *big.Int {
+	Px, Py := new(big.Int), new(big.Int)
+	Rx, Ry := new(big.Int), new(big.Int)
+	for i, _ := range rxs {
+		Rx, Ry = Curve.Add(Rx, Ry, rxs[i], rys[i])
+		Px, Py = Curve.Add(Px, Py, pxs[i], pys[i])
+	}
+	rX := intToByte(Rx)
+	return getE(Px, Py, rX, message[:])
+}
 
 func GetSignature(privateKeys *big.Int, message []byte) ([64]byte, error) {
 	return [64]byte{}, nil

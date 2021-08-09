@@ -18,11 +18,67 @@ import (
 type SchnorrWithdrawRequestRProposalContent struct {
 	Tx         *types.Transaction
 	Publickeys [][]byte
-	K0         *big.Int
-	Rx         *big.Int
-	Ry         *big.Int
-	Px         *big.Int
-	Py         *big.Int
+	R          KRP
+}
+
+type KRP struct {
+	K0 *big.Int
+	Rx *big.Int
+	Ry *big.Int
+	Px *big.Int
+	Py *big.Int
+}
+
+func (r *KRP) Serialize(w io.Writer) error {
+	if err := common.WriteVarBytes(w, r.K0.Bytes()); err != nil {
+		return err
+	}
+	if err := common.WriteVarBytes(w, r.Rx.Bytes()); err != nil {
+		return err
+	}
+	if err := common.WriteVarBytes(w, r.Ry.Bytes()); err != nil {
+		return err
+	}
+	if err := common.WriteVarBytes(w, r.Px.Bytes()); err != nil {
+		return err
+	}
+	if err := common.WriteVarBytes(w, r.Py.Bytes()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *KRP) Deserialize(r io.Reader) error {
+	k0, err := common.ReadVarBytes(r, 64, "k0")
+	if err != nil {
+		return err
+	}
+	c.K0 = new(big.Int).SetBytes(k0)
+
+	rx, err := common.ReadVarBytes(r, 64, "rx")
+	if err != nil {
+		return err
+	}
+	c.Rx = new(big.Int).SetBytes(rx)
+
+	ry, err := common.ReadVarBytes(r, 64, "ry")
+	if err != nil {
+		return err
+	}
+	c.Ry = new(big.Int).SetBytes(ry)
+
+	px, err := common.ReadVarBytes(r, 64, "px")
+	if err != nil {
+		return err
+	}
+	c.Px = new(big.Int).SetBytes(px)
+
+	py, err := common.ReadVarBytes(r, 64, "py")
+	if err != nil {
+		return err
+	}
+	c.Py = new(big.Int).SetBytes(py)
+	return nil
 }
 
 func (c *SchnorrWithdrawRequestRProposalContent) SerializeUnsigned(w io.Writer, feedback bool) error {
@@ -41,19 +97,7 @@ func (c *SchnorrWithdrawRequestRProposalContent) SerializeUnsigned(w io.Writer, 
 	}
 
 	if feedback {
-		if err := common.WriteVarBytes(w, c.K0.Bytes()); err != nil {
-			return err
-		}
-		if err := common.WriteVarBytes(w, c.Rx.Bytes()); err != nil {
-			return err
-		}
-		if err := common.WriteVarBytes(w, c.Ry.Bytes()); err != nil {
-			return err
-		}
-		if err := common.WriteVarBytes(w, c.Px.Bytes()); err != nil {
-			return err
-		}
-		if err := common.WriteVarBytes(w, c.Py.Bytes()); err != nil {
+		if err := c.R.Serialize(w); err != nil {
 			return err
 		}
 	}
@@ -85,35 +129,9 @@ func (c *SchnorrWithdrawRequestRProposalContent) Deserialize(r io.Reader, feedba
 	}
 
 	if feedback {
-		k0, err := common.ReadVarBytes(r, 64, "k0")
-		if err != nil {
+		if err := c.R.Deserialize(r); err != nil {
 			return err
 		}
-		c.K0 = new(big.Int).SetBytes(k0)
-
-		rx, err := common.ReadVarBytes(r, 64, "rx")
-		if err != nil {
-			return err
-		}
-		c.Rx = new(big.Int).SetBytes(rx)
-
-		ry, err := common.ReadVarBytes(r, 64, "ry")
-		if err != nil {
-			return err
-		}
-		c.Ry = new(big.Int).SetBytes(ry)
-
-		px, err := common.ReadVarBytes(r, 64, "px")
-		if err != nil {
-			return err
-		}
-		c.Px = new(big.Int).SetBytes(px)
-
-		py, err := common.ReadVarBytes(r, 64, "py")
-		if err != nil {
-			return err
-		}
-		c.Py = new(big.Int).SetBytes(py)
 	}
 
 	return nil

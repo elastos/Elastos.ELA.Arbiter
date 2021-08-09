@@ -3,6 +3,7 @@ package arbitrator
 import (
 	"errors"
 	"math"
+	"math/big"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -32,7 +33,7 @@ type MainChain interface {
 	// schnorr withdraw
 	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction) error
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte) error
-	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) error
+	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int) error
 
 	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error
