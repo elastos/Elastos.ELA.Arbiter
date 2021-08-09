@@ -220,6 +220,6 @@ func GetE(rxs []*big.Int, rys []*big.Int, pxs []*big.Int, pys []*big.Int, messag
 	return getE(Px, Py, rX, message[:])
 }
 
-func GetSignature(privateKeys *big.Int, message []byte) ([64]byte, error) {
-	return [64]byte{}, nil
+func GetS(privateKeys *big.Int, e *big.Int) *big.Int {
+	return new(big.Int).Mul(e, privateKeys)
 }
