@@ -3,6 +3,8 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/hex"
+	crypto2 "github.com/elastos/Elastos.ELA.Arbiter/arbitration/crypto"
+	"math/big"
 	"path/filepath"
 	"sync"
 	"time"
@@ -66,6 +68,8 @@ type Arbitrator interface {
 	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction)
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte)
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction)
+	// schnorr crypto
+	GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
@@ -141,6 +145,12 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 	mainAccount := ar.client.GetMainAccount()
 
 	return mainAccount.Sign(content)
+}
+
+func (ar *ArbitratorImpl) GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
+	mainAccount := ar.client.GetMainAccount()
+	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
+	return crypto2.GetR(privKey, message)
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {

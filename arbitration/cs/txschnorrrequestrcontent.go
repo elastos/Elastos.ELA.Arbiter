@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -17,9 +18,14 @@ import (
 type SchnorrWithdrawRequestRProposalContent struct {
 	Tx         *types.Transaction
 	Publickeys [][]byte
+	K0         *big.Int
+	Rx         *big.Int
+	Ry         *big.Int
+	Px         *big.Int
+	Py         *big.Int
 }
 
-func (c *SchnorrWithdrawRequestRProposalContent) SerializeUnsigned(w io.Writer) error {
+func (c *SchnorrWithdrawRequestRProposalContent) SerializeUnsigned(w io.Writer, feedback bool) error {
 	if err := c.Tx.SerializeUnsigned(w); err != nil {
 		return errors.New("failed tto serialize transaction")
 	}
@@ -34,14 +40,32 @@ func (c *SchnorrWithdrawRequestRProposalContent) SerializeUnsigned(w io.Writer) 
 		}
 	}
 
+	if feedback {
+		if err := common.WriteVarBytes(w, c.K0.Bytes()); err != nil {
+			return err
+		}
+		if err := common.WriteVarBytes(w, c.Rx.Bytes()); err != nil {
+			return err
+		}
+		if err := common.WriteVarBytes(w, c.Ry.Bytes()); err != nil {
+			return err
+		}
+		if err := common.WriteVarBytes(w, c.Px.Bytes()); err != nil {
+			return err
+		}
+		if err := common.WriteVarBytes(w, c.Py.Bytes()); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
-func (c *SchnorrWithdrawRequestRProposalContent) Serialize(w io.Writer) error {
-	return c.SerializeUnsigned(w)
+func (c *SchnorrWithdrawRequestRProposalContent) Serialize(w io.Writer, feedback bool) error {
+	return c.SerializeUnsigned(w, feedback)
 }
 
-func (c *SchnorrWithdrawRequestRProposalContent) Deserialize(r io.Reader) error {
+func (c *SchnorrWithdrawRequestRProposalContent) Deserialize(r io.Reader, feedback bool) error {
 	if err := c.Tx.Deserialize(r); err != nil {
 		return errors.New("failed to deserialize transaction")
 	}
@@ -58,6 +82,38 @@ func (c *SchnorrWithdrawRequestRProposalContent) Deserialize(r io.Reader) error 
 			return err
 		}
 		c.Publickeys = append(c.Publickeys, pk)
+	}
+
+	if feedback {
+		k0, err := common.ReadVarBytes(r, 64, "k0")
+		if err != nil {
+			return err
+		}
+		c.K0 = new(big.Int).SetBytes(k0)
+
+		rx, err := common.ReadVarBytes(r, 64, "rx")
+		if err != nil {
+			return err
+		}
+		c.Rx = new(big.Int).SetBytes(rx)
+
+		ry, err := common.ReadVarBytes(r, 64, "ry")
+		if err != nil {
+			return err
+		}
+		c.Ry = new(big.Int).SetBytes(ry)
+
+		px, err := common.ReadVarBytes(r, 64, "px")
+		if err != nil {
+			return err
+		}
+		c.Px = new(big.Int).SetBytes(px)
+
+		py, err := common.ReadVarBytes(r, 64, "py")
+		if err != nil {
+			return err
+		}
+		c.Py = new(big.Int).SetBytes(py)
 	}
 
 	return nil
