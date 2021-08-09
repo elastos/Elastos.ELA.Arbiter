@@ -583,5 +583,8 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 }
 
 func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transactionItem DistributedItem) error {
+
+
+
 	return nil
 }

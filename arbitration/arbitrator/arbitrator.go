@@ -70,6 +70,7 @@ type Arbitrator interface {
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int)
 	// schnorr crypto
 	GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
+	GetSchnorrS(e *big.Int) *big.Int
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
@@ -151,6 +152,12 @@ func (ar *ArbitratorImpl) GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.In
 	mainAccount := ar.client.GetMainAccount()
 	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
 	return crypto2.GetR(privKey, message)
+}
+
+func (ar *ArbitratorImpl) GetSchnorrS(e *big.Int) *big.Int {
+	mainAccount := ar.client.GetMainAccount()
+	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
+	return crypto2.GetS(privKey, e)
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {

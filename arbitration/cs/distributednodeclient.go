@@ -41,6 +41,10 @@ func (client *DistributedNodeClient) SignSchnorrProposal2(item *DistributedItem)
 	return item.SchnorrSign2(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
+func (client *DistributedNodeClient) SignSchnorrProposal3(item *DistributedItem) error {
+	return item.SchnorrSign2(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+}
+
 func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []byte) error {
 	transactionItem := &DistributedItem{}
 	if err := transactionItem.Deserialize(bytes.NewReader(content)); err != nil {
@@ -144,7 +148,41 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, tra
 }
 
 func (client *DistributedNodeClient) onReceivedSchnorrProposal3(id peer.PID, transactionItem *DistributedItem) error {
-	// todo return S
+	// check if I am in public keys.
+	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	myself, err := currentAccount.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
+	}
+	var needDeal bool
+	for _, pk := range transactionItem.SchnorrRequestSProposalContent.Publickeys {
+		if bytes.Equal(myself, pk) {
+			needDeal = true
+			break
+		}
+	}
+	if !needDeal {
+		return errors.New("no need to deal with the shcnorr proposal 3")
+	}
+
+	// check the transaction
+	hash := transactionItem.SchnorrRequestSProposalContent.Tx.Hash()
+	if _, ok := client.CheckedTransactions[hash]; !ok {
+		return errors.New("transaction has changed")
+	}
+
+	s := currentAccount.GetSchnorrS(transactionItem.SchnorrRequestSProposalContent.E)
+	transactionItem.SchnorrRequestSProposalContent.S = s
+	transactionItem.Type = AnswerSchnorrMultisigContent3
+
+	if err := client.SignSchnorrProposal2(transactionItem); err != nil {
+		return err
+	}
+
+	if err := client.Feedback(id, transactionItem); err != nil {
+		return err
+	}
+
 	return nil
 }
 

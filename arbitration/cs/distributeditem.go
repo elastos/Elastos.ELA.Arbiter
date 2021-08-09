@@ -269,8 +269,14 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 		if err := item.SchnorrRequestRProposalContent.Serialize(w, true); err != nil {
 			return err
 		}
-	case SchnorrMultisigContent3, AnswerSchnorrMultisigContent3:
-		// todo
+	case SchnorrMultisigContent3:
+		if err := item.SchnorrRequestSProposalContent.Serialize(w, false); err != nil {
+			return err
+		}
+	case AnswerSchnorrMultisigContent3:
+		if err := item.SchnorrRequestSProposalContent.Serialize(w, true); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -315,14 +321,20 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		}
 	case SchnorrMultisigContent2:
 		if err = item.SchnorrRequestRProposalContent.Deserialize(r, false); err != nil {
-			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
+			return errors.New("SchnorrRequestRProposalContent deserialization failed." + err.Error())
 		}
 	case AnswerSchnorrMultisigContent2:
 		if err = item.SchnorrRequestRProposalContent.Deserialize(r, true); err != nil {
-			return errors.New("Answer SchnorrProposalContent deserialization failed." + err.Error())
+			return errors.New("Answer SchnorrRequestRProposalContent deserialization failed." + err.Error())
 		}
-	case SchnorrMultisigContent3, AnswerSchnorrMultisigContent3:
-		// todo
+	case SchnorrMultisigContent3:
+		if err = item.SchnorrRequestSProposalContent.Deserialize(r, true); err != nil {
+			return errors.New("Answer SchnorrRequestSProposalContent deserialization failed." + err.Error())
+		}
+	case AnswerSchnorrMultisigContent3:
+		if err = item.SchnorrRequestSProposalContent.Deserialize(r, true); err != nil {
+			return errors.New("Answer SchnorrRequestSProposalContent deserialization failed." + err.Error())
+		}
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
