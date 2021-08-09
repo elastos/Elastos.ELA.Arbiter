@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	crypto2 "github.com/elastos/Elastos.ELA.Arbiter/arbitration/crypto"
+	"math/big"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -30,8 +32,10 @@ type DistributedNodeServer struct {
 	unsolvedContentsSignature map[common.Uint256]map[common.Uint160]struct{}
 
 	// schnorr withdraw
-	schnorrWithdrawContentsTransaction map[common.Uint256]types.Transaction // key: nonce hash
-	schnorrWithdrawContentsSigners     map[common.Uint256]map[string]struct{}
+	schnorrWithdrawContentsTransaction     map[common.Uint256]types.Transaction // key: nonce hash
+	schnorrWithdrawContentsSigners         map[common.Uint256]map[string]struct{}
+	schnorrWithdrawRequestRContentsSigners map[common.Uint256]map[string]KRP
+	schnorrWithdrawRequestSContentsSigners map[common.Uint256]map[string]struct{}
 }
 
 func (dns *DistributedNodeServer) tryInit() {
@@ -52,6 +56,12 @@ func (dns *DistributedNodeServer) tryInit() {
 	}
 	if dns.schnorrWithdrawContentsSigners == nil {
 		dns.schnorrWithdrawContentsSigners = make(map[common.Uint256]map[string]struct{})
+	}
+	if dns.schnorrWithdrawRequestRContentsSigners == nil {
+		dns.schnorrWithdrawRequestRContentsSigners = make(map[common.Uint256]map[string]KRP)
+	}
+	if dns.schnorrWithdrawRequestSContentsSigners == nil {
+		dns.schnorrWithdrawRequestSContentsSigners = make(map[common.Uint256]map[string]struct{})
 	}
 }
 
@@ -137,7 +147,8 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 		txType = ReturnDepositTransaction
 	}
 
-	proposal, err := dns.generateDistributedSchnorrProposal2(txn, txType, SchnorrMultisigContent2,
+	proposal, err := dns.generateDistributedSchnorrProposal2(
+		txn, txType, SchnorrMultisigContent2,
 		SchnorrWithdrawRequestRProposalContent{Tx: txn, Publickeys: pks})
 	if err != nil {
 		return err
@@ -148,8 +159,27 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) error {
-	// todo complete me
+func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal3(
+	txn *types.Transaction, pks [][]byte, e *big.Int) error {
+	var txType TransactionType
+	switch txn.TxType {
+	case types.WithdrawFromSideChain:
+		txType = WithdrawTransaction
+	case types.ReturnCRDepositCoin:
+		txType = ReturnDepositTransaction
+	}
+
+	proposal, err := dns.generateDistributedSchnorrProposal3(
+		txn, txType, SchnorrMultisigContent3,
+		SchnorrWithdrawRequestSProposalContent{
+			Tx:         txn,
+			Publickeys: pks,
+			E:          e})
+	if err != nil {
+		return err
+	}
+
+	dns.sendToArbitrator(proposal)
 	return nil
 }
 
@@ -226,14 +256,72 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal1(
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
 	txn *types.Transaction, txType TransactionType,
 	cType DistributeContentType, content SchnorrWithdrawRequestRProposalContent) ([]byte, error) {
-	//  todo finish me
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return nil, err
+	}
+	programHash, err := contract.PublicKeyToStandardProgramHash(pkBuf)
+	if err != nil {
+		return nil, err
+	}
+	transactionItem := &DistributedItem{
+		TargetArbitratorPublicKey:      currentArbitrator.GetPublicKey(),
+		TargetArbitratorProgramHash:    programHash,
+		TransactionType:                txType,
+		Type:                           cType,
+		SchnorrRequestRProposalContent: content,
+	}
+
+	buf := new(bytes.Buffer)
+	if err = transactionItem.Serialize(buf); err != nil {
+		return nil, err
+	}
+
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
+
+	if _, ok := dns.schnorrWithdrawContentsTransaction[content.Hash()]; ok {
+		return nil, errors.New("transaction already in process")
+	}
+	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
+	dns.schnorrWithdrawRequestRContentsSigners[content.Hash()] = make(map[string]KRP)
 	return nil, nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
 	txn *types.Transaction, txType TransactionType,
-	cType DistributeContentType, content SchnorrWithdrawRequestRProposalContent) ([]byte, error) {
-	//  todo finish me
+	cType DistributeContentType, content SchnorrWithdrawRequestSProposalContent) ([]byte, error) {
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return nil, err
+	}
+	programHash, err := contract.PublicKeyToStandardProgramHash(pkBuf)
+	if err != nil {
+		return nil, err
+	}
+	transactionItem := &DistributedItem{
+		TargetArbitratorPublicKey:      currentArbitrator.GetPublicKey(),
+		TargetArbitratorProgramHash:    programHash,
+		TransactionType:                txType,
+		Type:                           cType,
+		SchnorrRequestSProposalContent: content,
+	}
+
+	buf := new(bytes.Buffer)
+	if err = transactionItem.Serialize(buf); err != nil {
+		return nil, err
+	}
+
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
+
+	if _, ok := dns.schnorrWithdrawContentsTransaction[content.Hash()]; ok {
+		return nil, errors.New("transaction already in process")
+	}
+	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
+	dns.schnorrWithdrawRequestSContentsSigners[content.Hash()] = make(map[string]struct{})
 	return nil, nil
 }
 
@@ -371,7 +459,7 @@ func (dns *DistributedNodeServer) receiveWithdrawProposalFeedback(transactionIte
 }
 
 func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transactionItem DistributedItem) error {
-	if err := transactionItem.CheckFeedbackSignedData(); err != nil {
+	if err := transactionItem.CheckSchnorrFeedbackProposalSignedData(); err != nil {
 		return err
 	}
 
@@ -407,16 +495,13 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transa
 
 	if len(dns.schnorrWithdrawContentsSigners[hash]) >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
-		pks := make([][]byte, 0)
-		for k, _ := range dns.schnorrWithdrawContentsSigners[hash] {
-			pks = append(pks, []byte(k))
-		}
-
 		arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 		pksIndex := make([]uint8, 0)
+		pks := make([][]byte, 0)
 		for i, a := range arbiters {
 			if _, ok := signers[a]; ok {
 				pksIndex = append(pksIndex, uint8(i))
+				pks = append(pks, []byte(a))
 			}
 		}
 		txn.Payload = &payload.WithdrawFromSideChain{
@@ -431,6 +516,69 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal1Feedback(transa
 }
 
 func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transactionItem DistributedItem) error {
+	if err := transactionItem.CheckSchnorrFeedbackRequestRSignedData(); err != nil {
+		return err
+	}
+
+	dns.mux.Lock()
+	if dns.schnorrWithdrawContentsTransaction == nil {
+		dns.mux.Unlock()
+		return errors.New("can not find proposal")
+	}
+	hash := transactionItem.SchnorrProposalContent.Hash()
+	txn, ok := dns.schnorrWithdrawContentsTransaction[hash]
+	if !ok {
+		dns.mux.Unlock()
+		return errors.New("can not find proposal transaction")
+	}
+	signers, ok := dns.schnorrWithdrawRequestRContentsSigners[hash]
+	if !ok {
+		dns.mux.Unlock()
+		return errors.New("can not find RequestR signer")
+	}
+	publickeyBytes, err := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
+	if err != nil {
+		return errors.New("invalid TargetArbitratorPublicKey")
+	}
+
+	strPK := string(publickeyBytes)
+	if _, ok := signers[strPK]; ok {
+		dns.mux.Unlock()
+		log.Warn("arbiter already recorded the schnorr signer")
+		return nil
+	}
+	dns.schnorrWithdrawRequestRContentsSigners[hash][strPK] = transactionItem.SchnorrRequestRProposalContent.R
+	dns.mux.Unlock()
+
+	if len(dns.schnorrWithdrawRequestRContentsSigners[hash]) == len(dns.schnorrWithdrawContentsSigners[hash]) {
+		arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
+		// get public keys
+		pks := make([][]byte, 0)
+		for _, a := range arbiters {
+			if _, ok := signers[a]; ok {
+				pks = append(pks, []byte(a))
+			}
+		}
+
+		// get pxs pys rxs rys
+		var pxs, pys, rxs, rys []*big.Int
+		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[hash] {
+			pxs = append(pxs, v.Px)
+			pys = append(pys, v.Py)
+			rxs = append(rxs, v.Rx)
+			rys = append(rys, v.Ry)
+		}
+
+		// get E
+		message := transactionItem.SchnorrRequestRProposalContent.Hash()
+		e := crypto2.GetE(rxs, rys, pxs, pys, message[:])
+
+		if err := dns.BroadcastSchnorrWithdrawProposal3(&txn, pks, e); err != nil {
+			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
+		}
+		dns.schnorrWithdrawRequestSContentsSigners[hash] = make(map[string]struct{})
+	}
+
 	return nil
 }
 

@@ -123,11 +123,13 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, tra
 	if err != nil {
 		return err
 	}
-	transactionItem.SchnorrRequestRProposalContent.K0 = k0
-	transactionItem.SchnorrRequestRProposalContent.Rx = rx
-	transactionItem.SchnorrRequestRProposalContent.Ry = ry
-	transactionItem.SchnorrRequestRProposalContent.Px = px
-	transactionItem.SchnorrRequestRProposalContent.Py = py
+	transactionItem.SchnorrRequestRProposalContent.R = KRP{
+		K0: k0,
+		Rx: rx,
+		Ry: ry,
+		Px: px,
+		Py: py,
+	}
 	transactionItem.Type = AnswerSchnorrMultisigContent2
 
 	if err := client.SignSchnorrProposal2(transactionItem); err != nil {

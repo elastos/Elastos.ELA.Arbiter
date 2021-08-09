@@ -67,7 +67,7 @@ type Arbitrator interface {
 	// schnorr withdraw
 	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction)
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte)
-	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction)
+	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int)
 	// schnorr crypto
 	GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
 
@@ -334,8 +334,8 @@ func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transacti
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction) {
-	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(txn)
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(txn, pks, e)
 	if err != nil {
 		log.Warn(err.Error())
 	}

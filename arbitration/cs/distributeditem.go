@@ -51,6 +51,7 @@ type DistributedItem struct {
 	ItemContent                    base.DistributedContent
 	SchnorrProposalContent         SchnorrWithdrawProposalContent
 	SchnorrRequestRProposalContent SchnorrWithdrawRequestRProposalContent
+	SchnorrRequestSProposalContent SchnorrWithdrawRequestSProposalContent
 
 	redeemScript []byte
 	signedData   []byte
@@ -186,9 +187,9 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
 	return sign, "", nil
 }
 
-func (item *DistributedItem) CheckFeedbackSignedData() error {
+func (item *DistributedItem) CheckSchnorrFeedbackProposalSignedData() error {
 	if len(item.signedData) == 0 {
-		return errors.New("CheckFeedbackSignedData invalid sign data length.")
+		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data length.")
 	}
 
 	buf := new(bytes.Buffer)
@@ -199,7 +200,26 @@ func (item *DistributedItem) CheckFeedbackSignedData() error {
 
 	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData[1:])
 	if err != nil {
-		return errors.New("CheckFeedbackSignedData invalid sign data.")
+		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data.")
+	}
+
+	return nil
+}
+
+func (item *DistributedItem) CheckSchnorrFeedbackRequestRSignedData() error {
+	if len(item.signedData) == 0 {
+		return errors.New("CheckSchnorrFeedbackRequestRSignedData invalid sign data length.")
+	}
+
+	buf := new(bytes.Buffer)
+	err := item.Serialize(buf)
+	if err != nil {
+		return err
+	}
+
+	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData[1:])
+	if err != nil {
+		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data.")
 	}
 
 	return nil
