@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA/common"
-
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
@@ -36,6 +35,10 @@ func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
 
 func (client *DistributedNodeClient) SignSchnorrProposal1(item *DistributedItem) error {
 	return item.SchnorrSign1(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+}
+
+func (client *DistributedNodeClient) SignSchnorrProposal2(item *DistributedItem) error {
+	return item.SchnorrSign2(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
 func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []byte) error {
@@ -91,7 +94,8 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, tra
 
 func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, transactionItem *DistributedItem) error {
 	// check if I am in public keys.
-	myself, err := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetPublicKey().EncodePoint(true)
+	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	myself, err := currentAccount.GetPublicKey().EncodePoint(true)
 	if err != nil {
 		return err
 	}
@@ -115,10 +119,20 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, tra
 		client.CheckedTransactions[transactionItem.SchnorrRequestRProposalContent.Tx.Hash()] = struct{}{}
 	}
 
-	//if err := client.SignSchnorrProposal1(transactionItem); err != nil {
-	//	return err
-	//}
-	// todo return K0 Px Py
+	k0, rx, ry, px, py, err := currentAccount.GetSchnorrR(transactionItem.SchnorrRequestRProposalContent.Tx.Hash())
+	if err != nil {
+		return err
+	}
+	transactionItem.SchnorrRequestRProposalContent.K0 = k0
+	transactionItem.SchnorrRequestRProposalContent.Rx = rx
+	transactionItem.SchnorrRequestRProposalContent.Ry = ry
+	transactionItem.SchnorrRequestRProposalContent.Px = px
+	transactionItem.SchnorrRequestRProposalContent.Py = py
+	transactionItem.Type = AnswerSchnorrMultisigContent2
+
+	if err := client.SignSchnorrProposal2(transactionItem); err != nil {
+		return err
+	}
 
 	if err := client.Feedback(id, transactionItem); err != nil {
 		return err

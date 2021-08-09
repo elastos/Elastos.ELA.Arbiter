@@ -52,8 +52,8 @@ type DistributedItem struct {
 	SchnorrProposalContent         SchnorrWithdrawProposalContent
 	SchnorrRequestRProposalContent SchnorrWithdrawRequestRProposalContent
 
-	redeemScript                   []byte
-	signedData                     []byte
+	redeemScript []byte
+	signedData   []byte
 }
 
 type DistrubutedItemFunc interface {
@@ -130,6 +130,23 @@ func (item *DistributedItem) SchnorrSign1(arbitrator arbitrator.Arbitrator) erro
 	// Sign transaction
 	buf := new(bytes.Buffer)
 	err := item.SchnorrProposalContent.SerializeUnsigned(buf)
+	if err != nil {
+		return err
+	}
+
+	newSign, err := arbitrator.Sign(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	// Record signature
+	item.signedData = newSign
+	return nil
+}
+
+func (item *DistributedItem) SchnorrSign2(arbitrator arbitrator.Arbitrator) error {
+	// Sign transaction
+	buf := new(bytes.Buffer)
+	err := item.Serialize(buf)
 	if err != nil {
 		return err
 	}
@@ -224,8 +241,12 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 		if err := item.SchnorrProposalContent.Serialize(w); err != nil {
 			return err
 		}
-	case SchnorrMultisigContent2, AnswerSchnorrMultisigContent2:
-		if err := item.SchnorrRequestRProposalContent.Serialize(w); err != nil {
+	case SchnorrMultisigContent2:
+		if err := item.SchnorrRequestRProposalContent.Serialize(w, false); err != nil {
+			return err
+		}
+	case AnswerSchnorrMultisigContent2:
+		if err := item.SchnorrRequestRProposalContent.Serialize(w, true); err != nil {
 			return err
 		}
 	case SchnorrMultisigContent3, AnswerSchnorrMultisigContent3:
@@ -272,9 +293,13 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		if err = item.SchnorrProposalContent.Deserialize(r); err != nil {
 			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
 		}
-	case SchnorrMultisigContent2, AnswerSchnorrMultisigContent2:
-		if err = item.SchnorrRequestRProposalContent.Deserialize(r); err != nil {
+	case SchnorrMultisigContent2:
+		if err = item.SchnorrRequestRProposalContent.Deserialize(r, false); err != nil {
 			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
+		}
+	case AnswerSchnorrMultisigContent2:
+		if err = item.SchnorrRequestRProposalContent.Deserialize(r, true); err != nil {
+			return errors.New("Answer SchnorrProposalContent deserialization failed." + err.Error())
 		}
 	case SchnorrMultisigContent3, AnswerSchnorrMultisigContent3:
 		// todo
