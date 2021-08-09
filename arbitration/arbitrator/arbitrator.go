@@ -3,13 +3,13 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/hex"
-	crypto2 "github.com/elastos/Elastos.ELA.Arbiter/arbitration/crypto"
 	"math/big"
 	"path/filepath"
 	"sync"
 	"time"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	crypto2 "github.com/elastos/Elastos.ELA.Arbiter/arbitration/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
@@ -157,7 +157,7 @@ func (ar *ArbitratorImpl) GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.In
 func (ar *ArbitratorImpl) GetSchnorrS(e *big.Int) *big.Int {
 	mainAccount := ar.client.GetMainAccount()
 	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
-	return crypto2.GetS(privKey, e)
+	return crypto2.GetEMulPrivateKey(privKey, e)
 }
 
 func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {

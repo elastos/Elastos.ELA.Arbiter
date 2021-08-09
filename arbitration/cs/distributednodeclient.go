@@ -3,7 +3,9 @@ package cs
 import (
 	"bytes"
 	"errors"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
+
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
