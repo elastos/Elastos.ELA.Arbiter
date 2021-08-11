@@ -38,6 +38,8 @@ type MainChain interface {
 	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error
 	SyncChainData() uint32
+
+	Reset()
 }
 
 type MainChainClient interface {

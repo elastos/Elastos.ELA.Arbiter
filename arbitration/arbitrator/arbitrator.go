@@ -104,9 +104,9 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 	if onDuty {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
-
 		var currentHeight = store.DbCache.MainChainStore.CurrentHeight(
 			store.QueryHeightCode)
+		ar.mainChainImpl.Reset()
 		ar.ProcessDepositTransactions()
 		ar.processWithdrawTransactions(currentHeight)
 		ar.processReturnDepositTransactions()

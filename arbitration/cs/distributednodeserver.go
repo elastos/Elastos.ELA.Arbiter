@@ -40,6 +40,15 @@ type DistributedNodeServer struct {
 	schnorrWithdrawRequestSContentsSigners map[common.Uint256]map[string]*big.Int
 }
 
+func (dns *DistributedNodeServer) Reset() {
+	dns.unsolvedContents = make(map[common.Uint256]base.DistributedContent)
+	dns.unsolvedContentsSignature = make(map[common.Uint256]map[common.Uint160]struct{})
+	dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]types.Transaction)
+	dns.schnorrWithdrawContentsSigners = make(map[common.Uint256]map[string]struct{})
+	dns.schnorrWithdrawRequestRContentsSigners = make(map[common.Uint256]map[string]KRP)
+	dns.schnorrWithdrawRequestSContentsSigners = make(map[common.Uint256]map[string]*big.Int)
+}
+
 func (dns *DistributedNodeServer) tryInit() {
 	if dns.mux == nil {
 		dns.mux = new(sync.Mutex)
@@ -403,9 +412,9 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 	case AnswerSchnorrMultisigContent1:
 		return dns.receiveSchnorrWithdrawProposal1Feedback(transactionItem)
 	case AnswerSchnorrMultisigContent2:
-		return dns.receiveSchnorrWithdrawProposal1Feedback(transactionItem)
+		return dns.receiveSchnorrWithdrawProposal2Feedback(transactionItem)
 	case AnswerSchnorrMultisigContent3:
-		return dns.receiveSchnorrWithdrawProposal1Feedback(transactionItem)
+		return dns.receiveSchnorrWithdrawProposal3Feedback(transactionItem)
 	}
 
 	return nil

@@ -575,6 +575,9 @@ func (mc *MainChainImpl) containGenesisBlockAddress(address string) bool {
 	}
 	return false
 }
+func (mc *MainChainImpl) Reset() {
+	mc.DistributedNodeServer.Reset()
+}
 
 func (mc *MainChainImpl) CheckAndRemoveDepositTransactionsFromDB() error {
 	//remove deposit transactions if exist on side chain
