@@ -69,7 +69,7 @@ type Arbitrator interface {
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte)
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int)
 	// schnorr crypto
-	GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
+	GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
 	GetSchnorrS(e *big.Int) *big.Int
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
@@ -148,10 +148,10 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 	return mainAccount.Sign(content)
 }
 
-func (ar *ArbitratorImpl) GetSchnorrR(message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
+func (ar *ArbitratorImpl) GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
 	mainAccount := ar.client.GetMainAccount()
 	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
-	return crypto2.GetR(privKey, message)
+	return crypto2.GetR(privKey)
 }
 
 func (ar *ArbitratorImpl) GetSchnorrS(e *big.Int) *big.Int {

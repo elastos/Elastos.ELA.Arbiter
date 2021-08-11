@@ -2,6 +2,7 @@ package crypto
 
 import (
 	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"errors"
 	"math/big"
@@ -50,26 +51,37 @@ func Marshal(x, y *big.Int) []byte {
 	return ret
 }
 
-func deterministicGetK0(d []byte, message []byte) (*big.Int, error) {
-	h := sha256.Sum256(append(d, message[:]...))
-	i := new(big.Int).SetBytes(h[:])
-	k0 := i.Mod(i, N)
-	if k0.Sign() == 0 {
-		return nil, errors.New("k0 is zero")
+func deterministicGetK0(d []byte) (*big.Int, error) {
+	for {
+		message, err := randomBytes(32)
+		if err != nil {
+			return nil, errors.New("random bytes error:" + err.Error())
+		}
+		h := sha256.Sum256(append(d, message[:]...))
+		i := new(big.Int).SetBytes(h[:])
+		k0 := i.Mod(i, N)
+		if k0.Sign() == 0 {
+			return nil, errors.New("k0 is zero")
+		}
+		return k0, nil
 	}
+}
 
-	return k0, nil
+func randomBytes(len int) (data []byte, err error) {
+	data = make([]byte, len)
+	_, err = rand.Read(data)
+	return
 }
 
 // GetR calcaulate k0 rx ry px and py.
-func GetR(privateKey *big.Int, message [32]byte) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
+func GetR(privateKey *big.Int) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
 	if privateKey.Cmp(One) < 0 || privateKey.Cmp(new(big.Int).Sub(N, One)) > 0 {
 		err = errors.New("the private key must be an integer in the range 1..n-1")
 		return
 	}
 
 	d := IntToByte(privateKey)
-	k0, err = deterministicGetK0(d, message[:])
+	k0, err = deterministicGetK0(d)
 	if err != nil {
 		return
 	}

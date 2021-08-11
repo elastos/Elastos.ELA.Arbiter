@@ -125,7 +125,7 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, tra
 		client.CheckedTransactions[transactionItem.SchnorrRequestRProposalContent.Tx.Hash()] = struct{}{}
 	}
 
-	k0, rx, ry, px, py, err := currentAccount.GetSchnorrR(transactionItem.SchnorrRequestRProposalContent.Tx.Hash())
+	k0, rx, ry, px, py, err := currentAccount.GetSchnorrR()
 	if err != nil {
 		return err
 	}
