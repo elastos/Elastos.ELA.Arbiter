@@ -2,6 +2,7 @@ package cs
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"math/big"
 
@@ -124,4 +125,47 @@ func checkSchnorrWithdrawRequestSTransaction(
 	}
 
 	return nil
+}
+
+
+func checkSchnorrWithdrawPayload(txn *types.Transaction,
+	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
+	if txn.PayloadVersion != payload.WithdrawFromSideChainVersionV2 {
+		return errors.New("invalid schnorr withdraw payload version, not WithdrawFromSideChainVersionV2")
+	}
+
+	p, ok := txn.Payload.(*payload.WithdrawFromSideChain)
+	if !ok {
+		return errors.New("invalid transaction payload")
+	}
+
+	count := getTransactionAgreementArbitratorsCount(
+		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
+
+	if len(p.Signers) != count {
+		return errors.New(fmt.Sprintf("invalid signer count, need:%d, current:%d", count, len(p.Signers)))
+	}
+
+	return checkWithdrawFromSideChainPayload(txn, clientFunc, mainFunc)
+}
+
+func checkSchnorrReturnDepositTxPayload(txn *types.Transaction,
+	clientFunc DistributedNodeClientFunc) error {
+	if txn.PayloadVersion != payload.ReturnSideChainDepositCoinVersionV1 {
+		return errors.New("invalid schnorr return deposit payload version, not ReturnSideChainDepositCoinVersionV1")
+	}
+
+	p, ok := txn.Payload.(*payload.ReturnSideChainDepositCoin)
+	if !ok {
+		return errors.New("invalid transaction payload")
+	}
+
+	count := getTransactionAgreementArbitratorsCount(
+		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
+
+	if len(p.Signers) != count {
+		return errors.New(fmt.Sprintf("invalid signer count, need:%d, current:%d", count, len(p.Signers)))
+	}
+
+	return checkReturnDepositTxPayload(txn, clientFunc)
 }

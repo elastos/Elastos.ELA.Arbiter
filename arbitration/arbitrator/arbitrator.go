@@ -65,8 +65,7 @@ type Arbitrator interface {
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
 	// schnorr withdraw
-	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction)
-	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte)
+	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction)
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int)
 	// schnorr crypto
 	GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
@@ -327,15 +326,8 @@ func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCros
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal1(txn *types.Transaction) {
-	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal1(txn)
-	if err != nil {
-		log.Warn(err.Error())
-	}
-}
-
-func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte) {
-	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn, pks)
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn)
 	if err != nil {
 		log.Warn(err.Error())
 	}

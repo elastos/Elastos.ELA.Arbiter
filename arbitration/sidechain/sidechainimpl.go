@@ -412,8 +412,8 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 
 	if mainChainHeight >= config.Parameters.SchnorrStartHeight {
-		currentArbitrator.BroadcastSchnorrWithdrawProposal1(wTx)
-		log.Info("[BroadcastSchnorrWithdrawProposal1] transactions count: ", targetIndex)
+		currentArbitrator.BroadcastSchnorrWithdrawProposal2(wTx)
+		log.Info("[BroadcastSchnorrWithdrawProposal2] transactions count: ", targetIndex)
 	} else {
 		currentArbitrator.BroadcastWithdrawProposal(wTx)
 		log.Info("[BroadcastWithdrawProposal] transactions count: ", targetIndex)

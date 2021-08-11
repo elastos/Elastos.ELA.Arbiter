@@ -31,8 +31,7 @@ type MainChain interface {
 	ReceiveProposalFeedback(content []byte) error
 
 	// schnorr withdraw
-	BroadcastSchnorrWithdrawProposal1(txn *types.Transaction) error
-	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction, pks [][]byte) error
+	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int) error
 
 	SyncMainChainCachedTxs() error

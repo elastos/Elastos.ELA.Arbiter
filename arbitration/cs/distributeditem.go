@@ -30,15 +30,13 @@ type DistributeContentType byte
 const (
 	MultisigContent         DistributeContentType = 0x00
 	IllegalContent          DistributeContentType = 0x01
-	SchnorrMultisigContent1 DistributeContentType = 0x02
-	SchnorrMultisigContent2 DistributeContentType = 0x03
-	SchnorrMultisigContent3 DistributeContentType = 0x04
+	SchnorrMultisigContent2 DistributeContentType = 0x02
+	SchnorrMultisigContent3 DistributeContentType = 0x03
 
 	AnswerMultisigContent         DistributeContentType = 0x10
 	AnswerIllegalContent          DistributeContentType = 0x11
-	AnswerSchnorrMultisigContent1 DistributeContentType = 0x12
-	AnswerSchnorrMultisigContent2 DistributeContentType = 0x13
-	AnswerSchnorrMultisigContent3 DistributeContentType = 0x14
+	AnswerSchnorrMultisigContent2 DistributeContentType = 0x12
+	AnswerSchnorrMultisigContent3 DistributeContentType = 0x13
 )
 
 const MaxRedeemScriptDataSize = 10000
@@ -49,7 +47,6 @@ type DistributedItem struct {
 	TransactionType                TransactionType
 	Type                           DistributeContentType
 	ItemContent                    base.DistributedContent
-	SchnorrProposalContent         SchnorrWithdrawProposalContent
 	SchnorrRequestRProposalContent SchnorrWithdrawRequestRProposalContent
 	SchnorrRequestSProposalContent SchnorrWithdrawRequestSProposalContent
 
@@ -127,23 +124,6 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 	return nil
 }
 
-func (item *DistributedItem) SchnorrSign1(arbitrator arbitrator.Arbitrator) error {
-	// Sign transaction
-	buf := new(bytes.Buffer)
-	err := item.SchnorrProposalContent.SerializeUnsigned(buf)
-	if err != nil {
-		return err
-	}
-
-	newSign, err := arbitrator.Sign(buf.Bytes())
-	if err != nil {
-		return err
-	}
-	// Record signature
-	item.signedData = newSign
-	return nil
-}
-
 func (item *DistributedItem) SchnorrSign2(arbitrator arbitrator.Arbitrator) error {
 	// Sign transaction
 	buf := new(bytes.Buffer)
@@ -185,25 +165,6 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
 	}
 
 	return sign, "", nil
-}
-
-func (item *DistributedItem) CheckSchnorrFeedbackProposalSignedData() error {
-	if len(item.signedData) == 0 {
-		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data length.")
-	}
-
-	buf := new(bytes.Buffer)
-	err := item.SchnorrProposalContent.SerializeUnsigned(buf)
-	if err != nil {
-		return err
-	}
-
-	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData[1:])
-	if err != nil {
-		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data.")
-	}
-
-	return nil
 }
 
 func (item *DistributedItem) CheckSchnorrFeedbackRequestRSignedData() error {
@@ -256,10 +217,6 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 		}
 		if err := common.WriteVarBytes(w, item.signedData); err != nil {
 			return errors.New("signedData serialization failed.")
-		}
-	case SchnorrMultisigContent1, AnswerSchnorrMultisigContent1:
-		if err := item.SchnorrProposalContent.Serialize(w); err != nil {
-			return err
 		}
 	case SchnorrMultisigContent2:
 		if err := item.SchnorrRequestRProposalContent.Serialize(w, false); err != nil {
@@ -315,10 +272,6 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 			return errors.New("ItemContent deserialization failed." + err.Error())
 		}
 	case IllegalContent, AnswerIllegalContent:
-	case SchnorrMultisigContent1, AnswerSchnorrMultisigContent1:
-		if err = item.SchnorrProposalContent.Deserialize(r); err != nil {
-			return errors.New("SchnorrProposalContent deserialization failed." + err.Error())
-		}
 	case SchnorrMultisigContent2:
 		if err = item.SchnorrRequestRProposalContent.Deserialize(r, false); err != nil {
 			return errors.New("SchnorrRequestRProposalContent deserialization failed." + err.Error())

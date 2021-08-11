@@ -35,10 +35,6 @@ func (client *DistributedNodeClient) SignProposal(item *DistributedItem) error {
 	return item.Sign(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator(), true, &DistrubutedItemFuncImpl{})
 }
 
-func (client *DistributedNodeClient) SignSchnorrProposal1(item *DistributedItem) error {
-	return item.SchnorrSign1(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
-}
-
 func (client *DistributedNodeClient) SignSchnorrProposal2(item *DistributedItem) error {
 	return item.SchnorrSign2(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
@@ -56,8 +52,6 @@ func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []b
 	switch transactionItem.Type {
 	case MultisigContent:
 		return client.onReceivedProposal(id, transactionItem)
-	case SchnorrMultisigContent1:
-		return client.onReceivedSchnorrProposal1(id, transactionItem)
 	case SchnorrMultisigContent2:
 		return client.onReceivedSchnorrProposal2(id, transactionItem)
 	case SchnorrMultisigContent3:
@@ -82,49 +76,12 @@ func (client *DistributedNodeClient) onReceivedProposal(id peer.PID, transaction
 	return nil
 }
 
-func (client *DistributedNodeClient) onReceivedSchnorrProposal1(id peer.PID, transactionItem *DistributedItem) error {
+func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, transactionItem *DistributedItem) error {
 	if len(transactionItem.signedData) == 0 {
 		return nil
 	}
 
-	if err := client.SignSchnorrProposal1(transactionItem); err != nil {
-		return err
-	}
-
-	if err := client.Feedback(id, transactionItem); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, transactionItem *DistributedItem) error {
-	// check if I am in public keys.
 	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	myself, err := currentAccount.GetPublicKey().EncodePoint(true)
-	if err != nil {
-		return err
-	}
-	var needDeal bool
-	for _, pk := range transactionItem.SchnorrRequestRProposalContent.Publickeys {
-		if bytes.Equal(myself, pk) {
-			needDeal = true
-			break
-		}
-	}
-	if !needDeal {
-		return errors.New("no need to deal with the shcnorr proposal 2")
-	}
-
-	// check the transaction
-	hash := transactionItem.SchnorrRequestRProposalContent.Tx.Hash()
-	if _, ok := client.CheckedTransactions[hash]; !ok {
-		if err := transactionItem.SchnorrRequestRProposalContent.Check(client); err != nil {
-			return err
-		}
-		client.CheckedTransactions[transactionItem.SchnorrRequestRProposalContent.Tx.Hash()] = struct{}{}
-	}
-
 	k0, rx, ry, px, py, err := currentAccount.GetSchnorrR()
 	if err != nil {
 		return err
@@ -198,9 +155,6 @@ func (client *DistributedNodeClient) Feedback(id peer.PID, item *DistributedItem
 
 	case IllegalContent:
 		item.Type = AnswerIllegalContent
-
-	case SchnorrMultisigContent1:
-		item.Type = AnswerSchnorrMultisigContent1
 
 	case SchnorrMultisigContent2:
 		item.Type = AnswerSchnorrMultisigContent2
