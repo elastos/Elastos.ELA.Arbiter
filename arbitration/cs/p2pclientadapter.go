@@ -26,6 +26,7 @@ var P2PClientSingleton *arbitratorsNetwork
 const (
 	//len of message need to less than 12
 	DistributeItemCommand = "disitem"
+	SendSchnorrItemommand = "senditem"
 )
 
 type messageItem struct {
@@ -117,6 +118,14 @@ func (n *arbitratorsNetwork) processMessage(msgItem *messageItem) {
 				v.OnReceivedSignMsg(msgItem.ID, withdraw.Content)
 			}
 		}
+	case SendSchnorrItemommand:
+		proposal, ok := m.(*SendSchnorrProposalMessage)
+		if ok {
+			for _, v := range n.mainchainListeners {
+				v.OnSendSchnorrItemMsg(msgItem.ID, proposal.NonceHash)
+			}
+		}
+
 	}
 }
 
@@ -184,6 +193,8 @@ func makeEmptyMessage(cmd string) (message elap2p.Message, err error) {
 	switch cmd {
 	case DistributeItemCommand:
 		message = &DistributedItemMessage{}
+	case SendSchnorrItemommand:
+		message = &SendSchnorrProposalMessage{}
 	default:
 		return nil, errors.New("received unsupported message, CMD " + cmd)
 	}
