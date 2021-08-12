@@ -448,12 +448,16 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 	if len(dns.schnorrWithdrawRequestRContentsSigners[hash]) >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
 		arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
-		// get public keys
+		pksIndex := make([]uint8, 0)
 		pks := make([][]byte, 0)
-		for _, a := range arbiters {
+		for i, a := range arbiters {
 			if _, ok := signers[a]; ok {
+				pksIndex = append(pksIndex, uint8(i))
 				pks = append(pks, []byte(a))
 			}
+		}
+		txn.Payload = &payload.WithdrawFromSideChain{
+			Signers: pksIndex,
 		}
 
 		// get pxs pys rxs rys
