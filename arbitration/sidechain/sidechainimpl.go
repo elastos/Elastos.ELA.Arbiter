@@ -273,6 +273,9 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 		}
 	}
 
+	// todo message: decide which arbiter to create withdraw transaction
+
+
 	if len(receivedTxs) != 0 {
 		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
 		if err != nil {

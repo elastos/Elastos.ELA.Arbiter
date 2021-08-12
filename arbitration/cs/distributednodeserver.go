@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"time"
 
 	"math/big"
 	"sync"
@@ -25,6 +26,9 @@ import (
 const (
 	MCErrDoubleSpend          int64 = 45010
 	MCErrSidechainTxDuplicate int64 = 45012
+
+	// time: wait schnorr signers feedback
+	SchnorrFeedbackInterval time.Duration = time.Second * 5
 )
 
 type DistributedNodeServer struct {
@@ -127,6 +131,14 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	log.Info("[sendToArbitrator] Send withdraw transaction to arbiters for multi sign")
 }
 
+func (dns *DistributedNodeServer) sendSchnorrItemMsgToSelf(nonceHash common.Uint256) {
+	go func() {
+		time.Sleep(SchnorrFeedbackInterval)
+		P2PClientSingleton.messageQueue <- &messageItem{
+			[33]byte{}, &SendSchnorrProposalMessage{NonceHash: nonceHash}}
+	}()
+}
+
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error {
 	var txType TransactionType
 	switch txn.TxType {
@@ -136,15 +148,17 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 		txType = ReturnDepositTransaction
 	}
 
+	content := SchnorrWithdrawRequestRProposalContent{
+		Nonce: txn.Hash().Bytes()}
 	proposal, err := dns.generateDistributedSchnorrProposal2(
 		txn, txType, SchnorrMultisigContent2,
-		SchnorrWithdrawRequestRProposalContent{
-			Nonce: txn.Hash().Bytes()})
+		content)
 	if err != nil {
 		return err
 	}
 
 	dns.sendToArbitrator(proposal)
+	dns.sendSchnorrItemMsgToSelf(content.Hash())
 
 	return nil
 }
@@ -420,7 +434,7 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 		return errors.New("can not find proposal")
 	}
 	hash := transactionItem.SchnorrRequestRProposalContent.Hash()
-	txn, ok := dns.schnorrWithdrawContentsTransaction[hash]
+	_, ok := dns.schnorrWithdrawContentsTransaction[hash]
 	if !ok {
 		dns.mux.Unlock()
 		return errors.New("can not find proposal transaction")
@@ -444,14 +458,44 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 	}
 	dns.schnorrWithdrawRequestRContentsSigners[hash][strPK] = transactionItem.SchnorrRequestRProposalContent.R
 	dns.mux.Unlock()
+	return nil
+}
 
-	if len(dns.schnorrWithdrawRequestRContentsSigners[hash]) >= getTransactionAgreementArbitratorsCount(
-		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {
+func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash common.Uint256) error {
+	dns.mux.Lock()
+	if dns.schnorrWithdrawContentsTransaction == nil {
+		dns.mux.Unlock()
+		return errors.New("can not find proposal")
+	}
+	txn, ok := dns.schnorrWithdrawContentsTransaction[nonceHash]
+	if !ok {
+		dns.mux.Unlock()
+		return errors.New("can not find proposal transaction")
+	}
+	signers, ok := dns.schnorrWithdrawRequestRContentsSigners[nonceHash]
+	if !ok {
+		dns.mux.Unlock()
+		return errors.New("can not find RequestR signer")
+	}
+	dns.mux.Unlock()
+
+	minSignersCount := getTransactionAgreementArbitratorsCount(
+		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
+	if len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]) >= minSignersCount {
+		// random select signers
+		randomSigners := make(map[string]KRP)
+		for k, v := range signers {
+			randomSigners[k] = v
+			if len(randomSigners) == minSignersCount {
+				break
+			}
+		}
+
 		arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 		pksIndex := make([]uint8, 0)
 		pks := make([][]byte, 0)
 		for i, a := range arbiters {
-			if _, ok := signers[a]; ok {
+			if _, ok := randomSigners[a]; ok {
 				pksIndex = append(pksIndex, uint8(i))
 				pks = append(pks, []byte(a))
 			}
@@ -462,7 +506,7 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 
 		// get pxs pys rxs rys
 		var pxs, pys, rxs, rys []*big.Int
-		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[hash] {
+		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[nonceHash] {
 			pxs = append(pxs, v.Px)
 			pys = append(pys, v.Py)
 			rxs = append(rxs, v.Rx)
@@ -470,12 +514,16 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 		}
 
 		// get E
-		message := transactionItem.SchnorrRequestRProposalContent.Hash()
+		message := txn.Hash()
 		e := crypto2.GetE(rxs, rys, pxs, pys, message[:])
 
 		if err := dns.BroadcastSchnorrWithdrawProposal3(&txn, pks, e); err != nil {
 			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
 		}
+	} else {
+		log.Errorf("[ReceiveSendSchnorrWithdrawProposal3] not enought "+
+			"signers for transaction %s, need %d, current %d",
+			nonceHash, minSignersCount, len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]))
 	}
 
 	return nil

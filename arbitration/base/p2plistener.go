@@ -1,9 +1,11 @@
 package base
 
 import (
-	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 )
 
 type MainchainMsgListener interface {
-	OnReceivedSignMsg(id peer2.PID, content []byte)
+	OnReceivedSignMsg(id peer.PID, content []byte)
+	OnSendSchnorrItemMsg(id peer.PID, hash common.Uint256)
 }
