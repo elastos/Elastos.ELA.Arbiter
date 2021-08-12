@@ -458,6 +458,8 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 	}
 	dns.schnorrWithdrawRequestRContentsSigners[hash][strPK] = transactionItem.SchnorrRequestRProposalContent.R
 	dns.mux.Unlock()
+
+	// todo sign by myself
 	return nil
 }
 
@@ -483,6 +485,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
 	if len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]) >= minSignersCount {
 		// random select signers
+		// todo record not feedback signer, and choose signers according to the weight of history.
 		randomSigners := make(map[string]KRP)
 		for k, v := range signers {
 			randomSigners[k] = v
@@ -526,6 +529,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 			nonceHash, minSignersCount, len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]))
 	}
 
+	// todo sign by myself
 	return nil
 }
 
