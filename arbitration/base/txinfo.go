@@ -16,6 +16,7 @@ type WithdrawAsset struct {
 	Amount           *common.Fixed64
 	CrossChainAmount *common.Fixed64
 	TargetData       []byte
+	Memo             string
 }
 
 type WithdrawInfo struct {
@@ -77,7 +78,11 @@ func (info *WithdrawInfo) Serialize(w io.Writer) error {
 		}
 
 		if err := common.WriteVarBytes(w, withdraw.TargetData); err != nil {
-			return errors.New("[Serialize] write withdraw TargetData failed")
+			return errors.New("[WithdrawInfo] write withdraw TargetData failed")
+		}
+
+		if err := common.WriteVarString(w, withdraw.Memo); err != nil {
+			return errors.New("[WithdrawInfo] failed to serialize write memo")
 		}
 	}
 
@@ -113,6 +118,12 @@ func (info *WithdrawInfo) Deserialize(r io.Reader) error {
 		} else {
 			withdraw.TargetData = targetData
 		}
+
+		memo, err := common.ReadVarString(r)
+		if err != nil {
+			return errors.New("[Deserialize] read memo failed")
+		}
+		withdraw.Memo = memo
 
 		info.WithdrawAssets = append(info.WithdrawAssets, withdraw)
 	}
