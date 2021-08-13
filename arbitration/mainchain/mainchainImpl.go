@@ -273,7 +273,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
-				Payload: &outputpayload.DefaultOutput{},
+				Payload:     &outputpayload.DefaultOutput{},
 			}
 			txOutputs = append(txOutputs, change)
 			totalOutputAmount = 0
@@ -322,6 +322,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 		return nil, err
 	}
 
+	attributes := make([]*types.Attribute, 0)
 	var totalOutputAmount common.Fixed64
 	// Create transaction outputs
 	var txOutputs []*types.Output
@@ -341,6 +342,11 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 		}
 		txOutputs = append(txOutputs, txOutput)
 		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
+		att := types.Attribute{
+			Usage: types.Memo,
+			Data:  []byte(withdraw.Memo),
+		}
+		attributes = append(attributes, &att)
 	}
 
 	availableUTXOs, err := mcFunc.GetWithdrawUTXOsByAmount(withdrawBank, totalOutputAmount)
@@ -398,7 +404,6 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 
 	// Create attribute
 	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*types.Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
 	return &types.Transaction{
