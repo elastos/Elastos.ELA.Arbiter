@@ -43,26 +43,26 @@ const (
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
-				NonceHash VARCHAR UNIQUE,
+				TransactionHash VARCHAR UNIQUE,
 				GenesisBlockAddress VARCHAR(34),
 				TransactionData BLOB,
 				BlockHeight INTEGER
 			);`
 	CreateMainChainTxsTable = `CREATE TABLE IF NOT EXISTS MainChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
-				NonceHash VARCHAR,
+				TransactionHash VARCHAR,
 				GenesisBlockAddress VARCHAR(34),
 				TransactionData BLOB,
 				MerkleProof BLOB,
-                UNIQUE (NonceHash, GenesisBlockAddress)
+                UNIQUE (TransactionHash, GenesisBlockAddress)
 			);`
 
 	CreateRegisteredSideChainsTable = `CREATE TABLE IF NOT EXISTS RegisteredSideChains (
 				Id INTEGER NOT NULL PRIMARY KEY,
-				NonceHash VARCHAR,
+				TransactionHash VARCHAR,
 				GenesisBlockAddress VARCHAR(34),
 				RegisterInfo BLOB,
-				UNIQUE (NonceHash, GenesisBlockAddress)
+				UNIQUE (TransactionHash, GenesisBlockAddress)
 			);`
 )
 
@@ -384,7 +384,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(NonceHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -407,7 +407,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTx(tx *base.SideChainTransactio
 	defer store.mux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTxs(NonceHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -425,7 +425,7 @@ func (store *DataStoreSideChainImpl) HasSideChainTx(transactionHash string) (boo
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE NonceHash=?`, transactionHash)
+	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
 	if err != nil {
 		return false, err
 	}
@@ -444,7 +444,7 @@ func (store *DataStoreSideChainImpl) RemoveSideChainTxs(transactionHashes []stri
 	}
 	defer tx.Commit()
 
-	stmt, err := tx.Prepare("DELETE FROM SideChainTxs WHERE NonceHash=?")
+	stmt, err := tx.Prepare("DELETE FROM SideChainTxs WHERE TransactionHash=?")
 	if err != nil {
 		return err
 	}
@@ -461,7 +461,7 @@ func (store *DataStoreSideChainImpl) GetAllSideChainTxHashes() ([]string, error)
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.NonceHash FROM SideChainTxs`)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash FROM SideChainTxs`)
 	if err != nil {
 		return nil, err
 	}
@@ -483,7 +483,7 @@ func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights(genesisBl
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.NonceHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -510,7 +510,7 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 
 	var txs []*base.WithdrawTx
 	var buf bytes.Buffer
-	buf.WriteString("SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE NonceHash IN (")
+	buf.WriteString("SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash IN (")
 	hashesLen := len(transactionHashes)
 	for index, hash := range transactionHashes {
 		buf.WriteString("'")
@@ -522,7 +522,7 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 			buf.WriteString(",")
 		}
 	}
-	buf.WriteString(" GROUP BY NonceHash")
+	buf.WriteString(" GROUP BY TransactionHash")
 
 	rows, err := store.Query(buf.String())
 	if err != nil {
@@ -552,7 +552,7 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(
 
 	var txs []*base.WithdrawTx
 	for _, txHash := range transactionHashes {
-		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE NonceHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
+		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
 		if err != nil {
 			return nil, err
 		}
@@ -630,7 +630,7 @@ func (store *DataStoreMainChainImpl) AddMainChainTx(tx *base.MainChainTransactio
 	defer store.mux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO MainChainTxs(NonceHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO MainChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -665,7 +665,7 @@ func (store *DataStoreMainChainImpl) AddMainChainTxs(txs []*base.MainChainTransa
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO MainChainTxs(NonceHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO MainChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, MerkleProof) values(?,?,?,?)")
 	if err != nil {
 		return nil, err
 	}
@@ -699,7 +699,7 @@ func (store *DataStoreMainChainImpl) HasMainChainTx(transactionHash, genesisBloc
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	sql := `SELECT NonceHash FROM MainChainTxs WHERE NonceHash=? AND GenesisBlockAddress=?`
+	sql := `SELECT TransactionHash FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	rows, err := store.Query(sql, transactionHash, genesisBlockAddress)
 	if err != nil {
 		return false, err
@@ -713,7 +713,7 @@ func (store *DataStoreMainChainImpl) RemoveMainChainTx(transactionHash, genesisB
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	stmt, err := store.Prepare("DELETE FROM MainChainTxs WHERE NonceHash=? AND GenesisBlockAddress=?")
+	stmt, err := store.Prepare("DELETE FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?")
 	if err != nil {
 		return err
 	}
@@ -737,7 +737,7 @@ func (store *DataStoreMainChainImpl) RemoveMainChainTxs(transactionHashes, genes
 	}
 	defer tx.Commit()
 
-	stmt, err := tx.Prepare("DELETE FROM MainChainTxs WHERE NonceHash=? AND GenesisBlockAddress=?")
+	stmt, err := tx.Prepare("DELETE FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?")
 	if err != nil {
 		return err
 	}
@@ -757,7 +757,7 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxHashes() ([]string, []stri
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT NonceHash, GenesisBlockAddress FROM MainChainTxs`)
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress FROM MainChainTxs`)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -782,7 +782,7 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT NonceHash, GenesisBlockAddress,
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
  									TransactionData, MerkleProof FROM MainChainTxs`)
 	if err != nil {
 		return nil, err
@@ -821,7 +821,7 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 
 	var spvTxs []*base.SpvTransaction
 
-	sql := `SELECT TransactionData, MerkleProof FROM MainChainTxs WHERE NonceHash=? AND GenesisBlockAddress=?`
+	sql := `SELECT TransactionData, MerkleProof FROM MainChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	for i := 0; i < len(transactionHashes); i++ {
 		rows, err := store.Query(sql, transactionHashes[i], genesisBlockAddresses)
 		if err != nil {
@@ -931,7 +931,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) AddRegisteredSideChainTx(tx 
 	defer store.mux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO RegisteredSideChains(NonceHash, GenesisBlockAddress, RegisterInfo) values(?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO RegisteredSideChains(TransactionHash, GenesisBlockAddress, RegisterInfo) values(?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -961,7 +961,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) AddRegisteredSideChainTxs(tx
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO RegisteredSideChains(NonceHash, GenesisBlockAddress, RegisterInfo) values(?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO RegisteredSideChains(TransactionHash, GenesisBlockAddress, RegisterInfo) values(?,?,?)")
 	if err != nil {
 		return nil, err
 	}
@@ -990,7 +990,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) HasRegisteredSideChainTx(tra
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	sql := `SELECT NonceHash FROM RegisteredSideChains WHERE NonceHash=? AND GenesisBlockAddress=?`
+	sql := `SELECT TransactionHash FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	rows, err := store.Query(sql, transactionHash, genesisBlockAddress)
 	if err != nil {
 		return false, err
@@ -1004,7 +1004,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) RemoveRegisteredSideChainTx(
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	stmt, err := store.Prepare("DELETE FROM RegisteredSideChains WHERE NonceHash=? AND GenesisBlockAddress=?")
+	stmt, err := store.Prepare("DELETE FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?")
 	if err != nil {
 		return err
 	}
@@ -1028,7 +1028,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) RemoveRegisteredSideChainTxs
 	}
 	defer tx.Commit()
 
-	stmt, err := tx.Prepare("DELETE FROM RegisteredSideChains WHERE NonceHash=? AND GenesisBlockAddress=?")
+	stmt, err := tx.Prepare("DELETE FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?")
 	if err != nil {
 		return err
 	}
@@ -1048,7 +1048,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetAllRegisteredSideChainTxs
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT NonceHash, GenesisBlockAddress FROM RegisteredSideChains`)
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress FROM RegisteredSideChains`)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1073,8 +1073,8 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetRegisteredSideChainTxByHa
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT NonceHash, GenesisBlockAddress,
- 									RegisterInfo FROM RegisteredSideChains where NonceHash = ?`, tx)
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
+ 									RegisterInfo FROM RegisteredSideChains where TransactionHash = ?`, tx)
 	if err != nil {
 		return nil, err
 	}
@@ -1105,7 +1105,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetAllRegisteredSideChainTxs
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT NonceHash, GenesisBlockAddress,
+	rows, err := store.Query(`SELECT TransactionHash, GenesisBlockAddress,
  									RegisterInfo FROM RegisteredSideChains`)
 	if err != nil {
 		return nil, err
@@ -1139,7 +1139,7 @@ func (store *DataStoreRegisteredSideChainStoreImpl) GetRegisteredSideChainTxsFro
 
 	var rsc []*base.RegisteredSideChain
 
-	sql := `SELECT RegisterInfo FROM RegisteredSideChains WHERE NonceHash=? AND GenesisBlockAddress=?`
+	sql := `SELECT RegisterInfo FROM RegisteredSideChains WHERE TransactionHash=? AND GenesisBlockAddress=?`
 	for i := 0; i < len(transactionHashes); i++ {
 		rows, err := store.Query(sql, transactionHashes[i], genesisBlockAddresses)
 		if err != nil {
