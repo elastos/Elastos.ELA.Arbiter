@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"sort"
 	"time"
 
 	"math/big"
@@ -41,6 +42,9 @@ type DistributedNodeServer struct {
 	schnorrWithdrawContentsTransaction     map[common.Uint256]types.Transaction // key: nonce hash
 	schnorrWithdrawRequestRContentsSigners map[common.Uint256]map[string]KRP
 	schnorrWithdrawRequestSContentsSigners map[common.Uint256]map[string]*big.Int
+
+	// no need to reset, just record unsigned count
+	UnsignedSigners map[string]uint64
 }
 
 func (dns *DistributedNodeServer) Reset() {
@@ -72,6 +76,9 @@ func (dns *DistributedNodeServer) tryInit() {
 	}
 	if dns.schnorrWithdrawRequestSContentsSigners == nil {
 		dns.schnorrWithdrawRequestSContentsSigners = make(map[common.Uint256]map[string]*big.Int)
+	}
+	if dns.UnsignedSigners == nil {
+		dns.UnsignedSigners = make(map[string]uint64)
 	}
 }
 
@@ -485,10 +492,20 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
 	if len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]) >= minSignersCount {
 		// random select signers
-		// todo record not feedback signer, and choose signers according to the weight of history.
+		sortedSigners := make([]string, len(signers))
+		for k, _ := range signers {
+			sortedSigners = append(sortedSigners, k)
+		}
+		sort.Slice(sortedSigners, func(i, j int) bool {
+			if _, ok := dns.UnsignedSigners[sortedSigners[i]]; !ok {
+				return true
+			}
+			return dns.UnsignedSigners[sortedSigners[i]] < dns.UnsignedSigners[sortedSigners[j]]
+		})
+
 		randomSigners := make(map[string]KRP)
-		for k, v := range signers {
-			randomSigners[k] = v
+		for _, k := range sortedSigners {
+			randomSigners[k] = signers[k]
 			if len(randomSigners) == minSignersCount {
 				break
 			}
@@ -527,6 +544,18 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		log.Errorf("[ReceiveSendSchnorrWithdrawProposal3] not enought "+
 			"signers for transaction %s, need %d, current %d",
 			nonceHash, minSignersCount, len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]))
+	}
+
+	// record unsigned signers
+	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
+	for _, a := range arbiters {
+		if _, ok := signers[a]; !ok {
+			if count, ok := dns.UnsignedSigners[a]; ok {
+				dns.UnsignedSigners[a] = count + 1
+			} else {
+				dns.UnsignedSigners[a] = 1
+			}
+		}
 	}
 
 	// todo sign by myself
