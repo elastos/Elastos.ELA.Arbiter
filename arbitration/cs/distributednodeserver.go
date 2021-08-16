@@ -556,6 +556,13 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 				dns.UnsignedSigners[a] = 1
 			}
 		}
+
+		// record for next proposal, if someone signed it and will mul
+		if count, ok := dns.UnsignedSigners[a]; ok {
+			dns.UnsignedSigners[a] = count + 1
+		} else {
+			dns.UnsignedSigners[a] = 1
+		}
 	}
 
 	// todo sign by myself
@@ -600,6 +607,13 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		log.Warn("arbiter already recorded the schnorr signer")
 		return nil
 	}
+
+	if count, ok := dns.UnsignedSigners[strPK]; !ok || count < 1 {
+		return errors.New("not found in UnsignedSigners")
+	} else {
+		dns.UnsignedSigners[strPK] = count - 1
+	}
+
 	dns.schnorrWithdrawRequestSContentsSigners[hash][strPK] = transactionItem.SchnorrRequestSProposalContent.S
 	dns.mux.Unlock()
 
