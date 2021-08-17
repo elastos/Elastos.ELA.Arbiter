@@ -26,6 +26,7 @@ type ArbitratorGroupListener interface {
 
 type ArbitratorGroup interface {
 	GetCurrentArbitrator() Arbitrator
+	GetCurrentArbitratorPublicKey() string
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
 	GetOnDutyArbitratorOfMain() (string, error)
@@ -169,6 +170,17 @@ func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.currentArbitrator
+}
+
+func (group *ArbitratorGroupImpl) GetCurrentArbitratorPublicKey() string {
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	currentAccount := group.currentArbitrator
+	pkBuf, err := currentAccount.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		panic("public key of myself is invalid")
+	}
+	return string(pkBuf)
 }
 
 func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {

@@ -146,6 +146,24 @@ func (dns *DistributedNodeServer) sendSchnorrItemMsgToSelf(nonceHash common.Uint
 	}()
 }
 
+func (dns *DistributedNodeServer) recordKRPOfMyself(nonceHash common.Uint256) error {
+	// record KRP of myself
+	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	strPK := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitratorPublicKey()
+	k0, rx, ry, px, py, err := currentAccount.GetSchnorrR()
+	if err != nil {
+		return err
+	}
+	dns.schnorrWithdrawRequestRContentsSigners[nonceHash][strPK] = KRP{
+		K0: k0,
+		Rx: rx,
+		Ry: ry,
+		Px: px,
+		Py: py,
+	}
+	return nil
+}
+
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error {
 	var txType TransactionType
 	switch txn.TxType {
@@ -164,8 +182,12 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 		return err
 	}
 
+	nonceHash := content.Hash()
+	if err := dns.recordKRPOfMyself(nonceHash); err != nil {
+		return err
+	}
 	dns.sendToArbitrator(proposal)
-	dns.sendSchnorrItemMsgToSelf(content.Hash())
+	dns.sendSchnorrItemMsgToSelf(nonceHash)
 
 	return nil
 }
@@ -451,13 +473,12 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 		dns.mux.Unlock()
 		return errors.New("can not find RequestR signer")
 	}
-	publickeyBytes, err := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
+	pkBuf, err := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
 	if err != nil {
 		dns.mux.Unlock()
 		return errors.New("invalid TargetArbitratorPublicKey")
 	}
-
-	strPK := string(publickeyBytes)
+	strPK := string(pkBuf)
 	if _, ok := signers[strPK]; ok {
 		dns.mux.Unlock()
 		log.Warn("arbiter already recorded the schnorr signer")
@@ -466,27 +487,27 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 	dns.schnorrWithdrawRequestRContentsSigners[hash][strPK] = transactionItem.SchnorrRequestRProposalContent.R
 	dns.mux.Unlock()
 
-	// todo sign by myself
 	return nil
 }
 
 func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash common.Uint256) error {
+	myPK := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitratorPublicKey()
+
+	// try check signers count
 	dns.mux.Lock()
+	defer dns.mux.Unlock()
+
 	if dns.schnorrWithdrawContentsTransaction == nil {
-		dns.mux.Unlock()
 		return errors.New("can not find proposal")
 	}
 	txn, ok := dns.schnorrWithdrawContentsTransaction[nonceHash]
 	if !ok {
-		dns.mux.Unlock()
 		return errors.New("can not find proposal transaction")
 	}
 	signers, ok := dns.schnorrWithdrawRequestRContentsSigners[nonceHash]
 	if !ok {
-		dns.mux.Unlock()
 		return errors.New("can not find RequestR signer")
 	}
-	dns.mux.Unlock()
 
 	minSignersCount := getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
@@ -497,6 +518,13 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 			sortedSigners = append(sortedSigners, k)
 		}
 		sort.Slice(sortedSigners, func(i, j int) bool {
+			// myself need to be the first one
+			if sortedSigners[i] == myPK {
+				return true
+			}
+			if sortedSigners[j] == myPK {
+				return false
+			}
 			if _, ok := dns.UnsignedSigners[sortedSigners[i]]; !ok {
 				return true
 			}
@@ -540,6 +568,10 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		if err := dns.BroadcastSchnorrWithdrawProposal3(&txn, pks, e); err != nil {
 			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
 		}
+
+		// record signature of myself
+		currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+		dns.schnorrWithdrawRequestSContentsSigners[nonceHash][myPK] = currentAccount.GetSchnorrS(e)
 	} else {
 		log.Errorf("[ReceiveSendSchnorrWithdrawProposal3] not enought "+
 			"signers for transaction %s, need %d, current %d",
@@ -558,6 +590,9 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		}
 
 		// record for next proposal, if someone signed it and will mul
+		if a == myPK {
+			continue
+		}
 		if count, ok := dns.UnsignedSigners[a]; ok {
 			dns.UnsignedSigners[a] = count + 1
 		} else {
@@ -565,7 +600,6 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		}
 	}
 
-	// todo sign by myself
 	return nil
 }
 
@@ -615,7 +649,6 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 	}
 
 	dns.schnorrWithdrawRequestSContentsSigners[hash][strPK] = transactionItem.SchnorrRequestSProposalContent.S
-	dns.mux.Unlock()
 
 	if len(dns.schnorrWithdrawRequestRContentsSigners[hash]) == len(dns.schnorrWithdrawRequestRContentsSigners[hash]) {
 		// aggregate signatures
@@ -635,6 +668,8 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 			k.Add(k, dns.schnorrWithdrawRequestSContentsSigners[hash][pk])
 			s.Add(s, k)
 		}
+		dns.mux.Unlock()
+
 		signature := crypto2.GetS(Rx, s)
 
 		// create transaction with schnorr signature
@@ -656,6 +691,8 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 			log.Warn(err.Error())
 			return err
 		}
+	} else {
+		dns.mux.Unlock()
 	}
 
 	return nil
