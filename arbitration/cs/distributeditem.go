@@ -271,7 +271,31 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		if err = item.ItemContent.Deserialize(r); err != nil {
 			return errors.New("ItemContent deserialization failed." + err.Error())
 		}
+		redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
+		if err != nil {
+			return errors.New("redeemScript deserialization failed.")
+		}
+		item.redeemScript = redeemScript
+
+		signedData, err := common.ReadVarBytes(r, crypto.SignatureScriptLength*2, "signed data")
+		if err != nil {
+			return errors.New("signedData deserialization failed.")
+		}
+		item.signedData = signedData
+
 	case IllegalContent, AnswerIllegalContent:
+		redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
+		if err != nil {
+			return errors.New("redeemScript deserialization failed.")
+		}
+		item.redeemScript = redeemScript
+
+		signedData, err := common.ReadVarBytes(r, crypto.SignatureScriptLength*2, "signed data")
+		if err != nil {
+			return errors.New("signedData deserialization failed.")
+		}
+		item.signedData = signedData
+
 	case SchnorrMultisigContent2:
 		if err = item.SchnorrRequestRProposalContent.Deserialize(r, false); err != nil {
 			return errors.New("SchnorrRequestRProposalContent deserialization failed." + err.Error())
@@ -289,18 +313,6 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 			return errors.New("Answer SchnorrRequestSProposalContent deserialization failed." + err.Error())
 		}
 	}
-
-	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
-	if err != nil {
-		return errors.New("redeemScript deserialization failed.")
-	}
-	item.redeemScript = redeemScript
-
-	signedData, err := common.ReadVarBytes(r, crypto.SignatureScriptLength*2, "signed data")
-	if err != nil {
-		return errors.New("signedData deserialization failed.")
-	}
-	item.signedData = signedData
 
 	return nil
 }
