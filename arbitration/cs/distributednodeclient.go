@@ -77,10 +77,6 @@ func (client *DistributedNodeClient) onReceivedProposal(id peer.PID, transaction
 }
 
 func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, transactionItem *DistributedItem) error {
-	if len(transactionItem.signedData) == 0 {
-		return nil
-	}
-
 	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	k0, rx, ry, px, py, err := currentAccount.GetSchnorrR()
 	if err != nil {
@@ -94,7 +90,6 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, tra
 		Py: py,
 	}
 	transactionItem.Type = AnswerSchnorrMultisigContent2
-
 	if err := client.SignSchnorrProposal2(transactionItem); err != nil {
 		return err
 	}
