@@ -61,6 +61,8 @@ type Configuration struct {
 	ClearTransactionInterval       time.Duration    `json:"ClearTransactionInterval"`
 	MinOutbound                    int              `json:"MinOutbound"`
 	MaxConnections                 int              `json:"MaxConnections"`
+	//defines max nodes that one host can establish
+	MaxNodePerHost uint32
 	SideAuxPowFee                  int              `json:"SideAuxPowFee"`
 	MinThreshold                   int              `json:"MinThreshold"`
 	SmallCrossTransferThreshold    common.Fixed64   `json:"SmallCrossTransferThreshold"`
