@@ -226,6 +226,9 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 		if err := item.SchnorrRequestRProposalContent.Serialize(w, true); err != nil {
 			return err
 		}
+		if err := common.WriteVarBytes(w, item.signedData); err != nil {
+			return errors.New("signedData serialization failed.")
+		}
 	case SchnorrMultisigContent3:
 		if err := item.SchnorrRequestSProposalContent.Serialize(w, false); err != nil {
 			return err
@@ -233,6 +236,9 @@ func (item *DistributedItem) Serialize(w io.Writer) error {
 	case AnswerSchnorrMultisigContent3:
 		if err := item.SchnorrRequestSProposalContent.Serialize(w, true); err != nil {
 			return err
+		}
+		if err := common.WriteVarBytes(w, item.signedData); err != nil {
+			return errors.New("signedData serialization failed.")
 		}
 	}
 
@@ -304,6 +310,11 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		if err = item.SchnorrRequestRProposalContent.Deserialize(r, true); err != nil {
 			return errors.New("Answer SchnorrRequestRProposalContent deserialization failed." + err.Error())
 		}
+		signedData, err := common.ReadVarBytes(r, crypto.SignatureScriptLength*2, "signed data")
+		if err != nil {
+			return errors.New("signedData deserialization failed.")
+		}
+		item.signedData = signedData
 	case SchnorrMultisigContent3:
 		if err = item.SchnorrRequestSProposalContent.Deserialize(r, true); err != nil {
 			return errors.New("Answer SchnorrRequestSProposalContent deserialization failed." + err.Error())
@@ -312,6 +323,11 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		if err = item.SchnorrRequestSProposalContent.Deserialize(r, true); err != nil {
 			return errors.New("Answer SchnorrRequestSProposalContent deserialization failed." + err.Error())
 		}
+		signedData, err := common.ReadVarBytes(r, crypto.SignatureScriptLength*2, "signed data")
+		if err != nil {
+			return errors.New("signedData deserialization failed.")
+		}
+		item.signedData = signedData
 	}
 
 	return nil
