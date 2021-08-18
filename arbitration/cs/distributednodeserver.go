@@ -252,6 +252,8 @@ func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.Si
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
 	txn *types.Transaction, txType TransactionType,
 	cType DistributeContentType, content SchnorrWithdrawRequestRProposalContent) ([]byte, error) {
+	dns.tryInit()
+
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
 	if err != nil {
@@ -288,6 +290,8 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
 	txn *types.Transaction, txType TransactionType,
 	cType DistributeContentType, content SchnorrWithdrawRequestSProposalContent) ([]byte, error) {
+	dns.tryInit()
+
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
 	if err != nil {
