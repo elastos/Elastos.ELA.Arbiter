@@ -288,7 +288,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					}
 					err = curr.SendFailedDepositTxs(failedTxs)
 					if err != nil {
-						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
+						log.Error("[MoniterFailedDepositTransfer] SendFailedDepositTxs failed", err.Error())
 						continue
 					}
 					log.Info("End Monitor Failed Deposit Transfer")

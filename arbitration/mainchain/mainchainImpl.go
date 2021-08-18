@@ -232,7 +232,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
-	log.Info("CreateWithdrawTransactionV1 len(withdrawInfo.WithdrawAssets):", len(withdrawInfo.WithdrawAssets))
+	log.Info("CreateSchnorrWithdrawTransaction len(withdrawInfo.WithdrawAssets):", len(withdrawInfo.WithdrawAssets))
 	for i, withdraw := range withdrawInfo.WithdrawAssets {
 		programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
 		if err != nil {
@@ -253,7 +253,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 		}
 		txOutputs = append(txOutputs, txOutput)
 		totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
-		log.Info("CreateWithdrawTransactionV1 txOutputs[", i, "]", txOutput.String())
+		log.Info("CreateSchnorrWithdrawTransaction txOutputs[", i, "]", txOutput.String())
 	}
 	availableUTXOs, err := mcFunc.GetWithdrawUTXOsByAmount(withdrawBank, totalOutputAmount)
 	if err != nil {
