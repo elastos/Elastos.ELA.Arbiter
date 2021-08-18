@@ -284,7 +284,7 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
 	}
 	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
 	dns.schnorrWithdrawRequestRContentsSigners[content.Hash()] = make(map[string]KRP)
-	return nil, nil
+	return buf.Bytes(), nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
@@ -322,7 +322,7 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
 	}
 	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
 	dns.schnorrWithdrawRequestSContentsSigners[content.Hash()] = make(map[string]*big.Int)
-	return nil, nil
+	return buf.Bytes(), nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedProposal(
