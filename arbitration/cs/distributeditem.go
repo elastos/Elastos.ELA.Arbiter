@@ -127,7 +127,7 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 func (item *DistributedItem) SchnorrSign2(arbitrator arbitrator.Arbitrator) error {
 	// Sign transaction
 	buf := new(bytes.Buffer)
-	err := item.Serialize(buf)
+	err := item.SchnorrRequestRProposalContent.SerializeUnsigned(buf, true)
 	if err != nil {
 		return err
 	}
@@ -173,14 +173,61 @@ func (item *DistributedItem) CheckSchnorrFeedbackRequestRSignedData() error {
 	}
 
 	buf := new(bytes.Buffer)
-	err := item.Serialize(buf)
+	err := item.SchnorrRequestRProposalContent.SerializeUnsigned(buf, true)
 	if err != nil {
 		return err
 	}
 
-	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData[1:])
+	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData)
 	if err != nil {
 		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data.")
+	}
+
+	return nil
+}
+
+func (item *DistributedItem) SerializeUnsigned(w io.Writer) error {
+	publickeyBytes, _ := item.TargetArbitratorPublicKey.EncodePoint(true)
+	if err := common.WriteVarBytes(w, publickeyBytes); err != nil {
+		return errors.New("TargetArbitratorPublicKey serialization failed.")
+	}
+	if err := item.TargetArbitratorProgramHash.Serialize(w); err != nil {
+		return errors.New("TargetArbitratorProgramHash serialization failed.")
+	}
+	if err := common.WriteUint8(w, byte(item.TransactionType)); err != nil {
+		return err
+	}
+	if err := common.WriteUint8(w, byte(item.Type)); err != nil {
+		return err
+	}
+	switch item.Type {
+	case MultisigContent, AnswerMultisigContent:
+		if err := item.ItemContent.Serialize(w); err != nil {
+			return err
+		}
+		if err := common.WriteVarBytes(w, item.redeemScript); err != nil {
+			return errors.New("redeemScript serialization failed.")
+		}
+	case IllegalContent, AnswerIllegalContent:
+		if err := common.WriteVarBytes(w, item.redeemScript); err != nil {
+			return errors.New("redeemScript serialization failed.")
+		}
+	case SchnorrMultisigContent2:
+		if err := item.SchnorrRequestRProposalContent.Serialize(w, false); err != nil {
+			return err
+		}
+	case AnswerSchnorrMultisigContent2:
+		if err := item.SchnorrRequestRProposalContent.Serialize(w, true); err != nil {
+			return err
+		}
+	case SchnorrMultisigContent3:
+		if err := item.SchnorrRequestSProposalContent.Serialize(w, false); err != nil {
+			return err
+		}
+	case AnswerSchnorrMultisigContent3:
+		if err := item.SchnorrRequestSProposalContent.Serialize(w, true); err != nil {
+			return err
+		}
 	}
 
 	return nil

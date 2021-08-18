@@ -89,7 +89,6 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal2(id peer.PID, tra
 		Px: px,
 		Py: py,
 	}
-	transactionItem.Type = AnswerSchnorrMultisigContent2
 	if err := client.SignSchnorrProposal2(transactionItem); err != nil {
 		return err
 	}
