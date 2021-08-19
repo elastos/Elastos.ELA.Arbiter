@@ -194,6 +194,13 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal3(
 	txn *types.Transaction, pks [][]byte, e *big.Int) error {
+	dns.mux.Lock()
+	defer dns.mux.Unlock()
+	return dns.broadcastSchnorrWithdrawProposal3(txn, pks, e)
+}
+
+func (dns *DistributedNodeServer) broadcastSchnorrWithdrawProposal3(
+	txn *types.Transaction, pks [][]byte, e *big.Int) error {
 	var txType TransactionType
 	switch txn.TxType {
 	case types.WithdrawFromSideChain:
@@ -313,9 +320,6 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
 	if err = transactionItem.Serialize(buf); err != nil {
 		return nil, err
 	}
-
-	dns.mux.Lock()
-	defer dns.mux.Unlock()
 
 	if _, ok := dns.schnorrWithdrawContentsTransaction[content.Hash()]; ok {
 		return nil, errors.New("transaction already in process")
@@ -569,7 +573,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		message := txn.Hash()
 		e := crypto2.GetE(rxs, rys, pxs, pys, message[:])
 
-		if err := dns.BroadcastSchnorrWithdrawProposal3(&txn, pks, e); err != nil {
+		if err := dns.broadcastSchnorrWithdrawProposal3(&txn, pks, e); err != nil {
 			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
 		}
 
