@@ -2,18 +2,16 @@ package arbitrator
 
 import (
 	"errors"
-	"math"
-	"math/big"
-
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"math"
+	"math/big"
 )
 
 type MainChain interface {
@@ -30,7 +28,7 @@ type MainChain interface {
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
 	ReceiveProposalFeedback(content []byte) error
 
-	// schnorr withdraw
+	//schnorr withdraw
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error
 	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int) error
 
