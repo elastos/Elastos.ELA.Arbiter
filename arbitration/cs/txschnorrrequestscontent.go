@@ -53,9 +53,11 @@ func (c *SchnorrWithdrawRequestSProposalContent) Serialize(w io.Writer, feedback
 }
 
 func (c *SchnorrWithdrawRequestSProposalContent) Deserialize(r io.Reader, feedback bool) error {
-	if err := c.Tx.Deserialize(r); err != nil {
+	var tx types.Transaction
+	if err := tx.DeserializeUnsigned(r); err != nil {
 		return errors.New("failed to deserialize transaction")
 	}
+	c.Tx = &tx
 
 	count, err := common.ReadVarUint(r, 0)
 	if err != nil {
@@ -64,20 +66,21 @@ func (c *SchnorrWithdrawRequestSProposalContent) Deserialize(r io.Reader, feedba
 
 	c.Publickeys = make([][]byte, 0)
 	for i := uint64(0); i < count; i++ {
-		pk, err := common.ReadVarBytes(r, 32, "pk")
+		pk, err := common.ReadVarBytes(r, 33, "pk")
 		if err != nil {
 			return err
 		}
 		c.Publickeys = append(c.Publickeys, pk)
 	}
-	e, err := common.ReadVarBytes(r, 64, "e")
+
+	e, err := common.ReadVarBytes(r, 65, "e")
 	if err != nil {
 		return err
 	}
 	c.E = new(big.Int).SetBytes(e)
 
 	if feedback {
-		s, err := common.ReadVarBytes(r, 64, "s")
+		s, err := common.ReadVarBytes(r, 65, "s")
 		if err != nil {
 			return err
 		}
@@ -126,7 +129,6 @@ func checkSchnorrWithdrawRequestSTransaction(
 
 	return nil
 }
-
 
 func checkSchnorrWithdrawPayload(txn *types.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {

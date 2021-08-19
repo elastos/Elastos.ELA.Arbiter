@@ -363,7 +363,7 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 		}
 		item.signedData = signedData
 	case SchnorrMultisigContent3:
-		if err = item.SchnorrRequestSProposalContent.Deserialize(r, true); err != nil {
+		if err = item.SchnorrRequestSProposalContent.Deserialize(r, false); err != nil {
 			return errors.New("Answer SchnorrRequestSProposalContent deserialization failed." + err.Error())
 		}
 	case AnswerSchnorrMultisigContent3:

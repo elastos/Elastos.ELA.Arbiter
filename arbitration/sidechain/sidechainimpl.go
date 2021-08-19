@@ -275,7 +275,6 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 
 	// todo message: decide which arbiter to create withdraw transaction
 
-
 	if len(receivedTxs) != 0 {
 		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
 		if err != nil {
@@ -394,8 +393,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		if mainChainHeight >= config.Parameters.SchnorrStartHeight {
 			tx = currentArbitrator.CreateSchnorrWithdrawTransaction(
 				targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
-		}
-		if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
+		} else if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
 			tx = currentArbitrator.CreateWithdrawTransactionV1(
 				targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
 		} else {

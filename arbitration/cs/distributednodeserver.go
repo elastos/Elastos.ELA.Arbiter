@@ -486,7 +486,7 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 		dns.mux.Unlock()
 		return errors.New("invalid TargetArbitratorPublicKey")
 	}
-	strPK := string(pkBuf)
+	strPK := common.BytesToHexString(pkBuf)
 	if _, ok := signers[strPK]; ok {
 		dns.mux.Unlock()
 		log.Warn("arbiter already recorded the schnorr signer")
@@ -519,7 +519,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 
 	minSignersCount := getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()))
-	if len(dns.schnorrWithdrawRequestRContentsSigners[nonceHash]) >= minSignersCount {
+	if len(signers) >= minSignersCount {
 		// random select signers
 		sortedSigners := make([]string, len(signers))
 		for k, _ := range signers {
@@ -553,11 +553,18 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		for i, a := range arbiters {
 			if _, ok := randomSigners[a]; ok {
 				pksIndex = append(pksIndex, uint8(i))
-				pks = append(pks, []byte(a))
+				pkBytes, err := common.HexStringToBytes(a)
+				if err != nil {
+					return errors.New("invalid arbiter public key")
+				}
+				pks = append(pks, pkBytes)
 			}
 		}
 		txn.Payload = &payload.WithdrawFromSideChain{
 			Signers: pksIndex,
+		}
+		if len(randomSigners) != len(pks) {
+			log.Infof("pks %v count is not equal to random signers %v count", pks, randomSigners)
 		}
 
 		// get pxs pys rxs rys
@@ -579,7 +586,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 
 		// record signature of myself
 		currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-		dns.schnorrWithdrawRequestSContentsSigners[nonceHash][myPK] = currentAccount.GetSchnorrS(e)
+		dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()][myPK] = currentAccount.GetSchnorrS(e)
 	} else {
 		log.Errorf("[ReceiveSendSchnorrWithdrawProposal3] not enought "+
 			"signers for transaction %s, need %d, current %d",
@@ -632,7 +639,7 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		dns.mux.Unlock()
 		return errors.New("can not find RequestR signer")
 	}
-	_, ok = dns.schnorrWithdrawRequestSContentsSigners[hash]
+	_, ok = dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()]
 	if !ok {
 		dns.mux.Unlock()
 		return errors.New("can not find RequestS signer")
@@ -656,7 +663,7 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		dns.UnsignedSigners[strPK] = count - 1
 	}
 
-	dns.schnorrWithdrawRequestSContentsSigners[hash][strPK] = transactionItem.SchnorrRequestSProposalContent.S
+	dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()][strPK] = transactionItem.SchnorrRequestSProposalContent.S
 
 	if len(dns.schnorrWithdrawRequestRContentsSigners[hash]) == len(dns.schnorrWithdrawRequestRContentsSigners[hash]) {
 		// aggregate signatures
@@ -669,11 +676,11 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 
 		s := new(big.Int).SetInt64(0)
 		for pk, v := range dns.schnorrWithdrawRequestRContentsSigners[hash] {
-			if _, ok := dns.schnorrWithdrawRequestSContentsSigners[hash][pk]; !ok {
+			if _, ok := dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()][pk]; !ok {
 				return errors.New("invalid schnorrWithdrawRequestSContentsSigners, not found signature of " + pk)
 			}
 			k := crypto2.GetK(Ry, v.K0)
-			k.Add(k, dns.schnorrWithdrawRequestSContentsSigners[hash][pk])
+			k.Add(k, dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()][pk])
 			s.Add(s, k)
 		}
 		dns.mux.Unlock()
