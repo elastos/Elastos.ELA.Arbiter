@@ -104,7 +104,7 @@ func (mc *MainChainImpl) OnReceivedSignMsg(id peer2.PID, content []byte) {
 
 func (mc *MainChainImpl) OnSendSchnorrItemMsg(id peer2.PID, nonceHash common.Uint256) {
 	if err := mc.ReceiveSendSchnorrWithdrawProposal3(nonceHash); err != nil {
-		log.Error("[OnReceivedSignMsg] mainchain received distributed item message error: ", err)
+		log.Error("[OnSendSchnorrItemMsg] mainchain received distributed item message error: ", err)
 	}
 }
 

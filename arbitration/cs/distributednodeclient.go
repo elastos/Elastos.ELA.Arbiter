@@ -121,7 +121,10 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal3(id peer.PID, tra
 	// check the transaction
 	hash := transactionItem.SchnorrRequestSProposalContent.Tx.Hash()
 	if _, ok := client.CheckedTransactions[hash]; !ok {
-		return errors.New("transaction has changed")
+		if err := transactionItem.SchnorrRequestSProposalContent.Check(client); err != nil {
+			return err
+		}
+		client.CheckedTransactions[hash] = struct{}{}
 	}
 
 	s := currentAccount.GetSchnorrS(transactionItem.SchnorrRequestSProposalContent.E)

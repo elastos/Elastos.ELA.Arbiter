@@ -3,6 +3,7 @@ package arbitrator
 import (
 	"encoding/hex"
 	"errors"
+	"github.com/elastos/Elastos.ELA/common"
 	"sync"
 	"time"
 
@@ -180,7 +181,7 @@ func (group *ArbitratorGroupImpl) GetCurrentArbitratorPublicKey() string {
 	if err != nil {
 		panic("public key of myself is invalid")
 	}
-	return string(pkBuf)
+	return common.BytesToHexString(pkBuf)
 }
 
 func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {
