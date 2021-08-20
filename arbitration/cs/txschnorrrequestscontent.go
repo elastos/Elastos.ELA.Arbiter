@@ -16,6 +16,7 @@ import (
 )
 
 type SchnorrWithdrawRequestSProposalContent struct {
+	NonceHash  common.Uint256
 	Tx         *types.Transaction
 	Publickeys [][]byte
 	E          *big.Int
@@ -23,6 +24,10 @@ type SchnorrWithdrawRequestSProposalContent struct {
 }
 
 func (c *SchnorrWithdrawRequestSProposalContent) SerializeUnsigned(w io.Writer, feedback bool) error {
+	if err := c.NonceHash.Serialize(w); err != nil {
+		return err
+	}
+
 	if err := c.Tx.SerializeUnsigned(w); err != nil {
 		return errors.New("failed tto serialize transaction")
 	}
@@ -53,6 +58,10 @@ func (c *SchnorrWithdrawRequestSProposalContent) Serialize(w io.Writer, feedback
 }
 
 func (c *SchnorrWithdrawRequestSProposalContent) Deserialize(r io.Reader, feedback bool) error {
+	if err := c.NonceHash.Deserialize(r); err != nil {
+		return err
+	}
+
 	var tx types.Transaction
 	if err := tx.DeserializeUnsigned(r); err != nil {
 		return errors.New("failed to deserialize transaction")

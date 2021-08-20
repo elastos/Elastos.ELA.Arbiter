@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"errors"
-	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"math/big"
 )
 
@@ -76,7 +75,6 @@ func randomBytes(len int) (data []byte, err error) {
 
 // GetR calcaulate k0 rx ry px and py.
 func GetR(privateKey *big.Int) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
-	log.Info("################ privateKey:", privateKey)
 	if privateKey.Cmp(One) < 0 || privateKey.Cmp(new(big.Int).Sub(N, One)) > 0 {
 		err = errors.New("the private key must be an integer in the range 1..n-1")
 		return
@@ -90,7 +88,6 @@ func GetR(privateKey *big.Int) (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.I
 
 	rx, ry = Curve.ScalarBaseMult(IntToByte(k0))
 	px, py = Curve.ScalarBaseMult(d)
-	log.Info("################ px:", *px)
 
 	return
 }

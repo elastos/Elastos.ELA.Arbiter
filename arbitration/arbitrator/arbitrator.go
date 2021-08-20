@@ -66,7 +66,7 @@ type Arbitrator interface {
 
 	// schnorr withdraw
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction)
-	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int)
+	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int)
 	// schnorr crypto
 	GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
 	GetSchnorrS(e *big.Int) *big.Int
@@ -238,7 +238,6 @@ func (ar *ArbitratorImpl) CreateSchnorrWithdrawTransaction(withdrawTxs []*Withdr
 		log.Warn("Created an empty Schnorr withdraw transaction.")
 		return nil
 	}
-
 	return withdrawTransaction
 }
 
@@ -333,8 +332,9 @@ func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transacti
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int) {
-	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(txn, pks, e)
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(
+	nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(nonceHash, txn, pks, e)
 	if err != nil {
 		log.Warn(err.Error())
 	}
