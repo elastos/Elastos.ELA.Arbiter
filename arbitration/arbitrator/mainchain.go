@@ -30,7 +30,7 @@ type MainChain interface {
 
 	//schnorr withdraw
 	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error
-	BroadcastSchnorrWithdrawProposal3(txn *types.Transaction, pks [][]byte, e *big.Int) error
+	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) error
 
 	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error

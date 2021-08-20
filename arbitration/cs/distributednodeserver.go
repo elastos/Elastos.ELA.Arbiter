@@ -193,14 +193,14 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 }
 
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal3(
-	txn *types.Transaction, pks [][]byte, e *big.Int) error {
+	nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) error {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
-	return dns.broadcastSchnorrWithdrawProposal3(txn, pks, e)
+	return dns.broadcastSchnorrWithdrawProposal3(nonceHash, txn, pks, e)
 }
 
 func (dns *DistributedNodeServer) broadcastSchnorrWithdrawProposal3(
-	txn *types.Transaction, pks [][]byte, e *big.Int) error {
+	nonce common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) error {
 	var txType TransactionType
 	switch txn.TxType {
 	case types.WithdrawFromSideChain:
@@ -212,6 +212,7 @@ func (dns *DistributedNodeServer) broadcastSchnorrWithdrawProposal3(
 	proposal, err := dns.generateDistributedSchnorrProposal3(
 		txn, txType, SchnorrMultisigContent3,
 		SchnorrWithdrawRequestSProposalContent{
+			NonceHash:  nonce,
 			Tx:         txn,
 			Publickeys: pks,
 			E:          e})
@@ -325,7 +326,6 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
 		return nil, errors.New("transaction already in process")
 	}
 	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
-	log.Info("############## generateDistributedSchnorrProposal3 txHash:", content.Hash(), "txnHash:", txn.Hash())
 	dns.schnorrWithdrawRequestSContentsSigners[content.Hash()] = make(map[string]*big.Int)
 	return buf.Bytes(), nil
 }
@@ -494,7 +494,6 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal2Feedback(transa
 		return nil
 	}
 	dns.schnorrWithdrawRequestRContentsSigners[hash][strPK] = transactionItem.SchnorrRequestRProposalContent.R
-	log.Infof("@@@ strPK: %s KRP: %v, Px: %v, Py: %v", strPK, transactionItem.SchnorrRequestRProposalContent.R, transactionItem.SchnorrRequestRProposalContent.R.Rx, transactionItem.SchnorrRequestRProposalContent.R.Ry)
 	dns.mux.Unlock()
 
 	return nil
@@ -592,7 +591,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		// get E
 		message := newTx.Hash()
 		e := crypto2.GetE(rxs, rys, pxs, pys, message[:])
-		if err := dns.broadcastSchnorrWithdrawProposal3(&newTx, pks, e); err != nil {
+		if err := dns.broadcastSchnorrWithdrawProposal3(nonceHash, &newTx, pks, e); err != nil {
 			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
 		}
 
@@ -641,7 +640,6 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		return errors.New("can not find proposal")
 	}
 	hash := transactionItem.SchnorrRequestSProposalContent.Hash()
-	log.Info("############## receiveSchnorrWithdrawProposal3Feedback txHash:", hash, "txnHasH:", transactionItem.SchnorrRequestSProposalContent.Tx.Hash())
 	txn, ok := dns.schnorrWithdrawContentsTransaction[hash]
 	if !ok {
 		dns.mux.Unlock()
@@ -674,33 +672,26 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 
 	dns.schnorrWithdrawRequestSContentsSigners[hash][strPK] = transactionItem.SchnorrRequestSProposalContent.S
 
-	log.Info("############### proposal3 signers count:", len(dns.schnorrWithdrawRequestSContentsSigners[hash]), "need:", len(transactionItem.SchnorrRequestSProposalContent.Publickeys))
-
 	if len(dns.schnorrWithdrawRequestSContentsSigners[hash]) == len(transactionItem.SchnorrRequestSProposalContent.Publickeys) {
-		log.Info("############### proposal3 signers enough, start send")
 		// aggregate signatures
 		Px, Py := new(big.Int), new(big.Int)
 		Rx, Ry := new(big.Int), new(big.Int)
-		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[hash] {
-			log.Infof("@@@ strPK: %s KRP: %v, Px: %v, Py: %v", strPK, v, v.Rx, v.Ry)
+		nonceHash := transactionItem.SchnorrRequestSProposalContent.NonceHash
+		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[nonceHash] {
 			Rx, Ry = crypto2.Curve.Add(Rx, Ry, v.Rx, v.Ry)
 			Px, Py = crypto2.Curve.Add(Px, Py, v.Px, v.Py)
 		}
 
 		s := new(big.Int).SetInt64(0)
-		for pk, v := range dns.schnorrWithdrawRequestRContentsSigners[hash] {
-			if _, ok := dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()][pk]; !ok {
+		for pk, v := range dns.schnorrWithdrawRequestRContentsSigners[nonceHash] {
+			if _, ok := dns.schnorrWithdrawRequestSContentsSigners[hash][pk]; !ok {
 				return errors.New("invalid schnorrWithdrawRequestSContentsSigners, not found signature of " + pk)
 			}
 			k := crypto2.GetK(Ry, v.K0)
-			k.Add(k, dns.schnorrWithdrawRequestSContentsSigners[txn.Hash()][pk])
+			k.Add(k, dns.schnorrWithdrawRequestSContentsSigners[hash][pk])
 			s.Add(s, k)
 		}
 		dns.mux.Unlock()
-
-		sumPublicKey := crypto.Marshal(crypto.Curve, Px, Py)
-		aa := hex.EncodeToString(sumPublicKey)
-		log.Info("########## sumPublicKey:", aa, "subPulcKey:", sumPublicKey)
 
 		signature := crypto2.GetS(Rx, s)
 
@@ -719,7 +710,6 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		c := TxDistributedContent{
 			Tx: &txn,
 		}
-		log.Info("############### proposal3 signers enough sending")
 		if err = c.Submit(); err != nil {
 			log.Warn(err.Error())
 			return err
