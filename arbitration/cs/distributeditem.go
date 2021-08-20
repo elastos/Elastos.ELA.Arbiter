@@ -141,6 +141,23 @@ func (item *DistributedItem) SchnorrSign2(arbitrator arbitrator.Arbitrator) erro
 	return nil
 }
 
+func (item *DistributedItem) SchnorrSign3(arbitrator arbitrator.Arbitrator) error {
+	// Sign transaction
+	buf := new(bytes.Buffer)
+	err := item.SchnorrRequestSProposalContent.SerializeUnsigned(buf, true)
+	if err != nil {
+		return err
+	}
+
+	newSign, err := arbitrator.Sign(buf.Bytes())
+	if err != nil {
+		return err
+	}
+	// Record signature
+	item.signedData = newSign
+	return nil
+}
+
 func (item *DistributedItem) GetSignedData() []byte {
 	return item.signedData
 }
@@ -174,6 +191,25 @@ func (item *DistributedItem) CheckSchnorrFeedbackRequestRSignedData() error {
 
 	buf := new(bytes.Buffer)
 	err := item.SchnorrRequestRProposalContent.SerializeUnsigned(buf, true)
+	if err != nil {
+		return err
+	}
+
+	err = crypto.Verify(*item.TargetArbitratorPublicKey, buf.Bytes(), item.signedData)
+	if err != nil {
+		return errors.New("CheckSchnorrFeedbackProposalSignedData invalid sign data.")
+	}
+
+	return nil
+}
+
+func (item *DistributedItem) CheckSchnorrFeedbackRequestSSignedData() error {
+	if len(item.signedData) == 0 {
+		return errors.New("CheckSchnorrFeedbackRequestRSignedData invalid sign data length.")
+	}
+
+	buf := new(bytes.Buffer)
+	err := item.SchnorrRequestSProposalContent.SerializeUnsigned(buf, true)
 	if err != nil {
 		return err
 	}

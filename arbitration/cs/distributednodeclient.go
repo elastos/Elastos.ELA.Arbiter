@@ -40,7 +40,7 @@ func (client *DistributedNodeClient) SignSchnorrProposal2(item *DistributedItem)
 }
 
 func (client *DistributedNodeClient) SignSchnorrProposal3(item *DistributedItem) error {
-	return item.SchnorrSign2(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
+	return item.SchnorrSign3(arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator())
 }
 
 func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []byte) error {
@@ -131,7 +131,7 @@ func (client *DistributedNodeClient) onReceivedSchnorrProposal3(id peer.PID, tra
 	transactionItem.SchnorrRequestSProposalContent.S = s
 	transactionItem.Type = AnswerSchnorrMultisigContent3
 
-	if err := client.SignSchnorrProposal2(transactionItem); err != nil {
+	if err := client.SignSchnorrProposal3(transactionItem); err != nil {
 		return err
 	}
 
