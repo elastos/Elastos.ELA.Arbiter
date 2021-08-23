@@ -57,29 +57,29 @@ type Configuration struct {
 	MaxLogsSize   int64         `json:"MaxLogsSize"`
 	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
-	SideChainMonitorScanInterval   time.Duration    `json:"SideChainMonitorScanInterval"`
-	ClearTransactionInterval       time.Duration    `json:"ClearTransactionInterval"`
-	MinOutbound                    int              `json:"MinOutbound"`
-	MaxConnections                 int              `json:"MaxConnections"`
+	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
+	MinOutbound                  int           `json:"MinOutbound"`
+	MaxConnections               int           `json:"MaxConnections"`
 	//defines max nodes that one host can establish
-	MaxNodePerHost uint32
-	SideAuxPowFee                  int              `json:"SideAuxPowFee"`
-	MinThreshold                   int              `json:"MinThreshold"`
-	SmallCrossTransferThreshold    common.Fixed64   `json:"SmallCrossTransferThreshold"`
-	DepositAmount                  int              `json:"DepositAmount"`
-	CRCOnlyDPOSHeight              uint32           `json:"CRCOnlyDPOSHeight"`
-	CRClaimDPOSNodeStartHeight     uint32           `json:"CRClaimDPOSNodeStartHeight"`
-	NewP2PProtocolVersionHeight    uint64           `json:"NewP2PProtocolVersionHeight"`
-	DPOSNodeCrossChainHeight       uint32           `json:"DPOSNodeCrossChainHeight"`
-	MaxTxsPerWithdrawTx            int              `json:"MaxTxsPerWithdrawTx"`
-	OriginCrossChainArbiters       []string         `json:"OriginCrossChainArbiters"`
-	CRCCrossChainArbiters          []string         `json:"CRCCrossChainArbiters"`
-	RpcConfiguration               RpcConfiguration `json:"RpcConfiguration"`
-	DPoSNetAddress                 string           `json:"DPoSNetAddress"`
-	ReturnDepositTransactionFee    common.Fixed64   `json:"ReturnDepositTransactionFee"`
-	NewCrossChainTransactionHeight uint32           `json:"NewCrossChainTransactionHeight"`
-	ProcessInvalidWithdrawHeight   uint32           `json:"ProcessInvalidWithdrawHeight"`
-	WalletPath                     string           `json:"WalletPath"`
+	MaxNodePerHost                  uint32
+	SideAuxPowFee                   int              `json:"SideAuxPowFee"`
+	MinThreshold                    int              `json:"MinThreshold"`
+	SmallCrossTransferThreshold     common.Fixed64   `json:"SmallCrossTransferThreshold"`
+	DepositAmount                   int              `json:"DepositAmount"`
+	CRCOnlyDPOSHeight               uint32           `json:"CRCOnlyDPOSHeight"`
+	CRClaimDPOSNodeStartHeight      uint32           `json:"CRClaimDPOSNodeStartHeight"`
+	NewP2PProtocolVersionHeight     uint64           `json:"NewP2PProtocolVersionHeight"`
+	DPOSNodeCrossChainHeight        uint32           `json:"DPOSNodeCrossChainHeight"`
+	MaxTxsPerWithdrawTx             int              `json:"MaxTxsPerWithdrawTx"`
+	OriginCrossChainArbiters        []string         `json:"OriginCrossChainArbiters"`
+	CRCCrossChainArbiters           []string         `json:"CRCCrossChainArbiters"`
+	RpcConfiguration                RpcConfiguration `json:"RpcConfiguration"`
+	DPoSNetAddress                  string           `json:"DPoSNetAddress"`
+	ReturnDepositTransactionFee     common.Fixed64   `json:"ReturnDepositTransactionFee"`
+	NewCrossChainTransactionHeight  uint32           `json:"NewCrossChainTransactionHeight"`
+	ProcessInvalidWithdrawHeight    uint32           `json:"ProcessInvalidWithdrawHeight"`
+	WalletPath                      string           `json:"WalletPath"`
 	ReturnCrossChainCoinStartHeight uint32           `json:"ReturnCrossChainCoinStartHeight"`
 }
 

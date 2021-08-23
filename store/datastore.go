@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
@@ -48,6 +49,14 @@ const (
 				TransactionData BLOB,
 				BlockHeight INTEGER
 			);`
+	CreateReturnDepositTransactionsTable = `CREATE TABLE IF NOT EXISTS ReturnDepositTransactions (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				TransactionHash VARCHAR,
+				GenesisBlockAddress VARCHAR(34),
+				TransactionData BLOB,
+				RecordTime TEXT
+			);`
+
 	CreateMainChainTxsTable = `CREATE TABLE IF NOT EXISTS MainChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
@@ -107,6 +116,12 @@ type DataStoreSideChain interface {
 	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error)
 	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
+
+	AddReturnDepositTx(txid string, genesisBlockAddress string, transactionByte []byte) error
+	GetReturnDepositTx(txid string) ([]byte, error)
+	GetAllReturnDepositTx(genesisBlockAddress string) ([][]byte, []string, error)
+	GetAllReturnDepositTxs() ([]string, error)
+	RemoveReturnDepositTxs(transactionHashes []string) error
 }
 
 type DataStoreRegisteredSideChain interface {
@@ -276,6 +291,11 @@ func initSideChainDB() (*sql.DB, error) {
 	}
 	// Create SideChainTxs table
 	_, err = db.Exec(CreateSideChainTxsTable)
+	if err != nil {
+		return nil, err
+	}
+	// Create return deposit transactions table
+	_, err = db.Exec(CreateReturnDepositTransactionsTable)
 	if err != nil {
 		return nil, err
 	}
@@ -575,6 +595,116 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(
 	}
 
 	return txs, nil
+}
+
+func (store *DataStoreSideChainImpl) AddReturnDepositTx(txid string, genesisBlockAddress string, transactionByte []byte) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	// Prepare sql statement
+	stmt, err := store.Prepare("INSERT INTO ReturnDepositTransactions(TransactionHash, GenesisBlockAddress, TransactionData, RecordTime) values(?,?,?,?)")
+	if err != nil {
+		return err
+	}
+
+	// Do insert
+	_, err = stmt.Exec(txid, genesisBlockAddress, transactionByte, time.Now().Format("2006-01-02_15.04.05"))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) GetAllReturnDepositTx(genesisBlockAddress string) ([][]byte, []string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionData,TransactionHash FROM ReturnDepositTransactions WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	defer rows.Close()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	transactionArrayBytes := make([][]byte, 0)
+	transactionArrayHash := make([]string, 0)
+	for rows.Next() {
+		var transactionBytes []byte
+		var transactionHash string
+		err = rows.Scan(&transactionBytes, &transactionHash)
+		if err != nil {
+			return nil, nil, err
+		}
+		transactionArrayBytes = append(transactionArrayBytes, transactionBytes)
+		transactionArrayHash = append(transactionArrayHash, transactionHash)
+	}
+
+	return transactionArrayBytes, transactionArrayHash, nil
+}
+
+func (store *DataStoreSideChainImpl) GetAllReturnDepositTxs() ([]string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionHash FROM ReturnDepositTransactions`)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	transactionArrayHash := make([]string, 0)
+	for rows.Next() {
+		var transactionHash string
+		err = rows.Scan(&transactionHash)
+		if err != nil {
+			return nil, err
+		}
+		transactionArrayHash = append(transactionArrayHash, transactionHash)
+	}
+
+	return transactionArrayHash, nil
+}
+
+func (store *DataStoreSideChainImpl) RemoveReturnDepositTxs(transactionHashes []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	stmt, err := tx.Prepare("DELETE FROM ReturnDepositTransactions WHERE TransactionHash=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, txHash := range transactionHashes {
+		stmt.Exec(txHash)
+	}
+
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) GetReturnDepositTx(txid string) ([]byte, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT TransactionData FROM ReturnDepositTransactions WHERE TransactionHash=?`, txid)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	var transactionBytes []byte
+	err = rows.Scan(&transactionBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	return transactionBytes, nil
 }
 
 func (store *DataStoreMainChainImpl) ResetDataStore() error {

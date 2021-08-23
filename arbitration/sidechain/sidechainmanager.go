@@ -117,7 +117,7 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromD
 }
 
 func (sideManager *SideChainManagerImpl) CheckAndRemoveReturnDepositTransactionsFromDB() error {
-	txHashes, err := store.FinishedTxsDbCache.GetAllReturnDepositTxs()
+	txHashes, err := store.DbCache.SideChainStore.GetAllReturnDepositTxs()
 	if err != nil {
 		return err
 	}
@@ -130,7 +130,7 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveReturnDepositTransactions
 	}
 
 	if len(receivedTxs) != 0 {
-		err = store.FinishedTxsDbCache.RemoveReturnDepositTxs(receivedTxs)
+		err = store.DbCache.SideChainStore.RemoveReturnDepositTxs(receivedTxs)
 		if err != nil {
 			return err
 		}
