@@ -274,7 +274,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							continue
 						}
 						// add to return deposit table
-						err = store.FinishedTxsDbCache.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
+						err = store.DbCache.SideChainStore.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
 						if err != nil {
 							log.Warn("[MoniterFailedDepositTransfer] AddReturnDepositTx error")
 							continue
