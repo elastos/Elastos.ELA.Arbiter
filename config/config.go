@@ -80,6 +80,7 @@ type Configuration struct {
 	NewCrossChainTransactionHeight uint32           `json:"NewCrossChainTransactionHeight"`
 	ProcessInvalidWithdrawHeight   uint32           `json:"ProcessInvalidWithdrawHeight"`
 	WalletPath                     string           `json:"WalletPath"`
+	ReturnCrossChainCoinStartHeight uint32           `json:"ReturnCrossChainCoinStartHeight"`
 }
 
 type RpcConfig struct {
@@ -109,6 +110,7 @@ type SideNodeConfig struct {
 	PowChain               bool    `json:"PowChain"`
 	SyncStartHeight        uint32  `json:"SyncStartHeight"`
 	SupportQuickRecharge   bool    `json:"SupportQuickRecharge"`
+	SupportInvalidDeposit  bool    `json:"SupportInvalidDeposit"`
 	SupportInvalidWithdraw bool    `json:"SupportInvalidWithdraw"`
 }
 

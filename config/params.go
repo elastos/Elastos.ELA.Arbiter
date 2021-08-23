@@ -73,6 +73,7 @@ var (
 			NewCrossChainTransactionHeight: 2000000, // todo fix me
 			ReturnDepositTransactionFee:    100,     // todo fix me
 			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
+			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
 		},
 	}
 
@@ -148,6 +149,7 @@ var (
 			NewCrossChainTransactionHeight: 2000000, // todo fix me
 			ReturnDepositTransactionFee:    100,     // todo fix me
 			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
+			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
 		},
 	}
 
@@ -226,6 +228,7 @@ var (
 			NewCrossChainTransactionHeight: 2000000, // todo fix me
 			ReturnDepositTransactionFee:    100,     // todo fix me
 			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
+			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
 		},
 	}
 )
