@@ -165,7 +165,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				}
 
 				// Start handle failed deposit transaction
-				if sideNode.SupportQuickRecharge {
+				if sideNode.SupportInvalidDeposit {
 					// Start handle failed deposit transaction
 					log.Info("Start Monitor Failed Deposit Transfer current height ", currentHeight)
 					param := make(map[string]interface{})
@@ -286,10 +286,14 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
 						continue
 					}
-					err = curr.SendFailedDepositTxs(failedTxs)
-					if err != nil {
-						log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
-						continue
+
+					currentMainChainHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+					if currentMainChainHeight >= config.Parameters.ReturnCrossChainCoinStartHeight {
+						err = curr.SendFailedDepositTxs(failedTxs)
+						if err != nil {
+							log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
+							continue
+						}
 					}
 					log.Info("End Monitor Failed Deposit Transfer")
 				}
