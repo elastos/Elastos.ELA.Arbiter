@@ -34,6 +34,9 @@ type RegisteredSideChain struct {
 	// Genesis block difficulty of side chain
 	GenesisBlockDifficulty string
 
+	// Exchange Rate
+	ExchangeRate common.Fixed64
+
 	// SideChain rpc port
 	HttpJsonPort uint16
 
@@ -78,8 +81,13 @@ func (sc *RegisteredSideChain) Serialize(w io.Writer) error {
 	}
 
 	if err := common.WriteVarString(w, sc.GenesisBlockDifficulty); err != nil {
-		return errors.New("failed to serialize GenesisTimestamp")
+		return errors.New("failed to serialize GenesisBlockDifficulty")
 	}
+
+	if err := sc.ExchangeRate.Serialize(w); err != nil {
+		return errors.New("failed to serialize ExchangeRate")
+	}
+
 	if err := common.WriteUint16(w, sc.HttpJsonPort); err != nil {
 		return errors.New("failed to serialize HttpJsonPort")
 	}
@@ -141,6 +149,11 @@ func (sc *RegisteredSideChain) Deserialize(r io.Reader) error {
 	sc.GenesisBlockDifficulty, err = common.ReadVarString(r)
 	if err != nil {
 		return errors.New("[CRCProposal], GenesisBlockDifficulty deserialize failed")
+	}
+
+	err = sc.ExchangeRate.Deserialize(r)
+	if err != nil {
+		return errors.New("[CRCProposal], ExchangeRate deserialize failed")
 	}
 
 	sc.HttpJsonPort, err = common.ReadUint16(r)
