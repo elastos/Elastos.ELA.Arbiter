@@ -11,6 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"io/ioutil"
+	"strconv"
 )
 
 type SideChainManagerImpl struct {
@@ -32,6 +33,10 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 
 	for _, transaction := range txs {
 		if transaction.RegisteredSideChain.GenesisHash.String() == info.GenesisBlockHash {
+			exchangeRate, err := strconv.ParseFloat(transaction.RegisteredSideChain.ExchangeRate.String(), 64)
+			if err != nil {
+				return errors.New("[OnReceivedRegisteredSideChain] exchangeRate convert error %s" + err.Error())
+			}
 			side := &SideChainImpl{
 				Key: transaction.GenesisBlockAddress,
 				CurrentConfig: &config.SideNodeConfig{
@@ -41,10 +46,13 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 						User:         info.User,
 						Pass:         info.Pass,
 					},
-					ExchangeRate:        1.0,
-					GenesisBlockAddress: transaction.GenesisBlockAddress,
-					GenesisBlock:        transaction.RegisteredSideChain.GenesisHash.String(),
-					PowChain:            false,
+					ExchangeRate:           exchangeRate,
+					GenesisBlockAddress:    transaction.GenesisBlockAddress,
+					GenesisBlock:           transaction.RegisteredSideChain.GenesisHash.String(),
+					PowChain:               false,
+					SupportQuickRecharge:   true,
+					SupportInvalidDeposit:  true,
+					SupportInvalidWithdraw: true,
 				},
 			}
 
