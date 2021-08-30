@@ -15,6 +15,7 @@ var (
 			ClearTransactionInterval:     60000,
 			MinOutbound:                  3,
 			MaxConnections:               8,
+			MaxNodePerHost:               10,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
 			SmallCrossTransferThreshold:  100000000,
@@ -73,6 +74,7 @@ var (
 			ReturnDepositTransactionFee:    100,     // todo fix me
 			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
 			SchnorrStartHeight:             2000000, // todo fix me
+			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
 		},
 	}
 
@@ -90,6 +92,7 @@ var (
 			ClearTransactionInterval:     60000,
 			MinOutbound:                  3,
 			MaxConnections:               8,
+			MaxNodePerHost:               10,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
 			SmallCrossTransferThreshold:  100000000,
@@ -148,6 +151,7 @@ var (
 			ReturnDepositTransactionFee:    100,     // todo fix me
 			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
 			SchnorrStartHeight:             2000000, // todo fix me
+			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
 		},
 	}
 
@@ -166,6 +170,7 @@ var (
 			ClearTransactionInterval:     60000,
 			MinOutbound:                  3,
 			MaxConnections:               8,
+			MaxNodePerHost:               10,
 			SideAuxPowFee:                50000,
 			MinThreshold:                 1000000,
 			SmallCrossTransferThreshold:  100000000,
@@ -226,6 +231,7 @@ var (
 			ReturnDepositTransactionFee:    100,     // todo fix me
 			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
 			SchnorrStartHeight:             2000000, // todo fix me
+			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
 		},
 	}
 )

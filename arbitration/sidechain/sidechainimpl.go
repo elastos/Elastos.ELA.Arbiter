@@ -294,7 +294,7 @@ func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 	log.Info("[SendCachedReturnDepositTxs] start")
 	defer log.Info("[SendCachedReturnDepositTxs] end")
 
-	txBytes, txHashes, err := store.FinishedTxsDbCache.GetAllReturnDepositTx(sc.GetKey())
+	txBytes, txHashes, err := store.DbCache.SideChainStore.GetAllReturnDepositTx(sc.GetKey())
 	if err != nil {
 		log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
 		return
@@ -337,7 +337,7 @@ func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 	}
 
 	if len(receivedTxs) != 0 {
-		err = store.FinishedTxsDbCache.RemoveReturnDepositTxs(receivedTxs)
+		err = store.DbCache.SideChainStore.RemoveReturnDepositTxs(receivedTxs)
 		if err != nil {
 			log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
 			return
