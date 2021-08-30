@@ -2,6 +2,7 @@ package sidechain
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
@@ -9,6 +10,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"io/ioutil"
 )
 
 type SideChainManagerImpl struct {
@@ -59,6 +61,11 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 			if err != nil {
 				return errors.New("[OnReceivedRegisteredSideChain] AddSucceedRegisterTxs %s" + err.Error())
 			}
+
+			// add registered side chain config to config.json
+			config.Parameters.SideNodeList = append(config.Parameters.SideNodeList, side.CurrentConfig)
+			data, _ := json.MarshalIndent(config.Parameters, "", "")
+			_ = ioutil.WriteFile(config.DefaultConfigFilename, data, 0644)
 		}
 	}
 
@@ -117,7 +124,7 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromD
 }
 
 func (sideManager *SideChainManagerImpl) CheckAndRemoveReturnDepositTransactionsFromDB() error {
-	txHashes, err := store.FinishedTxsDbCache.GetAllReturnDepositTxs()
+	txHashes, err := store.DbCache.SideChainStore.GetAllReturnDepositTxs()
 	if err != nil {
 		return err
 	}
@@ -130,7 +137,7 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveReturnDepositTransactions
 	}
 
 	if len(receivedTxs) != 0 {
-		err = store.FinishedTxsDbCache.RemoveReturnDepositTxs(receivedTxs)
+		err = store.DbCache.SideChainStore.RemoveReturnDepositTxs(receivedTxs)
 		if err != nil {
 			return err
 		}

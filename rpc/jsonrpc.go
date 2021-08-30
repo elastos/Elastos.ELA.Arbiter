@@ -224,7 +224,7 @@ func GetRegisterTransactionByHeight(config *config.RpcConfig) ([]*base.Registere
 			TransactionHash:     v.TxHash,
 		})
 	}
-	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs))
+	log.Debug("[GetRegisterTransactionByHeight] len transactions:", len(txs))
 
 	return txs, nil
 }

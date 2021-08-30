@@ -128,6 +128,11 @@ func (ar *ArbitratorImpl) processWithdrawTransactions(currentHeight uint32) {
 }
 
 func (ar *ArbitratorImpl) processReturnDepositTransactions() {
+	currentHeight := ArbitratorGroupSingleton.GetCurrentHeight()
+	if currentHeight < config.Parameters.ReturnCrossChainCoinStartHeight {
+		return
+	}
+
 	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
 		go sc.SendCachedReturnDepositTxs()
 	}

@@ -77,7 +77,7 @@ func (info *WithdrawInfo) Serialize(w io.Writer) error {
 		}
 
 		if err := common.WriteVarBytes(w, withdraw.TargetData); err != nil {
-			return errors.New("[Serialize] write withdraw TargetData failed")
+			return errors.New("[WithdrawInfo] write withdraw TargetData failed")
 		}
 	}
 
