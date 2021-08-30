@@ -42,7 +42,9 @@ func TestGetRpcConfig(t *testing.T) {
 }
 
 type Salary struct {
-	Basic, HRA, TA float64
+	Basic float64 `json:"basic"`
+	HRA   float64 `json:"hra"`
+	TA    float64 `json:"ta,omitempty"`
 }
 
 type Employee struct {
@@ -81,7 +83,7 @@ func TestJsonIndent(t *testing.T) {
 	data.MonthlySalary = append(data.MonthlySalary, Salary{
 		Basic: 170000.00,
 		HRA:   50000.00,
-		TA:    22000.00,
+		TA:    0,
 	})
 
 	file, _ = json.MarshalIndent(data, "", " ")

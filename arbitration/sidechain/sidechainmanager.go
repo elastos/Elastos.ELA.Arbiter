@@ -18,7 +18,7 @@ type SideChainManagerImpl struct {
 	SideChains map[string]arbitrator.SideChain
 }
 
-func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base.RegisterSidechainRpcInfo) error {
+func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base.RegisterSidechainRpcInfo, currentHeight uint32) error {
 	log.Info("Receive register sidechain rpc ", info.IpAddr, info.User, info.Pass, info.GenesisBlockHash)
 	txs, err := store.DbCache.RegisteredSideChainStore.GetAllRegisteredSideChainTxs()
 	if err != nil {
@@ -47,6 +47,7 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 						Pass:         info.Pass,
 					},
 					ExchangeRate:           exchangeRate,
+					EffectiveHeight:        transaction.RegisteredSideChain.EffectiveHeight,
 					GenesisBlockAddress:    transaction.GenesisBlockAddress,
 					GenesisBlock:           transaction.RegisteredSideChain.GenesisHash.String(),
 					PowChain:               false,
@@ -58,7 +59,9 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 
 			sideManager.AddChain(transaction.GenesisBlockAddress, side)
 			SideChainAccountMonitor.AddListener(side)
-			go SideChainAccountMonitor.SyncChainData(side.CurrentConfig, side)
+			if currentHeight >= transaction.RegisteredSideChain.EffectiveHeight {
+				go SideChainAccountMonitor.SyncChainData(side.CurrentConfig, side)
+			}
 			err = store.DbCache.RegisteredSideChainStore.RemoveRegisteredSideChainTx(transaction.TransactionHash, transaction.GenesisBlockAddress)
 			if err != nil {
 				return errors.New("[OnReceivedRegisteredSideChain] RemoveRegisteredSideChainTx %s" + err.Error())
