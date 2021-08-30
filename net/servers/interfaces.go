@@ -33,7 +33,8 @@ func SetRegisterSideChainRPCInfo(param Params) map[string]interface{} {
 	if err != nil {
 		return ResponsePack(errors.InvalidParams, "can not unmarshal bytes")
 	}
-	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().OnReceivedRegisteredSideChain(*rpcDetails)
+	currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().OnReceivedRegisteredSideChain(*rpcDetails, currentHeight)
 	return ResponsePack(errors.Success, fmt.Sprint(""))
 }
 

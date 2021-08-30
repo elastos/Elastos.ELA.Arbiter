@@ -19,23 +19,20 @@ type RegisteredSideChain struct {
 	// Magic number of side chain
 	MagicNumber uint32
 
-	// DNSSeeds defines a list of DNS seeds for the network to discover peers.
-	DNSSeeds []string
-
 	// Node port of side chain
 	NodePort uint16
 
 	// Genesis hash of side chain
 	GenesisHash common.Uint256
 
-	// Genesis block timestamp of side chain
-	GenesisTimestamp uint32
-
 	// Genesis block difficulty of side chain
 	GenesisBlockDifficulty string
 
 	// Exchange Rate
 	ExchangeRate common.Fixed64
+
+	// Effective height
+	EffectiveHeight uint32
 
 	// SideChain rpc port
 	HttpJsonPort uint16
@@ -58,16 +55,6 @@ func (sc *RegisteredSideChain) Serialize(w io.Writer) error {
 		return errors.New("fail to serialize MagicNumber")
 	}
 
-	if err := common.WriteVarUint(w, uint64(len(sc.DNSSeeds))); err != nil {
-		return errors.New("failed to serialize DNSSeeds")
-	}
-
-	for _, v := range sc.DNSSeeds {
-		if err := common.WriteVarString(w, v); err != nil {
-			return errors.New("failed to serialize DNSSeeds")
-		}
-	}
-
 	if err := common.WriteUint16(w, sc.NodePort); err != nil {
 		return errors.New("failed to serialize NodePort")
 	}
@@ -76,16 +63,16 @@ func (sc *RegisteredSideChain) Serialize(w io.Writer) error {
 		return errors.New("failed to serialize GenesisHash")
 	}
 
-	if err := common.WriteUint32(w, sc.GenesisTimestamp); err != nil {
-		return errors.New("failed to serialize GenesisTimestamp")
-	}
-
 	if err := common.WriteVarString(w, sc.GenesisBlockDifficulty); err != nil {
 		return errors.New("failed to serialize GenesisBlockDifficulty")
 	}
 
 	if err := sc.ExchangeRate.Serialize(w); err != nil {
 		return errors.New("failed to serialize ExchangeRate")
+	}
+
+	if err := common.WriteUint32(w, sc.EffectiveHeight); err != nil {
+		return errors.New("fail to serialize EffectiveHeight")
 	}
 
 	if err := common.WriteUint16(w, sc.HttpJsonPort); err != nil {
@@ -118,20 +105,6 @@ func (sc *RegisteredSideChain) Deserialize(r io.Reader) error {
 		return errors.New("[CRCProposal], MagicNumber deserialize failed")
 	}
 
-	length, err := common.ReadVarUint(r, 0)
-	if err != nil {
-		return errors.New("[CRCProposal], DNSSeeds length deserialize failed")
-	}
-	var seeds []string
-	for i := 0; i < int(length); i++ {
-		seed, err := common.ReadVarString(r)
-		if err != nil {
-			return errors.New("failed to deserialize DNSSeeds")
-		}
-		seeds = append(seeds, seed)
-	}
-	sc.DNSSeeds = seeds
-
 	sc.NodePort, err = common.ReadUint16(r)
 	if err != nil {
 		return errors.New("[CRCProposal], NodePort deserialize failed")
@@ -139,11 +112,6 @@ func (sc *RegisteredSideChain) Deserialize(r io.Reader) error {
 
 	if err := sc.GenesisHash.Deserialize(r); err != nil {
 		return errors.New("failed to deserialize GenesisHash")
-	}
-
-	sc.GenesisTimestamp, err = common.ReadUint32(r)
-	if err != nil {
-		return errors.New("[CRCProposal], NodePort deserialize failed")
 	}
 
 	sc.GenesisBlockDifficulty, err = common.ReadVarString(r)
@@ -154,6 +122,11 @@ func (sc *RegisteredSideChain) Deserialize(r io.Reader) error {
 	err = sc.ExchangeRate.Deserialize(r)
 	if err != nil {
 		return errors.New("[CRCProposal], ExchangeRate deserialize failed")
+	}
+
+	sc.EffectiveHeight, err = common.ReadUint32(r)
+	if err != nil {
+		return errors.New("[CRCProposal], EffectiveHeight deserialize failed")
 	}
 
 	sc.HttpJsonPort, err = common.ReadUint16(r)
