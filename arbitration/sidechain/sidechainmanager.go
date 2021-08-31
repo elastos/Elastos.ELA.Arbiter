@@ -59,9 +59,7 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 
 			sideManager.AddChain(transaction.GenesisBlockAddress, side)
 			SideChainAccountMonitor.AddListener(side)
-			if currentHeight >= transaction.RegisteredSideChain.EffectiveHeight {
-				go SideChainAccountMonitor.SyncChainData(side.CurrentConfig, side)
-			}
+			go SideChainAccountMonitor.SyncChainData(side.CurrentConfig, side, transaction.RegisteredSideChain.EffectiveHeight)
 			err = store.DbCache.RegisteredSideChainStore.RemoveRegisteredSideChainTx(transaction.TransactionHash, transaction.GenesisBlockAddress)
 			if err != nil {
 				return errors.New("[OnReceivedRegisteredSideChain] RemoveRegisteredSideChainTx %s" + err.Error())

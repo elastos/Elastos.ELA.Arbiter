@@ -125,14 +125,9 @@ func initialize() {
 
 func setSideChainAccountMonitor(arb arbitrator.Arbitrator) {
 	sidechain.SideChainAccountMonitor.ParentArbitrator = arb
-	currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 	for i, side := range arb.GetSideChainManager().GetAllChains() {
-		if config.Parameters.SideNodeList[i].EffectiveHeight != 0 &&
-			config.Parameters.SideNodeList[i].EffectiveHeight < currentHeight {
-			continue
-		}
 		sidechain.SideChainAccountMonitor.AddListener(side)
-		go sidechain.SideChainAccountMonitor.SyncChainData(config.Parameters.SideNodeList[i], side)
+		go sidechain.SideChainAccountMonitor.SyncChainData(config.Parameters.SideNodeList[i], side, config.Parameters.SideNodeList[i].EffectiveHeight)
 	}
 
 }
