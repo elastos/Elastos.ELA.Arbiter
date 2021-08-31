@@ -581,11 +581,17 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 
 		// get pxs pys rxs rys
 		var pxs, pys, rxs, rys []*big.Int
-		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[nonceHash] {
-			pxs = append(pxs, v.Px)
-			pys = append(pys, v.Py)
-			rxs = append(rxs, v.Rx)
-			rys = append(rys, v.Ry)
+
+		for _, pk := range pks {
+			strPK := common.BytesToHexString(pk)
+			r, ok := dns.schnorrWithdrawRequestRContentsSigners[nonceHash][strPK]
+			if !ok {
+				return errors.New("invalid public key, not in RequestR signers")
+			}
+			pxs = append(pxs, r.Px)
+			pys = append(pys, r.Py)
+			rxs = append(rxs, r.Rx)
+			rys = append(rys, r.Ry)
 		}
 
 		// get E
@@ -677,18 +683,23 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		Px, Py := new(big.Int), new(big.Int)
 		Rx, Ry := new(big.Int), new(big.Int)
 		nonceHash := transactionItem.SchnorrRequestSProposalContent.NonceHash
-		for _, v := range dns.schnorrWithdrawRequestRContentsSigners[nonceHash] {
-			Rx, Ry = crypto2.Curve.Add(Rx, Ry, v.Rx, v.Ry)
-			Px, Py = crypto2.Curve.Add(Px, Py, v.Px, v.Py)
+		for pk, _ := range dns.schnorrWithdrawRequestSContentsSigners[hash] {
+			if r, ok := dns.schnorrWithdrawRequestRContentsSigners[nonceHash][pk]; ok {
+				Rx, Ry = crypto2.Curve.Add(Rx, Ry, r.Rx, r.Ry)
+				Px, Py = crypto2.Curve.Add(Px, Py, r.Px, r.Py)
+			}
 		}
 
 		s := new(big.Int).SetInt64(0)
-		for pk, v := range dns.schnorrWithdrawRequestRContentsSigners[nonceHash] {
-			if _, ok := dns.schnorrWithdrawRequestSContentsSigners[hash][pk]; !ok {
+
+		for pk, signature := range dns.schnorrWithdrawRequestSContentsSigners[hash] {
+			r, ok := dns.schnorrWithdrawRequestRContentsSigners[nonceHash][pk]
+			if !ok {
 				return errors.New("invalid schnorrWithdrawRequestSContentsSigners, not found signature of " + pk)
 			}
-			k := crypto2.GetK(Ry, v.K0)
-			k.Add(k, dns.schnorrWithdrawRequestSContentsSigners[hash][pk])
+
+			k := crypto2.GetK(Ry, r.K0)
+			k.Add(k, signature)
 			s.Add(s, k)
 		}
 		dns.mux.Unlock()
