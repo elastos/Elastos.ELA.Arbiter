@@ -8,6 +8,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
@@ -125,6 +126,7 @@ func checkSchnorrWithdrawRequestSTransaction(
 	case *payload.WithdrawFromSideChain:
 		err := checkSchnorrWithdrawPayload(txn, clientFunc, mainFunc)
 		if err != nil {
+			log.Error("check schnorr withdraw payload err:", err)
 			return err
 		}
 	case *payload.ReturnSideChainDepositCoin:
