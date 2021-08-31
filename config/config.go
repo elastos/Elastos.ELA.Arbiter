@@ -102,7 +102,7 @@ type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
 	ExchangeRate           float64 `json:"ExchangeRate"`
-	EffectiveHeight        uint32  `json:"effectiveHeight,omitempty"`
+	EffectiveHeight        uint32  `json:"EffectiveHeight,omitempty"`
 	GenesisBlockAddress    string  `json:"GenesisBlockAddress"`
 	GenesisBlock           string  `json:"GenesisBlock"`
 	KeystoreFile           string  `json:"KeystoreFile"`

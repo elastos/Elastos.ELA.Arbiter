@@ -208,13 +208,12 @@ func GetRegisterTransactionByHeight(config *config.RpcConfig) ([]*base.Registere
 		}
 		txs = append(txs, &base.RegisteredSideChainTransaction{
 			RegisteredSideChain: &base.RegisteredSideChain{
-				SideChainName:          v.SideChainName,
-				MagicNumber:            v.MagicNumber,
-				NodePort:               v.NodePort,
-				GenesisHash:            *genesisHashUint256,
-				GenesisBlockDifficulty: v.GenesisBlockDifficulty,
-				ExchangeRate:           v.ExchangeRate,
-				EffectiveHeight:        v.EffectiveHeight,
+				SideChainName:   v.SideChainName,
+				MagicNumber:     v.MagicNumber,
+				GenesisHash:     *genesisHashUint256,
+				ExchangeRate:    v.ExchangeRate,
+				EffectiveHeight: v.EffectiveHeight,
+				ResourcePath:    v.ResourcePath,
 			},
 			GenesisBlockAddress: address,
 			TransactionHash:     v.TxHash,
