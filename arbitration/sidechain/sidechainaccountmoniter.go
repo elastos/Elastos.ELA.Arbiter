@@ -85,10 +85,12 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 
 func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain, effectiveHeight uint32) {
 	for {
-		currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
-		if effectiveHeight != 0 && currentHeight < effectiveHeight {
-			continue
+		if effectiveHeight != 0 {
+			currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+			if currentHeight < effectiveHeight {
+				continue
+			}
 		}
 		if !Initialized {
 			log.Info("Not initialized yet")

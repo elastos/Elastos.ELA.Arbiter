@@ -18,7 +18,7 @@ type SideChainManagerImpl struct {
 	SideChains map[string]arbitrator.SideChain
 }
 
-func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base.RegisterSidechainRpcInfo, currentHeight uint32) error {
+func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base.RegisterSidechainRpcInfo) error {
 	log.Info("Receive register sidechain rpc ", info.IpAddr, info.User, info.Pass, info.GenesisBlockHash)
 	txs, err := store.DbCache.RegisteredSideChainStore.GetAllRegisteredSideChainTxs()
 	if err != nil {
