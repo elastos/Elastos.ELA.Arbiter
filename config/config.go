@@ -25,7 +25,7 @@ const (
 
 var (
 	Version    string
-	Parameters configParams
+	Parameters ConfigParams
 
 	DataPath   = "elastos_arbiter"
 	DataDir    = "data"
@@ -119,7 +119,7 @@ type ConfigFile struct {
 	ConfigFile Configuration `json:"Configuration"`
 }
 
-type configParams struct {
+type ConfigParams struct {
 	*Configuration
 }
 
