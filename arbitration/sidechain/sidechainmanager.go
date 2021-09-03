@@ -74,10 +74,9 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 
 			// add registered side chain config to config.json
 			config.Parameters.SideNodeList = append(config.Parameters.SideNodeList, side.CurrentConfig)
-			var rewriteConfig config.ConfigParams
-			rewriteConfig.Configuration = &config.Configuration{}
-			copyConfig(*config.Parameters.Configuration, rewriteConfig.Configuration)
-			data, _ := json.MarshalIndent(rewriteConfig, "", "")
+			var cf config.ConfigFile
+			copyConfig(*config.Parameters.Configuration, &cf.ConfigFile)
+			data, _ := json.MarshalIndent(cf, "", "")
 			_ = ioutil.WriteFile(config.DefaultConfigFilename, data, 0644)
 		}
 	}
