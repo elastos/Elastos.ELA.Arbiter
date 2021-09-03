@@ -74,8 +74,9 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 
 			// add registered side chain config to config.json
 			config.Parameters.SideNodeList = append(config.Parameters.SideNodeList, side.CurrentConfig)
-			var rewriteConfig config.Configuration
-			copyConfig(*config.Parameters.Configuration, rewriteConfig)
+			var rewriteConfig config.ConfigParams
+			rewriteConfig.Configuration = &config.Configuration{}
+			copyConfig(*config.Parameters.Configuration, rewriteConfig.Configuration)
 			data, _ := json.MarshalIndent(rewriteConfig, "", "")
 			_ = ioutil.WriteFile(config.DefaultConfigFilename, data, 0644)
 		}
@@ -84,13 +85,12 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 	return nil
 }
 
-func copyConfig(src config.Configuration, dest config.Configuration) {
+func copyConfig(src config.Configuration, dest *config.Configuration) {
 	dest.ActiveNet = src.ActiveNet
 	dest.Magic = src.Magic
 	dest.Version = src.Version
 	dest.NodePort = src.NodePort
 	dest.MainNode = src.MainNode
-	dest.SideNodeList = src.SideNodeList
 	for _, sn := range src.SideNodeList {
 		genesisBytes, err := common.Uint256FromHexString(sn.GenesisBlock)
 		if err != nil {
