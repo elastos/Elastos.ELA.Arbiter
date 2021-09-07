@@ -55,6 +55,7 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 					SupportInvalidDeposit:  true,
 					SupportInvalidWithdraw: true,
 				},
+				DoneSmallCrs: make(map[string]bool, 0),
 			}
 
 			sideManager.AddChain(transaction.GenesisBlockAddress, side)
