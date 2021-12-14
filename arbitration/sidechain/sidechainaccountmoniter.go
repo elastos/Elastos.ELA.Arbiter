@@ -286,21 +286,21 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							continue
 						}
 					}
-					log.Infof("failed deposit transactions before sending %v", failedTxs)
+					//log.Infof("failed deposit transactions before sending %v", failedTxs)
 
-					if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
-						continue
-					}
+					//if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+					//	log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
+					//	continue
+					//}
 
-					currentMainChainHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
-					if currentMainChainHeight >= config.Parameters.ReturnCrossChainCoinStartHeight {
-						err = curr.SendFailedDepositTxs(failedTxs)
-						if err != nil {
-							log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
-							continue
-						}
-					}
+					//currentMainChainHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+					//if currentMainChainHeight >= config.Parameters.ReturnCrossChainCoinStartHeight {
+					//	err = curr.SendFailedDepositTxs(failedTxs)
+					//	if err != nil {
+					//		log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
+					//		continue
+					//	}
+					//}
 					log.Info("End Monitor Failed Deposit Transfer")
 				}
 			}
