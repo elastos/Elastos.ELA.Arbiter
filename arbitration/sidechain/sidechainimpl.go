@@ -2,6 +2,7 @@ package sidechain
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"sync"
 
@@ -19,15 +20,27 @@ import (
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 )
 
+const MinCrossChainTxFee common.Fixed64 = 10000
+
 type SideChainImpl struct {
 	mux sync.Mutex
 
 	Key           string
 	CurrentConfig *config.SideNodeConfig
+	DoneSmallCrs  map[string]bool
+}
+
+func (sc *SideChainImpl) IsSendSmallCrxTx(tx string) bool {
+	_, ok := sc.DoneSmallCrs[tx]
+	return ok
 }
 
 func (sc *SideChainImpl) GetKey() string {
 	return sc.Key
+}
+
+func (sc *SideChainImpl) GetCurrentConfig() *config.SideNodeConfig {
+	return sc.getCurrentConfig()
 }
 
 func (sc *SideChainImpl) getCurrentConfig() *config.SideNodeConfig {
@@ -75,6 +88,59 @@ func (sc *SideChainImpl) SendTransaction(txHash *common.Uint256) (rpc.Response, 
 	if response.Error != nil {
 		log.Info("response: ", response.Error.Message)
 	} else {
+		log.Info("response:", response)
+	}
+
+	return response, nil
+}
+
+func (sc *SideChainImpl) SendSmallCrossTransaction(tx string, signature []byte, hash string) (rpc.Response, error) {
+	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
+	response, err := rpc.CallAndUnmarshalResponse("sendsmallcrosstransaction",
+		rpc.Param("signature", hex.EncodeToString(signature)).
+			Add("rawTx", tx).Add("txHash", hash), sc.CurrentConfig.Rpc)
+	if err != nil {
+		return rpc.Response{}, err
+	}
+	log.Info("[Rpc-SendSmallCrossTransaction] Deposit transaction finished")
+
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else if r, ok := response.Result.(bool); ok && r {
+		sc.DoneSmallCrs[hash] = true
+		log.Info("response:", response)
+	}
+
+	return response, nil
+}
+
+func (sc *SideChainImpl) GetProcessedInvalidWithdrawTransactions(txs []string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txs"] = txs
+	result, err := rpc.CallAndUnmarshal("getprocessedinvalidwithdrawtransactions", parameter, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	if err := rpc.Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
+	return removeTxs, nil
+}
+
+func (sc *SideChainImpl) SendInvalidWithdrawTransaction(signature []byte, hash string) (rpc.Response, error) {
+	log.Info("[Rpc-SendInvalidWithdrawTransaction] Send to side chain：", sc.CurrentConfig.Rpc.IpAddress, ":", sc.CurrentConfig.Rpc.HttpJsonPort)
+	response, err := rpc.CallAndUnmarshalResponse("sendinvalidwithdrawtransaction",
+		rpc.Param("signature", hex.EncodeToString(signature)).Add("txHash", hash), sc.CurrentConfig.Rpc)
+	if err != nil {
+		return rpc.Response{}, err
+	}
+	log.Info("[Rpc-SendInvalidWithdrawTransaction] Send invalid withdraw transaction finished")
+
+	if response.Error != nil {
+		log.Info("response: ", response.Error.Message)
+	} else if r, ok := response.Result.(bool); ok && r {
 		log.Info("response:", response)
 	}
 
@@ -157,8 +223,21 @@ func (sc *SideChainImpl) GetWithdrawTransaction(txHash string) (*base.WithdrawTx
 	return txInfo, nil
 }
 
+func (sc *SideChainImpl) GetFailedDepositTransaction(txHash string) (bool, error) {
+	exist, err := rpc.GetDepositTransactionInfoByHash(txHash, sc.CurrentConfig.Rpc)
+	if err != nil {
+		return false, err
+	}
+
+	return exist, nil
+}
+
 func (sc *SideChainImpl) CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error) {
 	return rpc.CheckIllegalEvidence(evidence, sc.CurrentConfig.Rpc)
+}
+
+func (sc *SideChainImpl) SendFailedDepositTxs(tx []*base.FailedDepositTx) error {
+	return sc.CreateAndBroadcastFailedDepositTxsProposal(tx)
 }
 
 func (sc *SideChainImpl) SendCachedWithdrawTxs() {
@@ -190,7 +269,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	if len(unsolvedTxs) != 0 {
 		err := sc.CreateAndBroadcastWithdrawProposal(unsolvedTxs)
 		if err != nil {
-			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed")
+			log.Error("[ReceiveSendLastArbiterUsedUtxos] CreateAndBroadcastWithdrawProposal failed" + err.Error())
 		}
 	}
 
@@ -209,6 +288,61 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs() {
 	}
 }
 
+func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
+	log.Info("[SendCachedReturnDepositTxs] start")
+	defer log.Info("[SendCachedReturnDepositTxs] end")
+
+	txBytes, txHashes, err := store.DbCache.SideChainStore.GetAllReturnDepositTx(sc.GetKey())
+	if err != nil {
+		log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
+		return
+	}
+
+	if len(txHashes) == 0 {
+		log.Info("No cached return deposit transaction need to send")
+		return
+	}
+
+	receivedTxs, err := rpc.GetExistReturnDepositTransactions(txHashes)
+	if err != nil {
+		log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
+		return
+	}
+
+	unsolvedTxs, indexes := base.SubstractReturnDepositTransactionHashes(txHashes, receivedTxs)
+	if len(unsolvedTxs) != 0 {
+		var failedTxs []*base.FailedDepositTx
+		for _, index := range indexes {
+			if len(txBytes) <= index {
+				log.Errorf("[SendCachedReturnDepositTxs] index is out of range max %d,actual %d", len(txBytes)-1, index)
+				return
+			}
+			txByte := txBytes[index]
+			failedTx := new(base.FailedDepositTx)
+			err := failedTx.Deserialize(bytes.NewBuffer(txByte))
+			if err != nil {
+				log.Errorf("[SendCachedReturnDepositTxs] tx deserialize error %s", err.Error())
+				return
+			}
+			failedTxs = append(failedTxs, failedTx)
+		}
+		log.Info("[SendCachedReturnDepositTxs] failed tx before sending", failedTxs)
+		err = sc.SendFailedDepositTxs(failedTxs)
+		if err != nil {
+			log.Error("[SendCachedReturnDepositTxs] SendFailedDepositTxs failed", err.Error())
+			return
+		}
+	}
+
+	if len(receivedTxs) != 0 {
+		err = store.DbCache.SideChainStore.RemoveReturnDepositTxs(receivedTxs)
+		if err != nil {
+			log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
+			return
+		}
+	}
+}
+
 func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) error {
 	unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(txnHashes)
 	if err != nil {
@@ -221,12 +355,29 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 
 	targetTransactions := make([]*base.WithdrawTx, 0)
 	for _, tx := range unsolvedTransactions {
+		ignore := false
+		for _, w := range tx.WithdrawInfo.WithdrawAssets {
+			if *w.CrossChainAmount <= 0 ||
+				*w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
+				ignore = true
+				break
+			}
+			_, err := common.Uint168FromAddress(w.TargetAddress)
+			if err != nil {
+				ignore = true
+				break
+			}
+		}
+		if ignore {
+			continue
+		}
 		if len(tx.WithdrawInfo.WithdrawAssets) != 0 {
 			targetTransactions = append(targetTransactions, tx)
 		}
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
 
 	var wTx *types.Transaction
 	var targetIndex int
@@ -238,7 +389,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		}
 
 		tx := currentArbitrator.CreateWithdrawTransaction(
-			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
+			targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
 		if tx == nil {
 			continue
 		}
@@ -252,6 +403,41 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	}
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
 	log.Info("[CreateAndBroadcastWithdrawProposal] transactions count: ", targetIndex)
+	return nil
+}
+
+func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []*base.FailedDepositTx) error {
+	if len(failedTxs) == 0 {
+		log.Warn("[CreateAndBroadcastFailedDepositTxsProposal] failed transactions count is zero")
+		return nil
+	}
+
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	var rtx *types.Transaction
+	var targetIndex int
+	for i := 0; i < len(failedTxs); {
+		i += 100
+		targetIndex = len(failedTxs)
+		if targetIndex > i {
+			targetIndex = i
+		}
+
+		tx := currentArbitrator.CreateFailedDepositTransaction(
+			failedTxs[:targetIndex], sc, &arbitrator.MainChainFuncImpl{})
+		if tx == nil {
+			continue
+		}
+
+		if tx.GetSize() < int(pact.MaxBlockContextSize) {
+			rtx = tx
+		}
+	}
+	if rtx == nil {
+		return errors.New("[CreateAndBroadcastFailedDepositTxsProposal] failed")
+	}
+	// todo rename
+	currentArbitrator.BroadcastWithdrawProposal(rtx)
+	log.Info("[CreateAndBroadcastFailedDepositTxsProposal] transactions count: ", targetIndex)
 
 	return nil
 }

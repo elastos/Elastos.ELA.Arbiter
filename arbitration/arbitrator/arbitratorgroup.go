@@ -1,6 +1,7 @@
 package arbitrator
 
 import (
+	"encoding/hex"
 	"errors"
 	"sync"
 	"time"
@@ -190,6 +191,9 @@ func Init(client *account.Client) {
 
 	currentArbitrator := &ArbitratorImpl{mainOnDutyMux: new(sync.Mutex)}
 	currentArbitrator.InitAccount(client)
+
+	pk, _ := client.GetMainAccount().PublicKey.EncodePoint(true)
+	log.Info("Init current arbiter", hex.EncodeToString(pk))
 
 	ArbitratorGroupSingleton.currentArbitrator = currentArbitrator
 	ArbitratorGroupSingleton.SetListener(currentArbitrator)

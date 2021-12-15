@@ -3,6 +3,8 @@ package cs
 import (
 	"bytes"
 	"errors"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
+	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"io"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -20,8 +22,9 @@ type DistributeContentType byte
 const (
 	MaxRedeemScriptDataSize = 10000
 
-	TxDistribute      DistributeContentType = 0x00
-	IllegalDistribute DistributeContentType = 0x01
+	TxDistribute            DistributeContentType = 0x00
+	IllegalDistribute       DistributeContentType = 0x01
+	ReturnDepositDistribute DistributeContentType = 0x02
 )
 
 type DistributedItem struct {
@@ -36,6 +39,7 @@ type DistributedItem struct {
 
 type DistrubutedItemFunc interface {
 	GetArbitratorGroupInfoByHeight(height uint32) (*rpc.ArbitratorGroupInfo, error)
+	GetCurrentHeight() (uint32, error)
 }
 
 type DistrubutedItemFuncImpl struct {
@@ -70,6 +74,7 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 	if err != nil {
 		return err
 	}
+
 	userProgramHash, err := contract.PublicKeyToStandardProgramHash(pkBuf)
 	if err != nil {
 		return err
@@ -107,6 +112,7 @@ func (item *DistributedItem) GetSignedData() []byte {
 }
 
 func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
+	log.Info("item.signedData length ", len(item.signedData))
 	if len(item.signedData) != crypto.SignatureScriptLength*2 {
 		return nil, "ParseFeedbackSignedData invalid sign data length.", nil
 	}
@@ -175,9 +181,14 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 	case TxDistribute:
 		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
 		if err = item.ItemContent.Deserialize(r); err != nil {
-			return errors.New("RawTransaction deserialization failed.")
+			return errors.New("RawTransaction deserialization failed." + err.Error())
 		}
 	case IllegalDistribute:
+	case ReturnDepositDistribute:
+		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
+		if err = item.ItemContent.Deserialize(r); err != nil {
+			return errors.New("RawTransaction deserialization failed." + err.Error())
+		}
 	}
 
 	redeemScript, err := common.ReadVarBytes(r, MaxRedeemScriptDataSize, "redeem script")
@@ -255,6 +266,10 @@ func (itemFunc *DistrubutedItemFuncImpl) GetArbitratorGroupInfoByHeight(height u
 	return rpc.GetArbitratorGroupInfoByHeight(height)
 }
 
+func (itemFunc *DistrubutedItemFuncImpl) GetCurrentHeight() (uint32, error) {
+	return rpc.GetCurrentHeight(config.Parameters.MainNode.Rpc)
+}
+
 func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, isFeedback bool, itemFunc DistrubutedItemFunc) error {
 	// Create new signature
 	newSign := append([]byte{}, byte(len(signature)))
@@ -276,7 +291,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		sign := signedData[1:]
 		targetPk := item.TargetArbitratorPublicKey
 
-		blockHeight, err := item.ItemContent.CurrentBlockHeight()
+		blockHeight, err := itemFunc.GetCurrentHeight()
 		if err != nil {
 			return err
 		}

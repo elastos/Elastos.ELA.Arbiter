@@ -152,6 +152,7 @@ func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 		DataDir:          filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir),
 		PID:              pid,
 		MagicNumber:      config.Parameters.Magic,
+		MaxNodePerHost:   config.Parameters.MaxNodePerHost,
 		DefaultPort:      config.Parameters.NodePort,
 		TimeSource:       dtime.NewMedianTime(),
 		Sign:             network.sign,

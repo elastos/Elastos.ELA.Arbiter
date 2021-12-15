@@ -17,7 +17,6 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-
 	"github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
@@ -58,39 +57,6 @@ func (r *versionFlag) String() string { return config.Version }
 func (r *versionFlag) Set(s string) error {
 	println("arbiter version", config.Version)
 	os.Exit(0)
-	return nil
-}
-
-func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
-	monitor := sidechain.SideChainAccountMonitorImpl{ParentArbitrator: arbitrator}
-
-	for _, side := range arbitrator.GetSideChainManager().GetAllChains() {
-		monitor.AddListener(side)
-	}
-
-	for _, node := range config.Parameters.SideNodeList {
-		go monitor.SyncChainData(node)
-	}
-}
-
-func initP2P(arbitrator arbitrator.Arbitrator) error {
-	pk, err := arbitrator.GetPublicKey().EncodePoint(true)
-	if err != nil {
-		return err
-	}
-
-	var id peer.PID
-	copy(id[:], pk)
-	if err := cs.InitP2PClient(id); err != nil {
-		return err
-	}
-
-	//register p2p client listener
-	if err := mainchain.InitMainChain(arbitrator); err != nil {
-		return err
-	}
-
-	cs.P2PClientSingleton.Start()
 	return nil
 }
 
@@ -136,6 +102,7 @@ func initialize() {
 	if walletPath != "" {
 		config.Parameters.WalletPath = walletPath
 	}
+	log.Info("Arbiter version:", config.Version)
 	log.Info("path:", walletPath)
 
 	log.Info("Init wallet.")
@@ -154,6 +121,36 @@ func initialize() {
 	sideauxpow.Init(c)
 	arbitrator.Init(c)
 	sidechain.Init()
+}
+
+func setSideChainAccountMonitor(arb arbitrator.Arbitrator) {
+	sidechain.SideChainAccountMonitor.ParentArbitrator = arb
+	for i, side := range arb.GetSideChainManager().GetAllChains() {
+		sidechain.SideChainAccountMonitor.AddListener(side)
+		go sidechain.SideChainAccountMonitor.SyncChainData(config.Parameters.SideNodeList[i], side, config.Parameters.SideNodeList[i].EffectiveHeight)
+	}
+
+}
+
+func initP2P(arbitrator arbitrator.Arbitrator) error {
+	pk, err := arbitrator.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	var id peer.PID
+	copy(id[:], pk)
+	if err := cs.InitP2PClient(id); err != nil {
+		return err
+	}
+
+	//register p2p client listener
+	if err := mainchain.InitMainChain(arbitrator); err != nil {
+		return err
+	}
+
+	cs.P2PClientSingleton.Start()
+	return nil
 }
 
 func main() {
@@ -209,6 +206,14 @@ func main() {
 
 	log.Info("9. Start side chain account divide.")
 	go sideauxpow.SidechainAccountDivide()
+
+	log.Info("10. Start small crosschain transfer monitor.")
+	go arbitrator.MonitorSmallCrossTransfer()
+
+	log.Info("11. Start invalid withdraw transaction monitor.")
+	go arbitrator.MonitorInvalidWithdrawTransaction()
+
+	sidechain.Initialized = true
 
 	select {}
 }

@@ -1,6 +1,7 @@
 package sidechain
 
 import (
+	"bytes"
 	"errors"
 	"sync"
 	"time"
@@ -11,6 +12,8 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA/core/types"
+	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
@@ -18,6 +21,11 @@ import (
 )
 
 const sideChainHeightInterval uint32 = 1000
+
+var (
+	Initialized             bool
+	SideChainAccountMonitor SideChainAccountMonitorImpl
+)
 
 type SideChainAccountMonitorImpl struct {
 	mux sync.Mutex
@@ -75,16 +83,26 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 	return item.OnIllegalEvidenceFound(evidence)
 }
 
-func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig) {
+func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain, effectiveHeight uint32) {
 	for {
+		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
+		if effectiveHeight != 0 {
+			currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+			if currentHeight < effectiveHeight {
+				continue
+			}
+		}
+		if !Initialized {
+			log.Info("Not initialized yet")
+			continue
+		}
+		log.Info("side chain SyncChainData ,", sideNode.SupportQuickRecharge, sideNode.Rpc.IpAddress, sideNode.Rpc.HttpJsonPort)
 		chainHeight, currentHeight, needSync := monitor.needSyncBlocks(sideNode.GenesisBlockAddress, sideNode.Rpc)
-
+		log.Info("chainheight , currentHeight ", chainHeight, currentHeight)
 		if needSync {
 			if currentHeight < sideNode.SyncStartHeight {
 				currentHeight = sideNode.SyncStartHeight
 			}
-			log.Info("[SyncSideChain] side chain:", sideNode.GenesisBlockAddress,
-				"current height:", currentHeight, " chain height:", chainHeight)
 			count := uint32(1)
 			for currentHeight < chainHeight {
 				if currentHeight >= 6 {
@@ -151,6 +169,140 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
 					log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 				}
+
+				// Start handle failed deposit transaction
+				if sideNode.SupportInvalidDeposit {
+					// Start handle failed deposit transaction
+					log.Info("Start Monitor Failed Deposit Transfer current height ", currentHeight)
+					param := make(map[string]interface{})
+					param["height"] = currentHeight
+					resp, err := rpc.CallAndUnmarshal("getfaileddeposittransactions", param,
+						sideNode.Rpc)
+					if err != nil {
+						log.Error("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc ", err.Error())
+						continue
+					}
+					var fTxs []string
+					if err := rpc.Unmarshal(&resp, &fTxs); err != nil {
+						log.Error("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error", err.Error())
+						continue
+					}
+					if len(fTxs) != 0 {
+						log.Infof("getfaileddeposittransactions respose data %v \n", fTxs)
+					}
+					var failedTxs []*base.FailedDepositTx
+					for _, tx := range fTxs {
+						txnBytes, err := common.HexStringToBytes(tx)
+						if err != nil {
+							log.Warn("[MoniterFailedDepositTransfer] tx hash can not reversed")
+							continue
+						}
+						reversedTxnBytes := common.BytesReverse(txnBytes)
+						reversedTx := common.BytesToHexString(reversedTxnBytes)
+						originTx, err := rpc.GetTransaction(reversedTx, config.Parameters.MainNode.Rpc)
+						if err != nil {
+							log.Errorf(err.Error())
+							continue
+						}
+						referTxid := originTx.Inputs[0].Previous.TxID
+						referIndex := originTx.Inputs[0].Previous.Index
+						referReversedTx := common.BytesToHexString(common.BytesReverse(referTxid.Bytes()))
+						referTxn, err := rpc.GetTransaction(referReversedTx, config.Parameters.MainNode.Rpc)
+						if err != nil {
+							log.Errorf(err.Error())
+							continue
+						}
+						address, err := referTxn.Outputs[referIndex].ProgramHash.ToAddress()
+						if err != nil {
+							log.Error("program hash to address error", err.Error())
+							continue
+						}
+						crossChainHash, err := common.Uint168FromAddress(sideNode.GenesisBlockAddress)
+						if err != nil {
+							log.Error("GenesisBlockAddress to hash error", err.Error())
+							continue
+						}
+						originHash := originTx.Hash()
+						var depositAmount common.Fixed64
+						var crossChainAmount common.Fixed64
+						switch originTx.PayloadVersion {
+						case payload.TransferCrossChainVersion:
+							p, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							if !ok {
+								log.Error("Invalid payload type need TransferCrossChainAsset")
+								continue
+							}
+
+							for i, cca := range p.CrossChainAmounts {
+								idx := p.OutputIndexes[i]
+								// output to current side chain
+								if !crossChainHash.IsEqual(originTx.Outputs[idx].ProgramHash) {
+									continue
+								}
+								amount := originTx.Outputs[idx].Value
+								depositAmount += amount
+								crossChainAmount += cca
+							}
+						case payload.TransferCrossChainVersionV1:
+							_, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							if !ok {
+								log.Error("Invalid payload type need TransferCrossChainAsset")
+								continue
+							}
+							for _, o := range originTx.Outputs {
+								if o.Type != types.OTCrossChain {
+									continue
+								}
+								// output to current side chain
+								if !crossChainHash.IsEqual(o.ProgramHash) {
+									continue
+								}
+								p, ok := o.Payload.(*outputpayload.CrossChainOutput)
+								if !ok {
+									continue
+								}
+								depositAmount += o.Value
+								crossChainAmount += p.TargetAmount
+							}
+						}
+						failedTx := &base.FailedDepositTx{
+							Txid: &originHash,
+							DepositInfo: &base.DepositInfo{
+								TargetAddress:    address,
+								Amount:           &depositAmount,
+								CrossChainAmount: &crossChainAmount,
+							}}
+						failedTxs = append(failedTxs, failedTx)
+						buf := new(bytes.Buffer)
+						err = failedTx.Serialize(buf)
+						if err != nil {
+							log.Warn("[MoniterFailedDepositTransfer] failedTx serialize error", err.Error())
+							continue
+						}
+						// add to return deposit table
+						err = store.DbCache.SideChainStore.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
+						if err != nil {
+							log.Warn("[MoniterFailedDepositTransfer] AddReturnDepositTx error")
+							continue
+						}
+					}
+					log.Infof("failed deposit transactions before sending %v", failedTxs)
+
+					if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
+						continue
+					}
+
+					currentMainChainHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+					if currentMainChainHeight >= config.Parameters.ReturnCrossChainCoinStartHeight {
+						err = curr.SendFailedDepositTxs(failedTxs)
+						if err != nil {
+							log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
+							continue
+						}
+					}
+					log.Info("End Monitor Failed Deposit Transfer")
+				}
 			}
 			// Update wallet height
 			currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
@@ -165,8 +317,6 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 			}
 
 		}
-
-		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
 	}
 }
 
@@ -174,6 +324,7 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 
 	chainHeight, err := rpc.GetCurrentHeight(config)
 	if err != nil {
+		log.Error("GetCurrentHeight error ", err.Error())
 		return 0, 0, false
 	}
 
@@ -205,12 +356,12 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		for _, withdraw := range txn.CrossChainAssets {
 			opAmount, err := common.StringToFixed64(withdraw.OutputAmount)
 			if err != nil {
-				log.Warn("Find output to destroy address, but have invlaid corss chain output amount")
+				log.Warn("Find output to destroy address, but have invalid cross chain output amount")
 				continue
 			}
 			csAmount, err := common.StringToFixed64(withdraw.CrossChainAmount)
 			if err != nil {
-				log.Warn("Find output to destroy address, but have invlaid corss chain amount")
+				log.Warn("Find output to destroy address, but have invalid cross chain amount")
 				continue
 			}
 			programHash, err := common.Uint168FromAddress(withdraw.CrossChainAddress)
@@ -233,6 +384,7 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 				TargetAddress:    withdraw.CrossChainAddress,
 				Amount:           opAmount,
 				CrossChainAmount: csAmount,
+				TargetData:       []byte(withdraw.TargetData),
 			})
 		}
 

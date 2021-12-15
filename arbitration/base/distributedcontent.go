@@ -7,7 +7,6 @@ import (
 )
 
 type DistributedContent interface {
-	CurrentBlockHeight() (uint32, error)
 	Check(clientFunc interface{}) error
 	Submit() error
 	InitSign(newSign []byte) error

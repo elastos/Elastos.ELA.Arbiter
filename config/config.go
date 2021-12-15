@@ -25,7 +25,7 @@ const (
 
 var (
 	Version    string
-	Parameters configParams
+	Parameters ConfigParams
 
 	DataPath   = "elastos_arbiter"
 	DataDir    = "data"
@@ -57,23 +57,30 @@ type Configuration struct {
 	MaxLogsSize   int64         `json:"MaxLogsSize"`
 	MaxPerLogSize int64         `json:"MaxPerLogSize"`
 
-	SideChainMonitorScanInterval time.Duration    `json:"SideChainMonitorScanInterval"`
-	ClearTransactionInterval     time.Duration    `json:"ClearTransactionInterval"`
-	MinOutbound                  int              `json:"MinOutbound"`
-	MaxConnections               int              `json:"MaxConnections"`
-	SideAuxPowFee                int              `json:"SideAuxPowFee"`
-	MinThreshold                 int              `json:"MinThreshold"`
-	DepositAmount                int              `json:"DepositAmount"`
-	CRCOnlyDPOSHeight            uint32           `json:"CRCOnlyDPOSHeight"`
-	CRClaimDPOSNodeStartHeight   uint32           `json:"CRClaimDPOSNodeStartHeight"`
-	NewP2PProtocolVersionHeight  uint64           `json:"NewP2PProtocolVersionHeight"`
-	DPOSNodeCrossChainHeight     uint32           `json:"DPOSNodeCrossChainHeight"`
-	MaxTxsPerWithdrawTx          int              `json:"MaxTxsPerWithdrawTx"`
-	OriginCrossChainArbiters     []string         `json:"OriginCrossChainArbiters"`
-	CRCCrossChainArbiters        []string         `json:"CRCCrossChainArbiters"`
-	RpcConfiguration             RpcConfiguration `json:"RpcConfiguration"`
-	DPoSNetAddress               string           `json:"DPoSNetAddress"`
-	WalletPath                   string           `json:"WalletPath"`
+	SideChainMonitorScanInterval time.Duration `json:"SideChainMonitorScanInterval"`
+	ClearTransactionInterval     time.Duration `json:"ClearTransactionInterval"`
+	MinOutbound                  int           `json:"MinOutbound"`
+	MaxConnections               int           `json:"MaxConnections"`
+	//defines max nodes that one host can establish
+	MaxNodePerHost                  uint32
+	SideAuxPowFee                   int              `json:"SideAuxPowFee"`
+	MinThreshold                    int              `json:"MinThreshold"`
+	SmallCrossTransferThreshold     common.Fixed64   `json:"SmallCrossTransferThreshold"`
+	DepositAmount                   int              `json:"DepositAmount"`
+	CRCOnlyDPOSHeight               uint32           `json:"CRCOnlyDPOSHeight"`
+	CRClaimDPOSNodeStartHeight      uint32           `json:"CRClaimDPOSNodeStartHeight"`
+	NewP2PProtocolVersionHeight     uint64           `json:"NewP2PProtocolVersionHeight"`
+	DPOSNodeCrossChainHeight        uint32           `json:"DPOSNodeCrossChainHeight"`
+	MaxTxsPerWithdrawTx             int              `json:"MaxTxsPerWithdrawTx"`
+	OriginCrossChainArbiters        []string         `json:"OriginCrossChainArbiters"`
+	CRCCrossChainArbiters           []string         `json:"CRCCrossChainArbiters"`
+	RpcConfiguration                RpcConfiguration `json:"RpcConfiguration"`
+	DPoSNetAddress                  string           `json:"DPoSNetAddress"`
+	ReturnDepositTransactionFee     common.Fixed64   `json:"ReturnDepositTransactionFee"`
+	NewCrossChainTransactionHeight  uint32           `json:"NewCrossChainTransactionHeight"`
+	ProcessInvalidWithdrawHeight    uint32           `json:"ProcessInvalidWithdrawHeight"`
+	WalletPath                      string           `json:"WalletPath"`
+	ReturnCrossChainCoinStartHeight uint32           `json:"ReturnCrossChainCoinStartHeight"`
 }
 
 type RpcConfig struct {
@@ -94,21 +101,25 @@ type MainNodeConfig struct {
 type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
-	ExchangeRate        float64 `json:"ExchangeRate"`
-	GenesisBlockAddress string  `json:"GenesisBlockAddress"`
-	GenesisBlock        string  `json:"GenesisBlock"`
-	KeystoreFile        string  `json:"KeystoreFile"`
-	MiningAddr          string  `json:"MiningAddr"`
-	PayToAddr           string  `json:"PayToAddr"`
-	PowChain            bool    `json:"PowChain"`
-	SyncStartHeight     uint32  `json:"SyncStartHeight"`
+	ExchangeRate           float64 `json:"ExchangeRate"`
+	EffectiveHeight        uint32  `json:"EffectiveHeight,omitempty"`
+	GenesisBlockAddress    string  `json:"GenesisBlockAddress"`
+	GenesisBlock           string  `json:"GenesisBlock"`
+	KeystoreFile           string  `json:"KeystoreFile"`
+	MiningAddr             string  `json:"MiningAddr"`
+	PayToAddr              string  `json:"PayToAddr"`
+	PowChain               bool    `json:"PowChain"`
+	SyncStartHeight        uint32  `json:"SyncStartHeight"`
+	SupportQuickRecharge   bool    `json:"SupportQuickRecharge"`
+	SupportInvalidDeposit  bool    `json:"SupportInvalidDeposit"`
+	SupportInvalidWithdraw bool    `json:"SupportInvalidWithdraw"`
 }
 
 type ConfigFile struct {
 	ConfigFile Configuration `json:"Configuration"`
 }
 
-type configParams struct {
+type ConfigParams struct {
 	*Configuration
 }
 

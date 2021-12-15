@@ -2,6 +2,8 @@ package servers
 
 import (
 	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -15,6 +17,25 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 )
+
+func SetRegisterSideChainRPCInfo(param Params) map[string]interface{} {
+	str, ok := param.String("data")
+	if !ok {
+		return ResponsePack(errors.InvalidParams, "need a string parameter named data")
+	}
+
+	bys, err := common.HexStringToBytes(str)
+	if err != nil {
+		return ResponsePack(errors.InvalidParams, "hex string to bytes error")
+	}
+	rpcDetails := &base.RegisterSidechainRpcInfo{}
+	err = json.Unmarshal(bys, rpcDetails)
+	if err != nil {
+		return ResponsePack(errors.InvalidParams, "can not unmarshal bytes")
+	}
+	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().OnReceivedRegisteredSideChain(*rpcDetails)
+	return ResponsePack(errors.Success, fmt.Sprint(""))
+}
 
 func SubmitComplain(param Params) map[string]interface{} {
 	if !checkParam(param, "fromaddress", "transactionhash") {

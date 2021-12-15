@@ -2,6 +2,7 @@ package arbitrator
 
 import (
 	"bytes"
+	"encoding/hex"
 	"path/filepath"
 	"sync"
 	"time"
@@ -44,10 +45,16 @@ type Arbitrator interface {
 
 	//deposit
 	SendDepositTransactions(spvTxs []*SpvTransaction, genesisAddress string)
+	SendSmallCrossDepositTransactions(spvTxs []*SmallCrossTransaction, genesisAddress string)
 
 	//withdraw
-	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
+	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+
+	//failed deposit
+	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
 		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+
 	BroadcastWithdrawProposal(txn *types.Transaction)
 	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
 
@@ -85,6 +92,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
 		ar.ProcessDepositTransactions()
 		ar.processWithdrawTransactions()
+		ar.processReturnDepositTransactions()
 		ar.ProcessSideChainPowTransaction()
 	} else {
 		log.Info("[OnDutyArbitratorChanged] I became not on duty of main")
@@ -100,6 +108,17 @@ func (ar *ArbitratorImpl) ProcessDepositTransactions() {
 func (ar *ArbitratorImpl) processWithdrawTransactions() {
 	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
 		go sc.SendCachedWithdrawTxs()
+	}
+}
+
+func (ar *ArbitratorImpl) processReturnDepositTransactions() {
+	currentHeight := ArbitratorGroupSingleton.GetCurrentHeight()
+	if currentHeight < config.Parameters.ReturnCrossChainCoinStartHeight {
+		return
+	}
+
+	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+		go sc.SendCachedReturnDepositTxs()
 	}
 }
 
@@ -127,15 +146,47 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 	return ArbitratorGroupSingleton
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
+func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
 	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
-
-	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransaction(
+	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
-		log.Warn(err.Error())
+		log.Warn("[CreateFailedDepositTransaction]" + err.Error())
 		return nil
 	}
+	if ftx == nil {
+		log.Warn("[CreateFailedDepositTransaction] failed to create an failed deposit transaction.")
+		return nil
+	}
+	log.Infof("failed deposit transaction %v", ftx)
+
+	log.Info("[CreateFailedDepositTransaction] succeed")
+
+	return ftx
+}
+
+func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+
+	var withdrawTransaction *types.Transaction
+	if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
+		var err error
+		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV1(
+			sideChain, withdrawTxs, mcFunc)
+		if err != nil {
+			log.Warn(err.Error())
+			return nil
+		}
+	} else {
+		var err error
+		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV0(
+			sideChain, withdrawTxs, mcFunc)
+		if err != nil {
+			log.Warn(err.Error())
+			return nil
+		}
+	}
+
 	if withdrawTransaction == nil {
 		log.Warn("Created an empty withdraw transaction.")
 		return nil
@@ -202,6 +253,28 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 		err = store.FinishedTxsDbCache.AddSucceedDepositTxs(succeedMainChainTxHashes, succeedGenesisAddresses)
 		if err != nil {
 			log.Warn("Add succeed deposit transaction to finished db failed")
+		}
+	}
+}
+
+func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCrossTransaction, genesisAddress string) {
+	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
+	if !ok {
+		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		return
+	}
+	for _, tx := range knownTx {
+		buf := new(bytes.Buffer)
+		tx.MainTx.Serialize(buf)
+		rawTx := hex.EncodeToString(buf.Bytes())
+		signature := tx.Signature
+		hash := tx.MainTx.Hash().String()
+		if sideChain.IsSendSmallCrxTx(hash) {
+			continue
+		}
+		_, err := sideChain.SendSmallCrossTransaction(rawTx, signature, hash)
+		if err != nil {
+			log.Info("Send deposit transaction Error", err.Error())
 		}
 	}
 }
@@ -276,7 +349,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.SpvDir),
 		ChainParams:    params,
 		PermanentPeers: config.Parameters.MainNode.SpvSeedList,
-		NodeVersion : config.NodePrefix + config.Version,
+		NodeVersion:    config.NodePrefix + config.Version,
 	}
 
 	var err error
@@ -329,6 +402,10 @@ func (ar *ArbitratorImpl) CheckAndRemoveCrossChainTransactionsFromDBLoop() {
 		err = ar.GetSideChainManager().CheckAndRemoveWithdrawTransactionsFromDB()
 		if err != nil {
 			log.Warn("Check and remove withdraw transactions from db error:", err)
+		}
+		err = ar.GetSideChainManager().CheckAndRemoveReturnDepositTransactionsFromDB()
+		if err != nil {
+			log.Warn("Check and remove return deposit transactions from db error:", err)
 		}
 		log.Info("Check and remove cross chain transactions from dbcache finished")
 		time.Sleep(time.Millisecond * config.Parameters.ClearTransactionInterval)

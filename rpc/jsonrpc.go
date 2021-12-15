@@ -3,6 +3,7 @@ package rpc
 import (
 	"bytes"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"io"
@@ -20,6 +21,7 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
+	"github.com/elastos/Elastos.ELA/servers"
 )
 
 type Response struct {
@@ -183,6 +185,45 @@ func GetBlockByHash(hash *common.Uint256, config *config.RpcConfig) (*base.Block
 	return block, nil
 }
 
+func GetRegisterTransactionByHeight(config *config.RpcConfig) ([]*base.RegisteredSideChainTransaction, error) {
+	resp, err := CallAndUnmarshal("getallregistertransactions", nil, config)
+	if err != nil {
+		return nil, err
+	}
+	txs := make([]*base.RegisteredSideChainTransaction, 0)
+	result := make([]*servers.RsInfo, 0)
+	if err = Unmarshal(&resp, &result); err != nil {
+		log.Error("[GetRegisterTransactionByHeight] received invalid response", err.Error())
+		return nil, err
+	}
+	for _, v := range result {
+		genesisHashUint256, err := common.Uint256FromHexString(v.GenesisHash)
+		if err != nil {
+			return nil, err
+		}
+		address, err := base.GetGenesisAddress(*genesisHashUint256)
+		if err != nil {
+			log.Error("[GetRegisterTransactionByHeight] GetGenesisAddress from genesis hash error", err.Error())
+			return nil, err
+		}
+		txs = append(txs, &base.RegisteredSideChainTransaction{
+			RegisteredSideChain: &base.RegisteredSideChain{
+				SideChainName:   v.SideChainName,
+				MagicNumber:     v.MagicNumber,
+				GenesisHash:     *genesisHashUint256,
+				ExchangeRate:    v.ExchangeRate,
+				EffectiveHeight: v.EffectiveHeight,
+				ResourcePath:    v.ResourcePath,
+			},
+			GenesisBlockAddress: address,
+			TransactionHash:     v.TxHash,
+		})
+	}
+	log.Debug("[GetRegisterTransactionByHeight] len transactions:", len(txs))
+
+	return txs, nil
+}
+
 func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.WithdrawTxInfo, error) {
 	resp, err := CallAndUnmarshal("getwithdrawtransactionsbyheight", Param("height", height), config)
 	if err != nil {
@@ -193,7 +234,12 @@ func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
 		return nil, err
 	}
-	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs), "transactions:", txs)
+	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs))
+	for i, tx := range txs {
+		for j, asset := range tx.CrossChainAssets {
+			log.Debug("[GetWithdrawTransactionByHeight] tx[", i, "]", "assets[", j, "]:", *asset)
+		}
+	}
 
 	return txs, nil
 }
@@ -247,10 +293,50 @@ func GetTransactionInfoByHash(transactionHash string, config *config.RpcConfig) 
 	return tx, nil
 }
 
+func GetDepositTransactionInfoByHash(transactionHash string, config *config.RpcConfig) (bool, error) {
+	hashBytes, err := common.HexStringToBytes(transactionHash)
+	if err != nil {
+		return false, err
+	}
+	hashStr := common.BytesToHexString(hashBytes)
+	log.Info("get failed deposit transaction by hash:", hashStr)
+	result, err := CallAndUnmarshal("getfaileddeposittransactionbyhash", Param("hash", hashStr), config)
+	if err != nil {
+		return false, err
+	}
+
+	var tx string
+	if err := Unmarshal(&result, &tx); err != nil {
+		return false, errors.New("[MoniterFailedDepositTransfer] Unmarshal getfaileddeposittransactions responce error")
+	}
+	log.Infof("Result %v", tx)
+	if tx == hashStr {
+		return true, nil
+	}
+
+	return false, nil
+}
+
 func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	parameter := make(map[string]interface{})
 	parameter["txs"] = txs
 	result, err := CallAndUnmarshal("getexistwithdrawtransactions",
+		parameter, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var removeTxs []string
+	if err := Unmarshal(&result, &removeTxs); err != nil {
+		return nil, err
+	}
+	return removeTxs, nil
+}
+
+func GetExistReturnDepositTransactions(txs []string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txs"] = txs
+	result, err := CallAndUnmarshal("getexistreturndeposittransactions",
 		parameter, config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return nil, err
@@ -293,6 +379,20 @@ func GetWithdrawUTXOsByAmount(genesisAddress string, amount common.Fixed64, conf
 	}
 
 	return utxoInfos, nil
+}
+
+func GetReferenceAddress(txid string, index int, config *config.RpcConfig) (string, error) {
+	parameter := make(map[string]interface{})
+	parameter["txid"] = txid
+	parameter["index"] = index
+	result, err := CallAndUnmarshal("getreferenceaddress", parameter, config)
+	if err != nil {
+		return "", err
+	}
+	if a, ok := result.(string); ok {
+		return a, nil
+	}
+	return "", errors.New("invalid data type")
 }
 
 func GetAmountByInputs(inputs []*types.Input, config *config.RpcConfig) (common.Fixed64, error) {
@@ -417,4 +517,28 @@ func Unmarshal(result interface{}, target interface{}) error {
 		return err
 	}
 	return nil
+}
+
+func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, error) {
+	param := make(map[string]interface{})
+	param["txid"] = tx
+	resp, err := CallAndUnmarshalResponse("getrawtransaction", param,
+		config)
+	if err != nil {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Unable to call getfaileddeposittransactions rpc " + err.Error())
+	}
+	rawTx, ok := resp.Result.(string)
+	if !ok {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Getrawtransaction rpc result not correct ")
+	}
+	buf, err := hex.DecodeString(rawTx)
+	if err != nil {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Invalid data from GetSmallCrossTransferTxs " + err.Error())
+	}
+	var txn types.Transaction
+	err = txn.Deserialize(bytes.NewReader(buf))
+	if err != nil {
+		return nil, errors.New("[MoniterFailedDepositTransfer] Decode transaction error " + err.Error())
+	}
+	return &txn, nil
 }

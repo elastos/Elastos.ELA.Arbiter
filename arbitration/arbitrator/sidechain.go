@@ -13,13 +13,16 @@ type SideChain interface {
 
 	GetExistDepositTransactions(txs []string) ([]string, error)
 	GetWithdrawTransaction(txHash string) (*base.WithdrawTxInfo, error)
+	GetFailedDepositTransaction(txHash string) (bool, error)
 	CheckIllegalEvidence(evidence *base.SidechainIllegalDataInfo) (bool, error)
 }
 
 type SideChainManager interface {
 	GetChain(key string) (SideChain, bool)
 	GetAllChains() []SideChain
-
+	AddChain(key string, chain SideChain)
 	StartSideChainMining()
 	CheckAndRemoveWithdrawTransactionsFromDB() error
+	CheckAndRemoveReturnDepositTransactionsFromDB() error
+	OnReceivedRegisteredSideChain(info base.RegisterSidechainRpcInfo) error
 }

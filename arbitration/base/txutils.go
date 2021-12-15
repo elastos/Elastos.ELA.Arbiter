@@ -105,6 +105,18 @@ func SubstractTransactionHashesAndBlockHeights(hashSet []string, blockHeights []
 	return resultTxHashes, resultBlockHeights
 }
 
+func SubstractReturnDepositTransactionHashes(hashSet []string, subSet []string) ([]string, []int) {
+	var resultTxHashes []string
+	var indexes []int
+	for i := 0; i < len(hashSet); i++ {
+		if !hasHash(subSet, hashSet[i]) {
+			resultTxHashes = append(resultTxHashes, hashSet[i])
+			indexes = append(indexes, i)
+		}
+	}
+	return resultTxHashes, indexes
+}
+
 func hasHash(hashSet []string, hash string) bool {
 	for _, item := range hashSet {
 		if item == hash {
