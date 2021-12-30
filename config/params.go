@@ -67,14 +67,14 @@ var (
 				"03dd66833d28bac530ca80af0efbfc2ec43b4b87504a41ab4946702254e7f48961",
 				"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 			},
-			CRClaimDPOSNodeStartHeight:     532650,
-			NewP2PProtocolVersionHeight:    532650,
-			DPOSNodeCrossChainHeight:       2000000, // todo fix me
-			NewCrossChainTransactionHeight: 2000000, // todo fix me
-			ReturnDepositTransactionFee:    100,     // todo fix me
-			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
-			SchnorrStartHeight:             2000000, // todo fix me
-			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
+			CRClaimDPOSNodeStartHeight:      532650,
+			NewP2PProtocolVersionHeight:     532650,
+			DPOSNodeCrossChainHeight:        2000000, // todo fix me
+			NewCrossChainTransactionHeight:  730000,
+			ReturnDepositTransactionFee:     100,
+			ProcessInvalidWithdrawHeight:    730000,
+			ReturnCrossChainCoinStartHeight: 730000,
+			SchnorrStartHeight:              2000000, // todo fix me
 		},
 	}
 
@@ -144,14 +144,14 @@ var (
 				"03dd66833d28bac530ca80af0efbfc2ec43b4b87504a41ab4946702254e7f48961",
 				"02c8a87c076112a1b344633184673cfb0bb6bce1aca28c78986a7b1047d257a448",
 			},
-			CRClaimDPOSNodeStartHeight:     646700,
-			NewP2PProtocolVersionHeight:    646700,
-			DPOSNodeCrossChainHeight:       2000000, // todo fix me
-			NewCrossChainTransactionHeight: 2000000, // todo fix me
-			ReturnDepositTransactionFee:    100,     // todo fix me
-			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
-			SchnorrStartHeight:             2000000, // todo fix me
-			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
+			CRClaimDPOSNodeStartHeight:      646700,
+			NewP2PProtocolVersionHeight:     646700,
+			DPOSNodeCrossChainHeight:        2000000, // todo fix me
+			NewCrossChainTransactionHeight:  807000,
+			ReturnDepositTransactionFee:     100,
+			ProcessInvalidWithdrawHeight:    807000,
+			ReturnCrossChainCoinStartHeight: 807000,
+			SchnorrStartHeight:              2000000, // todo fix me
 		},
 	}
 
@@ -224,14 +224,14 @@ var (
 				"02fa3e0d14e0e93ca41c3c0f008679e417cf2adb6375dd4bbbee9ed8e8db606a56",
 				"03ab3ecd1148b018d480224520917c6c3663a3631f198e3b25cf4c9c76786b7850",
 			},
-			CRClaimDPOSNodeStartHeight:     751400,
-			NewP2PProtocolVersionHeight:    751400,
-			DPOSNodeCrossChainHeight:       2000000, // todo fix me
-			NewCrossChainTransactionHeight: 2000000, // todo fix me
-			ReturnDepositTransactionFee:    100,     // todo fix me
-			ProcessInvalidWithdrawHeight:   2000000, // todo fix me
-			SchnorrStartHeight:             2000000, // todo fix me
-			ReturnCrossChainCoinStartHeight: 2000000, // todo fix me
+			CRClaimDPOSNodeStartHeight:      751400,
+			NewP2PProtocolVersionHeight:     751400,
+			DPOSNodeCrossChainHeight:        2000000, // todo fix me
+			NewCrossChainTransactionHeight:  1032840,
+			ReturnDepositTransactionFee:     100,
+			ProcessInvalidWithdrawHeight:    1032840,
+			ReturnCrossChainCoinStartHeight: 1032840,
+			SchnorrStartHeight:              2000000, // todo fix me
 		},
 	}
 )

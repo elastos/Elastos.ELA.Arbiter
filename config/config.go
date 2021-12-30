@@ -25,7 +25,7 @@ const (
 
 var (
 	Version    string
-	Parameters configParams
+	Parameters ConfigParams
 
 	DataPath   = "elastos_arbiter"
 	DataDir    = "data"
@@ -103,6 +103,7 @@ type SideNodeConfig struct {
 	Rpc *RpcConfig `json:"Rpc"`
 
 	ExchangeRate           float64 `json:"ExchangeRate"`
+	EffectiveHeight        uint32  `json:"EffectiveHeight,omitempty"`
 	GenesisBlockAddress    string  `json:"GenesisBlockAddress"`
 	GenesisBlock           string  `json:"GenesisBlock"`
 	KeystoreFile           string  `json:"KeystoreFile"`
@@ -119,7 +120,7 @@ type ConfigFile struct {
 	ConfigFile Configuration `json:"Configuration"`
 }
 
-type configParams struct {
+type ConfigParams struct {
 	*Configuration
 }
 
