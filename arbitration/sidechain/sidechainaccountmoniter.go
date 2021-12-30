@@ -83,9 +83,15 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 	return item.OnIllegalEvidenceFound(evidence)
 }
 
-func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain) {
+func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain, effectiveHeight uint32) {
 	for {
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
+		if effectiveHeight != 0 {
+			currentHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+			if currentHeight < effectiveHeight {
+				continue
+			}
+		}
 		if !Initialized {
 			log.Info("Not initialized yet")
 			continue
@@ -280,20 +286,21 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							continue
 						}
 					}
-					log.Infof("failed deposit transactions before sending %v", failedTxs)
+					//log.Infof("failed deposit transactions before sending %v", failedTxs)
 
-					if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
-						log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
-						continue
-					}
-					currentMainChainHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
-					if currentMainChainHeight >= config.Parameters.ReturnCrossChainCoinStartHeight {
-						err = curr.SendFailedDepositTxs(failedTxs)
-						if err != nil {
-							log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
-							continue
-						}
-					}
+					//if !arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
+					//	log.Warn("[MoniterFailedDepositTransfer] i am not onduty")
+					//	continue
+					//}
+
+					//currentMainChainHeight := arbitrator.ArbitratorGroupSingleton.GetCurrentHeight()
+					//if currentMainChainHeight >= config.Parameters.ReturnCrossChainCoinStartHeight {
+					//	err = curr.SendFailedDepositTxs(failedTxs)
+					//	if err != nil {
+					//		log.Error("[MoniterFailedDepositTransfer] CreateAndBroadcastWithdrawProposal failed", err.Error())
+					//		continue
+					//	}
+					//}
 					log.Info("End Monitor Failed Deposit Transfer")
 				}
 			}

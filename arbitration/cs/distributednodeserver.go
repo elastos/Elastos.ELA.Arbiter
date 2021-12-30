@@ -695,6 +695,7 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 		for pk, signature := range dns.schnorrWithdrawRequestSContentsSigners[hash] {
 			r, ok := dns.schnorrWithdrawRequestRContentsSigners[nonceHash][pk]
 			if !ok {
+				dns.mux.Unlock()
 				return errors.New("invalid schnorrWithdrawRequestSContentsSigners, not found signature of " + pk)
 			}
 

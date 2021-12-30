@@ -123,12 +123,11 @@ func initialize() {
 	sidechain.Init()
 }
 
-func setSideChainAccountMonitor(arbitrator arbitrator.Arbitrator) {
-	sidechain.SideChainAccountMonitor.ParentArbitrator = arbitrator
-
-	for i, side := range arbitrator.GetSideChainManager().GetAllChains() {
+func setSideChainAccountMonitor(arb arbitrator.Arbitrator) {
+	sidechain.SideChainAccountMonitor.ParentArbitrator = arb
+	for i, side := range arb.GetSideChainManager().GetAllChains() {
 		sidechain.SideChainAccountMonitor.AddListener(side)
-		go sidechain.SideChainAccountMonitor.SyncChainData(config.Parameters.SideNodeList[i], side)
+		go sidechain.SideChainAccountMonitor.SyncChainData(config.Parameters.SideNodeList[i], side, config.Parameters.SideNodeList[i].EffectiveHeight)
 	}
 
 }
