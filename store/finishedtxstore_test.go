@@ -54,7 +54,7 @@ func TestFinishedTxsDataStoreImpl_AddSucceedDepositTxs(t *testing.T) {
 		t.Error("Get deposit transaction error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(FinishedTxsDBName)
 }
 
 func TestFinishedTxsDataStoreImpl_AddSucceedDepositTx(t *testing.T) {
@@ -103,7 +103,7 @@ func TestFinishedTxsDataStoreImpl_AddSucceedDepositTx(t *testing.T) {
 		t.Error("Get deposit transaction error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(FinishedTxsDBName)
 }
 
 func TestFinishedTxsDataStoreImpl_GetDepositTxs(t *testing.T) {
@@ -141,7 +141,7 @@ func TestFinishedTxsDataStoreImpl_GetDepositTxs(t *testing.T) {
 		t.Error("Get deposit transactions failed.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(FinishedTxsDBName)
 }
 
 func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
@@ -243,7 +243,7 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 		t.Error("Get withdraw transaction error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(FinishedTxsDBName)
 }
 
 func TestFinishedTxsDataStoreImpl_AddSucceedWIthdrawTx(t *testing.T) {
@@ -289,7 +289,7 @@ func TestFinishedTxsDataStoreImpl_AddSucceedWIthdrawTx(t *testing.T) {
 		t.Error("Get withdraw transaction error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(FinishedTxsDBName)
 }
 
 func TestFinishedTxsDataStoreImpl_GetWithdrawTxs(t *testing.T) {
@@ -329,5 +329,5 @@ func TestFinishedTxsDataStoreImpl_GetWithdrawTxs(t *testing.T) {
 		t.Error("Get withdraw transactions error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(FinishedTxsDBName)
 }

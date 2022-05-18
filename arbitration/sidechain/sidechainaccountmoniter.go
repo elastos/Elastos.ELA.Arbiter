@@ -84,6 +84,12 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 }
 
 func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain, effectiveHeight uint32) {
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(sideNode.GenesisBlockAddress)
+	if dbStore == nil {
+		log.Error("can't find db store by genesis block address:", sideNode.GenesisBlockAddress)
+		return
+	}
+
 	for {
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
 		if effectiveHeight != 0 {
@@ -166,7 +172,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				currentHeight++
 				count++
 				if count%sideChainHeightInterval == 0 {
-					currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+					currentHeight = dbStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
 					log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 				}
 
@@ -280,7 +286,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							continue
 						}
 						// add to return deposit table
-						err = store.DbCache.SideChainStore.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
+						err = dbStore.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
 						if err != nil {
 							log.Warn("[MoniterFailedDepositTransfer] AddReturnDepositTx error")
 							continue
@@ -305,7 +311,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				}
 			}
 			// Update wallet height
-			currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+			currentHeight = dbStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
 			log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 
 			if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
@@ -328,7 +334,12 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 		return 0, 0, false
 	}
 
-	currentHeight := store.DbCache.SideChainStore.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisBlockAddress)
+	if dbStore == nil {
+		log.Error("can't find db store by genesis block address:", genesisBlockAddress)
+		return 0, 0, false
+	}
+	currentHeight := dbStore.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
@@ -400,7 +411,12 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		}
 
 		reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
-		if ok, err := store.DbCache.SideChainStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
+		dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
+		if dbStore == nil {
+			log.Error("can't find db store by genesis block address:", genesisAddress)
+			continue
+		}
+		if ok, err := dbStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
 			withdrawTxs = append(withdrawTxs, withdrawTx)
 		}
 	}

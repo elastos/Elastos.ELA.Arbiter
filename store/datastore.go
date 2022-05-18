@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -22,7 +23,6 @@ import (
 var (
 	DBDocumentNAME          = filepath.Join(config.DataPath, config.DataDir, "arbiter")
 	DBNameMainChain         = filepath.Join(DBDocumentNAME, "mainChainCache.db")
-	DBNameSideChain         = filepath.Join(DBDocumentNAME, "sideChainCache.db")
 	DBNameRegisterSideChain = filepath.Join(DBDocumentNAME, "registerSideChainCache.db")
 )
 
@@ -86,7 +86,7 @@ type AddressUTXO struct {
 }
 
 type DataStore interface {
-	ResetDataStore() error
+	ResetDataStore(dbName string) error
 	catchSystemSignals()
 }
 
@@ -106,6 +106,9 @@ type DataStoreMainChain interface {
 
 type DataStoreSideChain interface {
 	DataStore
+
+	SideChainName() string
+	GenesisBlockAddress() string
 
 	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
 	AddSideChainTx(tx *base.SideChainTransaction) error
@@ -141,8 +144,28 @@ type DataStoreRegisteredSideChain interface {
 
 type DataStoreImpl struct {
 	MainChainStore           DataStoreMainChain
-	SideChainStore           DataStoreSideChain
+	SideChainStore           []DataStoreSideChain
 	RegisteredSideChainStore DataStoreRegisteredSideChain
+}
+
+func (d *DataStoreImpl) GetDataStoreByDBName(dbName string) DataStoreSideChain {
+	for _, s := range d.SideChainStore {
+		if dbName == s.SideChainName() {
+			return s
+		}
+	}
+
+	return nil
+}
+
+func (d *DataStoreImpl) GetDataStoreGenesisBlocAddress(genesisBlockAddress string) DataStoreSideChain {
+	for _, s := range d.SideChainStore {
+		if genesisBlockAddress == s.SideChainName() {
+			return s
+		}
+	}
+
+	return nil
 }
 
 type DataStoreMainChainImpl struct {
@@ -155,6 +178,9 @@ type DataStoreSideChainImpl struct {
 	mux *sync.Mutex
 
 	*sql.DB
+
+	sideChainName       string
+	genesisBlockAddress string
 }
 
 type DataStoreRegisteredSideChainStoreImpl struct {
@@ -181,16 +207,28 @@ func OpenDataStore() (*DataStoreImpl, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	scStore := make([]DataStoreSideChain, 0)
+	for i, s := range dbSideChain {
+		scStore = append(scStore, &DataStoreSideChainImpl{
+			mux:                 new(sync.Mutex),
+			DB:                  s,
+			sideChainName:       config.Parameters.SideNodeList[i].Name,
+			genesisBlockAddress: config.Parameters.SideNodeList[i].GenesisBlockAddress,
+		})
+	}
 	dataStore := &DataStoreImpl{
 		MainChainStore:           &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
-		SideChainStore:           &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain},
 		RegisteredSideChainStore: &DataStoreRegisteredSideChainStoreImpl{mux: new(sync.Mutex), DB: registerSc},
+		SideChainStore:           scStore,
 	}
 
 	// Handle system interrupt signals
 	dataStore.MainChainStore.catchSystemSignals()
-	dataStore.SideChainStore.catchSystemSignals()
 	dataStore.RegisteredSideChainStore.catchSystemSignals()
+	for _, s := range dataStore.SideChainStore {
+		s.catchSystemSignals()
+	}
 
 	return dataStore, nil
 }
@@ -208,17 +246,23 @@ func OpenMainChainDataStore() (*DataStoreMainChainImpl, error) {
 	return dataStore, nil
 }
 
-func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
+func OpenSideChainDataStore() ([]*DataStoreSideChainImpl, error) {
 	dbSideChain, err := initSideChainDB()
 	if err != nil {
 		return nil, err
 	}
-	dataStore := &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}
+	scStore := make([]*DataStoreSideChainImpl, 0)
+	for i, s := range dbSideChain {
+		scStore = append(scStore, &DataStoreSideChainImpl{mux: new(sync.Mutex),
+			DB: s, sideChainName: config.Parameters.SideNodeList[i].Name})
+	}
 
-	// Handle system interrupt signals
-	dataStore.catchSystemSignals()
+	for _, s := range scStore {
+		// Handle system interrupt signals
+		s.catchSystemSignals()
+	}
 
-	return dataStore, nil
+	return scStore, nil
 }
 
 func OpenRegisteredSideChainDataStore() (*DataStoreRegisteredSideChainStoreImpl, error) {
@@ -273,42 +317,92 @@ func initMainChainDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func initSideChainDB() (*sql.DB, error) {
+func initSideChainDB() ([]*sql.DB, error) {
 	err := CheckAndCreateDocument(DBDocumentNAME)
 	if err != nil {
 		log.Error("Create DBCache doucument error:", err)
 		return nil, err
 	}
-	db, err := sql.Open(DriverName, DBNameSideChain)
-	if err != nil {
-		log.Error("Open data db error:", err)
-		return nil, err
-	}
-	// Create SideHeightInfo table
-	_, err = db.Exec(CreateHeightInfoTable)
-	if err != nil {
-		return nil, err
-	}
-	// Create SideChainTxs table
-	_, err = db.Exec(CreateSideChainTxsTable)
-	if err != nil {
-		return nil, err
-	}
-	// Create return deposit transactions table
-	_, err = db.Exec(CreateReturnDepositTransactionsTable)
-	if err != nil {
-		return nil, err
-	}
 
-	for _, node := range config.Parameters.SideNodeList {
+	result := make([]*sql.DB, 0)
+	for _, sideChain := range config.Parameters.SideNodeList {
+		DBNameSideChain := filepath.Join(DBDocumentNAME, sideChain.Name+"_sideChainCache.db")
+		db, err := sql.Open(DriverName, DBNameSideChain)
+		if err != nil {
+			log.Error("Open data db error:", err)
+			return nil, err
+		}
+		// Create SideHeightInfo table
+		_, err = db.Exec(CreateHeightInfoTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create SideChainTxs table
+		_, err = db.Exec(CreateSideChainTxsTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create return deposit transactions table
+		_, err = db.Exec(CreateReturnDepositTransactionsTable)
+		if err != nil {
+			return nil, err
+		}
+
 		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec(node.GenesisBlockAddress, uint32(0))
+		stmt.Exec(sideChain.GenesisBlockAddress, uint32(0))
+		result = append(result, db)
 	}
 
-	return db, nil
+	return result, nil
+}
+
+func initSideChainDBByName(sideChainName string) (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+
+	for _, sideChain := range config.Parameters.SideNodeList {
+		if sideChain.Name != sideChainName {
+			continue
+		}
+
+		DBNameSideChain := filepath.Join(DBDocumentNAME, sideChainName+"_sideChainCache.db")
+		db, err := sql.Open(DriverName, DBNameSideChain)
+		if err != nil {
+			log.Error("Open data db error:", err)
+			return nil, err
+		}
+		// Create SideHeightInfo table
+		_, err = db.Exec(CreateHeightInfoTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create SideChainTxs table
+		_, err = db.Exec(CreateSideChainTxsTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create return deposit transactions table
+		_, err = db.Exec(CreateReturnDepositTransactionsTable)
+		if err != nil {
+			return nil, err
+		}
+
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
+		if err != nil {
+			return nil, err
+		}
+		stmt.Exec(sideChain.GenesisBlockAddress, uint32(0))
+		return db, nil
+
+	}
+
+	return nil, errors.New("not found db")
 }
 
 func initRegisterSideChainDB() (*sql.DB, error) {
@@ -332,12 +426,14 @@ func initRegisterSideChainDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func (store *DataStoreSideChainImpl) ResetDataStore() error {
+// just for test
+func (store *DataStoreSideChainImpl) ResetDataStore(dbName string) error {
 	store.DB.Close()
-	os.Remove(DBNameSideChain)
+
+	os.Remove(dbName)
 
 	var err error
-	store.DB, err = initSideChainDB()
+	store.DB, err = initSideChainDBByName(dbName)
 	if err != nil {
 		return err
 	}
@@ -351,6 +447,14 @@ func (store *DataStoreSideChainImpl) catchSystemSignals() {
 		store.DB.Close()
 		os.Exit(-1)
 	})
+}
+
+func (store *DataStoreSideChainImpl) SideChainName() string {
+	return store.sideChainName
+}
+
+func (store *DataStoreSideChainImpl) GenesisBlockAddress() string {
+	return store.genesisBlockAddress
 }
 
 func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
@@ -707,9 +811,9 @@ func (store *DataStoreSideChainImpl) GetReturnDepositTx(txid string) ([]byte, er
 	return transactionBytes, nil
 }
 
-func (store *DataStoreMainChainImpl) ResetDataStore() error {
+func (store *DataStoreMainChainImpl) ResetDataStore(dbName string) error {
 	store.DB.Close()
-	os.Remove(DBNameMainChain)
+	os.Remove(dbName)
 
 	var err error
 	store.DB, err = initMainChainDB()
@@ -1008,9 +1112,9 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-func (store *DataStoreRegisteredSideChainStoreImpl) ResetDataStore() error {
+func (store *DataStoreRegisteredSideChainStoreImpl) ResetDataStore(dbName string) error {
 	store.DB.Close()
-	os.Remove(DBNameMainChain)
+	os.Remove(dbName)
 
 	var err error
 	store.DB, err = initMainChainDB()

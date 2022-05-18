@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"sync"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -172,7 +173,11 @@ func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeig
 		})
 	}
 
-	if err := store.DbCache.SideChainStore.AddSideChainTxs(txs); err != nil {
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		return errors.New(fmt.Sprintf("can't find db by genesis side chain name:%s", sc.GetCurrentConfig().Name))
+	}
+	if err := dbStore.AddSideChainTxs(txs); err != nil {
 		return err
 	}
 
@@ -244,7 +249,12 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 	log.Info("[SendCachedWithdrawTxs] start")
 	defer log.Info("[SendCachedWithdrawTxs] end")
 
-	txHashes, blockHeights, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		log.Error("can't find db by genesis side chain name:", sc.GetCurrentConfig().Name)
+		return
+	}
+	txHashes, blockHeights, err := dbStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 	if err != nil {
 		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
 		return
@@ -276,7 +286,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 	// todo message: decide which arbiter to create withdraw transaction
 
 	if len(receivedTxs) != 0 {
-		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
+		err = dbStore.RemoveSideChainTxs(receivedTxs)
 		if err != nil {
 			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
 			return
@@ -294,7 +304,12 @@ func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 	log.Info("[SendCachedReturnDepositTxs] start")
 	defer log.Info("[SendCachedReturnDepositTxs] end")
 
-	txBytes, txHashes, err := store.DbCache.SideChainStore.GetAllReturnDepositTx(sc.GetKey())
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		log.Error("can't find db by genesis side chain name:", sc.GetCurrentConfig().Name)
+		return
+	}
+	txBytes, txHashes, err := dbStore.GetAllReturnDepositTx(sc.GetKey())
 	if err != nil {
 		log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
 		return
@@ -337,7 +352,7 @@ func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 	}
 
 	if len(receivedTxs) != 0 {
-		err = store.DbCache.SideChainStore.RemoveReturnDepositTxs(receivedTxs)
+		err = dbStore.RemoveReturnDepositTxs(receivedTxs)
 		if err != nil {
 			log.Errorf("[SendCachedReturnDepositTxs] %s", err.Error())
 			return
@@ -346,7 +361,12 @@ func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 }
 
 func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) error {
-	unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(txnHashes)
+
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		return errors.New(fmt.Sprintf("can't find db by genesis side chain name:%s", sc.GetCurrentConfig().Name))
+	}
+	unsolvedTransactions, err := dbStore.GetSideChainTxsFromHashes(txnHashes)
 	if err != nil {
 		return err
 	}
