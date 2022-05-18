@@ -29,7 +29,13 @@ func MonitorInvalidWithdrawTransaction() {
 				if !sc.GetCurrentConfig().SupportInvalidWithdraw {
 					continue
 				}
-				txHashes, _, err := store.DbCache.SideChainStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
+
+				dbStore := store.DbCache.GetDataStoreByDBName(sc.GetCurrentConfig().Name)
+				if dbStore == nil {
+					log.Warn("can't find db by genesis side chain name:", sc.GetCurrentConfig().Name)
+					continue
+				}
+				txHashes, _, err := dbStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
 				if err != nil {
 					continue
 				}
@@ -38,7 +44,7 @@ func MonitorInvalidWithdrawTransaction() {
 					continue
 				}
 
-				unsolvedTransactions, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes(txHashes)
+				unsolvedTransactions, err := dbStore.GetSideChainTxsFromHashes(txHashes)
 				if err != nil {
 					continue
 				}
@@ -98,7 +104,7 @@ func MonitorInvalidWithdrawTransaction() {
 					reversedProcessedTxs = append(reversedProcessedTxs, common.BytesToHexString(bytes))
 				}
 
-				err = store.DbCache.SideChainStore.RemoveSideChainTxs(reversedProcessedTxs)
+				err = dbStore.RemoveSideChainTxs(reversedProcessedTxs)
 				if err != nil {
 					log.Error("failed to remove failed withdraw transaction from db")
 				}

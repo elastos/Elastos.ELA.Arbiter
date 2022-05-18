@@ -169,27 +169,30 @@ func (sideManager *SideChainManagerImpl) StartSideChainMining() {
 }
 
 func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromDB() error {
-	txHashes, err := store.DbCache.SideChainStore.GetAllSideChainTxHashes()
-	if err != nil {
-		return err
-	}
-	if len(txHashes) == 0 {
-		return nil
-	}
-	receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
-	if err != nil {
-		return err
-	}
 
-	if len(receivedTxs) != 0 {
-		err = store.DbCache.SideChainStore.RemoveSideChainTxs(receivedTxs)
+	for _, s := range store.DbCache.SideChainStore {
+		txHashes, err := s.GetAllSideChainTxHashes()
+		if err != nil {
+			return err
+		}
+		if len(txHashes) == 0 {
+			return nil
+		}
+		receivedTxs, err := rpc.GetExistWithdrawTransactions(txHashes)
 		if err != nil {
 			return err
 		}
 
-		err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(receivedTxs)
-		if err != nil {
-			return err
+		if len(receivedTxs) != 0 {
+			err = s.RemoveSideChainTxs(receivedTxs)
+			if err != nil {
+				return err
+			}
+
+			err = store.FinishedTxsDbCache.AddSucceedWithdrawTxs(receivedTxs)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -197,22 +200,24 @@ func (sideManager *SideChainManagerImpl) CheckAndRemoveWithdrawTransactionsFromD
 }
 
 func (sideManager *SideChainManagerImpl) CheckAndRemoveReturnDepositTransactionsFromDB() error {
-	txHashes, err := store.DbCache.SideChainStore.GetAllReturnDepositTxs()
-	if err != nil {
-		return err
-	}
-	if len(txHashes) == 0 {
-		return nil
-	}
-	receivedTxs, err := rpc.GetExistReturnDepositTransactions(txHashes)
-	if err != nil {
-		return err
-	}
-
-	if len(receivedTxs) != 0 {
-		err = store.DbCache.SideChainStore.RemoveReturnDepositTxs(receivedTxs)
+	for _, s := range store.DbCache.SideChainStore {
+		txHashes, err := s.GetAllReturnDepositTxs()
 		if err != nil {
 			return err
+		}
+		if len(txHashes) == 0 {
+			return nil
+		}
+		receivedTxs, err := rpc.GetExistReturnDepositTransactions(txHashes)
+		if err != nil {
+			return err
+		}
+
+		if len(receivedTxs) != 0 {
+			err = s.RemoveReturnDepositTxs(receivedTxs)
+			if err != nil {
+				return err
+			}
 		}
 	}
 

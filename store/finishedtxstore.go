@@ -79,7 +79,7 @@ type FinishedTransactionsDataStore interface {
 
 	AddSideChainTx(transactionByte []byte) error
 	GetSideChainTx(sideChainTransactionId uint64) ([]byte, error)
-	ResetDataStore() error
+	ResetDataStore(dbName string) error
 }
 
 type FinishedTxsDataStoreImpl struct {
@@ -143,10 +143,10 @@ func (store *FinishedTxsDataStoreImpl) catchSystemSignals() {
 	})
 }
 
-func (store *FinishedTxsDataStoreImpl) ResetDataStore() error {
+func (store *FinishedTxsDataStoreImpl) ResetDataStore(dbName string) error {
 
 	store.DB.Close()
-	os.Remove(FinishedTxsDBName)
+	os.Remove(dbName)
 
 	var err error
 	store.DB, err = initFinishedTxsDB()

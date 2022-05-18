@@ -191,7 +191,12 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 		return ResponsePack(errors.InvalidParams, "invalid genesis block hash")
 	}
 
-	return ResponsePack(errors.Success, store.DbCache.SideChainStore.CurrentSideHeight(address, 0))
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(address)
+	if dbStore == nil {
+		return ResponsePack(errors.InvalidParams, "invalid genesis block hash")
+	}
+
+	return ResponsePack(errors.Success, dbStore.CurrentSideHeight(address, 0))
 }
 
 func GetFinishedDepositTxs(param Params) map[string]interface{} {

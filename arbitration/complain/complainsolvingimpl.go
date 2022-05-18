@@ -53,32 +53,35 @@ func (comp *ComplainSolvingImpl) BroadcastComplainSolving([]byte) error {
 }
 
 func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint256) uint {
-	txs, err := store.DbCache.SideChainStore.GetSideChainTxsFromHashes([]string{transactionHash.String()})
-	if err == nil && len(txs) != 0 {
-		return Solving
-	}
 
-	/*txs, _, err = store.DbCache.GetMainChainTxsFromHashes([]string{transactionHash.String()})
-	if err == nil && len(txs) != 0 {
-		return Solving
-	}*/
+	for _, s := range store.DbCache.SideChainStore {
+		txs, err := s.GetSideChainTxsFromHashes([]string{transactionHash.String()})
+		if err == nil && len(txs) != 0 {
+			return Solving
+		}
 
-	succeedList, _, err := store.FinishedTxsDbCache.GetDepositTxByHash(transactionHash.String())
-	if err == nil && len(succeedList) != 0 {
-		for _, succeed := range succeedList {
+		/*txs, _, err = store.DbCache.GetMainChainTxsFromHashes([]string{transactionHash.String()})
+		if err == nil && len(txs) != 0 {
+			return Solving
+		}*/
+
+		succeedList, _, err := store.FinishedTxsDbCache.GetDepositTxByHash(transactionHash.String())
+		if err == nil && len(succeedList) != 0 {
+			for _, succeed := range succeedList {
+				if succeed {
+					return Done
+				}
+			}
+			return Rejected
+		}
+
+		succeed, _, err := store.FinishedTxsDbCache.GetWithdrawTxByHash(transactionHash.String())
+		if err == nil {
 			if succeed {
 				return Done
+			} else {
+				return Rejected
 			}
-		}
-		return Rejected
-	}
-
-	succeed, _, err := store.FinishedTxsDbCache.GetWithdrawTxByHash(transactionHash.String())
-	if err == nil {
-		if succeed {
-			return Done
-		} else {
-			return Rejected
 		}
 	}
 
