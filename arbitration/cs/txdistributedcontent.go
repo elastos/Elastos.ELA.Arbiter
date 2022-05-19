@@ -246,8 +246,7 @@ func checkWithdrawFromSidechainPayload(txn *types.Transaction,
 	if dbStore == nil {
 		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", payloadWithdraw.GenesisBlockAddress))
 	}
-	sideChainTxs, err := dbStore.GetSideChainTxsFromHashesAndGenesisAddress(
-		transactionHashes, payloadWithdraw.GenesisBlockAddress)
+	sideChainTxs, err := dbStore.GetSideChainTxsFromHashes(transactionHashes)
 	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
 		log.Info("[checkWithdrawTransaction], need to get side chain transaction from rpc")
 		for _, txHash := range payloadWithdraw.SideChainTransactionHashes {
@@ -557,8 +556,7 @@ func checkWithdrawFromSideChainPayload(txn *types.Transaction,
 	if dbStore == nil {
 		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", pl.GenesisBlockAddress))
 	}
-	sideChainTxs, err := dbStore.GetSideChainTxsFromHashesAndGenesisAddress(
-		transactionHashes, genesisAddress)
+	sideChainTxs, err := dbStore.GetSideChainTxsFromHashes(transactionHashes)
 	if err != nil || len(sideChainTxs) != len(transactionHashes) {
 		log.Info("[checkWithdrawTransaction], need to get side chain transaction from rpc")
 		for _, txHash := range transactionHashes {

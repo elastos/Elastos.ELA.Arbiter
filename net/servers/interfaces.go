@@ -196,7 +196,7 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 		return ResponsePack(errors.InvalidParams, "invalid genesis block hash")
 	}
 
-	return ResponsePack(errors.Success, dbStore.CurrentSideHeight(address, 0))
+	return ResponsePack(errors.Success, dbStore.CurrentSideHeight(0))
 }
 
 func GetFinishedDepositTxs(param Params) map[string]interface{} {

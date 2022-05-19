@@ -172,7 +172,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				currentHeight++
 				count++
 				if count%sideChainHeightInterval == 0 {
-					currentHeight = dbStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+					currentHeight = dbStore.CurrentSideHeight(currentHeight)
 					log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 				}
 
@@ -311,7 +311,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				}
 			}
 			// Update wallet height
-			currentHeight = dbStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+			currentHeight = dbStore.CurrentSideHeight(currentHeight)
 			log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 
 			if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
@@ -339,7 +339,7 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 		log.Error("can't find db store by genesis block address:", genesisBlockAddress)
 		return 0, 0, false
 	}
-	currentHeight := dbStore.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
+	currentHeight := dbStore.CurrentSideHeight(store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
