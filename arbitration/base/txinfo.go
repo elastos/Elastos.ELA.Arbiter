@@ -57,7 +57,6 @@ type MainChainTransaction struct {
 
 type SideChainTransaction struct {
 	TransactionHash     string
-	GenesisBlockAddress string
 	Transaction         []byte
 	BlockHeight         uint32
 }

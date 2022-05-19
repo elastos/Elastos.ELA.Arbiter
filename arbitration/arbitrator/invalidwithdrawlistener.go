@@ -35,7 +35,7 @@ func MonitorInvalidWithdrawTransaction() {
 					log.Warn("can't find db by genesis side chain name:", sc.GetCurrentConfig().Name)
 					continue
 				}
-				txHashes, _, err := dbStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
+				txHashes, _, err := dbStore.GetAllSideChainTxHashesAndHeights()
 				if err != nil {
 					continue
 				}

@@ -167,7 +167,6 @@ func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeig
 
 		txs = append(txs, &base.SideChainTransaction{
 			TransactionHash:     withdrawTx.Txid.String(),
-			GenesisBlockAddress: sc.GetKey(),
 			Transaction:         buf.Bytes(),
 			BlockHeight:         blockHeight,
 		})
@@ -254,7 +253,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 		log.Error("can't find db by genesis side chain name:", sc.GetCurrentConfig().Name)
 		return
 	}
-	txHashes, blockHeights, err := dbStore.GetAllSideChainTxHashesAndHeights(sc.GetKey())
+	txHashes, blockHeights, err := dbStore.GetAllSideChainTxHashesAndHeights()
 	if err != nil {
 		log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
 		return

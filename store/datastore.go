@@ -39,13 +39,11 @@ const (
 				Value BLOB
 			);`
 	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
-				GenesisBlockAddress VARCHAR(34) NOT NULL PRIMARY KEY,
-				Height INTEGER
+				Height INTEGER NOT NULL PRIMARY KEY
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR UNIQUE,
-				GenesisBlockAddress VARCHAR(34),
 				TransactionData BLOB,
 				BlockHeight INTEGER
 			);`
@@ -110,15 +108,14 @@ type DataStoreSideChain interface {
 	SideChainName() string
 	GenesisBlockAddress() string
 
-	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
+	CurrentSideHeight(height uint32) uint32
 	AddSideChainTx(tx *base.SideChainTransaction) error
 	AddSideChainTxs(txs []*base.SideChainTransaction) error
 	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes() ([]string, error)
-	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
+	GetAllSideChainTxHashesAndHeights() ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error)
-	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
 
 	AddReturnDepositTx(txid string, genesisBlockAddress string, transactionByte []byte) error
 	GetReturnDepositTx(txid string) ([]byte, error)
@@ -148,9 +145,9 @@ type DataStoreImpl struct {
 	RegisteredSideChainStore DataStoreRegisteredSideChain
 }
 
-func (d *DataStoreImpl) GetDataStoreByDBName(dbName string) DataStoreSideChain {
+func (d *DataStoreImpl) GetDataStoreByDBName(sideChainName string) DataStoreSideChain {
 	for _, s := range d.SideChainStore {
-		if dbName == s.SideChainName() {
+		if sideChainName == s.SideChainName() {
 			return s
 		}
 	}
@@ -160,7 +157,7 @@ func (d *DataStoreImpl) GetDataStoreByDBName(dbName string) DataStoreSideChain {
 
 func (d *DataStoreImpl) GetDataStoreGenesisBlocAddress(genesisBlockAddress string) DataStoreSideChain {
 	for _, s := range d.SideChainStore {
-		if genesisBlockAddress == s.SideChainName() {
+		if genesisBlockAddress == s.GenesisBlockAddress() {
 			return s
 		}
 	}
@@ -348,11 +345,11 @@ func initSideChainDB() ([]*sql.DB, error) {
 			return nil, err
 		}
 
-		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec(sideChain.GenesisBlockAddress, uint32(0))
+		stmt.Exec(uint32(0))
 		result = append(result, db)
 	}
 
@@ -393,11 +390,11 @@ func initSideChainDBByName(sideChainName string) (*sql.DB, error) {
 			return nil, err
 		}
 
-		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec(sideChain.GenesisBlockAddress, uint32(0))
+		stmt.Exec(uint32(0))
 		return db, nil
 
 	}
@@ -457,11 +454,11 @@ func (store *DataStoreSideChainImpl) GenesisBlockAddress() string {
 	return store.genesisBlockAddress
 }
 
-func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
+func (store *DataStoreSideChainImpl) CurrentSideHeight(height uint32) uint32 {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	row := store.QueryRow("SELECT Height FROM SideHeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
+	row := store.QueryRow("SELECT Height FROM SideHeightInfo")
 	var storedHeight uint32
 	row.Scan(&storedHeight)
 
@@ -471,24 +468,24 @@ func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress strin
 			height = 0
 		}
 
-		sideChainExistRow := store.QueryRow("SELECT EXISTS(SELECT true FROM SideHeightInfo WHERE GenesisBlockAddress=?)", genesisBlockAddress)
+		sideChainExistRow := store.QueryRow("SELECT EXISTS(SELECT true FROM SideHeightInfo)")
 		var exist bool
 		sideChainExistRow.Scan(&exist)
 
 		if !exist {
-			stmt, err := store.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
+			stmt, err := store.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
 			if err != nil {
 				return uint32(0)
 			}
-			stmt.Exec(genesisBlockAddress, uint32(0))
+			stmt.Exec(uint32(0))
 		}
 
 		// Insert current height
-		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=? WHERE GenesisBlockAddress=?")
+		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=?")
 		if err != nil {
 			return uint32(0)
 		}
-		_, err = stmt.Exec(height, genesisBlockAddress)
+		_, err = stmt.Exec(height)
 		if err != nil {
 			return uint32(0)
 		}
@@ -508,7 +505,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, TransactionData, BlockHeight) values(?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -516,7 +513,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 
 	// Do insert
 	for _, tx := range txs {
-		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
+		_, err = stmt.Exec(tx.TransactionHash, tx.Transaction, tx.BlockHeight)
 		if err != nil {
 			log.Error("[AddSideChainTxs] err")
 			continue
@@ -531,14 +528,14 @@ func (store *DataStoreSideChainImpl) AddSideChainTx(tx *base.SideChainTransactio
 	defer store.mux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, TransactionData, BlockHeight) values(?,?,?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	// Do insert
-	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
+	_, err = stmt.Exec(tx.TransactionHash, tx.Transaction, tx.BlockHeight)
 	if err != nil {
 		return err
 	}
@@ -549,7 +546,7 @@ func (store *DataStoreSideChainImpl) HasSideChainTx(transactionHash string) (boo
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
+	rows, err := store.Query(`SELECT Id FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
 	if err != nil {
 		return false, err
 	}
@@ -603,11 +600,11 @@ func (store *DataStoreSideChainImpl) GetAllSideChainTxHashes() ([]string, error)
 	return txHashes, nil
 }
 
-func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error) {
+func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights() ([]string, []uint32, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs`)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -667,37 +664,6 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 		txs = append(txs, tx)
 
 	}
-	return txs, nil
-}
-
-func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error) {
-	store.mux.Lock()
-	defer store.mux.Unlock()
-
-	var txs []*base.WithdrawTx
-	for _, txHash := range transactionHashes {
-		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
-		if err != nil {
-			return nil, err
-		}
-
-		for rows.Next() {
-			var transactionBytes []byte
-			err = rows.Scan(&transactionBytes)
-			if err != nil {
-				rows.Close()
-				return nil, err
-			}
-
-			tx := new(base.WithdrawTx)
-			reader := bytes.NewReader(transactionBytes)
-			tx.Deserialize(reader)
-
-			txs = append(txs, tx)
-		}
-		rows.Close()
-	}
-
 	return txs, nil
 }
 
