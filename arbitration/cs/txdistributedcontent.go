@@ -547,14 +547,9 @@ func checkWithdrawFromSideChainPayload(txn *types.Transaction,
 	// check if withdraw transactions exist in db, if not found then will check
 	// by the rpc interface of the side chain.
 	var txs []*base.WithdrawTx
-
-	pl, ok := txn.Payload.(*payload.WithdrawFromSideChain)
-	if !ok {
-		return errors.New("invalid withdraw from side chain payload")
-	}
-	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(pl.GenesisBlockAddress)
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
 	if dbStore == nil {
-		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", pl.GenesisBlockAddress))
+		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", genesisAddress))
 	}
 	sideChainTxs, err := dbStore.GetSideChainTxsFromHashes(transactionHashes)
 	if err != nil || len(sideChainTxs) != len(transactionHashes) {

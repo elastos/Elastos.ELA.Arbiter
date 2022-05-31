@@ -461,7 +461,6 @@ func (store *DataStoreSideChainImpl) CurrentSideHeight(height uint32) uint32 {
 	row := store.QueryRow("SELECT Height FROM SideHeightInfo")
 	var storedHeight uint32
 	row.Scan(&storedHeight)
-
 	if height > storedHeight {
 		// Received reset height code
 		if height == ResetHeightCode {
