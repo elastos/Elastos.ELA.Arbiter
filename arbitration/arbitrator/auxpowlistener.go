@@ -10,7 +10,8 @@ import (
 	spv "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA.SPV/interface/iutil"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/p2p/msg"
 )
@@ -25,8 +26,8 @@ func (l *AuxpowListener) Address() string {
 	return l.ListenAddress
 }
 
-func (l *AuxpowListener) Type() types.TxType {
-	return types.SideChainPow
+func (l *AuxpowListener) Type() elacommon.TxType {
+	return elacommon.SideChainPow
 }
 
 func (l *AuxpowListener) Flags() uint64 {
@@ -35,8 +36,8 @@ func (l *AuxpowListener) Flags() uint64 {
 
 func (l *AuxpowListener) Rollback(height uint32) {}
 
-func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx types.Transaction) {
-	l.notifyQueue <- &notifyTask{id, &proof, &tx}
+func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx it.Transaction) {
+	l.notifyQueue <- &notifyTask{id, &proof, tx}
 	log.Info("[Notify-Auxpow][", l.ListenAddress, "] find side aux pow transaction, hash:", tx.Hash().String())
 	err := SpvService.SubmitTransactionReceipt(id, tx.Hash())
 	if err != nil {
@@ -47,7 +48,7 @@ func (l *AuxpowListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx t
 func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 	task := tasks[len(tasks)-1]
 	log.Info("[Notify-ProcessNotifyData][", l.ListenAddress, "] process hash:", task.tx.Hash().String(), "len tasks:", len(tasks))
-	err := SpvService.VerifyTransaction(*task.proof, *task.tx)
+	err := SpvService.VerifyTransaction(*task.proof, task.tx)
 	if err != nil {
 		log.Error("verify transaction error: ", err)
 		return
@@ -108,7 +109,7 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 
 	sideAuxpowString := common.BytesToHexString(buf.Bytes())
 
-	p, ok := task.tx.Payload.(*payload.SideChainPow)
+	p, ok := task.tx.Payload().(*payload.SideChainPow)
 	if !ok {
 		log.Error("invalid payload type")
 		return

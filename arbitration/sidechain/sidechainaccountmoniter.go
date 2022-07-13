@@ -12,11 +12,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
@@ -210,15 +210,15 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							log.Errorf(err.Error())
 							continue
 						}
-						referTxid := originTx.Inputs[0].Previous.TxID
-						referIndex := originTx.Inputs[0].Previous.Index
+						referTxid := originTx.Inputs()[0].Previous.TxID
+						referIndex := originTx.Inputs()[0].Previous.Index
 						referReversedTx := common.BytesToHexString(common.BytesReverse(referTxid.Bytes()))
 						referTxn, err := rpc.GetTransaction(referReversedTx, config.Parameters.MainNode.Rpc)
 						if err != nil {
 							log.Errorf(err.Error())
 							continue
 						}
-						address, err := referTxn.Outputs[referIndex].ProgramHash.ToAddress()
+						address, err := referTxn.Outputs()[referIndex].ProgramHash.ToAddress()
 						if err != nil {
 							log.Error("program hash to address error", err.Error())
 							continue
@@ -231,9 +231,9 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						originHash := originTx.Hash()
 						var depositAmount common.Fixed64
 						var crossChainAmount common.Fixed64
-						switch originTx.PayloadVersion {
+						switch originTx.PayloadVersion() {
 						case payload.TransferCrossChainVersion:
-							p, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							p, ok := originTx.Payload().(*payload.TransferCrossChainAsset)
 							if !ok {
 								log.Error("Invalid payload type need TransferCrossChainAsset")
 								continue
@@ -242,21 +242,21 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							for i, cca := range p.CrossChainAmounts {
 								idx := p.OutputIndexes[i]
 								// output to current side chain
-								if !crossChainHash.IsEqual(originTx.Outputs[idx].ProgramHash) {
+								if !crossChainHash.IsEqual(originTx.Outputs()[idx].ProgramHash) {
 									continue
 								}
-								amount := originTx.Outputs[idx].Value
+								amount := originTx.Outputs()[idx].Value
 								depositAmount += amount
 								crossChainAmount += cca
 							}
 						case payload.TransferCrossChainVersionV1:
-							_, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							_, ok := originTx.Payload().(*payload.TransferCrossChainAsset)
 							if !ok {
 								log.Error("Invalid payload type need TransferCrossChainAsset")
 								continue
 							}
-							for _, o := range originTx.Outputs {
-								if o.Type != types.OTCrossChain {
+							for _, o := range originTx.Outputs() {
+								if o.Type != elacommon.OTCrossChain {
 									continue
 								}
 								// output to current side chain

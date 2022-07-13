@@ -18,7 +18,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
@@ -51,22 +51,22 @@ type Arbitrator interface {
 
 	//withdraw
 	CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx, sideChain SideChain,
-		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 	CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx, sideChain SideChain,
-		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 	CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
-		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
-		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+		sideChain SideChain, mcFunc MainChainFunc) it.Transaction
 
-	BroadcastWithdrawProposal(txn *types.Transaction)
-	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
+	BroadcastWithdrawProposal(txn it.Transaction)
+	SendWithdrawTransaction(txn it.Transaction) (rpc.Response, error)
 
 	// schnorr withdraw
-	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction)
-	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int)
+	BroadcastSchnorrWithdrawProposal2(txn it.Transaction)
+	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int)
 	// schnorr crypto
 	GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
 	GetSchnorrS(e *big.Int) *big.Int
@@ -175,7 +175,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
-	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc) it.Transaction {
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
@@ -194,7 +194,7 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx,
-	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
 
 	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransactionV0(
 		sideChain, withdrawTxs, mcFunc)
@@ -212,7 +212,7 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx,
 }
 
 func (ar *ArbitratorImpl) CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx,
-	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
 
 	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransactionV1(
 		sideChain, withdrawTxs, mcFunc)
@@ -230,7 +230,7 @@ func (ar *ArbitratorImpl) CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx,
 }
 
 func (ar *ArbitratorImpl) CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx,
-	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
 
 	withdrawTransaction, err := ar.mainChainImpl.CreateSchnorrWithdrawTransaction(
 		sideChain, withdrawTxs, mcFunc)
@@ -330,7 +330,7 @@ func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCros
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) {
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn it.Transaction) {
 	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn)
 	if err != nil {
 		log.Warn(err.Error())
@@ -338,14 +338,14 @@ func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn *types.Transacti
 }
 
 func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(
-	nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) {
+	nonceHash common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int) {
 	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(nonceHash, txn, pks, e)
 	if err != nil {
 		log.Warn(err.Error())
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *types.Transaction) {
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn it.Transaction) {
 	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 	if err != nil {
 		log.Warn(err.Error())
@@ -358,7 +358,7 @@ func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *payload.SidechainI
 	}
 }
 
-func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error) {
+func (ar *ArbitratorImpl) SendWithdrawTransaction(txn it.Transaction) (rpc.Response, error) {
 	content, err := ar.convertToTransactionContent(txn)
 	if err != nil {
 		return rpc.Response{}, err
@@ -449,7 +449,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	return nil
 }
 
-func (ar *ArbitratorImpl) convertToTransactionContent(txn *types.Transaction) (string, error) {
+func (ar *ArbitratorImpl) convertToTransactionContent(txn it.Transaction) (string, error) {
 	buf := new(bytes.Buffer)
 	err := txn.Serialize(buf)
 	if err != nil {

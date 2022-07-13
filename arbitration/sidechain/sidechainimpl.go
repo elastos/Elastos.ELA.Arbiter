@@ -16,7 +16,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/elanet/pact"
 )
@@ -166,9 +166,9 @@ func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeig
 		}
 
 		txs = append(txs, &base.SideChainTransaction{
-			TransactionHash:     withdrawTx.Txid.String(),
-			Transaction:         buf.Bytes(),
-			BlockHeight:         blockHeight,
+			TransactionHash: withdrawTx.Txid.String(),
+			Transaction:     buf.Bytes(),
+			BlockHeight:     blockHeight,
 		})
 	}
 
@@ -400,7 +400,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
 
-	var wTx *types.Transaction
+	var wTx it.Transaction
 	var targetIndex int
 	for i := 0; i < len(targetTransactions); {
 		i += 100
@@ -408,7 +408,7 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		if targetIndex > i {
 			targetIndex = i
 		}
-		tx := &types.Transaction{}
+		var tx it.Transaction
 		if mainChainHeight >= config.Parameters.SchnorrStartHeight {
 			tx = currentArbitrator.CreateSchnorrWithdrawTransaction(
 				targetTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
@@ -449,7 +449,7 @@ func (sc *SideChainImpl) CreateAndBroadcastFailedDepositTxsProposal(failedTxs []
 	}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
-	var rtx *types.Transaction
+	var rtx it.Transaction
 	var targetIndex int
 	for i := 0; i < len(failedTxs); {
 		i += 100

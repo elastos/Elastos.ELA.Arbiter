@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"database/sql"
 	"errors"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"math"
 	"os"
 	"path/filepath"
@@ -13,10 +14,10 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -78,7 +79,7 @@ var (
 )
 
 type AddressUTXO struct {
-	Input               *types.Input
+	Input               *elacommon.Input
 	Amount              *common.Fixed64
 	GenesisBlockAddress string
 }
@@ -999,16 +1000,19 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 			return nil, err
 		}
 
-		var tx types.Transaction
-		reader := bytes.NewReader(transactionBytes)
-		tx.Deserialize(reader)
+		r := bytes.NewReader(transactionBytes)
+		tx, err := elatx.GetTransactionByBytes(r)
+		if err != nil {
+			return nil, err
+		}
+		tx.Deserialize(r)
 
 		var mp bloom.MerkleProof
-		reader = bytes.NewReader(merkleProofBytes)
+		reader := bytes.NewReader(merkleProofBytes)
 		mp.Deserialize(reader)
 
 		txs = append(txs, &base.MainChainTransaction{txHash,
-			genesisAddress, &tx, &mp})
+			genesisAddress, tx, &mp})
 	}
 	return txs, nil
 }
@@ -1036,15 +1040,18 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 				return nil, err
 			}
 
-			var tx types.Transaction
-			reader := bytes.NewReader(transactionBytes)
-			tx.Deserialize(reader)
+			r := bytes.NewReader(transactionBytes)
+			tx, err := elatx.GetTransactionByBytes(r)
+			if err != nil {
+				return nil, err
+			}
+			tx.Deserialize(r)
 
 			var mp bloom.MerkleProof
-			reader = bytes.NewReader(merkleProofBytes)
+			reader := bytes.NewReader(merkleProofBytes)
 			mp.Deserialize(reader)
 
-			spvTxs = append(spvTxs, &base.SpvTransaction{MainChainTransaction: &tx, Proof: &mp})
+			spvTxs = append(spvTxs, &base.SpvTransaction{MainChainTransaction: tx, Proof: &mp})
 		}
 		rows.Close()
 	}

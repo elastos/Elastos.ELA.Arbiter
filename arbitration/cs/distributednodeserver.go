@@ -19,7 +19,9 @@ import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/core/contract/program"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
@@ -39,7 +41,7 @@ type DistributedNodeServer struct {
 	unsolvedContentsSignature map[common.Uint256]map[common.Uint160]struct{}
 
 	// schnorr withdraw
-	schnorrWithdrawContentsTransaction     map[common.Uint256]types.Transaction // key: nonce hash
+	schnorrWithdrawContentsTransaction     map[common.Uint256]it.Transaction // key: nonce hash
 	schnorrWithdrawRequestRContentsSigners map[common.Uint256]map[string]KRP
 	schnorrWithdrawRequestSContentsSigners map[common.Uint256]map[string]*big.Int
 
@@ -50,7 +52,7 @@ type DistributedNodeServer struct {
 func (dns *DistributedNodeServer) Reset() {
 	dns.unsolvedContents = make(map[common.Uint256]base.DistributedContent)
 	dns.unsolvedContentsSignature = make(map[common.Uint256]map[common.Uint160]struct{})
-	dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]types.Transaction)
+	dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]it.Transaction)
 	dns.schnorrWithdrawRequestRContentsSigners = make(map[common.Uint256]map[string]KRP)
 	dns.schnorrWithdrawRequestSContentsSigners = make(map[common.Uint256]map[string]*big.Int)
 }
@@ -69,7 +71,7 @@ func (dns *DistributedNodeServer) tryInit() {
 		dns.unsolvedContentsSignature = make(map[common.Uint256]map[common.Uint160]struct{})
 	}
 	if dns.schnorrWithdrawContentsTransaction == nil {
-		dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]types.Transaction)
+		dns.schnorrWithdrawContentsTransaction = make(map[common.Uint256]it.Transaction)
 	}
 	if dns.schnorrWithdrawRequestRContentsSigners == nil {
 		dns.schnorrWithdrawRequestRContentsSigners = make(map[common.Uint256]map[string]KRP)
@@ -135,7 +137,7 @@ func (dns *DistributedNodeServer) sendToArbitrator(content []byte) {
 	}
 
 	P2PClientSingleton.BroadcastMessage(msg)
-	log.Info("[sendToArbitrator] Send withdraw transaction to arbiters for multi sign")
+	log.Info("[sendToArbitrator] Send transaction to arbiters for multi sign")
 }
 
 func (dns *DistributedNodeServer) sendSchnorrItemMsgToSelf(nonceHash common.Uint256) {
@@ -164,12 +166,12 @@ func (dns *DistributedNodeServer) recordKRPOfMyself(nonceHash common.Uint256) er
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error {
+func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn it.Transaction) error {
 	var txType TransactionType
-	switch txn.TxType {
-	case types.WithdrawFromSideChain:
+	switch txn.TxType() {
+	case elacommon.WithdrawFromSideChain:
 		txType = WithdrawTransaction
-	case types.ReturnCRDepositCoin:
+	case elacommon.ReturnCRDepositCoin:
 		txType = ReturnDepositTransaction
 	}
 
@@ -193,19 +195,19 @@ func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal2(txn *types.T
 }
 
 func (dns *DistributedNodeServer) BroadcastSchnorrWithdrawProposal3(
-	nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) error {
+	nonceHash common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int) error {
 	dns.mux.Lock()
 	defer dns.mux.Unlock()
 	return dns.broadcastSchnorrWithdrawProposal3(nonceHash, txn, pks, e)
 }
 
 func (dns *DistributedNodeServer) broadcastSchnorrWithdrawProposal3(
-	nonce common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) error {
+	nonce common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int) error {
 	var txType TransactionType
-	switch txn.TxType {
-	case types.WithdrawFromSideChain:
+	switch txn.TxType() {
+	case elacommon.WithdrawFromSideChain:
 		txType = WithdrawTransaction
-	case types.ReturnCRDepositCoin:
+	case elacommon.ReturnCRDepositCoin:
 		txType = ReturnDepositTransaction
 	}
 
@@ -224,13 +226,13 @@ func (dns *DistributedNodeServer) broadcastSchnorrWithdrawProposal3(
 	return nil
 }
 
-func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn *types.Transaction) error {
+func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn it.Transaction) error {
 
 	var txType TransactionType
-	switch txn.TxType {
-	case types.WithdrawFromSideChain:
+	switch txn.TxType() {
+	case elacommon.WithdrawFromSideChain:
 		txType = WithdrawTransaction
-	case types.ReturnCRDepositCoin:
+	case elacommon.ReturnCRDepositCoin:
 		txType = ReturnDepositTransaction
 	}
 	proposal, err := dns.generateDistributedProposal(txType, MultisigContent,
@@ -258,7 +260,7 @@ func (dns *DistributedNodeServer) BroadcastSidechainIllegalData(data *payload.Si
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
-	txn *types.Transaction, txType TransactionType,
+	txn it.Transaction, txType TransactionType,
 	cType DistributeContentType, content SchnorrWithdrawRequestRProposalContent) ([]byte, error) {
 	dns.tryInit()
 
@@ -290,13 +292,13 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal2(
 	if _, ok := dns.schnorrWithdrawContentsTransaction[content.Hash()]; ok {
 		return nil, errors.New("transaction already in process")
 	}
-	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
+	dns.schnorrWithdrawContentsTransaction[content.Hash()] = txn
 	dns.schnorrWithdrawRequestRContentsSigners[content.Hash()] = make(map[string]KRP)
 	return buf.Bytes(), nil
 }
 
 func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
-	txn *types.Transaction, txType TransactionType,
+	txn it.Transaction, txType TransactionType,
 	cType DistributeContentType, content SchnorrWithdrawRequestSProposalContent) ([]byte, error) {
 	dns.tryInit()
 
@@ -325,7 +327,7 @@ func (dns *DistributedNodeServer) generateDistributedSchnorrProposal3(
 	if _, ok := dns.schnorrWithdrawContentsTransaction[content.Hash()]; ok {
 		return nil, errors.New("transaction already in process")
 	}
-	dns.schnorrWithdrawContentsTransaction[content.Hash()] = *txn
+	dns.schnorrWithdrawContentsTransaction[content.Hash()] = txn
 	dns.schnorrWithdrawRequestSContentsSigners[content.Hash()] = make(map[string]*big.Int)
 	return buf.Bytes(), nil
 }
@@ -568,13 +570,19 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		if err := txn.Serialize(buf); err != nil {
 			return err
 		}
-		newTx := types.Transaction{}
-		if err := newTx.DeserializeUnsigned(bytes.NewReader(buf.Bytes())); err != nil {
+
+		r := bytes.NewReader(buf.Bytes())
+		newTx, err := elatx.GetTransactionByBytes(r)
+		if err != nil {
 			return err
 		}
-		newTx.Payload = &payload.WithdrawFromSideChain{
-			Signers: pksIndex,
+		if err := newTx.DeserializeUnsigned(r); err != nil {
+			return err
 		}
+		newTx.SetPayload(&payload.WithdrawFromSideChain{
+			Signers: pksIndex,
+		})
+
 		if len(randomSigners) != len(pks) {
 			log.Infof("pks %v count is not equal to random signers %v count", pks, randomSigners)
 		}
@@ -597,7 +605,7 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		// get E
 		message := newTx.Hash()
 		e := crypto2.GetE(rxs, rys, pxs, pys, message[:])
-		if err := dns.broadcastSchnorrWithdrawProposal3(nonceHash, &newTx, pks, e); err != nil {
+		if err := dns.broadcastSchnorrWithdrawProposal3(nonceHash, newTx, pks, e); err != nil {
 			return errors.New("failed to BroadcastSchnorrWithdrawProposal2, err:" + err.Error())
 		}
 
@@ -716,11 +724,11 @@ func (dns *DistributedNodeServer) receiveSchnorrWithdrawProposal3Feedback(transa
 			Code:      redeemScript,
 			Parameter: signature[:],
 		}
-		txn.Programs = []*program.Program{p}
+		txn.SetPrograms([]*program.Program{p})
 
 		// broadcast the schnorr transaction to main chain
 		c := TxDistributedContent{
-			Tx: &txn,
+			Tx: txn,
 		}
 		if err = c.Submit(); err != nil {
 			log.Warn(err.Error())

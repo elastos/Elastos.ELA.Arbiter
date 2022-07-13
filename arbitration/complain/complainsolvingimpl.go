@@ -8,7 +8,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 )
 
 const (
@@ -88,7 +88,7 @@ func (comp *ComplainSolvingImpl) GetComplainStatus(transactionHash common.Uint25
 	return None
 }
 
-func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (*types.Transaction, error) {
+func (comp *ComplainSolvingImpl) CreateComplainTransaction(item *ComplainItem) (it.Transaction, error) {
 	//todo append ComplainItem variables into attribute of transaction
 	return nil, nil
 }

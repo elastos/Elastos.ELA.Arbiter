@@ -17,9 +17,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/servers"
 )
@@ -399,7 +401,7 @@ func GetReferenceAddress(txid string, index int, config *config.RpcConfig) (stri
 	return "", errors.New("invalid data type")
 }
 
-func GetAmountByInputs(inputs []*types.Input, config *config.RpcConfig) (common.Fixed64, error) {
+func GetAmountByInputs(inputs []*elacommon.Input, config *config.RpcConfig) (common.Fixed64, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteVarUint(buf, uint64(len(inputs))); err != nil {
 		return 0, err
@@ -523,7 +525,7 @@ func Unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, error) {
+func GetTransaction(tx string, config *config.RpcConfig) (it.Transaction, error) {
 	param := make(map[string]interface{})
 	param["txid"] = tx
 	resp, err := CallAndUnmarshalResponse("getrawtransaction", param,
@@ -539,10 +541,16 @@ func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, er
 	if err != nil {
 		return nil, errors.New("[MoniterFailedDepositTransfer] Invalid data from GetSmallCrossTransferTxs " + err.Error())
 	}
-	var txn types.Transaction
-	err = txn.Deserialize(bytes.NewReader(buf))
+
+	r := bytes.NewReader(buf)
+	txn, err := elatx.GetTransactionByBytes(r)
+	if err != nil {
+		return nil, err
+	}
+	err = txn.Deserialize(r)
 	if err != nil {
 		return nil, errors.New("[MoniterFailedDepositTransfer] Decode transaction error " + err.Error())
 	}
-	return &txn, nil
+
+	return txn, nil
 }

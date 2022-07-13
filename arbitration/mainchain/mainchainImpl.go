@@ -2,6 +2,7 @@ package mainchain
 
 import (
 	"errors"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"math/rand"
 	"strconv"
 
@@ -15,7 +16,8 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract/program"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	peer2 "github.com/elastos/Elastos.ELA/dpos/p2p/peer"
@@ -123,7 +125,7 @@ func parseUserWithdrawTransactions(txs []*base.WithdrawTx) (
 
 func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	sideChain arbitrator.SideChain, failedDepositTxs []*base.FailedDepositTx,
-	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
+	mcFunc arbitrator.MainChainFunc) (it.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
@@ -133,7 +135,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 
 	var totalOutputAmount common.Fixed64
 	// Create transaction outputs
-	var txOutputs []*types.Output
+	var txOutputs []*elacommon.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	for _, tx := range failedDepositTxs {
@@ -141,13 +143,13 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 		if err != nil {
 			return nil, err
 		}
-		txOutput := &types.Output{
+		txOutput := &elacommon.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
 			Value: common.Fixed64(float64(*tx.DepositInfo.Amount-
 				config.Parameters.ReturnDepositTransactionFee) / exchangeRate),
 			OutputLock: 0,
-			Type:       types.OTReturnSideChainDepositCoin,
+			Type:       elacommon.OTReturnSideChainDepositCoin,
 			Payload: &outputpayload.ReturnSideChainDeposit{
 				Version:                0,
 				GenesisBlockAddress:    withdrawBank,
@@ -165,7 +167,7 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	}
 
 	// Create transaction inputs
-	var txInputs []*types.Input
+	var txInputs []*elacommon.Input
 	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -178,12 +180,12 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 			if err != nil {
 				return nil, err
 			}
-			change := &types.Output{
+			change := &elacommon.Output{
 				AssetID:     common.Uint256(base.SystemAssetId),
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
 				ProgramHash: *programHash,
-				Type:        types.OTNone,
+				Type:        elacommon.OTNone,
 				Payload:     &outputpayload.DefaultOutput{},
 			}
 			txOutputs = append(txOutputs, change)
@@ -205,21 +207,23 @@ func (mc *MainChainImpl) CreateFailedDepositTransaction(
 	txPayload := &payload.ReturnSideChainDepositCoin{}
 	p := &program.Program{redeemScript, nil}
 
-	return &types.Transaction{
-		Version:    types.TxVersion09,
-		TxType:     types.ReturnSideChainDepositCoin,
-		Payload:    txPayload,
-		Attributes: []*types.Attribute{},
-		Inputs:     txInputs,
-		Outputs:    txOutputs,
-		Programs:   []*program.Program{p},
-		LockTime:   uint32(0),
-	}, nil
+	return elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.ReturnSideChainDepositCoin,
+		0,
+		txPayload,
+		[]*elacommon.Attribute{},
+		txInputs,
+		txOutputs,
+		0,
+		[]*program.Program{p},
+	), nil
+
 }
 
 func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	sideChain arbitrator.SideChain, withdrawTxs []*base.WithdrawTx,
-	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
+	mcFunc arbitrator.MainChainFunc) (it.Transaction, error) {
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
 	if err != nil {
@@ -228,7 +232,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 
 	var totalOutputAmount common.Fixed64
 	// Create transaction outputs
-	var txOutputs []*types.Output
+	var txOutputs []*elacommon.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
@@ -238,12 +242,12 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 		if err != nil {
 			return nil, err
 		}
-		txOutput := &types.Output{
+		txOutput := &elacommon.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
 			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
 			OutputLock:  0,
-			Type:        types.OTWithdrawFromSideChain,
+			Type:        elacommon.OTWithdrawFromSideChain,
 			Payload: &outputpayload.Withdraw{
 				Version:                  0,
 				GenesisBlockAddress:      withdrawBank,
@@ -261,7 +265,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	}
 
 	// Create transaction inputs
-	var txInputs []*types.Input
+	var txInputs []*elacommon.Input
 	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -274,7 +278,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 			if err != nil {
 				return nil, err
 			}
-			change := &types.Output{
+			change := &elacommon.Output{
 				AssetID:     common.Uint256(base.SystemAssetId),
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
@@ -292,26 +296,26 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	}
 
 	// Create attribute
-	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*types.Attribute, 0)
+	txAttr := elacommon.NewAttribute(elacommon.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*elacommon.Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
-	return &types.Transaction{
-		Version:        0x09,
-		TxType:         types.WithdrawFromSideChain,
-		Payload:        &payload.WithdrawFromSideChain{},
-		PayloadVersion: payload.WithdrawFromSideChainVersionV2,
-		Attributes:     attributes,
-		Inputs:         txInputs,
-		Outputs:        txOutputs,
-		Programs:       []*program.Program{},
-		LockTime:       uint32(0),
-	}, nil
+	return elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV2,
+		&payload.WithdrawFromSideChain{},
+		attributes,
+		txInputs,
+		txOutputs,
+		0,
+		[]*program.Program{},
+	), nil
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	sideChain arbitrator.SideChain, withdrawTxs []*base.WithdrawTx,
-	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
+	mcFunc arbitrator.MainChainFunc) (it.Transaction, error) {
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
 	if err != nil {
@@ -320,7 +324,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 
 	var totalOutputAmount common.Fixed64
 	// Create transaction outputs
-	var txOutputs []*types.Output
+	var txOutputs []*elacommon.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
@@ -330,12 +334,12 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 		if err != nil {
 			return nil, err
 		}
-		txOutput := &types.Output{
+		txOutput := &elacommon.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
 			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
 			OutputLock:  0,
-			Type:        types.OTWithdrawFromSideChain,
+			Type:        elacommon.OTWithdrawFromSideChain,
 			Payload: &outputpayload.Withdraw{
 				Version:                  0,
 				GenesisBlockAddress:      withdrawBank,
@@ -353,7 +357,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	}
 
 	// Create transaction inputs
-	var txInputs []*types.Input
+	var txInputs []*elacommon.Input
 	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -366,7 +370,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 			if err != nil {
 				return nil, err
 			}
-			change := &types.Output{
+			change := &elacommon.Output{
 				AssetID:     common.Uint256(base.SystemAssetId),
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
@@ -393,26 +397,26 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	p := &program.Program{redeemScript, nil}
 
 	// Create attribute
-	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*types.Attribute, 0)
+	txAttr := elacommon.NewAttribute(elacommon.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*elacommon.Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
-	return &types.Transaction{
-		Version:        0x09,
-		TxType:         types.WithdrawFromSideChain,
-		Payload:        txPayload,
-		PayloadVersion: payload.WithdrawFromSideChainVersionV1,
-		Attributes:     attributes,
-		Inputs:         txInputs,
-		Outputs:        txOutputs,
-		Programs:       []*program.Program{p},
-		LockTime:       uint32(0),
-	}, nil
+	return elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		txPayload,
+		attributes,
+		txInputs,
+		txOutputs,
+		0,
+		[]*program.Program{p},
+	), nil
 }
 
 func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 	sideChain arbitrator.SideChain, withdrawTxs []*base.WithdrawTx,
-	mcFunc arbitrator.MainChainFunc) (*types.Transaction, error) {
+	mcFunc arbitrator.MainChainFunc) (it.Transaction, error) {
 
 	withdrawBank := sideChain.GetKey()
 	exchangeRate, err := sideChain.GetExchangeRate()
@@ -422,7 +426,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 
 	var totalOutputAmount common.Fixed64
 	// Create transaction outputs
-	var txOutputs []*types.Output
+	var txOutputs []*elacommon.Output
 	// Check if from address is valid
 	assetID := base.SystemAssetId
 	withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
@@ -431,7 +435,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 		if err != nil {
 			return nil, err
 		}
-		txOutput := &types.Output{
+		txOutput := &elacommon.Output{
 			AssetID:     common.Uint256(assetID),
 			ProgramHash: *programhash,
 			Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
@@ -447,7 +451,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 	}
 
 	// Create transaction inputs
-	var txInputs []*types.Input
+	var txInputs []*elacommon.Input
 	for _, utxo := range availableUTXOs {
 		txInputs = append(txInputs, utxo.Input)
 		if *utxo.Amount < totalOutputAmount {
@@ -460,7 +464,7 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 			if err != nil {
 				return nil, err
 			}
-			change := &types.Output{
+			change := &elacommon.Output{
 				AssetID:     common.Uint256(base.SystemAssetId),
 				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
 				OutputLock:  uint32(0),
@@ -495,19 +499,21 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 	p := &program.Program{redeemScript, nil}
 
 	// Create attribute
-	txAttr := types.NewAttribute(types.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
-	attributes := make([]*types.Attribute, 0)
+	txAttr := elacommon.NewAttribute(elacommon.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*elacommon.Attribute, 0)
 	attributes = append(attributes, &txAttr)
 
-	return &types.Transaction{
-		TxType:     types.WithdrawFromSideChain,
-		Payload:    txPayload,
-		Attributes: attributes,
-		Inputs:     txInputs,
-		Outputs:    txOutputs,
-		Programs:   []*program.Program{p},
-		LockTime:   uint32(0),
-	}, nil
+	return elatx.CreateTransaction(
+			elacommon.TxVersionDefault,
+			elacommon.WithdrawFromSideChain,
+			payload.WithdrawFromSideChainVersionV1,
+			txPayload,
+			attributes,
+			txInputs,
+			txOutputs,
+			0,
+			[]*program.Program{p},
+		), nil
 }
 
 func (mc *MainChainImpl) SyncChainData() uint32 {

@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/elastos/Elastos.ELA.Arbiter/config"
 
 	"io"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
@@ -17,22 +17,23 @@ import (
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type TxDistributedContent struct {
-	Tx *types.Transaction
+	Tx it.Transaction
 }
 
 func (d *TxDistributedContent) InitSign(newSign []byte) error {
-	d.Tx.Programs[0].Parameter = newSign
+	d.Tx.Programs()[0].Parameter = newSign
 	return nil
 }
 
 func (d *TxDistributedContent) Submit() error {
-	switch d.Tx.Payload.(type) {
+	switch d.Tx.Payload().(type) {
 	case *payload.WithdrawFromSideChain:
 		return d.SubmitWithdrawTransaction()
 	case *payload.ReturnSideChainDepositCoin:
@@ -46,7 +47,7 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	resp, err := currentArbitrator.SendWithdrawTransaction(d.Tx)
 
-	pl, ok := d.Tx.Payload.(*payload.WithdrawFromSideChain)
+	pl, ok := d.Tx.Payload().(*payload.WithdrawFromSideChain)
 	if !ok {
 		return errors.New("invalid payload")
 	}
@@ -85,8 +86,8 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 		} else {
 			log.Info("send withdraw transaction succeed, move to finished db, txHash:", d.Tx.Hash().String())
 		}
-		var newUsedUtxos []types.OutPoint
-		for _, input := range d.Tx.Inputs {
+		var newUsedUtxos []elacommon.OutPoint
+		for _, input := range d.Tx.Inputs() {
 			newUsedUtxos = append(newUsedUtxos, input.Previous)
 		}
 
@@ -109,7 +110,7 @@ func (d *TxDistributedContent) SubmitReturnSideChainDepositCoin() error {
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	resp, err := currentArbitrator.SendWithdrawTransaction(d.Tx)
 
-	_, ok := d.Tx.Payload.(*payload.ReturnSideChainDepositCoin)
+	_, ok := d.Tx.Payload().(*payload.ReturnSideChainDepositCoin)
 	if !ok {
 		return errors.New("invalid payload")
 	}
@@ -117,8 +118,8 @@ func (d *TxDistributedContent) SubmitReturnSideChainDepositCoin() error {
 	log.Info("Submit return side chain deposit coin transaction")
 	var transactionHashes []string
 	var genesisAddresses []string
-	for _, o := range d.Tx.Outputs {
-		if o.Type != types.OTReturnSideChainDepositCoin {
+	for _, o := range d.Tx.Outputs() {
+		if o.Type != elacommon.OTReturnSideChainDepositCoin {
 			continue
 		}
 		opl, ok := o.Payload.(*outputpayload.ReturnSideChainDeposit)
@@ -172,7 +173,7 @@ func (d *TxDistributedContent) SubmitReturnSideChainDepositCoin() error {
 
 func (d *TxDistributedContent) MergeSign(newSign []byte, targetCodeHash *common.Uint160) (int, error) {
 	var signerIndex = -1
-	codeHashes, err := account.GetCorssChainSigners(d.Tx.Programs[0].Code)
+	codeHashes, err := account.GetCorssChainSigners(d.Tx.Programs()[0].Code)
 	if err != nil {
 		return 0, err
 	}
@@ -225,7 +226,7 @@ func (d *TxDistributedContent) Hash() common.Uint256 {
 	return d.Tx.Hash()
 }
 
-func checkWithdrawFromSidechainPayload(txn *types.Transaction,
+func checkWithdrawFromSidechainPayload(txn it.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl, payloadWithdraw *payload.WithdrawFromSideChain) error {
 	// check if side chain exist.
 	sideChain, exchangeRate, err := clientFunc.GetSideChainAndExchangeRate(payloadWithdraw.GenesisBlockAddress)
@@ -288,7 +289,7 @@ func checkWithdrawFromSidechainPayload(txn *types.Transaction,
 		txs = sideChainTxs
 	}
 
-	inputTotalAmount, err := mainFunc.GetAmountByInputs(txn.Inputs)
+	inputTotalAmount, err := mainFunc.GetAmountByInputs(txn.Inputs())
 	if err != nil {
 		return errors.New("get spender's UTXOs failed")
 	}
@@ -296,7 +297,7 @@ func checkWithdrawFromSidechainPayload(txn *types.Transaction,
 	// check outputs and fee.
 	var outputTotalAmount common.Fixed64
 	withdrawOutputsMap := make(map[string]common.Fixed64)
-	for _, output := range txn.Outputs {
+	for _, output := range txn.Outputs() {
 		outputTotalAmount += output.Value
 
 		if contract.PrefixType(output.ProgramHash[0]) == contract.PrefixCrossChain {
@@ -354,7 +355,7 @@ func checkWithdrawFromSidechainPayload(txn *types.Transaction,
 	}
 	var withdrawOutputAmount common.Fixed64
 	var totalWithdrawAmount int
-	for _, output := range txn.Outputs {
+	for _, output := range txn.Outputs() {
 		if output.ProgramHash != *genesisBlockProgramHash {
 			withdrawOutputAmount += output.Value
 			totalWithdrawAmount++
@@ -384,9 +385,9 @@ func checkWithdrawFromSidechainPayload(txn *types.Transaction,
 }
 
 func checkWithdrawTransaction(
-	txn *types.Transaction, clientFunc DistributedNodeClientFunc,
+	txn it.Transaction, clientFunc DistributedNodeClientFunc,
 	mainFunc *arbitrator.MainChainFuncImpl, height uint32) error {
-	switch pl := txn.Payload.(type) {
+	switch pl := txn.Payload().(type) {
 	case *payload.WithdrawFromSideChain:
 		if height >= config.Parameters.NewCrossChainTransactionHeight {
 			err := checkWithdrawFromSideChainPayloadV1(txn, clientFunc, mainFunc)
@@ -411,23 +412,23 @@ func checkWithdrawTransaction(
 	return nil
 }
 
-func checkReturnDepositTxPayloadV0(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
-	if txn.PayloadVersion != payload.ReturnSideChainDepositCoinVersion {
+func checkReturnDepositTxPayloadV0(txn it.Transaction, clientFunc DistributedNodeClientFunc) error {
+	if txn.PayloadVersion() != payload.ReturnSideChainDepositCoinVersion {
 		return errors.New("invalid schnorr return deposit payload version, not ReturnSideChainDepositCoinVersion")
 	}
 
 	return checkReturnDepositTxPayload(txn, clientFunc)
 }
 
-func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedNodeClientFunc) error {
+func checkReturnDepositTxPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc) error {
 	// check if withdraw transactions exist in db, if not found then will check
 	// by the rpc interface of the side chain.
 	log.Info("[checkReturnDepositTxPayload], need to get side chain transaction from rpc")
 	var outputTotalAmount common.Fixed64
-	for _, o := range txn.Outputs {
+	for _, o := range txn.Outputs() {
 		outputTotalAmount += o.Value
 
-		if o.Type != types.OTReturnSideChainDepositCoin {
+		if o.Type != elacommon.OTReturnSideChainDepositCoin {
 			continue
 		}
 		opl, ok := o.Payload.(*outputpayload.ReturnSideChainDeposit)
@@ -453,19 +454,19 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 		if err != nil {
 			return errors.New("[checkReturnDepositTxPayload] failed to get origin tx from main chain:" + err.Error())
 		}
-		referTxid := originTx.Inputs[0].Previous.TxID
-		referIndex := originTx.Inputs[0].Previous.Index
+		referTxid := originTx.Inputs()[0].Previous.TxID
+		referIndex := originTx.Inputs()[0].Previous.Index
 		referReversedTx := common.BytesToHexString(common.BytesReverse(referTxid.Bytes()))
 		referTxn, err := rpc.GetTransaction(referReversedTx, config.Parameters.MainNode.Rpc)
 		if err != nil {
 			log.Errorf("[checkReturnDepositTxPayload] referReversedTx", err.Error())
 			break
 		}
-		_, ok = originTx.Payload.(*payload.TransferCrossChainAsset)
+		_, ok = originTx.Payload().(*payload.TransferCrossChainAsset)
 		if !ok {
 			return errors.New("[checkReturnDepositTxPayload] invalid payload type need TransferCrossChainAsset")
 		}
-		address, err := referTxn.Outputs[referIndex].ProgramHash.ToAddress()
+		address, err := referTxn.Outputs()[referIndex].ProgramHash.ToAddress()
 		if err != nil {
 			return errors.New("[checkReturnDepositTxPayload] ProgramHash can not transfer to address")
 		}
@@ -475,7 +476,7 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 		}
 
 		var depositAmount common.Fixed64
-		for _, output := range originTx.Outputs {
+		for _, output := range originTx.Outputs() {
 			if bytes.Compare(output.ProgramHash[0:1], []byte{byte(contract.PrefixCrossChain)}) != 0 {
 				continue
 			}
@@ -502,23 +503,23 @@ func checkReturnDepositTxPayload(txn *types.Transaction, clientFunc DistributedN
 	return nil
 }
 
-func checkWithdrawFromSideChainPayloadV1(txn *types.Transaction,
+func checkWithdrawFromSideChainPayloadV1(txn it.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
-	if txn.PayloadVersion != payload.WithdrawFromSideChainVersionV1 {
+	if txn.PayloadVersion() != payload.WithdrawFromSideChainVersionV1 {
 		return errors.New("invalid withdraw payload version, not WithdrawFromSideChainVersionV1")
 	}
 
 	return checkWithdrawFromSideChainPayload(txn, clientFunc, mainFunc)
 }
 
-func checkWithdrawFromSideChainPayload(txn *types.Transaction,
+func checkWithdrawFromSideChainPayload(txn it.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
 	var transactionHashes []string
 	var sideChain arbitrator.SideChain
 	var exchangeRate float64
-	for i, output := range txn.Outputs {
+	for i, output := range txn.Outputs() {
 		log.Info("checkWithdrawFromSideChainPayloadV1 output[", i, "]", output.String())
-		if output.Type != types.OTWithdrawFromSideChain {
+		if output.Type != elacommon.OTWithdrawFromSideChain {
 			continue
 		}
 		oPayload, ok := output.Payload.(*outputpayload.Withdraw)
@@ -593,7 +594,7 @@ func checkWithdrawFromSideChainPayload(txn *types.Transaction,
 		txs = sideChainTxs
 	}
 
-	inputTotalAmount, err := mainFunc.GetAmountByInputs(txn.Inputs)
+	inputTotalAmount, err := mainFunc.GetAmountByInputs(txn.Inputs())
 	if err != nil {
 		return errors.New("get spender's UTXOs failed")
 	}
@@ -601,7 +602,7 @@ func checkWithdrawFromSideChainPayload(txn *types.Transaction,
 	// check outputs and fee.
 	var outputTotalAmount common.Fixed64
 	withdrawOutputsMap := make(map[string]common.Fixed64)
-	for _, output := range txn.Outputs {
+	for _, output := range txn.Outputs() {
 		outputTotalAmount += output.Value
 
 		if contract.PrefixType(output.ProgramHash[0]) == contract.PrefixCrossChain {
@@ -659,7 +660,7 @@ func checkWithdrawFromSideChainPayload(txn *types.Transaction,
 	}
 	var withdrawOutputAmount common.Fixed64
 	var totalWithdrawAmount int
-	for _, output := range txn.Outputs {
+	for _, output := range txn.Outputs() {
 		if output.ProgramHash != *genesisBlockProgramHash {
 			withdrawOutputAmount += output.Value
 			totalWithdrawAmount++

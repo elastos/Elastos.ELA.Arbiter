@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/elastos/Elastos.ELA/core/types"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	"github.com/elastos/Elastos.ELA/core/contract/program"
+	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 func TestFinishedTxsDataStoreImpl_AddSucceedDepositTxs(t *testing.T) {
@@ -154,11 +157,31 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
 	txHash4 := "testHash4"
-	tx1 := types.Transaction{TxType: 0}
+	tx1 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.CoinBase,
+		0,
+		new(payload.CoinBase),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf1 := new(bytes.Buffer)
 	tx1.Serialize(buf1)
 
-	tx2 := types.Transaction{TxType: 1}
+	tx2 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.RegisterAsset,
+		0,
+		new(payload.CoinBase),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 
@@ -205,10 +228,14 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 		t.Error("Get withdraw transaction error.")
 	}
 
-	tx := new(types.Transaction)
-	reader := bytes.NewReader(transactionBytes)
-	tx.Deserialize(reader)
-	if tx.TxType != 0 {
+	r := bytes.NewReader(transactionBytes)
+	tx, err := elatx.GetTransactionByBytes(r)
+	if err != nil {
+		t.Error("Get withdraw transaction error.")
+	}
+	tx.Deserialize(r)
+
+	if tx.TxType() != 0 {
 		t.Error("Get withdraw transaction error.")
 	}
 
@@ -222,10 +249,14 @@ func TestFinishedTxsDataStoreImpl_AddWithdrawTxs(t *testing.T) {
 		t.Error("Get withdraw transaction error.")
 	}
 
-	tx = new(types.Transaction)
-	reader = bytes.NewReader(transactionBytes)
-	tx.Deserialize(reader)
-	if tx.TxType != 0 {
+	r = bytes.NewReader(transactionBytes)
+	tx, err = elatx.GetTransactionByBytes(r)
+	if err != nil {
+		t.Error("Get withdraw transaction error.")
+	}
+	tx.Deserialize(r)
+
+	if tx.TxType() != 0 {
 		t.Error("Get withdraw transaction error.")
 	}
 
@@ -301,11 +332,31 @@ func TestFinishedTxsDataStoreImpl_GetWithdrawTxs(t *testing.T) {
 	txHash1 := "testHash1"
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
-	tx1 := types.Transaction{TxType: 0}
+	tx1 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.CoinBase,
+		0,
+		new(payload.CoinBase),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf1 := new(bytes.Buffer)
 	tx1.Serialize(buf1)
 
-	tx2 := types.Transaction{TxType: 1}
+	tx2 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.RegisterAsset,
+		0,
+		new(payload.CoinBase),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 

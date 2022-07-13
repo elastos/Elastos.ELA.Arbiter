@@ -3,6 +3,7 @@ package cs
 import (
 	"bytes"
 	"errors"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"io"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -356,7 +356,12 @@ func (item *DistributedItem) Deserialize(r io.Reader) error {
 
 	switch item.Type {
 	case MultisigContent, AnswerMultisigContent:
-		item.ItemContent = &TxDistributedContent{Tx: new(types.Transaction)}
+		txn, err := elatx.GetTransactionByBytes(r)
+		if err != nil {
+			log.Error("[Small-Transfer] Invalid data from GetSmallCrossTransferTxs")
+			break
+		}
+		item.ItemContent = &TxDistributedContent{Tx: txn}
 		if err = item.ItemContent.Deserialize(r); err != nil {
 			return errors.New("ItemContent deserialization failed." + err.Error())
 		}

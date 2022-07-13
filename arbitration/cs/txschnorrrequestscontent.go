@@ -12,13 +12,14 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
 type SchnorrWithdrawRequestSProposalContent struct {
 	NonceHash  common.Uint256
-	Tx         *types.Transaction
+	Tx         it.Transaction
 	Publickeys [][]byte
 	E          *big.Int
 	S          *big.Int
@@ -63,11 +64,14 @@ func (c *SchnorrWithdrawRequestSProposalContent) Deserialize(r io.Reader, feedba
 		return err
 	}
 
-	var tx types.Transaction
+	tx, err := elatx.GetTransactionByBytes(r)
+	if err != nil {
+		return err
+	}
 	if err := tx.DeserializeUnsigned(r); err != nil {
 		return errors.New("failed to deserialize transaction")
 	}
-	c.Tx = &tx
+	c.Tx = tx
 
 	count, err := common.ReadVarUint(r, 0)
 	if err != nil {
@@ -116,13 +120,13 @@ func (d *SchnorrWithdrawRequestSProposalContent) Check(client interface{}) error
 }
 
 func checkSchnorrWithdrawRequestSTransaction(
-	txn *types.Transaction, clientFunc DistributedNodeClientFunc,
+	txn it.Transaction, clientFunc DistributedNodeClientFunc,
 	mainFunc *arbitrator.MainChainFuncImpl, height uint32) error {
 	if height < config.Parameters.SchnorrStartHeight {
 		return errors.New("invalid schnorr withdraw transaction before start height")
 	}
 
-	switch txn.Payload.(type) {
+	switch txn.Payload().(type) {
 	case *payload.WithdrawFromSideChain:
 		err := checkSchnorrWithdrawPayload(txn, clientFunc, mainFunc)
 		if err != nil {
@@ -141,13 +145,13 @@ func checkSchnorrWithdrawRequestSTransaction(
 	return nil
 }
 
-func checkSchnorrWithdrawPayload(txn *types.Transaction,
+func checkSchnorrWithdrawPayload(txn it.Transaction,
 	clientFunc DistributedNodeClientFunc, mainFunc *arbitrator.MainChainFuncImpl) error {
-	if txn.PayloadVersion != payload.WithdrawFromSideChainVersionV2 {
+	if txn.PayloadVersion() != payload.WithdrawFromSideChainVersionV2 {
 		return errors.New("invalid schnorr withdraw payload version, not WithdrawFromSideChainVersionV2")
 	}
 
-	p, ok := txn.Payload.(*payload.WithdrawFromSideChain)
+	p, ok := txn.Payload().(*payload.WithdrawFromSideChain)
 	if !ok {
 		return errors.New("invalid transaction payload")
 	}
@@ -162,13 +166,13 @@ func checkSchnorrWithdrawPayload(txn *types.Transaction,
 	return checkWithdrawFromSideChainPayload(txn, clientFunc, mainFunc)
 }
 
-func checkSchnorrReturnDepositTxPayload(txn *types.Transaction,
+func checkSchnorrReturnDepositTxPayload(txn it.Transaction,
 	clientFunc DistributedNodeClientFunc) error {
-	if txn.PayloadVersion != payload.ReturnSideChainDepositCoinVersionV1 {
+	if txn.PayloadVersion() != payload.ReturnSideChainDepositCoinVersionV1 {
 		return errors.New("invalid schnorr return deposit payload version, not ReturnSideChainDepositCoinVersionV1")
 	}
 
-	p, ok := txn.Payload.(*payload.ReturnSideChainDepositCoin)
+	p, ok := txn.Payload().(*payload.ReturnSideChainDepositCoin)
 	if !ok {
 		return errors.New("invalid transaction payload")
 	}
