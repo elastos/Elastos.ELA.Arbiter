@@ -7,7 +7,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
 
@@ -28,15 +28,15 @@ func PublicKeyFromString(str string) (*crypto.PublicKey, error) {
 	return publicKey, nil
 }
 
-func MergeSignToTransaction(newSign []byte, signerIndex int, txn *types.Transaction) (int, error) {
-	param := txn.Programs[0].Parameter
+func MergeSignToTransaction(newSign []byte, signerIndex int, txn it.Transaction) (int, error) {
+	param := txn.Programs()[0].Parameter
 
 	// Check if is first signature
 	if param == nil {
 		param = []byte{}
 	} else {
 		// Check if singer already signed
-		publicKeys, err := crypto.ParseCrossChainScript(txn.Programs[0].Code)
+		publicKeys, err := crypto.ParseCrossChainScript(txn.Programs()[0].Code)
 		if err != nil {
 			return 0, err
 		}
@@ -61,8 +61,8 @@ func MergeSignToTransaction(newSign []byte, signerIndex int, txn *types.Transact
 	buf.Write(param)
 	buf.Write(newSign)
 
-	txn.Programs[0].Parameter = buf.Bytes()
-	return len(txn.Programs[0].Parameter) / (crypto.SignatureScriptLength - 1), nil
+	txn.Programs()[0].Parameter = buf.Bytes()
+	return len(txn.Programs()[0].Parameter) / (crypto.SignatureScriptLength - 1), nil
 }
 
 func GetHeightTransactionHashesMap(txs []string, blockHeights []uint32) map[uint32][]string {

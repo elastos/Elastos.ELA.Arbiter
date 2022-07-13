@@ -4,11 +4,12 @@ import (
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+	"github.com/elastos/Elastos.ELA/common"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
-	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
 )
 
 type DepositListener struct {
@@ -20,17 +21,17 @@ func (l *DepositListener) Address() string {
 	return l.ListenAddress
 }
 
-func (l *DepositListener) Type() types.TxType {
-	return types.TransferCrossChainAsset
+func (l *DepositListener) Type() elacommon.TxType {
+	return elacommon.TransferCrossChainAsset
 }
 
 func (l *DepositListener) Flags() uint64 {
 	return FlagNotifyConfirmed | FlagNotifyInSyncing
 }
 
-func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx types.Transaction) {
+func (l *DepositListener) Notify(id common.Uint256, proof bloom.MerkleProof, tx it.Transaction) {
 	log.Info("[Notify-Deposit] find deposit transaction and add into channel, transaction hash:", tx.Hash().String())
-	l.notifyQueue <- &notifyTask{id, &proof, &tx}
+	l.notifyQueue <- &notifyTask{id, &proof, tx}
 }
 
 func (l *DepositListener) ProcessNotifyData(tasks []*notifyTask) {
@@ -82,7 +83,7 @@ func (l *DepositListener) Rollback(height uint32) {
 type notifyTask struct {
 	id    common.Uint256
 	proof *bloom.MerkleProof
-	tx    *types.Transaction
+	tx    it.Transaction
 }
 
 func (l *DepositListener) start() {

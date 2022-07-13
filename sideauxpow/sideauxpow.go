@@ -13,7 +13,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
@@ -103,7 +103,7 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 		return err
 	}
 
-	txType := types.SideChainPow
+	txType := elacommon.SideChainPow
 
 	sideGenesisHashData, _ := common.HexStringToBytes(sideAuxBlock.GenesisHash)
 	sideBlockHashData, _ := common.HexStringToBytes(sideAuxBlock.Hash)
@@ -159,7 +159,7 @@ func sideChainPowTransfer(sideNode *config.SideNodeConfig) error {
 	if err != nil {
 		return err
 	}
-	program := txnSigned.Programs[0]
+	program := txnSigned.Programs()[0]
 	haveSign, needSign, _ := crypto.GetSignStatus(program.Code, program.Parameter)
 	log.Debug("[sideChainPowTransfer] transaction successfully signed: ", haveSign, needSign)
 

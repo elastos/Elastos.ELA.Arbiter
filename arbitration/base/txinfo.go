@@ -6,7 +6,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 )
 
 const MaxTargetDataSize uint32 = 1024
@@ -39,26 +39,26 @@ type FailedDepositTx struct {
 }
 
 type SpvTransaction struct {
-	MainChainTransaction *types.Transaction
+	MainChainTransaction it.Transaction
 	Proof                *bloom.MerkleProof
 }
 
 type SmallCrossTransaction struct {
-	MainTx    *types.Transaction
+	MainTx    it.Transaction
 	Signature []byte
 }
 
 type MainChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
-	Transaction         *types.Transaction
+	Transaction         it.Transaction
 	Proof               *bloom.MerkleProof
 }
 
 type SideChainTransaction struct {
-	TransactionHash     string
-	Transaction         []byte
-	BlockHeight         uint32
+	TransactionHash string
+	Transaction     []byte
+	BlockHeight     uint32
 }
 
 func (info *WithdrawInfo) Serialize(w io.Writer) error {

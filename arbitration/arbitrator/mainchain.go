@@ -2,35 +2,37 @@ package arbitrator
 
 import (
 	"errors"
+	"math"
+	"math/big"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
-	"math"
-	"math/big"
 )
 
 type MainChain interface {
 	CreateFailedDepositTransaction(sideChain SideChain, failedDepositTxs []*base.FailedDepositTx,
-		mcFunc MainChainFunc) (*types.Transaction, error)
+		mcFunc MainChainFunc) (it.Transaction, error)
 	CreateWithdrawTransactionV0(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
-		mcFunc MainChainFunc) (*types.Transaction, error)
+		mcFunc MainChainFunc) (it.Transaction, error)
 	CreateWithdrawTransactionV1(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
-		mcFunc MainChainFunc) (*types.Transaction, error)
+		mcFunc MainChainFunc) (it.Transaction, error)
 	CreateSchnorrWithdrawTransaction(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
-		mcFunc MainChainFunc) (*types.Transaction, error)
+		mcFunc MainChainFunc) (it.Transaction, error)
 
-	BroadcastWithdrawProposal(txn *types.Transaction) error
+	BroadcastWithdrawProposal(txn it.Transaction) error
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
 	ReceiveProposalFeedback(content []byte) error
 
 	//schnorr withdraw
-	BroadcastSchnorrWithdrawProposal2(txn *types.Transaction) error
-	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn *types.Transaction, pks [][]byte, e *big.Int) error
+	BroadcastSchnorrWithdrawProposal2(txn it.Transaction) error
+	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int) error
 
 	SyncMainChainCachedTxs() error
 	CheckAndRemoveDepositTransactionsFromDB() error
@@ -47,7 +49,7 @@ type MainChainFunc interface {
 	GetWithdrawUTXOsByAmount(withdrawBank string,
 		fixed64 common.Fixed64) ([]*store.AddressUTXO, error)
 	GetMainNodeCurrentHeight() (uint32, error)
-	GetAmountByInputs(inputs []*types.Input) (common.Fixed64, error)
+	GetAmountByInputs(inputs []*elacommon.Input) (common.Fixed64, error)
 	GetReferenceAddress(txid string, index int) (string, error)
 }
 
@@ -98,7 +100,7 @@ func (dbFunc *MainChainFuncImpl) GetWithdrawAddressUTXOsByAmount(
 			return nil, err
 		}
 
-		var op types.OutPoint
+		var op elacommon.OutPoint
 		op.TxID = *txid
 		op.Index = uint16(utxoInfo.VOut)
 
@@ -108,7 +110,7 @@ func (dbFunc *MainChainFuncImpl) GetWithdrawAddressUTXOsByAmount(
 		}
 
 		inputs = append(inputs, &store.AddressUTXO{
-			Input: &types.Input{
+			Input: &elacommon.Input{
 				Previous: op,
 				Sequence: 0,
 			},
@@ -128,7 +130,7 @@ func (dbFunc *MainChainFuncImpl) GetMainNodeCurrentHeight() (uint32, error) {
 }
 
 func (dbFunc *MainChainFuncImpl) GetAmountByInputs(
-	inputs []*types.Input) (common.Fixed64, error) {
+	inputs []*elacommon.Input) (common.Fixed64, error) {
 	amount, err := rpc.GetAmountByInputs(inputs, config.Parameters.MainNode.Rpc)
 	if err != nil {
 		return 0, err

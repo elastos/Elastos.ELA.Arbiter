@@ -5,7 +5,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 )
 
 const (
@@ -18,7 +18,7 @@ type Transfer struct {
 }
 
 type UTXO struct {
-	Op       *types.OutPoint
+	Op       *elacommon.OutPoint
 	Amount   *common.Fixed64
 	LockTime uint32
 }
@@ -47,7 +47,7 @@ func GetAddressUTXOs(programHash *common.Uint168) ([]*UTXO, error) {
 			return nil, err
 		}
 
-		var op types.OutPoint
+		var op elacommon.OutPoint
 		op.TxID = *txid
 		op.Index = uint16(utxoInfo.VOut)
 
