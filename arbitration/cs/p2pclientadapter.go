@@ -172,6 +172,7 @@ func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 		CreateMessage:  createMessage,
 		HandleMessage:  network.handleMessage,
 		StateNotifier:  notifier,
+		DPoSV2StartHeight: config.Parameters.DPoSV2StartHeight,
 	})
 	if err != nil {
 		return nil, err

@@ -75,6 +75,7 @@ var (
 			ProcessInvalidWithdrawHeight:    730000,
 			ReturnCrossChainCoinStartHeight: 730000,
 			SchnorrStartHeight:              2000000, // todo fix me
+			DPoSV2StartHeight:               2000000, // todo fix me
 		},
 	}
 
@@ -152,6 +153,7 @@ var (
 			ProcessInvalidWithdrawHeight:    807000,
 			ReturnCrossChainCoinStartHeight: 807000,
 			SchnorrStartHeight:              2000000, // todo fix me
+			DPoSV2StartHeight:               2000000, // todo fix me
 		},
 	}
 
@@ -232,6 +234,7 @@ var (
 			ProcessInvalidWithdrawHeight:    1032840,
 			ReturnCrossChainCoinStartHeight: 1032840,
 			SchnorrStartHeight:              2000000, // todo fix me
+			DPoSV2StartHeight:               2000000, // todo fix me
 		},
 	}
 )
