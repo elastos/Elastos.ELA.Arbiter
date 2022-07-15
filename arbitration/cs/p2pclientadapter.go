@@ -160,19 +160,20 @@ func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 	notifier := p2p.NewNotifier(p2p.NFNetStabled|p2p.NFBadNetwork, network.notifyFlag)
 
 	server, err := p2p.NewServer(&p2p.Config{
-		DataDir:        filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir),
-		PID:            pid,
-		MagicNumber:    config.Parameters.Magic,
-		MaxNodePerHost: config.Parameters.MaxNodePerHost,
-		DefaultPort:    config.Parameters.NodePort,
-		TimeSource:     dtime.NewMedianTime(),
-		Sign:           network.sign,
-		PingNonce:      network.getNonce,
-		PongNonce:      network.getNonce,
-		CreateMessage:  createMessage,
-		HandleMessage:  network.handleMessage,
-		StateNotifier:  notifier,
+		DataDir:           filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir),
+		PID:               pid,
+		MagicNumber:       config.Parameters.Magic,
+		MaxNodePerHost:    config.Parameters.MaxNodePerHost,
+		DefaultPort:       config.Parameters.NodePort,
+		TimeSource:        dtime.NewMedianTime(),
+		Sign:              network.sign,
+		PingNonce:         network.getNonce,
+		PongNonce:         network.getNonce,
+		CreateMessage:     createMessage,
+		HandleMessage:     network.handleMessage,
+		StateNotifier:     notifier,
 		DPoSV2StartHeight: config.Parameters.DPoSV2StartHeight,
+		NodeVersion:       config.NodePrefix + config.Version,
 	})
 	if err != nil {
 		return nil, err
