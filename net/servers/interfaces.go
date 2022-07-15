@@ -262,6 +262,7 @@ func GetArbiterPeersInfo(params Params) map[string]interface{} {
 		PublicKey string `json:"publickey"`
 		IP        string `json:"ip"`
 		ConnState string `json:"connstate"`
+		NodeVersion string `json:"nodeversion"`
 	}
 	peers := cs.P2PClientSingleton.DumpArbiterPeersInfo()
 	result := make([]peerInfo, 0)
@@ -270,6 +271,7 @@ func GetArbiterPeersInfo(params Params) map[string]interface{} {
 			PublicKey: hex.EncodeToString(p.PID[:]),
 			IP:        p.Addr,
 			ConnState: p.State.String(),
+			NodeVersion: p.NodeVersion,
 		})
 	}
 	return ResponsePack(errors.Success, result)
