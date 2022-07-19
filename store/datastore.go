@@ -18,6 +18,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA/common"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -93,6 +94,7 @@ type DataStoreMainChain interface {
 	DataStore
 
 	CurrentHeight(height uint32) uint32
+	BestHeight(id peer.PID) uint64
 	AddMainChainTx(tx *base.MainChainTransaction) error
 	AddMainChainTxs(txs []*base.MainChainTransaction) ([]bool, error)
 	HasMainChainTx(transactionHash, genesisBlockAddress string) (bool, error)
@@ -170,6 +172,9 @@ type DataStoreMainChainImpl struct {
 	mux *sync.Mutex
 
 	*sql.DB
+
+	// height of main chain
+	mainChainHeight uint32
 }
 
 type DataStoreSideChainImpl struct {
@@ -822,7 +827,26 @@ func (store *DataStoreMainChainImpl) CurrentHeight(height uint32) uint32 {
 		}
 		return height
 	}
+
+	store.mainChainHeight = storedHeight
 	return storedHeight
+}
+
+func (store *DataStoreMainChainImpl) BestHeight(id peer.PID) uint64 {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	if store.mainChainHeight != 0 {
+		return uint64(store.mainChainHeight)
+	}
+
+	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
+	var storedHeight uint32
+	row.Scan(&storedHeight)
+
+	store.mainChainHeight = storedHeight
+
+	return uint64(storedHeight)
 }
 
 func (store *DataStoreMainChainImpl) AddMainChainTx(tx *base.MainChainTransaction) error {
