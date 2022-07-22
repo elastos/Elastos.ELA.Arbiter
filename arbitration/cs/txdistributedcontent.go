@@ -57,8 +57,29 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 	for _, hash := range pl.SideChainTransactionHashes {
 		transactionHashes = append(transactionHashes, hash.String())
 	}
+	var sideChain arbitrator.SideChain
+	for _, output := range d.Tx.Outputs() {
+		if output.Type != elacommon.OTWithdrawFromSideChain {
+			continue
+		}
+		oPayload, ok := output.Payload.(*outputpayload.Withdraw)
+		if !ok {
+			return errors.New("invalid withdraw transaction output payload")
+		}
+		if sideChain == nil {
+			var ok bool
+			sideChain, ok = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(oPayload.GenesisBlockAddress)
+			if !ok || sideChain == nil {
+				return errors.New("Get side chain from genesis address failed.")
+			}
+		} else {
+			if sideChain.GetKey() != oPayload.GenesisBlockAddress {
+				return errors.New("invalid withdraw transaction GenesisBlockAddress")
+			}
+		}
+	}
 
-	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(pl.GenesisBlockAddress)
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(sideChain.GetKey())
 	if dbStore == nil {
 		return errors.New("can't find db by genesis block hash ")
 	}
