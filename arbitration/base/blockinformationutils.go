@@ -3,8 +3,8 @@ package base
 import (
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract/program"
-	types "github.com/elastos/Elastos.ELA/core/types/common"
 	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	types "github.com/elastos/Elastos.ELA/core/types/common"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
@@ -13,9 +13,9 @@ var SystemAssetId = getSystemAssetId()
 func getSystemAssetId() common.Uint256 {
 
 	tx := elatx.CreateTransaction(
-		types.TxVersion09,
+		types.TxVersionDefault,
 		types.RegisterAsset,
-		payload.TransferCrossChainVersionV1,
+		payload.TransferCrossChainVersion,
 		&payload.RegisterAsset{
 			Asset: payload.Asset{
 				Name:      "ELA",
