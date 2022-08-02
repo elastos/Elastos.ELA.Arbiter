@@ -118,7 +118,7 @@ func CreateSchnonrrRedeemScript(px *big.Int, py *big.Int) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return contract.CreateSchnorrMultiSigRedeemScript(publicKey)
+	return contract.CreateSchnorrRedeemScript(publicKey)
 }
 
 func getTransactionAgreementArbitratorsCount(arbitersCount int) int {
