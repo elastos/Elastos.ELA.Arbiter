@@ -58,7 +58,6 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 
 		return result, nil
 	}
-
 	if height+1 >= config.Parameters.CRCOnlyDPOSHeight &&
 		height < config.Parameters.CRClaimDPOSNodeStartHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
@@ -74,7 +73,6 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 
 		return result, nil
 	}
-
 	var rpcMethod string
 	if height < config.Parameters.DPOSNodeCrossChainHeight {
 		rpcMethod = "getcrcpeersinfo"
