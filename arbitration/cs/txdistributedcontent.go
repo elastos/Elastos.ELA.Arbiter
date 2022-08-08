@@ -58,7 +58,7 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 		transactionHashes = append(transactionHashes, hash.String())
 	}
 	var dbStore store.DataStoreSideChain
-	if d.Tx.PayloadVersion() == payload.WithdrawFromSideChainVersionV1 {
+	if d.Tx.PayloadVersion() == payload.WithdrawFromSideChainVersionV1 || d.Tx.PayloadVersion() == payload.WithdrawFromSideChainVersionV2 {
 		var sideChain arbitrator.SideChain
 		for _, output := range d.Tx.Outputs() {
 			if output.Type != elacommon.OTWithdrawFromSideChain {
@@ -80,7 +80,6 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 				}
 			}
 		}
-
 		dbStore = store.DbCache.GetDataStoreGenesisBlocAddress(sideChain.GetKey())
 		if dbStore == nil {
 			return errors.New("can't find db by genesis block hash ")
