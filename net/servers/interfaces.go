@@ -259,18 +259,21 @@ func GetSPVHeight(param Params) map[string]interface{} {
 
 func GetArbiterPeersInfo(params Params) map[string]interface{} {
 	type peerInfo struct {
-		PublicKey string `json:"publickey"`
-		IP        string `json:"ip"`
-		ConnState string `json:"connstate"`
+		PublicKey   string `json:"publickey"`
+		IP          string `json:"ip,omitempty"`
+		ConnState   string `json:"connstate"`
 		NodeVersion string `json:"nodeversion"`
 	}
 	peers := cs.P2PClientSingleton.DumpArbiterPeersInfo()
 	result := make([]peerInfo, 0)
 	for _, p := range peers {
+		if !config.Parameters.ShowPeersIp {
+			p.Addr = ""
+		}
 		result = append(result, peerInfo{
-			PublicKey: hex.EncodeToString(p.PID[:]),
-			IP:        p.Addr,
-			ConnState: p.State.String(),
+			PublicKey:   hex.EncodeToString(p.PID[:]),
+			IP:          p.Addr,
+			ConnState:   p.State.String(),
 			NodeVersion: p.NodeVersion,
 		})
 	}
