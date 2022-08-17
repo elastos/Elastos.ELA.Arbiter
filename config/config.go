@@ -83,6 +83,7 @@ type Configuration struct {
 	ReturnCrossChainCoinStartHeight uint32           `json:"ReturnCrossChainCoinStartHeight"`
 	SchnorrStartHeight              uint32           `json:"SchnorrStartHeight"`
 	DPoSV2StartHeight               uint32           `json:"DPoSV2StartHeight"`
+	ShowPeersIp                     bool             `json:"ShowPeersIp"`
 }
 
 type RpcConfig struct {
