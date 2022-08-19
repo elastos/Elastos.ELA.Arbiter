@@ -152,8 +152,8 @@ var (
 			ReturnDepositTransactionFee:     100,
 			ProcessInvalidWithdrawHeight:    807000,
 			ReturnCrossChainCoinStartHeight: 807000,
-			SchnorrStartHeight:              2000000, // todo fix me
-			DPoSV2StartHeight:               2000000, // todo fix me
+			SchnorrStartHeight:              965800 + 720*10,
+			DPoSV2StartHeight:               965800 + 720*3,
 		},
 	}
 
