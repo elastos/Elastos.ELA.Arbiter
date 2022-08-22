@@ -60,6 +60,12 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 				DoneSmallCrs: make(map[string]bool, 0),
 			}
 
+			// try create side chain db
+			db, err := store.CreateSIdeChainDBByConfig(side.CurrentConfig)
+			if err != nil {
+				return errors.New("[OnReceivedRegisteredSideChain] CreateSIdeChainDBByConfig err:%s" + err.Error())
+			}
+			store.DbCache.SideChainStore = append(store.DbCache.SideChainStore, db)
 			sideManager.AddChain(transaction.GenesisBlockAddress, side)
 			SideChainAccountMonitor.AddListener(side)
 			go SideChainAccountMonitor.SyncChainData(side.CurrentConfig, side, transaction.RegisteredSideChain.EffectiveHeight)

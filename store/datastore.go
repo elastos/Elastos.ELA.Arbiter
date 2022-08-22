@@ -320,6 +320,47 @@ func initMainChainDB() (*sql.DB, error) {
 	return db, nil
 }
 
+func CreateSIdeChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSideChainImpl, error) {
+
+	DBNameSideChain := filepath.Join(DBDocumentNAME, sideChain.Name+"_sideChainCache.db")
+	db, err := sql.Open(DriverName, DBNameSideChain)
+	if err != nil {
+		log.Error("Open data db error:", err)
+		return nil, err
+	}
+	// Create SideHeightInfo table
+	_, err = db.Exec(CreateHeightInfoTable)
+	if err != nil {
+		return nil, err
+	}
+	// Create SideChainTxs table
+	_, err = db.Exec(CreateSideChainTxsTable)
+	if err != nil {
+		return nil, err
+	}
+	// Create return deposit transactions table
+	_, err = db.Exec(CreateReturnDepositTransactionsTable)
+	if err != nil {
+		return nil, err
+	}
+
+	stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
+	if err != nil {
+		return nil, err
+	}
+	_, err = stmt.Exec(uint32(0))
+	if err != nil {
+		return nil, err
+	}
+
+	return &DataStoreSideChainImpl{
+		mux:                 new(sync.Mutex),
+		DB:                  db,
+		sideChainName:       sideChain.Name,
+		genesisBlockAddress: sideChain.GenesisBlockAddress,
+	}, nil
+}
+
 func initSideChainDB() ([]*sql.DB, error) {
 	err := CheckAndCreateDocument(DBDocumentNAME)
 	if err != nil {
@@ -329,6 +370,7 @@ func initSideChainDB() ([]*sql.DB, error) {
 
 	result := make([]*sql.DB, 0)
 	for _, sideChain := range config.Parameters.SideNodeList {
+
 		DBNameSideChain := filepath.Join(DBDocumentNAME, sideChain.Name+"_sideChainCache.db")
 		db, err := sql.Open(DriverName, DBNameSideChain)
 		if err != nil {
