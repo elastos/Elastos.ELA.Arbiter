@@ -61,9 +61,9 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 			}
 
 			// try create side chain db
-			db, err := store.CreateSIdeChainDBByConfig(side.CurrentConfig)
+			db, err := store.CreateSideChainDBByConfig(side.CurrentConfig)
 			if err != nil {
-				return errors.New("[OnReceivedRegisteredSideChain] CreateSIdeChainDBByConfig err:%s" + err.Error())
+				return errors.New("[OnReceivedRegisteredSideChain] CreateSideChainDBByConfig err:%s" + err.Error())
 			}
 			store.DbCache.SideChainStore = append(store.DbCache.SideChainStore, db)
 			sideManager.AddChain(transaction.GenesisBlockAddress, side)
