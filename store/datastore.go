@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"errors"
-	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"math"
 	"os"
 	"path/filepath"
@@ -14,10 +13,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
-	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA/common"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -41,7 +41,8 @@ const (
 				Value BLOB
 			);`
 	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
-				Height INTEGER NOT NULL PRIMARY KEY
+				Name VARCHAR(20) NOT NULL PRIMARY KEY,
+				Value BLOB
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
@@ -320,7 +321,7 @@ func initMainChainDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func CreateSIdeChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSideChainImpl, error) {
+func CreateSideChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSideChainImpl, error) {
 
 	DBNameSideChain := filepath.Join(DBDocumentNAME, sideChain.Name+"_sideChainCache.db")
 	db, err := sql.Open(DriverName, DBNameSideChain)
@@ -344,11 +345,11 @@ func CreateSIdeChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSide
 		return nil, err
 	}
 
-	stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
+	stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
 	if err != nil {
 		return nil, err
 	}
-	_, err = stmt.Exec(uint32(0))
+	_, err = stmt.Exec("height", uint32(0))
 	if err != nil {
 		return nil, err
 	}
@@ -393,11 +394,11 @@ func initSideChainDB() ([]*sql.DB, error) {
 			return nil, err
 		}
 
-		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec(uint32(0))
+		stmt.Exec("Height", uint32(0))
 		result = append(result, db)
 	}
 
@@ -438,11 +439,11 @@ func initSideChainDBByName(sideChainName string) (*sql.DB, error) {
 			return nil, err
 		}
 
-		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec(uint32(0))
+		stmt.Exec("height", uint32(0))
 		return db, nil
 
 	}
@@ -506,7 +507,7 @@ func (store *DataStoreSideChainImpl) CurrentSideHeight(height uint32) uint32 {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	row := store.QueryRow("SELECT Height FROM SideHeightInfo")
+	row := store.QueryRow("SELECT Value FROM SideHeightInfo WHERE Name=?", "Height")
 	var storedHeight uint32
 	row.Scan(&storedHeight)
 	if height > storedHeight {
@@ -515,24 +516,12 @@ func (store *DataStoreSideChainImpl) CurrentSideHeight(height uint32) uint32 {
 			height = 0
 		}
 
-		sideChainExistRow := store.QueryRow("SELECT EXISTS(SELECT true FROM SideHeightInfo)")
-		var exist bool
-		sideChainExistRow.Scan(&exist)
-
-		if !exist {
-			stmt, err := store.Prepare("INSERT INTO SideHeightInfo(Height) values(?)")
-			if err != nil {
-				return uint32(0)
-			}
-			stmt.Exec(uint32(0))
-		}
-
 		// Insert current height
-		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=?")
+		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Value=? WHERE Name=?")
 		if err != nil {
 			return uint32(0)
 		}
-		_, err = stmt.Exec(height)
+		_, err = stmt.Exec(height, "Height")
 		if err != nil {
 			return uint32(0)
 		}
