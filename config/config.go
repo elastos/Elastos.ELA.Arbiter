@@ -129,11 +129,17 @@ type ConfigParams struct {
 
 func GetRpcConfig(genesisBlockHash string) (*RpcConfig, bool) {
 	for _, node := range Parameters.SideNodeList {
-		if node.GenesisBlock == genesisBlockHash {
+		if node.GetGenesisBlock() == genesisBlockHash {
 			return node.Rpc, true
 		}
 	}
 	return nil, false
+}
+
+func (s *SideNodeConfig) GetGenesisBlock() string {
+	genesisBytes, _ := common.HexStringToBytes(s.GenesisBlock)
+	reversedGenesisBytes := common.BytesReverse(genesisBytes)
+	return common.BytesToHexString(reversedGenesisBytes)
 }
 
 func GetSpvChainParams() *elacfg.Params {
@@ -255,6 +261,5 @@ func Initialize() {
 			return
 		}
 		node.GenesisBlockAddress = address
-		node.GenesisBlock = reversedGenesisStr
 	}
 }

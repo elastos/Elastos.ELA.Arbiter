@@ -72,6 +72,5 @@ func InitMockConfig() {
 			return
 		}
 		node.GenesisBlockAddress = address
-		node.GenesisBlock = reversedGenesisStr
 	}
 }
