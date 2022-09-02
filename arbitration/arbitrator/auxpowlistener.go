@@ -120,7 +120,7 @@ func (l *AuxpowListener) ProcessNotifyData(tasks []*notifyTask) {
 
 	var sideChain SideChain
 	for _, sideNode := range config.Parameters.SideNodeList {
-		log.Info("side node genesis block:", sideNode.GenesisBlock,
+		log.Info("side node genesis block:", sideNode.GetGenesisBlock(),
 			"side aux pow tx genesis hash:", genesishashString)
 		if sideNode.GenesisBlock == genesishashString {
 			sc, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().

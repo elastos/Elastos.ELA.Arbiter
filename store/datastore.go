@@ -349,7 +349,7 @@ func CreateSideChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSide
 	if err != nil {
 		return nil, err
 	}
-	_, err = stmt.Exec("height", uint32(0))
+	_, err = stmt.Exec("Height", uint32(0))
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +443,7 @@ func initSideChainDBByName(sideChainName string) (*sql.DB, error) {
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec("height", uint32(0))
+		stmt.Exec("Height", uint32(0))
 		return db, nil
 
 	}

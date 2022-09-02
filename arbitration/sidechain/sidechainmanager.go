@@ -36,8 +36,14 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 		if transaction.RegisteredSideChain.GenesisHash.String() == info.GenesisBlockHash {
 			exchangeRate, err := strconv.ParseFloat(transaction.RegisteredSideChain.ExchangeRate.String(), 64)
 			if err != nil {
-				return errors.New("[OnReceivedRegisteredSideChain] exchangeRate convert error %s" + err.Error())
+				return errors.New("[OnReceivedRegisteredSideChain] exchangeRate convert error:" + err.Error())
 			}
+			reversedGenesisBlockHashStr := common.ToReversedString(transaction.RegisteredSideChain.GenesisHash)
+			reversedGenesisBlockHash, err := common.Uint256FromHexString(reversedGenesisBlockHashStr)
+			if err != nil {
+				return errors.New("[OnReceivedRegisteredSideChain] reverse genesis block hash error:" + err.Error())
+			}
+
 			side := &SideChainImpl{
 				Key: transaction.GenesisBlockAddress,
 				CurrentConfig: &config.SideNodeConfig{
@@ -51,7 +57,7 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 					ExchangeRate:           exchangeRate,
 					EffectiveHeight:        transaction.RegisteredSideChain.EffectiveHeight,
 					GenesisBlockAddress:    transaction.GenesisBlockAddress,
-					GenesisBlock:           transaction.RegisteredSideChain.GenesisHash.String(),
+					GenesisBlock:           reversedGenesisBlockHash.String(),
 					PowChain:               false,
 					SupportQuickRecharge:   true,
 					SupportInvalidDeposit:  true,
@@ -82,74 +88,12 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 
 			// add registered side chain config to config.json
 			config.Parameters.SideNodeList = append(config.Parameters.SideNodeList, side.CurrentConfig)
-			var cf config.ConfigFile
-			copyConfig(*config.Parameters.Configuration, &cf.ConfigFile)
-			data, _ := json.MarshalIndent(cf, "", "")
+			data, _ := json.MarshalIndent(config.ConfigFile{ConfigFile: *config.Parameters.Configuration}, "", "")
 			_ = ioutil.WriteFile(config.DefaultConfigFilename, data, 0644)
 		}
 	}
 
 	return nil
-}
-
-func copyConfig(src config.Configuration, dest *config.Configuration) {
-	dest.ActiveNet = src.ActiveNet
-	dest.Magic = src.Magic
-	dest.Version = src.Version
-	dest.NodePort = src.NodePort
-	dest.MainNode = src.MainNode
-	for _, sn := range src.SideNodeList {
-		genesisBytes, err := common.Uint256FromHexString(sn.GenesisBlock)
-		if err != nil {
-			log.Warn("Error parse genesisblock ", err.Error())
-			continue
-		}
-		dest.SideNodeList = append(dest.SideNodeList, &config.SideNodeConfig{
-			Rpc:                    sn.Rpc,
-			ExchangeRate:           sn.ExchangeRate,
-			EffectiveHeight:        sn.EffectiveHeight,
-			GenesisBlockAddress:    sn.GenesisBlockAddress,
-			GenesisBlock:           common.ToReversedString(*genesisBytes),
-			KeystoreFile:           sn.KeystoreFile,
-			MiningAddr:             sn.MiningAddr,
-			PayToAddr:              sn.PayToAddr,
-			PowChain:               sn.PowChain,
-			SyncStartHeight:        sn.SyncStartHeight,
-			SupportQuickRecharge:   sn.SupportQuickRecharge,
-			SupportInvalidDeposit:  sn.SupportInvalidDeposit,
-			SupportInvalidWithdraw: sn.SupportInvalidWithdraw,
-		})
-	}
-	dest.SyncInterval = src.SyncInterval
-	dest.HttpJsonPort = src.HttpJsonPort
-	dest.HttpRestPort = src.HttpRestPort
-	dest.PrintLevel = src.PrintLevel
-	dest.SPVPrintLevel = src.SPVPrintLevel
-	dest.MaxLogsSize = src.MaxLogsSize
-	dest.MaxPerLogSize = src.MaxPerLogSize
-	dest.SideChainMonitorScanInterval = src.SideChainMonitorScanInterval
-	dest.ClearTransactionInterval = src.ClearTransactionInterval
-	dest.MinOutbound = src.MinOutbound
-	dest.MaxConnections = src.MaxConnections
-	dest.MaxNodePerHost = src.MaxNodePerHost
-	dest.SideAuxPowFee = src.SideAuxPowFee
-	dest.MinThreshold = src.MinThreshold
-	dest.SmallCrossTransferThreshold = src.SmallCrossTransferThreshold
-	dest.DepositAmount = src.DepositAmount
-	dest.CRCOnlyDPOSHeight = src.CRCOnlyDPOSHeight
-	dest.CRClaimDPOSNodeStartHeight = src.CRClaimDPOSNodeStartHeight
-	dest.NewP2PProtocolVersionHeight = src.NewP2PProtocolVersionHeight
-	dest.DPOSNodeCrossChainHeight = src.DPOSNodeCrossChainHeight
-	dest.MaxTxsPerWithdrawTx = src.MaxTxsPerWithdrawTx
-	dest.OriginCrossChainArbiters = src.OriginCrossChainArbiters
-	dest.CRCCrossChainArbiters = src.CRCCrossChainArbiters
-	dest.RpcConfiguration = src.RpcConfiguration
-	dest.DPoSNetAddress = src.DPoSNetAddress
-	dest.ReturnDepositTransactionFee = src.ReturnDepositTransactionFee
-	dest.NewCrossChainTransactionHeight = src.NewCrossChainTransactionHeight
-	dest.ProcessInvalidWithdrawHeight = src.ProcessInvalidWithdrawHeight
-	dest.WalletPath = src.WalletPath
-	dest.ReturnCrossChainCoinStartHeight = src.ReturnCrossChainCoinStartHeight
 }
 
 func (sideManager *SideChainManagerImpl) AddChain(key string, chain arbitrator.SideChain) {
@@ -246,7 +190,7 @@ func Init() {
 		}
 
 		sideChainManager.AddChain(sideConfig.GenesisBlockAddress, side)
-		log.Infof("Init Sidechain config ", side.Key, side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GenesisBlock)
+		log.Infof("Init Sidechain config ", side.Key, side.CurrentConfig.SupportQuickRecharge, side.CurrentConfig.GetGenesisBlock())
 	}
 
 	currentArbitrator.SetSideChainManager(sideChainManager)

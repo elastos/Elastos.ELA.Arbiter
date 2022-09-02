@@ -13,7 +13,7 @@ func SubmitAuxpow(genesishash string, blockhash string, submitauxpow string) err
 
 	var sideNode *config.SideNodeConfig
 	for _, node := range config.Parameters.SideNodeList {
-		if node.GenesisBlock == genesishash {
+		if node.GetGenesisBlock() == genesishash {
 			sideNode = node
 		}
 	}
