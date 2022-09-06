@@ -396,6 +396,10 @@ func (dns *DistributedNodeServer) ReceiveProposalFeedback(content []byte) error 
 		return err
 	}
 
+	if err := transactionItem.CheckSenderInCurrentArbiters(); err != nil {
+		return err
+	}
+
 	switch transactionItem.Type {
 	case AnswerMultisigContent:
 		return dns.receiveWithdrawProposalFeedback(transactionItem)

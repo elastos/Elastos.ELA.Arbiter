@@ -49,6 +49,10 @@ func (client *DistributedNodeClient) OnReceivedProposal(id peer.PID, content []b
 		return err
 	}
 
+	if err := transactionItem.CheckMyselfInCurrentArbiters(); err != nil {
+		return err
+	}
+
 	switch transactionItem.Type {
 	case MultisigContent:
 		return client.onReceivedProposal(id, transactionItem)
