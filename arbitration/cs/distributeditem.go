@@ -184,6 +184,45 @@ func (item *DistributedItem) ParseFeedbackSignedData() ([]byte, string, error) {
 	return sign, "", nil
 }
 
+func (item *DistributedItem) CheckMyselfInCurrentArbiters() error {
+	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
+	arbitersMap := make(map[string]struct{})
+	for _, a := range arbiters {
+		arbitersMap[a] = struct{}{}
+	}
+	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	myself, err := currentAccount.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		return err
+	}
+
+	if _, ok := arbitersMap[common.BytesToHexString(myself)]; !ok {
+		return errors.New("myself no need to sign")
+	}
+	return nil
+}
+
+func (item *DistributedItem) CheckSenderInCurrentArbiters() error {
+	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
+	arbitersMap := make(map[common.Uint168]struct{})
+	for _, a := range arbiters {
+		ab, err := common.HexStringToBytes(a)
+		if err != nil {
+			return errors.New("invalid arbiters")
+		}
+		programHash, err := contract.PublicKeyToStandardProgramHash(ab)
+		if err != nil {
+			return errors.New("invalid arbiters public key")
+		}
+		arbitersMap[*programHash] = struct{}{}
+	}
+	if _, ok := arbitersMap[*item.TargetArbitratorProgramHash]; !ok {
+		return errors.New("arbiter no need to sign")
+	}
+
+	return nil
+}
+
 func (item *DistributedItem) CheckSchnorrFeedbackRequestRSignedData() error {
 	if len(item.signedData) == 0 {
 		return errors.New("CheckSchnorrFeedbackRequestRSignedData invalid sign data length.")
