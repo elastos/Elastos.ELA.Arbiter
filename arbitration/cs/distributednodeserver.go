@@ -559,6 +559,9 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 		pksIndex := make([]uint8, 0)
 		pks := make([][]byte, 0)
 		for i, a := range arbiters {
+			if len(a) == 0 {
+				continue
+			}
 			if _, ok := randomSigners[a]; ok {
 				pksIndex = append(pksIndex, uint8(i))
 				pkBytes, err := common.HexStringToBytes(a)
@@ -625,6 +628,9 @@ func (dns *DistributedNodeServer) ReceiveSendSchnorrWithdrawProposal3(nonceHash 
 	// record unsigned signers
 	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 	for _, a := range arbiters {
+		if len(a) == 0 {
+			continue
+		}
 		if _, ok := signers[a]; !ok {
 			if count, ok := dns.UnsignedSigners[a]; ok {
 				dns.UnsignedSigners[a] = count + 1

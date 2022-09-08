@@ -188,6 +188,9 @@ func (item *DistributedItem) CheckMyselfInCurrentArbiters() error {
 	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 	arbitersMap := make(map[string]struct{})
 	for _, a := range arbiters {
+		if len(a) == 0 {
+			continue
+		}
 		arbitersMap[a] = struct{}{}
 	}
 	currentAccount := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
@@ -206,6 +209,9 @@ func (item *DistributedItem) CheckSenderInCurrentArbiters() error {
 	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 	arbitersMap := make(map[common.Uint168]struct{})
 	for _, a := range arbiters {
+		if len(a) == 0{
+			continue
+		}
 		ab, err := common.HexStringToBytes(a)
 		if err != nil {
 			return errors.New("invalid arbiters")
