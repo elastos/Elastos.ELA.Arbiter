@@ -23,6 +23,7 @@ const (
 	WithdrawTransaction      TransactionType = 0x00
 	IllegalTransaction       TransactionType = 0x01
 	ReturnDepositTransaction TransactionType = 0x02
+	NFTDestroyTransaction    TransactionType = 0x03
 )
 
 type DistributeContentType byte

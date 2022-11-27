@@ -145,3 +145,8 @@ type SidechainIllegalDataInfo struct {
 	Evidence        string `json:"evidence"`
 	CompareEvidence string `json:"compareevidence"`
 }
+
+type NFTDestroyFromSideChainInfo struct {
+	ID                string //detail votes info referkey
+	OwnerStakeAddress string //owner OwnerStakeAddress
+}

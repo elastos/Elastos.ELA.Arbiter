@@ -50,6 +50,12 @@ const (
 				TransactionData BLOB,
 				BlockHeight INTEGER
 			);`
+	CreateNFTDestroyTxsTable = `CREATE TABLE IF NOT EXISTS NFTDestroyTxs (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				NFTID VARCHAR UNIQUE,
+				TransactionData BLOB,
+				BlockHeight INTEGER
+			);`
 	CreateReturnDepositTransactionsTable = `CREATE TABLE IF NOT EXISTS ReturnDepositTransactions (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR,
@@ -126,37 +132,44 @@ type DataStoreSideChain interface {
 	GetAllReturnDepositTx(genesisBlockAddress string) ([][]byte, []string, error)
 	GetAllReturnDepositTxs() ([]string, error)
 	RemoveReturnDepositTxs(transactionHashes []string) error
+
+    RemoveNFTDestroyTxs(NFTIDS []string) error
+	HasNFTDestroyTx(NFTID string) (bool, error)
+	AddNFTDestroyTx(tx *base.NFTDestroyTransaction) error
+	AddNFTDestroyTxs(txs []*base.NFTDestroyTransaction) error
+	GetAllNFTDestroyID() ([]string, error)
+    GetNFTDestroyTxsFromIDs(nftIDs []string) ([]*base.NFTDestroyFromSideChainTx, error)
 }
 
 type DataStoreRegisteredSideChain interface {
-	DataStore
+DataStore
 
-	CurrentHeight(height uint32) uint32
-	AddRegisteredSideChainTx(tx *base.RegisteredSideChainTransaction) error
-	AddRegisteredSideChainTxs(txs []*base.RegisteredSideChainTransaction) ([]bool, error)
-	HasRegisteredSideChainTx(transactionHash, genesisBlockAddress string) (bool, error)
-	RemoveRegisteredSideChainTx(transactionHash, genesisBlockAddress string) error
-	RemoveRegisteredSideChainTxs(transactionHashes, genesisBlockAddress []string) error
-	GetAllRegisteredSideChainTxsHashes() ([]string, []string, error)
-	GetAllRegisteredSideChainTxs() ([]*base.RegisteredSideChainTransaction, error)
-	GetRegisteredSideChainTxByHash(tx string) (*base.RegisteredSideChainTransaction, error)
-	GetRegisteredSideChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.RegisteredSideChain, error)
+CurrentHeight(height uint32) uint32
+AddRegisteredSideChainTx(tx *base.RegisteredSideChainTransaction) error
+AddRegisteredSideChainTxs(txs []*base.RegisteredSideChainTransaction) ([]bool, error)
+HasRegisteredSideChainTx(transactionHash, genesisBlockAddress string) (bool, error)
+RemoveRegisteredSideChainTx(transactionHash, genesisBlockAddress string) error
+RemoveRegisteredSideChainTxs(transactionHashes, genesisBlockAddress []string) error
+GetAllRegisteredSideChainTxsHashes() ([]string, []string, error)
+GetAllRegisteredSideChainTxs() ([]*base.RegisteredSideChainTransaction, error)
+GetRegisteredSideChainTxByHash(tx string) (*base.RegisteredSideChainTransaction, error)
+GetRegisteredSideChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.RegisteredSideChain, error)
 }
 
 type DataStoreImpl struct {
-	MainChainStore           DataStoreMainChain
-	SideChainStore           []DataStoreSideChain
-	RegisteredSideChainStore DataStoreRegisteredSideChain
+MainChainStore           DataStoreMainChain
+SideChainStore           []DataStoreSideChain
+RegisteredSideChainStore DataStoreRegisteredSideChain
 }
 
 func (d *DataStoreImpl) GetDataStoreByDBName(sideChainName string) DataStoreSideChain {
-	for _, s := range d.SideChainStore {
-		if sideChainName == s.SideChainName() {
-			return s
-		}
-	}
+for _, s := range d.SideChainStore {
+if sideChainName == s.SideChainName() {
+return s
+}
+}
 
-	return nil
+return nil
 }
 
 func (d *DataStoreImpl) GetDataStoreGenesisBlocAddress(genesisBlockAddress string) DataStoreSideChain {
@@ -702,6 +715,157 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 	}
 	return txs, nil
 }
+
+
+func (store *DataStoreSideChainImpl) AddNFTDestroyTx(tx *base.NFTDestroyTransaction) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	// Prepare sql statement
+	stmt, err := store.Prepare("INSERT INTO NFTDestroyTxs(NFTID, TransactionData, BlockHeight) values(?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Do insert
+	_, err = stmt.Exec(tx.ID, tx.Transaction, tx.BlockHeight)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) HasNFTDestroyTx(NFTID string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT NFTID FROM NFTDestroyTxs WHERE NFTID=?`, NFTID)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	return rows.Next(), nil
+}
+
+func (store *DataStoreSideChainImpl) RemoveNFTDestroyTxs(NFTIDS []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	stmt, err := tx.Prepare("DELETE FROM SideChainTxs WHERE NFTID=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, nftID := range NFTIDS {
+		stmt.Exec(nftID)
+	}
+
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) AddNFTDestroyTxs(txs []*base.NFTDestroyTransaction) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO NFTDestroyTxs(NFTID, TransactionData, BlockHeight) values(?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Do insert
+	for _, tx := range txs {
+		_, err = stmt.Exec(tx.ID, tx.Transaction, tx.BlockHeight)
+		if err != nil {
+			log.Error("[AddNFTDestroyTxs] err")
+			continue
+		}
+	}
+
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) GetAllNFTDestroyID() ([]string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT NFTDestroyTxs.NFTID FROM NFTDestroyTxs`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	for rows.Next() {
+		var txHash string
+		err = rows.Scan(&txHash)
+		if err != nil {
+			return nil, err
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	return txHashes, nil
+}
+
+func (store *DataStoreSideChainImpl) GetNFTDestroyTxsFromIDs(nftIDs []string) ([]*base.NFTDestroyFromSideChainTx, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	var txs []*base.NFTDestroyFromSideChainTx
+	var buf bytes.Buffer
+	buf.WriteString("SELECT NFTDestroyTxs.TransactionData FROM NFTDestroyTxs WHERE NFTID IN (")
+	hashesLen := len(nftIDs)
+	for index, nftID := range nftIDs {
+		buf.WriteString("'")
+		buf.WriteString(nftID)
+		buf.WriteString("'")
+		if index == hashesLen-1 {
+			buf.WriteString(")")
+		} else {
+			buf.WriteString(",")
+		}
+	}
+	//todo if use GROUP??
+	buf.WriteString(" GROUP BY NFTID")
+
+	rows, err := store.Query(buf.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var transactionBytes []byte
+		err = rows.Scan(&transactionBytes)
+		if err != nil {
+			return nil, err
+		}
+
+		tx := new(base.NFTDestroyFromSideChainTx)
+		reader := bytes.NewReader(transactionBytes)
+		tx.Deserialize(reader)
+		txs = append(txs, tx)
+
+	}
+	return txs, nil
+}
+
 
 func (store *DataStoreSideChainImpl) AddReturnDepositTx(txid string, genesisBlockAddress string, transactionByte []byte) error {
 	store.mux.Lock()

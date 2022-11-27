@@ -22,6 +22,11 @@ type WithdrawInfo struct {
 	WithdrawAssets []*WithdrawAsset
 }
 
+type NFTDestroyFromSideChainTx struct {
+	ID                common.Uint256 //detail votes info referkey
+	OwnerStakeAddress common.Uint168 //owner OwnerStakeAddress
+}
+
 type WithdrawTx struct {
 	Txid         *common.Uint256
 	WithdrawInfo *WithdrawInfo
@@ -57,6 +62,12 @@ type MainChainTransaction struct {
 
 type SideChainTransaction struct {
 	TransactionHash string
+	Transaction     []byte
+	BlockHeight     uint32
+}
+
+type NFTDestroyTransaction struct {
+	ID string
 	Transaction     []byte
 	BlockHeight     uint32
 }
@@ -195,5 +206,28 @@ func (t *FailedDepositTx) Deserialize(r io.Reader) error {
 		return errors.New("[Deserialize] read withdrawInfo failed:" + err.Error())
 	}
 
+	return nil
+}
+
+func (t *NFTDestroyFromSideChainTx) Serialize(w io.Writer) error {
+	if err := t.ID.Serialize(w); err != nil {
+		return errors.New(
+			"failed to serialize ID")
+	}
+	if err := t.OwnerStakeAddress.Serialize(w); err != nil {
+		return errors.New(
+			"failed to serialize OwnerStakeAddress")
+	}
+	return nil
+}
+
+func (t *NFTDestroyFromSideChainTx) Deserialize(r io.Reader) error {
+	var err error
+	if err = t.ID.Deserialize(r); err != nil {
+		return errors.New("failed to deserialize ID")
+	}
+	if err = t.OwnerStakeAddress.Deserialize(r); err != nil {
+		return errors.New("failed to deserialize ID")
+	}
 	return nil
 }
