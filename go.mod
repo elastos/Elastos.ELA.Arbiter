@@ -8,3 +8,5 @@ require (
 	github.com/howeyc/gopass v0.0.0-20190910152052-7cb4b85ec19c
 	github.com/mattn/go-sqlite3 v2.0.3+incompatible
 )
+
+replace github.com/elastos/Elastos.ELA => /Users/hp/go/src/github.com/elastos/Elastos.ELA

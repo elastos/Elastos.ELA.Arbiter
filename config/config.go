@@ -13,6 +13,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA/common"
 	elacfg "github.com/elastos/Elastos.ELA/common/config"
+	elacore "github.com/elastos/Elastos.ELA/core"
 )
 
 const (
@@ -142,8 +143,8 @@ func (s *SideNodeConfig) GetGenesisBlock() string {
 	return common.BytesToHexString(reversedGenesisBytes)
 }
 
-func GetSpvChainParams() *elacfg.Params {
-	var params *elacfg.Params
+func GetSpvChainParams() *elacfg.Configuration {
+	var params *elacfg.Configuration
 	switch strings.ToLower(Parameters.ActiveNet) {
 	case "testnet", "test":
 		params = elacfg.DefaultParams.TestNet()
@@ -165,20 +166,20 @@ func GetSpvChainParams() *elacfg.Params {
 			fmt.Printf("invalid foundation address")
 			os.Exit(1)
 		}
-		params.Foundation = *address
-		params.GenesisBlock = elacfg.GenesisBlock(address)
+		params.FoundationProgramHash = address
+		params.GenesisBlock = elacore.GenesisBlock(*address)
 	}
 	if mncfg.DefaultPort != 0 {
-		params.DefaultPort = mncfg.DefaultPort
+		params.NodePort = mncfg.DefaultPort
 	}
 	if Parameters.CRClaimDPOSNodeStartHeight > 0 {
-		params.CRClaimDPOSNodeStartHeight = Parameters.CRClaimDPOSNodeStartHeight
+		params.CRConfiguration.CRClaimDPOSNodeStartHeight = Parameters.CRClaimDPOSNodeStartHeight
 	}
 	if Parameters.NewP2PProtocolVersionHeight > 0 {
-		params.NewP2PProtocolVersionHeight = Parameters.NewP2PProtocolVersionHeight
+		params.CRConfiguration.NewP2PProtocolVersionHeight = Parameters.NewP2PProtocolVersionHeight
 	}
 	if Parameters.DPOSNodeCrossChainHeight > 0 {
-		params.DPOSNodeCrossChainHeight = Parameters.DPOSNodeCrossChainHeight
+		params.DPoSConfiguration.DPOSNodeCrossChainHeight = Parameters.DPOSNodeCrossChainHeight
 	}
 	params.DNSSeeds = nil
 	return params

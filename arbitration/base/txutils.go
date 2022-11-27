@@ -105,6 +105,17 @@ func SubstractTransactionHashesAndBlockHeights(hashSet []string, blockHeights []
 	return resultTxHashes, resultBlockHeights
 }
 
+//nftIDsFromNode, needDestoryNFTIDs
+func GetCanDestroyNFTIDs(nftIDsFromNode []string,  needDestoryNFTIDs []string) ([]string) {
+	var canDestroyNFTIDs []string
+	for i := 0; i < len(nftIDsFromNode); i++ {
+		if hasHash(needDestoryNFTIDs, nftIDsFromNode[i]) {
+			canDestroyNFTIDs = append(canDestroyNFTIDs, nftIDsFromNode[i])
+		}
+	}
+	return canDestroyNFTIDs
+}
+
 func SubstractReturnDepositTransactionHashes(hashSet []string, subSet []string) ([]string, []int) {
 	var resultTxHashes []string
 	var indexes []int

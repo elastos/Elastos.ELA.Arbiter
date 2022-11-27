@@ -80,6 +80,9 @@ type FinishedTransactionsDataStore interface {
 	AddSideChainTx(transactionByte []byte) error
 	GetSideChainTx(sideChainTransactionId uint64) ([]byte, error)
 	ResetDataStore(dbName string) error
+
+	//AddFailedNFTDestroyTxs(transactionHashes []string, transactionByte []byte) error
+	//AddSucceedNFTDestroyTxs(transactionHashes []string) error
 }
 
 type FinishedTxsDataStoreImpl struct {
