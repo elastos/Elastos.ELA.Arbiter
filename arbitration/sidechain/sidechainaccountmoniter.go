@@ -457,7 +457,7 @@ func (monitor *SideChainAccountMonitorImpl) processNFTDestroyTxs(transactions []
 	genesisAddress string, blockHeight uint32) {
 	var nftDestroyTxs []*base.NFTDestroyFromSideChainTx
 	for _, txn := range transactions {
-		txnBytes, err := common.HexStringToBytes(txn.ID)
+		txnBytes, err := common.HexStringToBytes(txn.TokenID)
 		if err != nil {
 			log.Warn("Find output to destroy address, but transaction hash to transaction bytes failed")
 			continue

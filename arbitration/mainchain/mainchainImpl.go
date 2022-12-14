@@ -316,80 +316,8 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 //NFTDestroyFromSideChainTx
 func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 	sideChain arbitrator.SideChain, nftDestroyTxs []*base.NFTDestroyFromSideChainTx,
-	mcFunc arbitrator.MainChainFunc) (it.Transaction, error) {
-	withdrawBank := sideChain.GetKey()
-	//exchangeRate, err := sideChain.GetExchangeRate()
-	//if err != nil {
-	//	return nil, err
-	//}
-
-	var totalOutputAmount common.Fixed64
-	// Create transaction outputs
-	var txOutputs []*elacommon.Output
-	// Check if from address is valid
-	//assetID := base.SystemAssetId
-	//withdrawInfo, txHashes := parseUserWithdrawTransactions(withdrawTxs)
-	log.Info("CreateNFTDestroyFromSideChainTx len(nftDestroyTxs):", len(nftDestroyTxs))
-	//for i, withdraw := range withdrawInfo.WithdrawAssets {
-	//	programhash, err := common.Uint168FromAddress(withdraw.TargetAddress)
-	//	if err != nil {
-	//		return nil, err
-	//	}
-	//	txOutput := &elacommon.Output{
-	//		AssetID:     common.Uint256(assetID),
-	//		ProgramHash: *programhash,
-	//		Value:       common.Fixed64(float64(*withdraw.CrossChainAmount) / exchangeRate),
-	//		OutputLock:  0,
-	//		Type:        elacommon.OTWithdrawFromSideChain,
-	//		Payload: &outputpayload.Withdraw{
-	//			Version:                  0,
-	//			GenesisBlockAddress:      withdrawBank,
-	//			SideChainTransactionHash: txHashes[i],
-	//			TargetData:               withdraw.TargetData,
-	//		},
-	//	}
-	//	txOutputs = append(txOutputs, txOutput)
-	//	totalOutputAmount += common.Fixed64(float64(*withdraw.Amount) / exchangeRate)
-	//	log.Info("CreateWithdrawTransactionV1 txOutputs[", i, "]", txOutput.String())
-	//}
-	availableUTXOs, err := mcFunc.GetWithdrawUTXOsByAmount(withdrawBank, totalOutputAmount)
-	if err != nil {
-		return nil, err
-	}
-	//todo do we need exchangeRate
-	//todo if we need fee this tx
-	totalOutputAmount = 0
-	// Create transaction inputs
-	var txInputs []*elacommon.Input
-	for _, utxo := range availableUTXOs {
-		txInputs = append(txInputs, utxo.Input)
-		if *utxo.Amount < totalOutputAmount {
-			totalOutputAmount -= *utxo.Amount
-		} else if *utxo.Amount == totalOutputAmount {
-			totalOutputAmount = 0
-			break
-		} else if *utxo.Amount > totalOutputAmount {
-			programHash, err := common.Uint168FromAddress(withdrawBank)
-			if err != nil {
-				return nil, err
-			}
-			change := &elacommon.Output{
-				AssetID:     common.Uint256(base.SystemAssetId),
-				Value:       common.Fixed64(*utxo.Amount - totalOutputAmount),
-				OutputLock:  uint32(0),
-				ProgramHash: *programHash,
-				Payload:     &outputpayload.DefaultOutput{},
-			}
-			txOutputs = append(txOutputs, change)
-			totalOutputAmount = 0
-			break
-		}
-	}
-
-	if totalOutputAmount > 0 {
-		return nil, errors.New("available token is not enough")
-	}
-
+	mcFunc arbitrator.MainChainFunc,mainChainHeight uint32) (it.Transaction, error) {
+	//todo remove sideChain and mcFunc
 	// Create redeem script
 	redeemScript, err := cs.CreateRedeemScript()
 	if err != nil {
@@ -419,9 +347,9 @@ func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 		elacommon.NFTDestroyFromSideChain,
 		payload.NFTDestroyFromSideChainVersion,
 		txPayload,
-		attributes,
-		txInputs,
-		txOutputs,
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
 		0,
 		[]*program.Program{p},
 	), nil

@@ -147,6 +147,6 @@ type SidechainIllegalDataInfo struct {
 }
 
 type NFTDestroyFromSideChainInfo struct {
-	ID                string //detail votes info referkey
-	OwnerStakeAddress string //owner OwnerStakeAddress
+	TokenID                string `json:"tokenID"`//detail votes info referkey
+	OwnerStakeAddress      string `json:"saddress"`//owner OwnerStakeAddress
 }
