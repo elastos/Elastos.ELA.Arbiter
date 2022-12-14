@@ -250,7 +250,8 @@ func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 
 
 func GetNFTDestroyTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.NFTDestroyFromSideChainInfo, error) {
-	resp, err := CallAndUnmarshal("getnftdestroytransactionsbyheight", Param("height", height), config)
+	//getPledgeBillBurnTransactionByHeight
+	resp, err := CallAndUnmarshal("getPledgeBillBurnTransactionByHeight", Param("height", height), config)
 	if err != nil {
 		return nil, err
 	}
@@ -265,7 +266,7 @@ func GetNFTDestroyTransactionByHeight(height uint32, config *config.RpcConfig) (
 		log.Debug("[GetNFTDestroyTransactionByHeight] height:", height, ", no NFTDestroy transactions")
 	}
 	for _, tx := range txs {
-		log.Debugf("[GetNFTDestroyTransactionByHeight]  ID %s OwnerStakeAddress %s ",tx.ID, tx.OwnerStakeAddress)
+		log.Debugf("[GetNFTDestroyTransactionByHeight]  ID %s OwnerStakeAddress %s ",tx.TokenID, tx.OwnerStakeAddress)
 	}
 
 	return txs, nil
