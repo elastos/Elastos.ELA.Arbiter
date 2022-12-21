@@ -316,24 +316,23 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 //NFTDestroyFromSideChainTx
 func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 	sideChain arbitrator.SideChain, nftDestroyTxs []*base.NFTDestroyFromSideChainTx,
-	mcFunc arbitrator.MainChainFunc,mainChainHeight uint32) (it.Transaction, error) {
-	//todo remove sideChain and mcFunc
+	mcFunc arbitrator.MainChainFunc, mainChainHeight uint32) (it.Transaction, error) {
 	// Create redeem script
 	redeemScript, err := cs.CreateRedeemScript()
 	if err != nil {
 		return nil, err
 	}
 
-	var IDs                []common.Uint256
+	var IDs []common.Uint256
 	var OwnerStakeAddresses []common.Uint168
 
-	for i := 0; i < len(nftDestroyTxs); i++{
+	for i := 0; i < len(nftDestroyTxs); i++ {
 		IDs = append(IDs, nftDestroyTxs[i].ID)
 		OwnerStakeAddresses = append(OwnerStakeAddresses, nftDestroyTxs[i].OwnerStakeAddress)
 	}
 	txPayload := &payload.NFTDestroyFromSideChain{
-		ID               :IDs,
-		OwnerStakeAddress :OwnerStakeAddresses,
+		ID:                IDs,
+		OwnerStakeAddress: OwnerStakeAddresses,
 	}
 	p := &program.Program{redeemScript, nil}
 
@@ -347,14 +346,13 @@ func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 		elacommon.NFTDestroyFromSideChain,
 		payload.NFTDestroyFromSideChainVersion,
 		txPayload,
-		[]*elacommon.Attribute{},
+		attributes,
 		[]*elacommon.Input{},
 		[]*elacommon.Output{},
 		0,
 		[]*program.Program{p},
 	), nil
 }
-
 
 func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	sideChain arbitrator.SideChain, withdrawTxs []*base.WithdrawTx,
@@ -547,16 +545,16 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 	attributes = append(attributes, &txAttr)
 
 	return elatx.CreateTransaction(
-			elacommon.TxVersionDefault,
-			elacommon.WithdrawFromSideChain,
-			payload.WithdrawFromSideChainVersionV1,
-			txPayload,
-			attributes,
-			txInputs,
-			txOutputs,
-			0,
-			[]*program.Program{p},
-		), nil
+		elacommon.TxVersionDefault,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		txPayload,
+		attributes,
+		txInputs,
+		txOutputs,
+		0,
+		[]*program.Program{p},
+	), nil
 }
 
 func (mc *MainChainImpl) SyncChainData() uint32 {

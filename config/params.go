@@ -76,6 +76,7 @@ var (
 			ReturnCrossChainCoinStartHeight: 730000,
 			SchnorrStartHeight:              875544 + 720*5,
 			DPoSV2StartHeight:               875544 + 720*2,
+			NFTStartHeight:                  100, // todo fix me
 		},
 	}
 
@@ -154,6 +155,7 @@ var (
 			ReturnCrossChainCoinStartHeight: 807000,
 			SchnorrStartHeight:              965800 + 720*10,
 			DPoSV2StartHeight:               965800 + 720*3,
+			NFTStartHeight:                  100, // todo fix me
 		},
 	}
 
@@ -235,6 +237,7 @@ var (
 			ReturnCrossChainCoinStartHeight: 1032840,
 			SchnorrStartHeight:              2000000, // todo fix me
 			DPoSV2StartHeight:               2000000, // todo fix me
+			NFTStartHeight:                  100,     // todo fix me
 		},
 	}
 )

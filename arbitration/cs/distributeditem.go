@@ -116,6 +116,7 @@ func (item *DistributedItem) Sign(arbitrator arbitrator.Arbitrator, isFeedback b
 	if err != nil {
 		return err
 	}
+
 	// Append signature
 	err = item.appendSignature(signerIndex, newSign, isFeedback, itemFunc)
 	if err != nil {
@@ -210,7 +211,7 @@ func (item *DistributedItem) CheckSenderInCurrentArbiters() error {
 	arbiters := arbitrator.ArbitratorGroupSingleton.GetAllArbitrators()
 	arbitersMap := make(map[common.Uint168]struct{})
 	for _, a := range arbiters {
-		if len(a) == 0{
+		if len(a) == 0 {
 			continue
 		}
 		ab, err := common.HexStringToBytes(a)
@@ -560,7 +561,6 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		if err != nil {
 			return err
 		}
-
 		onDutyArbitratorPk, err :=
 			base.PublicKeyFromString(groupInfo.Arbitrators[groupInfo.OnDutyArbitratorIndex])
 		if err != nil {
@@ -578,6 +578,7 @@ func (item *DistributedItem) appendSignature(signerIndex int, signature []byte, 
 		}
 
 		err = crypto.Verify(*targetPk, buf.Bytes(), sign)
+
 		if err != nil {
 			return errors.New("Can not sign without current arbitrator's signing.")
 		}

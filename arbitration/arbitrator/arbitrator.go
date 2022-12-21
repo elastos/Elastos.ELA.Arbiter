@@ -58,7 +58,7 @@ type Arbitrator interface {
 		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 
 	CreateNFTDestroyTransaction(nftTxs []*NFTDestroyFromSideChainTx,
-	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
+		sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
@@ -137,7 +137,6 @@ func (ar *ArbitratorImpl) processNFTDestroyTransactions(currentHeight uint32) {
 		go sc.SendCachedNFTDestroyTxs(currentHeight)
 	}
 }
-
 
 func (ar *ArbitratorImpl) processReturnDepositTransactions() {
 	currentHeight := ArbitratorGroupSingleton.GetCurrentHeight()
@@ -381,15 +380,6 @@ func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn it.Transaction) {
 		log.Warn(err.Error())
 	}
 }
-
-/*func (ar *ArbitratorImpl) BroadcastNFTDestroyProposal(txn it.Transaction) {
-	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
-	if err != nil {
-		log.Warn(err.Error())
-	}
-}*/
-
-
 
 func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) {
 	if err := ar.mainChainImpl.BroadcastSidechainIllegalData(data); err != nil {
