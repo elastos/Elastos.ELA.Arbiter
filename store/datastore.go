@@ -133,43 +133,43 @@ type DataStoreSideChain interface {
 	GetAllReturnDepositTxs() ([]string, error)
 	RemoveReturnDepositTxs(transactionHashes []string) error
 
-    RemoveNFTDestroyTxs(NFTIDS []string) error
+	RemoveNFTDestroyTxs(NFTIDS []string) error
 	HasNFTDestroyTx(NFTID string) (bool, error)
 	AddNFTDestroyTx(tx *base.NFTDestroyTransaction) error
 	AddNFTDestroyTxs(txs []*base.NFTDestroyTransaction) error
 	GetAllNFTDestroyID() ([]string, error)
-    GetNFTDestroyTxsFromIDs(nftIDs []string) ([]*base.NFTDestroyFromSideChainTx, error)
+	GetNFTDestroyTxsFromIDs(nftIDs []string) ([]*base.NFTDestroyFromSideChainTx, error)
 }
 
 type DataStoreRegisteredSideChain interface {
-DataStore
+	DataStore
 
-CurrentHeight(height uint32) uint32
-AddRegisteredSideChainTx(tx *base.RegisteredSideChainTransaction) error
-AddRegisteredSideChainTxs(txs []*base.RegisteredSideChainTransaction) ([]bool, error)
-HasRegisteredSideChainTx(transactionHash, genesisBlockAddress string) (bool, error)
-RemoveRegisteredSideChainTx(transactionHash, genesisBlockAddress string) error
-RemoveRegisteredSideChainTxs(transactionHashes, genesisBlockAddress []string) error
-GetAllRegisteredSideChainTxsHashes() ([]string, []string, error)
-GetAllRegisteredSideChainTxs() ([]*base.RegisteredSideChainTransaction, error)
-GetRegisteredSideChainTxByHash(tx string) (*base.RegisteredSideChainTransaction, error)
-GetRegisteredSideChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.RegisteredSideChain, error)
+	CurrentHeight(height uint32) uint32
+	AddRegisteredSideChainTx(tx *base.RegisteredSideChainTransaction) error
+	AddRegisteredSideChainTxs(txs []*base.RegisteredSideChainTransaction) ([]bool, error)
+	HasRegisteredSideChainTx(transactionHash, genesisBlockAddress string) (bool, error)
+	RemoveRegisteredSideChainTx(transactionHash, genesisBlockAddress string) error
+	RemoveRegisteredSideChainTxs(transactionHashes, genesisBlockAddress []string) error
+	GetAllRegisteredSideChainTxsHashes() ([]string, []string, error)
+	GetAllRegisteredSideChainTxs() ([]*base.RegisteredSideChainTransaction, error)
+	GetRegisteredSideChainTxByHash(tx string) (*base.RegisteredSideChainTransaction, error)
+	GetRegisteredSideChainTxsFromHashes(transactionHashes []string, genesisBlockAddresses string) ([]*base.RegisteredSideChain, error)
 }
 
 type DataStoreImpl struct {
-MainChainStore           DataStoreMainChain
-SideChainStore           []DataStoreSideChain
-RegisteredSideChainStore DataStoreRegisteredSideChain
+	MainChainStore           DataStoreMainChain
+	SideChainStore           []DataStoreSideChain
+	RegisteredSideChainStore DataStoreRegisteredSideChain
 }
 
 func (d *DataStoreImpl) GetDataStoreByDBName(sideChainName string) DataStoreSideChain {
-for _, s := range d.SideChainStore {
-if sideChainName == s.SideChainName() {
-return s
-}
-}
+	for _, s := range d.SideChainStore {
+		if sideChainName == s.SideChainName() {
+			return s
+		}
+	}
 
-return nil
+	return nil
 }
 
 func (d *DataStoreImpl) GetDataStoreGenesisBlocAddress(genesisBlockAddress string) DataStoreSideChain {
@@ -357,6 +357,11 @@ func CreateSideChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSide
 	if err != nil {
 		return nil, err
 	}
+	// Create return nft destroy transactions table
+	_, err = db.Exec(CreateNFTDestroyTxsTable)
+	if err != nil {
+		return nil, err
+	}
 
 	stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
 	if err != nil {
@@ -406,6 +411,11 @@ func initSideChainDB() ([]*sql.DB, error) {
 		if err != nil {
 			return nil, err
 		}
+		// Create return nft destroy transactions table
+		_, err = db.Exec(CreateNFTDestroyTxsTable)
+		if err != nil {
+			return nil, err
+		}
 
 		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
 		if err != nil {
@@ -451,7 +461,11 @@ func initSideChainDBByName(sideChainName string) (*sql.DB, error) {
 		if err != nil {
 			return nil, err
 		}
-
+		// Create return nft destroy transactions table
+		_, err = db.Exec(CreateNFTDestroyTxsTable)
+		if err != nil {
+			return nil, err
+		}
 		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
 		if err != nil {
 			return nil, err
@@ -716,7 +730,6 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 	return txs, nil
 }
 
-
 func (store *DataStoreSideChainImpl) AddNFTDestroyTx(tx *base.NFTDestroyTransaction) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
@@ -797,7 +810,6 @@ func (store *DataStoreSideChainImpl) AddNFTDestroyTxs(txs []*base.NFTDestroyTran
 			continue
 		}
 	}
-
 	return nil
 }
 
@@ -841,7 +853,6 @@ func (store *DataStoreSideChainImpl) GetNFTDestroyTxsFromIDs(nftIDs []string) ([
 			buf.WriteString(",")
 		}
 	}
-	//todo if use GROUP??
 	buf.WriteString(" GROUP BY NFTID")
 
 	rows, err := store.Query(buf.String())
@@ -865,7 +876,6 @@ func (store *DataStoreSideChainImpl) GetNFTDestroyTxsFromIDs(nftIDs []string) ([
 	}
 	return txs, nil
 }
-
 
 func (store *DataStoreSideChainImpl) AddReturnDepositTx(txid string, genesisBlockAddress string, transactionByte []byte) error {
 	store.mux.Lock()

@@ -136,6 +136,18 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 	return nil
 }
 
+func getESCSideChain() (arbitrator.SideChain, bool) {
+	allSideChains := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
+	for _, sc := range allSideChains {
+		config := sc.GetCurrentConfig()
+		if config.Name != "ESC" {
+			continue
+		}
+		return sc, true
+	}
+	return nil, false
+}
+
 func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	resp, err := currentArbitrator.SendWithdrawTransaction(d.Tx)
@@ -145,48 +157,11 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 		return errors.New("invalid payload")
 	}
 
-	log.Info("Submit NFTDestroyTransaction transaction")
 	var ids []string
 	for _, id := range pl.ID {
 		ids = append(ids, id.String())
 	}
-	//var dbStore store.DataStoreSideChain
-	//if d.Tx.PayloadVersion() == payload.WithdrawFromSideChainVersionV1 || d.Tx.PayloadVersion() == payload.WithdrawFromSideChainVersionV2 {
-	//	var sideChain arbitrator.SideChain
-	//	for _, output := range d.Tx.Outputs() {
-	//		if output.Type != elacommon.OTWithdrawFromSideChain {
-	//			continue
-	//		}
-	//		oPayload, ok := output.Payload.(*outputpayload.Withdraw)
-	//		if !ok {
-	//			return errors.New("invalid withdraw transaction output payload")
-	//		}
-	//		if sideChain == nil {
-	//			var ok bool
-	//			sideChain, ok = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(oPayload.GenesisBlockAddress)
-	//			if !ok || sideChain == nil {
-	//				return errors.New("Get side chain from genesis address failed.")
-	//			}
-	//		} else {
-	//			if sideChain.GetKey() != oPayload.GenesisBlockAddress {
-	//				return errors.New("invalid withdraw transaction GenesisBlockAddress")
-	//			}
-	//		}
-	//	}
-	//	dbStore = store.DbCache.GetDataStoreGenesisBlocAddress(sideChain.GetKey())
-	//	if dbStore == nil {
-	//		return errors.New("can't find db by genesis block hash ")
-	//	}
-	//} else {
-	//	dbStore = store.DbCache.GetDataStoreGenesisBlocAddress(pl.GenesisBlockAddress)
-	//}
-	//if dbStore == nil {
-	//	return errors.New("can't find db by genesis block hash ")
-	//}
-	/////////////////
-	//todo add it to paylaod or get it from const
-	escGenesisBlockAddress := "123"
-	sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(escGenesisBlockAddress)
+	sideChain, ok := getESCSideChain()
 	if !ok || sideChain == nil {
 		return errors.New("Get side chain from genesis address failed.")
 	}
@@ -195,14 +170,7 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 		return errors.New("can't find db by genesis block hash ")
 	}
 	if err != nil || resp.Error != nil && resp.Code != MCErrDoubleSpend {
-		log.Warn("send NFTDestroy transaction failed, move to finished db, txHash:", d.Tx.Hash().String(), ", code: ", resp.Code, ", result:", resp.Result)
-
-		//buf := new(bytes.Buffer)
-		//err := d.Tx.Serialize(buf)
-		//if err != nil {
-		//	return errors.New("send withdraw transaction faild, invalid transaction")
-		//}
-
+		log.Warn("send NFTDestroy transaction failed,  txHash:", d.Tx.Hash().String(), ", code: ", resp.Code, ", result:", resp.Result)
 		err = dbStore.RemoveNFTDestroyTxs(ids)
 		if err != nil {
 			return errors.New("remove failed NFTDestroy transaction from db failed")
@@ -210,9 +178,9 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 
 	} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && resp.Code == MCErrSidechainTxDuplicate {
 		if resp.Error != nil {
-			log.Info("send NFTDestroy transaction found has been processed, move to finished db, txHash:", d.Tx.Hash().String())
+			log.Info("send NFTDestroy transaction found has been processed, RemoveNFTDestroyTxs :", d.Tx.Hash().String())
 		} else {
-			log.Info("send NFTDestroy transaction succeed, move to finished db, txHash:", d.Tx.Hash().String())
+			log.Info("send NFTDestroy transaction succeed, RemoveNFTDestroyTxs, txHash:", d.Tx.Hash().String())
 		}
 		err = dbStore.RemoveNFTDestroyTxs(ids)
 		if err != nil {
@@ -524,6 +492,10 @@ func checkWithdrawTransaction(
 		err := checkReturnDepositTxPayloadV0(txn, clientFunc)
 		if err != nil {
 			return err
+		}
+	case *payload.NFTDestroyFromSideChain:
+		if height < config.Parameters.NFTStartHeight {
+			return errors.New("NFT function not opened")
 		}
 	default:
 		return errors.New("check withdraw transaction failed, unknown payload type")

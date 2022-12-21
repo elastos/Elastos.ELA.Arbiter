@@ -25,12 +25,11 @@ type MainChain interface {
 		mcFunc MainChainFunc) (it.Transaction, error)
 	CreateSchnorrWithdrawTransaction(sideChain SideChain, withdrawTxs []*base.WithdrawTx,
 		mcFunc MainChainFunc) (it.Transaction, error)
-	//CreateDestroyFromSideChainTx
-	CreateNFTDestroyFromSideChainTx(sideChain SideChain, nftTxs []*base.NFTDestroyFromSideChainTx,  mcFunc MainChainFunc,
+	//CreateNFTDestroyFromSideChainTx
+	CreateNFTDestroyFromSideChainTx(sideChain SideChain, nftTxs []*base.NFTDestroyFromSideChainTx, mcFunc MainChainFunc,
 		mainChainHeight uint32) (it.Transaction, error)
 
 	BroadcastWithdrawProposal(txn it.Transaction) error
-	//BroadcastNFTDestroyProposal(txn it.Transaction) error
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData) error
 	ReceiveProposalFeedback(content []byte) error

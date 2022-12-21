@@ -185,6 +185,7 @@ func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeig
 }
 
 func (sc *SideChainImpl) OnNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, blockHeight uint32) error {
+
 	if len(nftDestroyTxs) == 0 {
 		return errors.New("[OnUTXOChanged] received withdrawTx, but size is 0")
 	}
@@ -198,9 +199,9 @@ func (sc *SideChainImpl) OnNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideCh
 		}
 
 		txs = append(txs, &base.NFTDestroyTransaction{
-			ID: nftDestroyTx.ID.String(),
-			Transaction:     buf.Bytes(),
-			BlockHeight:     blockHeight,
+			ID:          nftDestroyTx.ID.String(),
+			Transaction: buf.Bytes(),
+			BlockHeight: blockHeight,
 		})
 	}
 
@@ -208,11 +209,12 @@ func (sc *SideChainImpl) OnNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideCh
 	if dbStore == nil {
 		return errors.New(fmt.Sprintf("can't find db by genesis side chain name:%s", sc.GetCurrentConfig().Name))
 	}
+
 	if err := dbStore.AddNFTDestroyTxs(txs); err != nil {
 		return err
 	}
 
-	log.Info("[OnUTXOChanged] find ", len(txs), "withdraw transaction, add into db cache")
+	log.Info("[OnNFTChanged] find ", len(txs), "NFTDestroyTx, add into db cache")
 	return nil
 }
 
@@ -332,12 +334,12 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 }
 
 func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
-	//todo add support nft flag
 	if sc.CurrentConfig.Name != "ESC" {
 		return
 	}
-	log.Info("[SendCachedNFTDestroyTxs] start")
-	defer log.Info("[SendCachedNFTDestroyTxs] end")
+	if currentHeight < config.Parameters.NFTStartHeight {
+		return
+	}
 
 	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
 	if dbStore == nil {
@@ -345,13 +347,15 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 		return
 	}
 	needDestoryNFTIDs, err := dbStore.GetAllNFTDestroyID()
+	log.Infof(" [SendCachedNFTDestroyTxs] needDestoryNFTIDs ", needDestoryNFTIDs)
+
 	if err != nil {
-		log.Errorf("[SendCachedNFTDestroyTxs] %s", err.Error())
+		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
 		return
 	}
 
 	if len(needDestoryNFTIDs) == 0 {
-		log.Info("No cached withdraw transaction need to send")
+		log.Error(" No cached withdraw transaction need to send")
 		return
 	}
 	//todo may add MaxTxsPerNFTDestroy
@@ -361,31 +365,21 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 
 	canDestroyIDs, err := rpc.GetCanNFTDestroyIDs(needDestoryNFTIDs)
 	if err != nil {
-		log.Errorf("[SendCachedNFTDestroyTxs] %s", err.Error())
+		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
 		return
 	}
 
 	//check every canDestroyIDs is in needDestoryNFTIDs
 	//to avoid illegal behavior
 	canDestroyNFTIDs := base.GetCanDestroyNFTIDs(canDestroyIDs, needDestoryNFTIDs)
+
 	if len(canDestroyNFTIDs) != 0 {
 		err := sc.CreateAndBroadcastNFTDestroyProposal(canDestroyNFTIDs)
 		if err != nil {
 			log.Error("[SendCachedNFTDestroyTxs] CreateAndBroadcastWithdrawProposal failed" + err.Error())
 		}
 	}
-
-	// todo message: decide which arbiter to create withdraw transaction
-
-	if len(canDestroyNFTIDs) != 0 {
-		err = dbStore.RemoveNFTDestroyTxs(canDestroyNFTIDs)
-		if err != nil {
-			log.Errorf("[SendCachedNFTDestroyTxs] %s", err.Error())
-			return
-		}
-	}
 }
-
 
 func (sc *SideChainImpl) SendCachedReturnDepositTxs() {
 	log.Info("[SendCachedReturnDepositTxs] start")
@@ -531,7 +525,6 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 }
 
 func (sc *SideChainImpl) CreateAndBroadcastNFTDestroyProposal(nftIDs []string) error {
-
 	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
 	if dbStore == nil {
 		return errors.New(fmt.Sprintf("can't find db by genesis side chain name:%s", sc.GetCurrentConfig().Name))
@@ -544,29 +537,6 @@ func (sc *SideChainImpl) CreateAndBroadcastNFTDestroyProposal(nftIDs []string) e
 	if len(unsolvedTransactions) == 0 {
 		return nil
 	}
-
-	//targetTransactions := make([]*base.WithdrawTx, 0)
-	//for _, tx := range unsolvedTransactions {
-	//	ignore := false
-	//	for _, w := range tx.WithdrawInfo.WithdrawAssets {
-	//		if *w.CrossChainAmount <= 0 ||
-	//			*w.Amount-*w.CrossChainAmount < MinCrossChainTxFee {
-	//			ignore = true
-	//			break
-	//		}
-	//		_, err := common.Uint168FromAddress(w.TargetAddress)
-	//		if err != nil {
-	//			ignore = true
-	//			break
-	//		}
-	//	}
-	//	if ignore {
-	//		continue
-	//	}
-	//	if len(tx.WithdrawInfo.WithdrawAssets) != 0 {
-	//		targetTransactions = append(targetTransactions, tx)
-	//	}
-	//}
 
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
@@ -595,6 +565,7 @@ func (sc *SideChainImpl) CreateAndBroadcastNFTDestroyProposal(nftIDs []string) e
 	}
 
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
+
 	return nil
 }
 

@@ -262,13 +262,11 @@ func GetNFTDestroyTransactionByHeight(height uint32, config *config.RpcConfig) (
 	}
 	if len(txs) != 0 {
 		log.Debug("[GetNFTDestroyTransactionByHeight] height:", height, ", len transactions:", len(txs))
-	} else {
-		log.Debug("[GetNFTDestroyTransactionByHeight] height:", height, ", no NFTDestroy transactions")
 	}
+
 	for _, tx := range txs {
 		log.Debugf("[GetNFTDestroyTransactionByHeight]  ID %s OwnerStakeAddress %s ",tx.TokenID, tx.OwnerStakeAddress)
 	}
-
 	return txs, nil
 }
 

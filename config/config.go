@@ -83,6 +83,7 @@ type Configuration struct {
 	WalletPath                      string           `json:"WalletPath"`
 	ReturnCrossChainCoinStartHeight uint32           `json:"ReturnCrossChainCoinStartHeight"`
 	SchnorrStartHeight              uint32           `json:"SchnorrStartHeight"`
+	NFTStartHeight                  uint32           `json:"NFTStartHeight"`
 	DPoSV2StartHeight               uint32           `json:"DPoSV2StartHeight"`
 	ShowPeersIp                     bool             `json:"ShowPeersIp"`
 }
