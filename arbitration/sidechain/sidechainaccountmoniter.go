@@ -70,7 +70,7 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(withdrawTxs []*base.
 	return item.OnUTXOChanged(withdrawTxs, blockHeight)
 }
 
-func (monitor *SideChainAccountMonitorImpl) fireNFTChanged(withdrawTxs []*base.NFTDestroyFromSideChainTx, genesisBlockAddress string, blockHeight uint32) error {
+func (monitor *SideChainAccountMonitorImpl) fireNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, genesisBlockAddress string, blockHeight uint32) error {
 	if monitor.accountListenerMap == nil {
 		return nil
 	}
@@ -80,7 +80,7 @@ func (monitor *SideChainAccountMonitorImpl) fireNFTChanged(withdrawTxs []*base.N
 		return errors.New("fired unknown listener")
 	}
 
-	return item.OnNFTChanged(withdrawTxs, blockHeight)
+	return item.OnNFTChanged(nftDestroyTxs, blockHeight)
 }
 
 func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
@@ -322,7 +322,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					//}
 					log.Info("End Monitor Failed Deposit Transfer")
 				}
-				if currentHeight >= 6 && sideNode.Name == "ESC" {
+				if currentHeight >= 6 && sideNode.SupportNFT {
 					nftDestroyTXs, err := rpc.GetNFTDestroyTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
 					if err != nil {
 						log.Error("get destroyed transaction at height:", currentHeight+1-6, "failed\n"+
@@ -503,7 +503,7 @@ func (monitor *SideChainAccountMonitorImpl) processNFTDestroyTxs(transactions []
 	if len(nftDestroyTxs) != 0 {
 		err := monitor.fireNFTChanged(nftDestroyTxs, genesisAddress, blockHeight)
 		if err != nil {
-			log.Error("[fireUTXOChanged] err:", err.Error())
+			log.Error("[fireNFTChanged] err:", err.Error())
 		}
 	}
 }

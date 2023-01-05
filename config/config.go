@@ -119,6 +119,7 @@ type SideNodeConfig struct {
 	SupportQuickRecharge   bool    `json:"SupportQuickRecharge"`
 	SupportInvalidDeposit  bool    `json:"SupportInvalidDeposit"`
 	SupportInvalidWithdraw bool    `json:"SupportInvalidWithdraw"`
+	SupportNFT             bool    `json:"SupportNFT"`
 }
 
 type ConfigFile struct {

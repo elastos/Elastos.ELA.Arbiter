@@ -20,7 +20,8 @@
         "PowChain": false,
         "SupportQuickRecharge": true,
         "SupportInvalidDeposit": true,
-        "SupportInvalidWithdraw": true
+        "SupportInvalidWithdraw": true,
+        "SupportNFT":true
       },
       {
         "Rpc": {
