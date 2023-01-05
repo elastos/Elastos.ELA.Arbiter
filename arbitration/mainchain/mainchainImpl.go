@@ -323,16 +323,18 @@ func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 		return nil, err
 	}
 
-	var IDs []common.Uint256
-	var OwnerStakeAddresses []common.Uint168
+	var ids []common.Uint256
+	var ownerStakeAddresses []common.Uint168
 
 	for i := 0; i < len(nftDestroyTxs); i++ {
-		IDs = append(IDs, nftDestroyTxs[i].ID)
-		OwnerStakeAddresses = append(OwnerStakeAddresses, nftDestroyTxs[i].OwnerStakeAddress)
+		ids = append(ids, nftDestroyTxs[i].ID)
+		ownerStakeAddresses = append(ownerStakeAddresses, nftDestroyTxs[i].OwnerStakeAddress)
 	}
+	genesisBlockHash, _ := common.Uint256FromHexString(sideChain.GetCurrentConfig().GenesisBlockAddress)
 	txPayload := &payload.NFTDestroyFromSideChain{
-		ID:                IDs,
-		OwnerStakeAddress: OwnerStakeAddresses,
+		IDs:                 ids,
+		OwnerStakeAddresses: ownerStakeAddresses,
+		GenesisBlockHash:    *genesisBlockHash,
 	}
 	p := &program.Program{redeemScript, nil}
 

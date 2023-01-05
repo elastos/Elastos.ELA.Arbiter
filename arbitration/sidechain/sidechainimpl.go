@@ -334,7 +334,7 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 }
 
 func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
-	if sc.CurrentConfig.Name != "ESC" {
+	if !sc.CurrentConfig.SupportNFT {
 		return
 	}
 	if currentHeight < config.Parameters.NFTStartHeight {
@@ -363,7 +363,7 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 		needDestoryNFTIDs = needDestoryNFTIDs[:config.Parameters.MaxTxsPerWithdrawTx]
 	}
 
-	canDestroyIDs, err := rpc.GetCanNFTDestroyIDs(needDestoryNFTIDs)
+	canDestroyIDs, err := rpc.GetCanNFTDestroyIDs(needDestoryNFTIDs, sc.CurrentConfig.GenesisBlockAddress)
 	if err != nil {
 		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
 		return

@@ -62,6 +62,7 @@ func (sideManager *SideChainManagerImpl) OnReceivedRegisteredSideChain(info base
 					SupportQuickRecharge:   true,
 					SupportInvalidDeposit:  true,
 					SupportInvalidWithdraw: true,
+					SupportNFT:             false,
 				},
 				DoneSmallCrs: make(map[string]bool, 0),
 			}

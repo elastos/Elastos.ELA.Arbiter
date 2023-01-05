@@ -136,18 +136,6 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 	return nil
 }
 
-func getESCSideChain() (arbitrator.SideChain, bool) {
-	allSideChains := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
-	for _, sc := range allSideChains {
-		config := sc.GetCurrentConfig()
-		if config.Name != "ESC" {
-			continue
-		}
-		return sc, true
-	}
-	return nil, false
-}
-
 func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	resp, err := currentArbitrator.SendWithdrawTransaction(d.Tx)
@@ -158,14 +146,10 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 	}
 
 	var ids []string
-	for _, id := range pl.ID {
+	for _, id := range pl.IDs {
 		ids = append(ids, id.String())
 	}
-	sideChain, ok := getESCSideChain()
-	if !ok || sideChain == nil {
-		return errors.New("Get side chain from genesis address failed.")
-	}
-	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(sideChain.GetKey())
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(pl.GenesisBlockHash.String())
 	if dbStore == nil {
 		return errors.New("can't find db by genesis block hash ")
 	}
@@ -497,6 +481,10 @@ func checkWithdrawTransaction(
 		if height < config.Parameters.NFTStartHeight {
 			return errors.New("NFT function not opened")
 		}
+		err := checkNFTDestroyFromSideChainTxPayload(txn, clientFunc, pl)
+		if err != nil {
+			return err
+		}
 	default:
 		return errors.New("check withdraw transaction failed, unknown payload type")
 	}
@@ -510,6 +498,16 @@ func checkReturnDepositTxPayloadV0(txn it.Transaction, clientFunc DistributedNod
 	}
 
 	return checkReturnDepositTxPayload(txn, clientFunc)
+}
+
+//NFTDestroyFromSideChain
+func checkNFTDestroyFromSideChainTxPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc,
+	nftDestroyPayload *payload.NFTDestroyFromSideChain) error {
+	if txn.PayloadVersion() != payload.NFTDestroyFromSideChainVersion {
+		return errors.New("invalid NFTDestroyFromSideChain Tx payload version, not NFTDestroyFromSideChainVersion")
+	}
+
+	return checkNFTDestroyFromSideChainPayload(txn, clientFunc, nftDestroyPayload)
 }
 
 func checkReturnDepositTxPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc) error {
@@ -779,5 +777,15 @@ func checkWithdrawFromSideChainPayload(txn it.Transaction,
 		return errors.New("check withdraw transaction failed, exchange rate verify failed")
 	}
 
+	return nil
+}
+
+func checkNFTDestroyFromSideChainPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc,
+	nftDestroyPayload *payload.NFTDestroyFromSideChain) error {
+	//check nftDestroyPayload.GenesisBlockAddress must exist
+	_, _, err := clientFunc.GetSideChainAndExchangeRate(nftDestroyPayload.GenesisBlockHash.String())
+	if err != nil {
+		return err
+	}
 	return nil
 }
