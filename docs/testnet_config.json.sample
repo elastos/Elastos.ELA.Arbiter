@@ -1,0 +1,57 @@
+﻿{
+  "Configuration": {
+    "ActiveNet": "testnet",
+    "MainNode": {
+      "Rpc": {
+        "IpAddress": "127.0.0.1",
+        "HttpJsonPort": 21336,
+        "User": "ela",
+        "Pass": "testnet-ela"
+      },
+      "Magic": 2018111,
+      "SpvSeedList": [
+        "127.0.0.1:21338",
+        "13.234.24.155:21338",
+        "15.206.198.252:21338",
+        "13.234.249.168:21338"
+      ]
+    },
+    "SideNodeList": [
+      {
+        "Rpc": {
+          "IpAddress": "127.0.0.1",
+          "HttpJsonPort": 20632
+        },
+        "SyncStartHeight": 15130000,
+        "ExchangeRate": 1,
+        "GenesisBlock": "698e5ec133064dabb7c42eb4b2bdfa21e7b7c2326b0b719d5ab7f452ae8f5ee4",
+        "PowChain": false,
+        "SupportQuickRecharge": true,
+        "SupportInvalidDeposit": true,
+        "SupportInvalidWithdraw": true,
+        "Name": "ESC"
+      },
+      {
+        "Rpc": {
+          "IpAddress": "127.0.0.1",
+          "HttpJsonPort": 20642
+        },
+        "ExchangeRate": 1,
+        "SyncStartHeight": 7820000,
+        "GenesisBlock": "3d0f9da9320556f6d58129419e041de28cf515eedc6b59f8dae49df98e3f943c",
+        "PowChain": false,
+        "Name": "EID",
+        "SupportQuickRecharge": true,
+        "SupportInvalidDeposit": true,
+        "SupportInvalidWithdraw": true
+      }
+    ],
+    "RpcConfiguration": {
+      "User": "arbiter",
+      "Pass": "testnet-arbiter",
+      "WhiteIPList": [
+        "0.0.0.0"
+      ]
+    }
+  }
+}
