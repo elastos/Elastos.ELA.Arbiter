@@ -74,7 +74,7 @@ func (d *TxDistributedContent) SubmitWithdrawTransaction() error {
 				var ok bool
 				sideChain, ok = arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(oPayload.GenesisBlockAddress)
 				if !ok || sideChain == nil {
-					return errors.New("Get side chain from genesis address failed.")
+					return errors.New("SubmitWithdrawTransaction Get side chain from genesis address failed.")
 				}
 			} else {
 				if sideChain.GetKey() != oPayload.GenesisBlockAddress {
@@ -149,7 +149,12 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 	for _, id := range pl.IDs {
 		ids = append(ids, id.String())
 	}
-	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(pl.GenesisBlockHash.String())
+
+	genesisBlockAddress, err := base.GetGenesisAddress(pl.GenesisBlockHash)
+	if err != nil {
+		return errors.New("Side node genesis block hash to address error: ")
+	}
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisBlockAddress)
 	if dbStore == nil {
 		return errors.New("can't find db by genesis block hash ")
 	}
@@ -159,6 +164,7 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 		if err != nil {
 			return errors.New("remove failed NFTDestroy transaction from db failed")
 		}
+		log.Warn("RemoveNFTDestroyTxs succed  ids ", ids)
 
 	} else if resp.Error == nil && resp.Result != nil || resp.Error != nil && resp.Code == MCErrSidechainTxDuplicate {
 		if resp.Error != nil {
@@ -170,6 +176,7 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 		if err != nil {
 			return errors.New("remove succeed withdraw transaction from db failed")
 		}
+		log.Warn("RemoveNFTDestroyTxs succed  ids ", ids)
 
 	} else {
 		log.Warn("send NFTDestroy transaction failed, need to resend")
@@ -783,7 +790,11 @@ func checkWithdrawFromSideChainPayload(txn it.Transaction,
 func checkNFTDestroyFromSideChainPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc,
 	nftDestroyPayload *payload.NFTDestroyFromSideChain) error {
 	//check nftDestroyPayload.GenesisBlockAddress must exist
-	_, _, err := clientFunc.GetSideChainAndExchangeRate(nftDestroyPayload.GenesisBlockHash.String())
+	genesisAddress, err := base.GetGenesisAddress(nftDestroyPayload.GenesisBlockHash)
+	if err != nil {
+		return errors.New("invalid genesis block hash.")
+	}
+	_, _, err = clientFunc.GetSideChainAndExchangeRate(genesisAddress)
 	if err != nil {
 		return err
 	}
