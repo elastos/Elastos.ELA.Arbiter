@@ -362,8 +362,7 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 	if len(needDestoryNFTIDs) > config.Parameters.MaxTxsPerWithdrawTx {
 		needDestoryNFTIDs = needDestoryNFTIDs[:config.Parameters.MaxTxsPerWithdrawTx]
 	}
-
-	canDestroyIDs, err := rpc.GetCanNFTDestroyIDs(needDestoryNFTIDs, sc.CurrentConfig.GenesisBlockAddress)
+	canDestroyIDs, err := rpc.GetCanNFTDestroyIDs(needDestoryNFTIDs, sc.CurrentConfig.GenesisBlock)
 	if err != nil {
 		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
 		return

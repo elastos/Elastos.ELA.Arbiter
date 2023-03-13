@@ -287,7 +287,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 	var succeedGenesisAddresses []string
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok {
-		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		log.Error("[SendDepositTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
 		return
 	}
 	for _, tx := range spvTxs {
@@ -340,7 +340,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCrossTransaction, genesisAddress string) {
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok {
-		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		log.Error("[SendSmallCrossDepositTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
 		return
 	}
 	for _, tx := range knownTx {
