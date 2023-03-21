@@ -772,7 +772,7 @@ func (store *DataStoreSideChainImpl) RemoveNFTDestroyTxs(NFTIDS []string) error 
 	}
 	defer tx.Commit()
 
-	stmt, err := tx.Prepare("DELETE FROM SideChainTxs WHERE NFTID=?")
+	stmt, err := tx.Prepare("DELETE FROM NFTDestroyTxs WHERE NFTID=?")
 	if err != nil {
 		return err
 	}
