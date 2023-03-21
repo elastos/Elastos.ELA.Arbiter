@@ -362,6 +362,7 @@ func GetCanNFTDestroyIDs(ids []string, GenesisBlockHash string) ([]string, error
 	parameter := make(map[string]interface{})
 	parameter["ids"] = ids
 	parameter["genesisblockhash"] = GenesisBlockHash
+	log.Infof(" [GetCanNFTDestroyIDs] ids ", ids, "genesisblockhash", GenesisBlockHash)
 
 	result, err := CallAndUnmarshal("getcandestroynftids",
 		parameter, config.Parameters.MainNode.Rpc)
@@ -373,6 +374,8 @@ func GetCanNFTDestroyIDs(ids []string, GenesisBlockHash string) ([]string, error
 	if err := Unmarshal(&result, &canDestroyIDs); err != nil {
 		return nil, err
 	}
+	log.Infof("[GetCanNFTDestroyIDs]  canDestroyIDs ", canDestroyIDs)
+
 	return canDestroyIDs, nil
 }
 

@@ -371,6 +371,7 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 	//check every canDestroyIDs is in needDestoryNFTIDs
 	//to avoid illegal behavior
 	canDestroyNFTIDs := base.GetCanDestroyNFTIDs(canDestroyIDs, needDestoryNFTIDs)
+	log.Infof(" [SendCachedNFTDestroyTxs] canDestroyNFTIDs ", canDestroyNFTIDs)
 
 	if len(canDestroyNFTIDs) != 0 {
 		err := sc.CreateAndBroadcastNFTDestroyProposal(canDestroyNFTIDs)
