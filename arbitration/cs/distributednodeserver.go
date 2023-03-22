@@ -234,6 +234,9 @@ func (dns *DistributedNodeServer) BroadcastWithdrawProposal(txn it.Transaction) 
 		txType = WithdrawTransaction
 	case elacommon.ReturnCRDepositCoin:
 		txType = ReturnDepositTransaction
+	case elacommon.NFTDestroyFromSideChain:
+		txType = NFTDestroyTransaction
+
 	}
 	proposal, err := dns.generateDistributedProposal(txType, MultisigContent,
 		&TxDistributedContent{Tx: txn}, &DistrubutedItemFuncImpl{})
@@ -337,7 +340,6 @@ func (dns *DistributedNodeServer) generateDistributedProposal(
 	itemContent base.DistributedContent,
 	itemFunc DistrubutedItemFunc) ([]byte, error) {
 	dns.tryInit()
-
 	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
 	pkBuf, err := currentArbitrator.GetPublicKey().EncodePoint(true)
 	if err != nil {
@@ -382,7 +384,6 @@ func (dns *DistributedNodeServer) generateDistributedProposal(
 	signs := make(map[common.Uint160]struct{})
 	signs[programHash.ToCodeHash()] = struct{}{}
 	dns.unsolvedContentsSignature[itemContent.Hash()] = signs
-
 	return buf.Bytes(), nil
 }
 
@@ -451,6 +452,7 @@ func (dns *DistributedNodeServer) receiveWithdrawProposalFeedback(transactionIte
 	dns.unsolvedContentsSignature[hash][targetCodeHash] = struct{}{}
 
 	pk, _ := transactionItem.TargetArbitratorPublicKey.EncodePoint(true)
+
 	log.Info("receive signature from ", hex.EncodeToString(pk))
 	if signedCount >= getTransactionAgreementArbitratorsCount(
 		len(arbitrator.ArbitratorGroupSingleton.GetAllArbitrators())) {

@@ -3,9 +3,7 @@ package cs
 import (
 	"bytes"
 	"errors"
-
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/arbitrator"
-
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
@@ -20,9 +18,10 @@ type DistributedNodeClientFunc interface {
 }
 
 func (client *DistributedNodeClient) GetSideChainAndExchangeRate(genesisAddress string) (arbitrator.SideChain, float64, error) {
+
 	sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok || sideChain == nil {
-		return nil, 0, errors.New("Get side chain from genesis address failed.")
+		return nil, 0, errors.New("GetSideChainAndExchangeRate Get side chain from genesis address failed.")
 	}
 	rate, err := sideChain.GetExchangeRate()
 	if err != nil {

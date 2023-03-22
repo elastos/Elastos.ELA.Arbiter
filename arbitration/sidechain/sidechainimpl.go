@@ -184,6 +184,40 @@ func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeig
 	return nil
 }
 
+func (sc *SideChainImpl) OnNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, blockHeight uint32) error {
+
+	if len(nftDestroyTxs) == 0 {
+		return errors.New("[OnUTXOChanged] received destroy NFT tx, but size is 0")
+	}
+
+	var txs []*base.NFTDestroyTransaction
+	for _, nftDestroyTx := range nftDestroyTxs {
+		buf := new(bytes.Buffer)
+		if err := nftDestroyTx.Serialize(buf); err != nil {
+			log.Error("[OnUTXOChanged] received destroy NFT, but is invalid tx,", err.Error())
+			continue
+		}
+
+		txs = append(txs, &base.NFTDestroyTransaction{
+			ID:          nftDestroyTx.ID.String(),
+			Transaction: buf.Bytes(),
+			BlockHeight: blockHeight,
+		})
+	}
+
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		return errors.New(fmt.Sprintf("can't find db by genesis side chain name:%s", sc.GetCurrentConfig().Name))
+	}
+
+	if err := dbStore.AddNFTDestroyTxs(txs); err != nil {
+		return err
+	}
+
+	log.Info("[OnNFTChanged] find ", len(txs), "NFTDestroyTx, add into db cache")
+	return nil
+}
+
 func (sc *SideChainImpl) OnIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
 	arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().BroadcastSidechainIllegalData(evidence)
 	return nil
@@ -295,6 +329,54 @@ func (sc *SideChainImpl) SendCachedWithdrawTxs(currentHeight uint32) {
 		if err != nil {
 			log.Errorf("[SendCachedWithdrawTxs] %s", err.Error())
 			return
+		}
+	}
+}
+
+func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
+	if !sc.CurrentConfig.SupportNFT {
+		return
+	}
+	if currentHeight < config.Parameters.NFTStartHeight {
+		return
+	}
+
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		log.Error("can't find db by genesis side chain name:", sc.GetCurrentConfig().Name)
+		return
+	}
+	needDestoryNFTIDs, err := dbStore.GetAllNFTDestroyID()
+	log.Infof(" [SendCachedNFTDestroyTxs] needDestoryNFTIDs ", needDestoryNFTIDs)
+
+	if err != nil {
+		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
+		return
+	}
+
+	if len(needDestoryNFTIDs) == 0 {
+		log.Error(" No cached withdraw transaction need to send")
+		return
+	}
+	//todo may add MaxTxsPerNFTDestroy
+	if len(needDestoryNFTIDs) > config.Parameters.MaxTxsPerWithdrawTx {
+		needDestoryNFTIDs = needDestoryNFTIDs[:config.Parameters.MaxTxsPerWithdrawTx]
+	}
+	canDestroyIDs, err := rpc.GetCanNFTDestroyIDs(needDestoryNFTIDs, sc.CurrentConfig.GenesisBlock)
+	if err != nil {
+		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
+		return
+	}
+
+	//check every canDestroyIDs is in needDestoryNFTIDs
+	//to avoid illegal behavior
+	canDestroyNFTIDs := base.GetCanDestroyNFTIDs(canDestroyIDs, needDestoryNFTIDs)
+	log.Infof(" [SendCachedNFTDestroyTxs] canDestroyNFTIDs ", canDestroyNFTIDs)
+
+	if len(canDestroyNFTIDs) != 0 {
+		err := sc.CreateAndBroadcastNFTDestroyProposal(canDestroyNFTIDs)
+		if err != nil {
+			log.Error("[SendCachedNFTDestroyTxs] CreateAndBroadcastWithdrawProposal failed" + err.Error())
 		}
 	}
 }
@@ -438,6 +520,51 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		currentArbitrator.BroadcastWithdrawProposal(wTx)
 		log.Info("[BroadcastWithdrawProposal] transactions count: ", targetIndex)
 	}
+
+	return nil
+}
+
+func (sc *SideChainImpl) CreateAndBroadcastNFTDestroyProposal(nftIDs []string) error {
+	dbStore := store.DbCache.GetDataStoreByDBName(sc.CurrentConfig.Name)
+	if dbStore == nil {
+		return errors.New(fmt.Sprintf("can't find db by genesis side chain name:%s", sc.GetCurrentConfig().Name))
+	}
+	unsolvedTransactions, err := dbStore.GetNFTDestroyTxsFromIDs(nftIDs)
+	if err != nil {
+		return err
+	}
+
+	if len(unsolvedTransactions) == 0 {
+		return nil
+	}
+
+	currentArbitrator := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator()
+	mainChainHeight := store.DbCache.MainChainStore.CurrentHeight(store.QueryHeightCode)
+
+	var wTx it.Transaction
+	var targetIndex int
+	for i := 0; i < len(unsolvedTransactions); {
+		i += 100
+		targetIndex = len(unsolvedTransactions)
+		if targetIndex > i {
+			targetIndex = i
+		}
+		var tx it.Transaction
+		tx = currentArbitrator.CreateNFTDestroyTransaction(
+			unsolvedTransactions[:targetIndex], sc, &arbitrator.MainChainFuncImpl{}, mainChainHeight)
+		if tx == nil {
+			continue
+		}
+		if tx.GetSize() < int(pact.MaxBlockContextSize) {
+			wTx = tx
+		}
+	}
+
+	if wTx == nil {
+		return errors.New("[CreateAndBroadcastWithdrawProposal] failed")
+	}
+
+	currentArbitrator.BroadcastWithdrawProposal(wTx)
 
 	return nil
 }

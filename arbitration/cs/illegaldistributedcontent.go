@@ -23,7 +23,7 @@ type IllegalDistributedContent struct {
 func (i *IllegalDistributedContent) Check(clientFunc interface{}) error {
 	sideChain, ok := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(i.Evidence.GenesisBlockAddress)
 	if !ok || sideChain == nil {
-		return errors.New("get side chain from genesis address failed when check illegal evidence")
+		return errors.New("IllegalDistributedContent get side chain from genesis address failed when check illegal evidence")
 	}
 	evidence := &base.SidechainIllegalDataInfo{
 		IllegalType:     byte(i.Evidence.IllegalType),

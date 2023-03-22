@@ -57,11 +57,15 @@ type Arbitrator interface {
 	CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
 		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 
+	CreateNFTDestroyTransaction(nftTxs []*NFTDestroyFromSideChainTx,
+		sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
+
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
 		sideChain SideChain, mcFunc MainChainFunc) it.Transaction
 
 	BroadcastWithdrawProposal(txn it.Transaction)
+
 	SendWithdrawTransaction(txn it.Transaction) (rpc.Response, error)
 
 	// schnorr withdraw
@@ -108,6 +112,7 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 		ar.mainChainImpl.Reset()
 		ar.ProcessDepositTransactions()
 		ar.processWithdrawTransactions(currentHeight)
+		ar.processNFTDestroyTransactions(currentHeight)
 		ar.processReturnDepositTransactions()
 		ar.ProcessSideChainPowTransaction()
 	} else {
@@ -124,6 +129,12 @@ func (ar *ArbitratorImpl) ProcessDepositTransactions() {
 func (ar *ArbitratorImpl) processWithdrawTransactions(currentHeight uint32) {
 	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
 		go sc.SendCachedWithdrawTxs(currentHeight)
+	}
+}
+
+func (ar *ArbitratorImpl) processNFTDestroyTransactions(currentHeight uint32) {
+	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+		go sc.SendCachedNFTDestroyTxs(currentHeight)
 	}
 }
 
@@ -246,6 +257,24 @@ func (ar *ArbitratorImpl) CreateSchnorrWithdrawTransaction(withdrawTxs []*Withdr
 	return withdrawTransaction
 }
 
+func (ar *ArbitratorImpl) CreateNFTDestroyTransaction(nftTxs []*NFTDestroyFromSideChainTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
+
+	nftDestroyTXs, err := ar.mainChainImpl.CreateNFTDestroyFromSideChainTx(
+		sideChain, nftTxs, mcFunc, mainChainHeight)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+
+	if nftDestroyTXs == nil {
+		log.Warn("Created an empty NFT Destroy Transaction")
+		return nil
+	}
+
+	return nftDestroyTXs
+}
+
 type DepositTxInfo struct {
 	mainChainTxHash string
 	sideChain       SideChain
@@ -258,7 +287,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 	var succeedGenesisAddresses []string
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok {
-		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		log.Error("[SendDepositTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
 		return
 	}
 	for _, tx := range spvTxs {
@@ -311,7 +340,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCrossTransaction, genesisAddress string) {
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok {
-		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		log.Error("[SendSmallCrossDepositTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
 		return
 	}
 	for _, tx := range knownTx {

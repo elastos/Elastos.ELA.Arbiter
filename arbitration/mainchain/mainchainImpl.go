@@ -313,6 +313,53 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	), nil
 }
 
+//NFTDestroyFromSideChainTx
+func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
+	sideChain arbitrator.SideChain, nftDestroyTxs []*base.NFTDestroyFromSideChainTx,
+	mcFunc arbitrator.MainChainFunc, mainChainHeight uint32) (it.Transaction, error) {
+	// Create redeem script
+	redeemScript, err := cs.CreateRedeemScript()
+	if err != nil {
+		return nil, err
+	}
+
+	var ids []common.Uint256
+	var ownerStakeAddresses []common.Uint168
+
+	for i := 0; i < len(nftDestroyTxs); i++ {
+		ids = append(ids, nftDestroyTxs[i].ID)
+		ownerStakeAddresses = append(ownerStakeAddresses, nftDestroyTxs[i].OwnerStakeAddress)
+	}
+	genesisBlockHash, err := common.Uint256FromHexString(sideChain.GetCurrentConfig().GenesisBlock)
+	if err != nil {
+		log.Errorf("CreateNFTDestroyFromSideChainTx Uint256FromHexString: %v\n", err)
+		return nil, err
+	}
+	txPayload := &payload.NFTDestroyFromSideChain{
+		IDs:                 ids,
+		OwnerStakeAddresses: ownerStakeAddresses,
+		GenesisBlockHash:    *genesisBlockHash,
+	}
+	p := &program.Program{redeemScript, nil}
+
+	// Create attribute
+	txAttr := elacommon.NewAttribute(elacommon.Nonce, []byte(strconv.FormatInt(rand.Int63(), 10)))
+	attributes := make([]*elacommon.Attribute, 0)
+	attributes = append(attributes, &txAttr)
+
+	return elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.NFTDestroyFromSideChain,
+		payload.NFTDestroyFromSideChainVersion,
+		txPayload,
+		attributes,
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{p},
+	), nil
+}
+
 func (mc *MainChainImpl) CreateWithdrawTransactionV1(
 	sideChain arbitrator.SideChain, withdrawTxs []*base.WithdrawTx,
 	mcFunc arbitrator.MainChainFunc) (it.Transaction, error) {
@@ -504,16 +551,16 @@ func (mc *MainChainImpl) CreateWithdrawTransactionV0(
 	attributes = append(attributes, &txAttr)
 
 	return elatx.CreateTransaction(
-			elacommon.TxVersionDefault,
-			elacommon.WithdrawFromSideChain,
-			payload.WithdrawFromSideChainVersionV1,
-			txPayload,
-			attributes,
-			txInputs,
-			txOutputs,
-			0,
-			[]*program.Program{p},
-		), nil
+		elacommon.TxVersionDefault,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		txPayload,
+		attributes,
+		txInputs,
+		txOutputs,
+		0,
+		[]*program.Program{p},
+	), nil
 }
 
 func (mc *MainChainImpl) SyncChainData() uint32 {

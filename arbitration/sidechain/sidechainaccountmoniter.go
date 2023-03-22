@@ -70,6 +70,19 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(withdrawTxs []*base.
 	return item.OnUTXOChanged(withdrawTxs, blockHeight)
 }
 
+func (monitor *SideChainAccountMonitorImpl) fireNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, genesisBlockAddress string, blockHeight uint32) error {
+	if monitor.accountListenerMap == nil {
+		return nil
+	}
+
+	item, ok := monitor.accountListenerMap[genesisBlockAddress]
+	if !ok {
+		return errors.New("fired unknown listener")
+	}
+
+	return item.OnNFTChanged(nftDestroyTxs, blockHeight)
+}
+
 func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
 	if monitor.accountListenerMap == nil {
 		return nil
@@ -309,6 +322,19 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					//}
 					log.Info("End Monitor Failed Deposit Transfer")
 				}
+				if currentHeight >= 6 && sideNode.SupportNFT {
+					nftDestroyTXs, err := rpc.GetNFTDestroyTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
+					if err != nil {
+						log.Error("get destroyed transaction at height:", currentHeight+1-6, "failed\n"+
+							"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
+							"error:", err)
+						break
+					}
+					if len(nftDestroyTXs) > 0 {
+						monitor.processNFTDestroyTxs(nftDestroyTXs, sideNode.GenesisBlockAddress, currentHeight+1-6)
+					}
+
+				}
 			}
 			// Update wallet height
 			currentHeight = dbStore.CurrentSideHeight(currentHeight)
@@ -424,6 +450,60 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		err := monitor.fireUTXOChanged(withdrawTxs, genesisAddress, blockHeight)
 		if err != nil {
 			log.Error("[fireUTXOChanged] err:", err.Error())
+		}
+	}
+}
+
+func (monitor *SideChainAccountMonitorImpl) processNFTDestroyTxs(transactions []*base.NFTDestroyFromSideChainInfo,
+	genesisAddress string, blockHeight uint32) {
+	var nftDestroyTxs []*base.NFTDestroyFromSideChainTx
+	for _, txn := range transactions {
+		txnBytes, err := common.HexStringToBytes(txn.TokenID)
+		if err != nil {
+			log.Warn("HexStringToBytes  error ", txn.TokenID)
+			continue
+		}
+		nftID, err := common.Uint256FromBytes(txnBytes)
+		if err != nil {
+			log.Warn("Uint256FromBytes error  TokenID", txn.TokenID)
+			continue
+		}
+		programHash, err := common.Uint168FromAddress(txn.OwnerStakeAddress)
+		if err != nil {
+			log.Warn("invalid  OwnerStakeAddress:", txn.OwnerStakeAddress)
+			continue
+		}
+		_, err = programHash.ToAddress()
+		if err != nil {
+			log.Warn("invalid OwnerStakeAddress programHash :", txn.OwnerStakeAddress)
+			continue
+		}
+		if contract.PrefixType(programHash[0]) != contract.PrefixDPoSV2 {
+			log.Warn("invalid OwnerStakeAddress:", txn.OwnerStakeAddress)
+			continue
+		}
+
+		nftDestroyTx := &base.NFTDestroyFromSideChainTx{
+			ID:                *nftID,
+			OwnerStakeAddress: *programHash,
+		}
+
+		dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
+		if dbStore == nil {
+			log.Error("can't find db store by genesis block address:", genesisAddress)
+			continue
+		}
+		if ok, err := dbStore.HasNFTDestroyTx(nftID.String()); err != nil || !ok {
+			log.Error("can't find db store by genesis block address:", genesisAddress)
+
+			nftDestroyTxs = append(nftDestroyTxs, nftDestroyTx)
+		}
+	}
+
+	if len(nftDestroyTxs) != 0 {
+		err := monitor.fireNFTChanged(nftDestroyTxs, genesisAddress, blockHeight)
+		if err != nil {
+			log.Error("[fireNFTChanged] err:", err.Error())
 		}
 	}
 }

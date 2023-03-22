@@ -248,6 +248,27 @@ func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 	return txs, nil
 }
 
+func GetNFTDestroyTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.NFTDestroyFromSideChainInfo, error) {
+	//getPledgeBillBurnTransactionByHeight
+	resp, err := CallAndUnmarshal("getPledgeBillBurnTransactionByHeight", Param("height", height), config)
+	if err != nil {
+		return nil, err
+	}
+	txs := make([]*base.NFTDestroyFromSideChainInfo, 0)
+	if err = Unmarshal(&resp, &txs); err != nil {
+		log.Error("[GetNFTDestroyTransactionByHeight] received invalid response")
+		return nil, err
+	}
+	if len(txs) != 0 {
+		log.Debug("[GetNFTDestroyTransactionByHeight] height:", height, ", len transactions:", len(txs))
+	}
+
+	for _, tx := range txs {
+		log.Debugf("[GetNFTDestroyTransactionByHeight]  ID %s OwnerStakeAddress %s ", tx.TokenID, tx.OwnerStakeAddress)
+	}
+	return txs, nil
+}
+
 func GetIllegalEvidenceByHeight(height uint32, config *config.RpcConfig) ([]*base.SidechainIllegalDataInfo, error) {
 	resp, err := CallAndUnmarshal("getillegalevidencebyheight", Param("height", height), config)
 	if err != nil {
@@ -335,6 +356,27 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 		return nil, err
 	}
 	return removeTxs, nil
+}
+
+func GetCanNFTDestroyIDs(ids []string, GenesisBlockHash string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["ids"] = ids
+	parameter["genesisblockhash"] = GenesisBlockHash
+	log.Infof(" [GetCanNFTDestroyIDs] ids ", ids, "genesisblockhash", GenesisBlockHash)
+
+	result, err := CallAndUnmarshal("getcandestroynftids",
+		parameter, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var canDestroyIDs []string
+	if err := Unmarshal(&result, &canDestroyIDs); err != nil {
+		return nil, err
+	}
+	log.Infof("[GetCanNFTDestroyIDs]  canDestroyIDs ", canDestroyIDs)
+
+	return canDestroyIDs, nil
 }
 
 func GetExistReturnDepositTransactions(txs []string) ([]string, error) {
