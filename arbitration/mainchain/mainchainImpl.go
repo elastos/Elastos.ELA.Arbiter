@@ -313,23 +313,6 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	), nil
 }
 
-func getGenesisBlockHash(genesisBlock string) *common.Uint256 {
-	genesisBytes, err := common.HexStringToBytes(genesisBlock)
-	if err != nil {
-		log.Errorf("getGenesisBlockHash Side node genesis block hash error: %v\n", err)
-		return nil
-	}
-	reversedGenesisBytes := common.BytesReverse(genesisBytes)
-	reversedGenesisStr := common.BytesToHexString(reversedGenesisBytes)
-
-	genesisBlockHash, err := common.Uint256FromHexString(reversedGenesisStr)
-	if err != nil {
-		log.Errorf("Side node genesis block hash reverse error: %v\n", err)
-		return nil
-	}
-	return genesisBlockHash
-}
-
 //NFTDestroyFromSideChainTx
 func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 	sideChain arbitrator.SideChain, nftDestroyTxs []*base.NFTDestroyFromSideChainTx,
@@ -347,8 +330,11 @@ func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 		ids = append(ids, nftDestroyTxs[i].ID)
 		ownerStakeAddresses = append(ownerStakeAddresses, nftDestroyTxs[i].OwnerStakeAddress)
 	}
-	genesisBlockHash := getGenesisBlockHash(sideChain.GetCurrentConfig().GenesisBlock)
-
+	genesisBlockHash, err := common.Uint256FromHexString(sideChain.GetCurrentConfig().GenesisBlock)
+	if err != nil {
+		log.Errorf("CreateNFTDestroyFromSideChainTx Uint256FromHexString: %v\n", err)
+		return nil, err
+	}
 	txPayload := &payload.NFTDestroyFromSideChain{
 		IDs:                 ids,
 		OwnerStakeAddresses: ownerStakeAddresses,
