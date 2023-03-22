@@ -149,10 +149,13 @@ func (d *TxDistributedContent) SubmitNFTDestroyTransaction() error {
 	for _, id := range pl.IDs {
 		ids = append(ids, id.String())
 	}
-
-	genesisBlockAddress, err := base.GetGenesisAddress(pl.GenesisBlockHash)
-	if err != nil {
-		return errors.New("Side node genesis block hash to address error: ")
+	chains := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
+	genesisBlockAddress := ""
+	for _, chain := range chains {
+		chainConfig := chain.GetCurrentConfig()
+		if chainConfig.GenesisBlock == pl.GenesisBlockHash.String() {
+			genesisBlockAddress = chainConfig.GenesisBlockAddress
+		}
 	}
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisBlockAddress)
 	if dbStore == nil {
@@ -789,12 +792,16 @@ func checkWithdrawFromSideChainPayload(txn it.Transaction,
 
 func checkNFTDestroyFromSideChainPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc,
 	nftDestroyPayload *payload.NFTDestroyFromSideChain) error {
-	//check nftDestroyPayload.GenesisBlockAddress must exist
-	genesisAddress, err := base.GetGenesisAddress(nftDestroyPayload.GenesisBlockHash)
-	if err != nil {
-		return errors.New("invalid genesis block hash.")
+
+	chains := arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetAllChains()
+	genesisBlockAddress := ""
+	for _, chain := range chains {
+		chainConfig := chain.GetCurrentConfig()
+		if chainConfig.GenesisBlock == nftDestroyPayload.GenesisBlockHash.String() {
+			genesisBlockAddress = chainConfig.GenesisBlockAddress
+		}
 	}
-	_, _, err = clientFunc.GetSideChainAndExchangeRate(genesisAddress)
+	_, _, err := clientFunc.GetSideChainAndExchangeRate(genesisBlockAddress)
 	if err != nil {
 		return err
 	}
