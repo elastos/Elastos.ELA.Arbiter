@@ -187,14 +187,14 @@ func (sc *SideChainImpl) OnUTXOChanged(withdrawTxs []*base.WithdrawTx, blockHeig
 func (sc *SideChainImpl) OnNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, blockHeight uint32) error {
 
 	if len(nftDestroyTxs) == 0 {
-		return errors.New("[OnUTXOChanged] received withdrawTx, but size is 0")
+		return errors.New("[OnUTXOChanged] received destroy NFT tx, but size is 0")
 	}
 
 	var txs []*base.NFTDestroyTransaction
 	for _, nftDestroyTx := range nftDestroyTxs {
 		buf := new(bytes.Buffer)
 		if err := nftDestroyTx.Serialize(buf); err != nil {
-			log.Error("[OnUTXOChanged] received withdrawTx, but is invalid tx,", err.Error())
+			log.Error("[OnUTXOChanged] received destroy NFT, but is invalid tx,", err.Error())
 			continue
 		}
 
