@@ -31,6 +31,7 @@
             "User": "",
             "Pass": ""
         },
+        "Name": "DID",
 		"ExchangeRate": 1.0,
         "GenesisBlock": "56be936978c261b2e649d58dbfaf3f23d4a868274f5522cd2adb4308a955c4a3",
         "MiningAddr": "EQr9qjiXGF2y7YMtDCHtHNewZynakbDzF7",

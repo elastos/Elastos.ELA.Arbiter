@@ -3,6 +3,7 @@ package arbitrator
 import (
 	"encoding/hex"
 	"errors"
+	"github.com/elastos/Elastos.ELA/common"
 	"sync"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
+
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
@@ -25,6 +27,7 @@ type ArbitratorGroupListener interface {
 
 type ArbitratorGroup interface {
 	GetCurrentArbitrator() Arbitrator
+	GetCurrentArbitratorPublicKey() string
 	GetArbitratorsCount() int
 	GetAllArbitrators() []string
 	GetOnDutyArbitratorOfMain() (string, error)
@@ -168,6 +171,17 @@ func (group *ArbitratorGroupImpl) GetCurrentArbitrator() Arbitrator {
 	group.mux.Lock()
 	defer group.mux.Unlock()
 	return group.currentArbitrator
+}
+
+func (group *ArbitratorGroupImpl) GetCurrentArbitratorPublicKey() string {
+	group.mux.Lock()
+	defer group.mux.Unlock()
+	currentAccount := group.currentArbitrator
+	pkBuf, err := currentAccount.GetPublicKey().EncodePoint(true)
+	if err != nil {
+		panic("public key of myself is invalid")
+	}
+	return common.BytesToHexString(pkBuf)
 }
 
 func (group *ArbitratorGroupImpl) GetAllArbitrators() []string {

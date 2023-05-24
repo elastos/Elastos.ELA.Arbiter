@@ -17,9 +17,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/servers"
 )
@@ -56,7 +58,6 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 
 		return result, nil
 	}
-
 	if height+1 >= config.Parameters.CRCOnlyDPOSHeight &&
 		height < config.Parameters.CRClaimDPOSNodeStartHeight {
 		for _, a := range config.Parameters.CRCCrossChainArbiters {
@@ -72,7 +73,6 @@ func GetActiveDposPeers(height uint32) (result []peer.PID, err error) {
 
 		return result, nil
 	}
-
 	var rpcMethod string
 	if height < config.Parameters.DPOSNodeCrossChainHeight {
 		rpcMethod = "getcrcpeersinfo"
@@ -234,13 +234,38 @@ func GetWithdrawTransactionByHeight(height uint32, config *config.RpcConfig) ([]
 		log.Error("[GetWithdrawTransactionByHeight] received invalid response")
 		return nil, err
 	}
-	log.Debug("[GetWithdrawTransactionByHeight] len transactions:", len(txs))
+	if len(txs) != 0 {
+		log.Debug("[GetWithdrawTransactionByHeight] height:", height, ", len transactions:", len(txs))
+	} else {
+		log.Debug("[GetWithdrawTransactionByHeight] height:", height, ", no withdraw transactions")
+	}
 	for i, tx := range txs {
 		for j, asset := range tx.CrossChainAssets {
 			log.Debug("[GetWithdrawTransactionByHeight] tx[", i, "]", "assets[", j, "]:", *asset)
 		}
 	}
 
+	return txs, nil
+}
+
+func GetNFTDestroyTransactionByHeight(height uint32, config *config.RpcConfig) ([]*base.NFTDestroyFromSideChainInfo, error) {
+	//getPledgeBillBurnTransactionByHeight
+	resp, err := CallAndUnmarshal("getPledgeBillBurnTransactionByHeight", Param("height", height), config)
+	if err != nil {
+		return nil, err
+	}
+	txs := make([]*base.NFTDestroyFromSideChainInfo, 0)
+	if err = Unmarshal(&resp, &txs); err != nil {
+		log.Error("[GetNFTDestroyTransactionByHeight] received invalid response")
+		return nil, err
+	}
+	if len(txs) != 0 {
+		log.Debug("[GetNFTDestroyTransactionByHeight] height:", height, ", len transactions:", len(txs))
+	}
+
+	for _, tx := range txs {
+		log.Debugf("[GetNFTDestroyTransactionByHeight]  ID %s OwnerStakeAddress %s ", tx.TokenID, tx.OwnerStakeAddress)
+	}
 	return txs, nil
 }
 
@@ -333,6 +358,27 @@ func GetExistWithdrawTransactions(txs []string) ([]string, error) {
 	return removeTxs, nil
 }
 
+func GetCanNFTDestroyIDs(ids []string, GenesisBlockHash string) ([]string, error) {
+	parameter := make(map[string]interface{})
+	parameter["ids"] = ids
+	parameter["genesisblockhash"] = GenesisBlockHash
+	log.Infof(" [GetCanNFTDestroyIDs] ids ", ids, "genesisblockhash", GenesisBlockHash)
+
+	result, err := CallAndUnmarshal("getcandestroynftids",
+		parameter, config.Parameters.MainNode.Rpc)
+	if err != nil {
+		return nil, err
+	}
+
+	var canDestroyIDs []string
+	if err := Unmarshal(&result, &canDestroyIDs); err != nil {
+		return nil, err
+	}
+	log.Infof("[GetCanNFTDestroyIDs]  canDestroyIDs ", canDestroyIDs)
+
+	return canDestroyIDs, nil
+}
+
 func GetExistReturnDepositTransactions(txs []string) ([]string, error) {
 	parameter := make(map[string]interface{})
 	parameter["txs"] = txs
@@ -395,7 +441,7 @@ func GetReferenceAddress(txid string, index int, config *config.RpcConfig) (stri
 	return "", errors.New("invalid data type")
 }
 
-func GetAmountByInputs(inputs []*types.Input, config *config.RpcConfig) (common.Fixed64, error) {
+func GetAmountByInputs(inputs []*elacommon.Input, config *config.RpcConfig) (common.Fixed64, error) {
 	buf := new(bytes.Buffer)
 	if err := common.WriteVarUint(buf, uint64(len(inputs))); err != nil {
 		return 0, err
@@ -519,7 +565,7 @@ func Unmarshal(result interface{}, target interface{}) error {
 	return nil
 }
 
-func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, error) {
+func GetTransaction(tx string, config *config.RpcConfig) (it.Transaction, error) {
 	param := make(map[string]interface{})
 	param["txid"] = tx
 	resp, err := CallAndUnmarshalResponse("getrawtransaction", param,
@@ -535,10 +581,16 @@ func GetTransaction(tx string, config *config.RpcConfig) (*types.Transaction, er
 	if err != nil {
 		return nil, errors.New("[MoniterFailedDepositTransfer] Invalid data from GetSmallCrossTransferTxs " + err.Error())
 	}
-	var txn types.Transaction
-	err = txn.Deserialize(bytes.NewReader(buf))
+
+	r := bytes.NewReader(buf)
+	txn, err := elatx.GetTransactionByBytes(r)
+	if err != nil {
+		return nil, err
+	}
+	err = txn.Deserialize(r)
 	if err != nil {
 		return nil, errors.New("[MoniterFailedDepositTransfer] Decode transaction error " + err.Error())
 	}
-	return &txn, nil
+
+	return txn, nil
 }

@@ -3,12 +3,13 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/hex"
+	"time"
+
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
-	"github.com/elastos/Elastos.ELA/core/types"
-	"time"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 )
 
 func MonitorSmallCrossTransfer() {
@@ -44,13 +45,18 @@ func MonitorSmallCrossTransfer() {
 					log.Error("[Small-Transfer] Invalid data from GetSmallCrossTransferTxs")
 					break
 				}
-				var txn types.Transaction
-				err = txn.Deserialize(bytes.NewReader(buf))
+				r := bytes.NewReader(buf)
+				txn, err := elatx.GetTransactionByBytes(r)
+				if err != nil {
+						log.Error("[Small-Transfer] Invalid data from GetSmallCrossTransferTxs")
+						break
+				}
+				err = txn.Deserialize(r)
 				if err != nil {
 					log.Error("[Small-Transfer] Decode transaction error", err.Error())
 					break
 				}
-				xAddr, err := txn.Outputs[0].ProgramHash.ToAddress()
+				xAddr, err := txn.Outputs()[0].ProgramHash.ToAddress()
 				if err != nil {
 					log.Error("[Small-Transfer] get xaddress failed ", err.Error())
 					break
@@ -64,7 +70,7 @@ func MonitorSmallCrossTransfer() {
 					txs = append(txs, &base.MainChainTransaction{
 						TransactionHash:     txn.Hash().String(),
 						GenesisBlockAddress: xAddr,
-						Transaction:         &txn,
+						Transaction:         txn,
 						Proof:               nil,
 					})
 				}

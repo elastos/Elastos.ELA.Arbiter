@@ -6,7 +6,7 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 )
 
 const MaxTargetDataSize uint32 = 1024
@@ -20,6 +20,11 @@ type WithdrawAsset struct {
 
 type WithdrawInfo struct {
 	WithdrawAssets []*WithdrawAsset
+}
+
+type NFTDestroyFromSideChainTx struct {
+	ID                common.Uint256 //detail votes info referkey
+	OwnerStakeAddress common.Uint168 //owner OwnerStakeAddress
 }
 
 type WithdrawTx struct {
@@ -39,27 +44,32 @@ type FailedDepositTx struct {
 }
 
 type SpvTransaction struct {
-	MainChainTransaction *types.Transaction
+	MainChainTransaction it.Transaction
 	Proof                *bloom.MerkleProof
 }
 
 type SmallCrossTransaction struct {
-	MainTx    *types.Transaction
+	MainTx    it.Transaction
 	Signature []byte
 }
 
 type MainChainTransaction struct {
 	TransactionHash     string
 	GenesisBlockAddress string
-	Transaction         *types.Transaction
+	Transaction         it.Transaction
 	Proof               *bloom.MerkleProof
 }
 
 type SideChainTransaction struct {
-	TransactionHash     string
-	GenesisBlockAddress string
-	Transaction         []byte
-	BlockHeight         uint32
+	TransactionHash string
+	Transaction     []byte
+	BlockHeight     uint32
+}
+
+type NFTDestroyTransaction struct {
+	ID string
+	Transaction     []byte
+	BlockHeight     uint32
 }
 
 func (info *WithdrawInfo) Serialize(w io.Writer) error {
@@ -196,5 +206,28 @@ func (t *FailedDepositTx) Deserialize(r io.Reader) error {
 		return errors.New("[Deserialize] read withdrawInfo failed:" + err.Error())
 	}
 
+	return nil
+}
+
+func (t *NFTDestroyFromSideChainTx) Serialize(w io.Writer) error {
+	if err := t.ID.Serialize(w); err != nil {
+		return errors.New(
+			"failed to serialize ID")
+	}
+	if err := t.OwnerStakeAddress.Serialize(w); err != nil {
+		return errors.New(
+			"failed to serialize OwnerStakeAddress")
+	}
+	return nil
+}
+
+func (t *NFTDestroyFromSideChainTx) Deserialize(r io.Reader) error {
+	var err error
+	if err = t.ID.Deserialize(r); err != nil {
+		return errors.New("failed to deserialize ID")
+	}
+	if err = t.OwnerStakeAddress.Deserialize(r); err != nil {
+		return errors.New("failed to deserialize ID")
+	}
 	return nil
 }

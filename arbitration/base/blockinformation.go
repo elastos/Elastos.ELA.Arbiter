@@ -2,7 +2,7 @@ package base
 
 import (
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
@@ -22,8 +22,8 @@ type AmountMap struct {
 }
 
 type AttributeInfo struct {
-	Usage types.AttributeUsage `json:"usage"`
-	Data  string               `json:"data"`
+	Usage elacommon.AttributeUsage `json:"usage"`
+	Data  string                   `json:"data"`
 }
 
 type InputInfo struct {
@@ -52,7 +52,7 @@ type TransactionInfo struct {
 	Confirmations  uint32          `json:"confirmations"`
 	Time           uint32          `json:"time"`
 	BlockTime      uint32          `json:"blocktime"`
-	TxType         types.TxType    `json:"type"`
+	TxType         elacommon.TxType    `json:"type"`
 	PayloadVersion byte            `json:"payloadversion"`
 	Payload        PayloadInfo     `json:"payload"`
 	Attributes     []AttributeInfo `json:"attributes"`
@@ -144,4 +144,9 @@ type SidechainIllegalDataInfo struct {
 	IllegalSigner   string `json:"illegalsigner"`
 	Evidence        string `json:"evidence"`
 	CompareEvidence string `json:"compareevidence"`
+}
+
+type NFTDestroyFromSideChainInfo struct {
+	TokenID                string `json:"tokenID"`//detail votes info referkey
+	OwnerStakeAddress      string `json:"saddress"`//owner OwnerStakeAddress
 }

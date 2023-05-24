@@ -191,7 +191,12 @@ func GetSideChainBlockHeight(param Params) map[string]interface{} {
 		return ResponsePack(errors.InvalidParams, "invalid genesis block hash")
 	}
 
-	return ResponsePack(errors.Success, store.DbCache.SideChainStore.CurrentSideHeight(address, 0))
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(address)
+	if dbStore == nil {
+		return ResponsePack(errors.InvalidParams, "invalid genesis block hash")
+	}
+
+	return ResponsePack(errors.Success, dbStore.CurrentSideHeight(0))
 }
 
 func GetFinishedDepositTxs(param Params) map[string]interface{} {
@@ -254,17 +259,22 @@ func GetSPVHeight(param Params) map[string]interface{} {
 
 func GetArbiterPeersInfo(params Params) map[string]interface{} {
 	type peerInfo struct {
-		PublicKey string `json:"publickey"`
-		IP        string `json:"ip"`
-		ConnState string `json:"connstate"`
+		PublicKey   string `json:"publickey"`
+		IP          string `json:"ip,omitempty"`
+		ConnState   string `json:"connstate"`
+		NodeVersion string `json:"nodeversion"`
 	}
 	peers := cs.P2PClientSingleton.DumpArbiterPeersInfo()
 	result := make([]peerInfo, 0)
 	for _, p := range peers {
+		if !config.Parameters.ShowPeersIp {
+			p.Addr = ""
+		}
 		result = append(result, peerInfo{
-			PublicKey: hex.EncodeToString(p.PID[:]),
-			IP:        p.Addr,
-			ConnState: p.State.String(),
+			PublicKey:   hex.EncodeToString(p.PID[:]),
+			IP:          p.Addr,
+			ConnState:   p.State.String(),
+			NodeVersion: p.NodeVersion,
 		})
 	}
 	return ResponsePack(errors.Success, result)

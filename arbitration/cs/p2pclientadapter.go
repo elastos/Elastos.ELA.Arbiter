@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"math/rand"
+	"net"
 	"os"
 	"path/filepath"
 	"sync"
@@ -19,6 +20,7 @@ import (
 	"github.com/elastos/Elastos.ELA/dpos/p2p"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	elap2p "github.com/elastos/Elastos.ELA/p2p"
+	elapeer "github.com/elastos/Elastos.ELA/p2p/peer"
 )
 
 var P2PClientSingleton *arbitratorsNetwork
@@ -26,6 +28,7 @@ var P2PClientSingleton *arbitratorsNetwork
 const (
 	//len of message need to less than 12
 	DistributeItemCommand = "disitem"
+	SendSchnorrItemommand = "senditem"
 )
 
 type messageItem struct {
@@ -97,7 +100,7 @@ func (n *arbitratorsNetwork) UpdatePeers(connectedPeers []peer.PID) {
 	}
 	n.peersLock.Unlock()
 
-	n.p2pServer.ConnectPeers(n.connectedPeers)
+	n.p2pServer.ConnectPeers(n.connectedPeers, nil)
 }
 
 func (n *arbitratorsNetwork) notifyFlag(flag p2p.NotifyFlag) {
@@ -117,6 +120,14 @@ func (n *arbitratorsNetwork) processMessage(msgItem *messageItem) {
 				v.OnReceivedSignMsg(msgItem.ID, withdraw.Content)
 			}
 		}
+	case SendSchnorrItemommand:
+		proposal, ok := m.(*SendSchnorrProposalMessage)
+		if ok {
+			for _, v := range n.mainchainListeners {
+				v.OnSendSchnorrItemMsg(msgItem.ID, proposal.NonceHash)
+			}
+		}
+
 	}
 }
 
@@ -149,18 +160,20 @@ func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 	notifier := p2p.NewNotifier(p2p.NFNetStabled|p2p.NFBadNetwork, network.notifyFlag)
 
 	server, err := p2p.NewServer(&p2p.Config{
-		DataDir:          filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir),
-		PID:              pid,
-		MagicNumber:      config.Parameters.Magic,
-		MaxNodePerHost:   config.Parameters.MaxNodePerHost,
-		DefaultPort:      config.Parameters.NodePort,
-		TimeSource:       dtime.NewMedianTime(),
-		Sign:             network.sign,
-		PingNonce:        network.getNonce,
-		PongNonce:        network.getNonce,
-		MakeEmptyMessage: makeEmptyMessage,
-		HandleMessage:    network.handleMessage,
-		StateNotifier:    notifier,
+		DataDir:           filepath.Join(config.DataPath, config.DataDir, config.ArbiterDir),
+		PID:               pid,
+		MagicNumber:       config.Parameters.Magic,
+		MaxNodePerHost:    config.Parameters.MaxNodePerHost,
+		DefaultPort:       config.Parameters.NodePort,
+		TimeSource:        dtime.NewMedianTime(),
+		Sign:              network.sign,
+		PingNonce:         store.DbCache.MainChainStore.BestHeight,
+		PongNonce:         store.DbCache.MainChainStore.BestHeight,
+		CreateMessage:     createMessage,
+		HandleMessage:     network.handleMessage,
+		StateNotifier:     notifier,
+		DPoSV2StartHeight: config.Parameters.DPoSV2StartHeight,
+		NodeVersion:       config.NodePrefix + config.Version,
 	})
 	if err != nil {
 		return nil, err
@@ -181,12 +194,15 @@ func NewArbitratorsNetwork(pid peer.PID) (*arbitratorsNetwork, error) {
 	return network, nil
 }
 
-func makeEmptyMessage(cmd string) (message elap2p.Message, err error) {
-	switch cmd {
+func createMessage(hdr elap2p.Header, r net.Conn) (message elap2p.Message, err error) {
+	switch hdr.GetCMD() {
 	case DistributeItemCommand:
 		message = &DistributedItemMessage{}
+	case SendSchnorrItemommand:
+		message = &SendSchnorrProposalMessage{}
 	default:
-		return nil, errors.New("received unsupported message, CMD " + cmd)
+		return nil, errors.New("Received unsupported message, CMD " + hdr.GetCMD())
 	}
-	return message, nil
+
+	return elapeer.CheckAndCreateMessage(hdr, message, r)
 }

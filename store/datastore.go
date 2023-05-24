@@ -3,6 +3,7 @@ package store
 import (
 	"bytes"
 	"database/sql"
+	"errors"
 	"math"
 	"os"
 	"path/filepath"
@@ -15,14 +16,15 @@ import (
 
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
 	DBDocumentNAME          = filepath.Join(config.DataPath, config.DataDir, "arbiter")
 	DBNameMainChain         = filepath.Join(DBDocumentNAME, "mainChainCache.db")
-	DBNameSideChain         = filepath.Join(DBDocumentNAME, "sideChainCache.db")
 	DBNameRegisterSideChain = filepath.Join(DBDocumentNAME, "registerSideChainCache.db")
 )
 
@@ -39,13 +41,18 @@ const (
 				Value BLOB
 			);`
 	CreateHeightInfoTable = `CREATE TABLE IF NOT EXISTS SideHeightInfo (
-				GenesisBlockAddress VARCHAR(34) NOT NULL PRIMARY KEY,
-				Height INTEGER
+				Name VARCHAR(20) NOT NULL PRIMARY KEY,
+				Value BLOB
 			);`
 	CreateSideChainTxsTable = `CREATE TABLE IF NOT EXISTS SideChainTxs (
 				Id INTEGER NOT NULL PRIMARY KEY,
 				TransactionHash VARCHAR UNIQUE,
-				GenesisBlockAddress VARCHAR(34),
+				TransactionData BLOB,
+				BlockHeight INTEGER
+			);`
+	CreateNFTDestroyTxsTable = `CREATE TABLE IF NOT EXISTS NFTDestroyTxs (
+				Id INTEGER NOT NULL PRIMARY KEY,
+				NFTID VARCHAR UNIQUE,
 				TransactionData BLOB,
 				BlockHeight INTEGER
 			);`
@@ -80,13 +87,13 @@ var (
 )
 
 type AddressUTXO struct {
-	Input               *types.Input
+	Input               *elacommon.Input
 	Amount              *common.Fixed64
 	GenesisBlockAddress string
 }
 
 type DataStore interface {
-	ResetDataStore() error
+	ResetDataStore(dbName string) error
 	catchSystemSignals()
 }
 
@@ -94,6 +101,7 @@ type DataStoreMainChain interface {
 	DataStore
 
 	CurrentHeight(height uint32) uint32
+	BestHeight(id peer.PID) uint64
 	AddMainChainTx(tx *base.MainChainTransaction) error
 	AddMainChainTxs(txs []*base.MainChainTransaction) ([]bool, error)
 	HasMainChainTx(transactionHash, genesisBlockAddress string) (bool, error)
@@ -107,21 +115,30 @@ type DataStoreMainChain interface {
 type DataStoreSideChain interface {
 	DataStore
 
-	CurrentSideHeight(genesisBlockAddress string, height uint32) uint32
+	SideChainName() string
+	GenesisBlockAddress() string
+
+	CurrentSideHeight(height uint32) uint32
 	AddSideChainTx(tx *base.SideChainTransaction) error
 	AddSideChainTxs(txs []*base.SideChainTransaction) error
 	HasSideChainTx(transactionHash string) (bool, error)
 	RemoveSideChainTxs(transactionHashes []string) error
 	GetAllSideChainTxHashes() ([]string, error)
-	GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error)
+	GetAllSideChainTxHashesAndHeights() ([]string, []uint32, error)
 	GetSideChainTxsFromHashes(transactionHashes []string) ([]*base.WithdrawTx, error)
-	GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error)
 
 	AddReturnDepositTx(txid string, genesisBlockAddress string, transactionByte []byte) error
 	GetReturnDepositTx(txid string) ([]byte, error)
 	GetAllReturnDepositTx(genesisBlockAddress string) ([][]byte, []string, error)
 	GetAllReturnDepositTxs() ([]string, error)
 	RemoveReturnDepositTxs(transactionHashes []string) error
+
+	RemoveNFTDestroyTxs(NFTIDS []string) error
+	HasNFTDestroyTx(NFTID string) (bool, error)
+	AddNFTDestroyTx(tx *base.NFTDestroyTransaction) error
+	AddNFTDestroyTxs(txs []*base.NFTDestroyTransaction) error
+	GetAllNFTDestroyID() ([]string, error)
+	GetNFTDestroyTxsFromIDs(nftIDs []string) ([]*base.NFTDestroyFromSideChainTx, error)
 }
 
 type DataStoreRegisteredSideChain interface {
@@ -141,20 +158,46 @@ type DataStoreRegisteredSideChain interface {
 
 type DataStoreImpl struct {
 	MainChainStore           DataStoreMainChain
-	SideChainStore           DataStoreSideChain
+	SideChainStore           []DataStoreSideChain
 	RegisteredSideChainStore DataStoreRegisteredSideChain
+}
+
+func (d *DataStoreImpl) GetDataStoreByDBName(sideChainName string) DataStoreSideChain {
+	for _, s := range d.SideChainStore {
+		if sideChainName == s.SideChainName() {
+			return s
+		}
+	}
+
+	return nil
+}
+
+func (d *DataStoreImpl) GetDataStoreGenesisBlocAddress(genesisBlockAddress string) DataStoreSideChain {
+	for _, s := range d.SideChainStore {
+		if genesisBlockAddress == s.GenesisBlockAddress() {
+			return s
+		}
+	}
+
+	return nil
 }
 
 type DataStoreMainChainImpl struct {
 	mux *sync.Mutex
 
 	*sql.DB
+
+	// height of main chain
+	mainChainHeight uint32
 }
 
 type DataStoreSideChainImpl struct {
 	mux *sync.Mutex
 
 	*sql.DB
+
+	sideChainName       string
+	genesisBlockAddress string
 }
 
 type DataStoreRegisteredSideChainStoreImpl struct {
@@ -181,16 +224,28 @@ func OpenDataStore() (*DataStoreImpl, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	scStore := make([]DataStoreSideChain, 0)
+	for i, s := range dbSideChain {
+		scStore = append(scStore, &DataStoreSideChainImpl{
+			mux:                 new(sync.Mutex),
+			DB:                  s,
+			sideChainName:       config.Parameters.SideNodeList[i].Name,
+			genesisBlockAddress: config.Parameters.SideNodeList[i].GenesisBlockAddress,
+		})
+	}
 	dataStore := &DataStoreImpl{
 		MainChainStore:           &DataStoreMainChainImpl{mux: new(sync.Mutex), DB: dbMainChain},
-		SideChainStore:           &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain},
 		RegisteredSideChainStore: &DataStoreRegisteredSideChainStoreImpl{mux: new(sync.Mutex), DB: registerSc},
+		SideChainStore:           scStore,
 	}
 
 	// Handle system interrupt signals
 	dataStore.MainChainStore.catchSystemSignals()
-	dataStore.SideChainStore.catchSystemSignals()
 	dataStore.RegisteredSideChainStore.catchSystemSignals()
+	for _, s := range dataStore.SideChainStore {
+		s.catchSystemSignals()
+	}
 
 	return dataStore, nil
 }
@@ -208,17 +263,23 @@ func OpenMainChainDataStore() (*DataStoreMainChainImpl, error) {
 	return dataStore, nil
 }
 
-func OpenSideChainDataStore() (*DataStoreSideChainImpl, error) {
+func OpenSideChainDataStore() ([]*DataStoreSideChainImpl, error) {
 	dbSideChain, err := initSideChainDB()
 	if err != nil {
 		return nil, err
 	}
-	dataStore := &DataStoreSideChainImpl{mux: new(sync.Mutex), DB: dbSideChain}
+	scStore := make([]*DataStoreSideChainImpl, 0)
+	for i, s := range dbSideChain {
+		scStore = append(scStore, &DataStoreSideChainImpl{mux: new(sync.Mutex),
+			DB: s, sideChainName: config.Parameters.SideNodeList[i].Name})
+	}
 
-	// Handle system interrupt signals
-	dataStore.catchSystemSignals()
+	for _, s := range scStore {
+		// Handle system interrupt signals
+		s.catchSystemSignals()
+	}
 
-	return dataStore, nil
+	return scStore, nil
 }
 
 func OpenRegisteredSideChainDataStore() (*DataStoreRegisteredSideChainStoreImpl, error) {
@@ -273,12 +334,9 @@ func initMainChainDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func initSideChainDB() (*sql.DB, error) {
-	err := CheckAndCreateDocument(DBDocumentNAME)
-	if err != nil {
-		log.Error("Create DBCache doucument error:", err)
-		return nil, err
-	}
+func CreateSideChainDBByConfig(sideChain *config.SideNodeConfig) (*DataStoreSideChainImpl, error) {
+
+	DBNameSideChain := filepath.Join(DBDocumentNAME, sideChain.Name+"_sideChainCache.db")
 	db, err := sql.Open(DriverName, DBNameSideChain)
 	if err != nil {
 		log.Error("Open data db error:", err)
@@ -299,16 +357,125 @@ func initSideChainDB() (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Create return nft destroy transactions table
+	_, err = db.Exec(CreateNFTDestroyTxsTable)
+	if err != nil {
+		return nil, err
+	}
 
-	for _, node := range config.Parameters.SideNodeList {
-		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
+	stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
+	if err != nil {
+		return nil, err
+	}
+	_, err = stmt.Exec("Height", uint32(0))
+	if err != nil {
+		return nil, err
+	}
+
+	return &DataStoreSideChainImpl{
+		mux:                 new(sync.Mutex),
+		DB:                  db,
+		sideChainName:       sideChain.Name,
+		genesisBlockAddress: sideChain.GenesisBlockAddress,
+	}, nil
+}
+
+func initSideChainDB() ([]*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+
+	result := make([]*sql.DB, 0)
+	for _, sideChain := range config.Parameters.SideNodeList {
+
+		DBNameSideChain := filepath.Join(DBDocumentNAME, sideChain.Name+"_sideChainCache.db")
+		db, err := sql.Open(DriverName, DBNameSideChain)
+		if err != nil {
+			log.Error("Open data db error:", err)
+			return nil, err
+		}
+		// Create SideHeightInfo table
+		_, err = db.Exec(CreateHeightInfoTable)
 		if err != nil {
 			return nil, err
 		}
-		stmt.Exec(node.GenesisBlockAddress, uint32(0))
+		// Create SideChainTxs table
+		_, err = db.Exec(CreateSideChainTxsTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create return deposit transactions table
+		_, err = db.Exec(CreateReturnDepositTransactionsTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create return nft destroy transactions table
+		_, err = db.Exec(CreateNFTDestroyTxsTable)
+		if err != nil {
+			return nil, err
+		}
+
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
+		if err != nil {
+			return nil, err
+		}
+		stmt.Exec("Height", uint32(0))
+		result = append(result, db)
 	}
 
-	return db, nil
+	return result, nil
+}
+
+func initSideChainDBByName(sideChainName string) (*sql.DB, error) {
+	err := CheckAndCreateDocument(DBDocumentNAME)
+	if err != nil {
+		log.Error("Create DBCache doucument error:", err)
+		return nil, err
+	}
+
+	for _, sideChain := range config.Parameters.SideNodeList {
+		if sideChain.Name != sideChainName {
+			continue
+		}
+
+		DBNameSideChain := filepath.Join(DBDocumentNAME, sideChainName+"_sideChainCache.db")
+		db, err := sql.Open(DriverName, DBNameSideChain)
+		if err != nil {
+			log.Error("Open data db error:", err)
+			return nil, err
+		}
+		// Create SideHeightInfo table
+		_, err = db.Exec(CreateHeightInfoTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create SideChainTxs table
+		_, err = db.Exec(CreateSideChainTxsTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create return deposit transactions table
+		_, err = db.Exec(CreateReturnDepositTransactionsTable)
+		if err != nil {
+			return nil, err
+		}
+		// Create return nft destroy transactions table
+		_, err = db.Exec(CreateNFTDestroyTxsTable)
+		if err != nil {
+			return nil, err
+		}
+		stmt, err := db.Prepare("INSERT INTO SideHeightInfo(Name, Value) values(?,?)")
+		if err != nil {
+			return nil, err
+		}
+		stmt.Exec("Height", uint32(0))
+		return db, nil
+
+	}
+
+	return nil, errors.New("not found db")
 }
 
 func initRegisterSideChainDB() (*sql.DB, error) {
@@ -332,12 +499,14 @@ func initRegisterSideChainDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func (store *DataStoreSideChainImpl) ResetDataStore() error {
+// just for test
+func (store *DataStoreSideChainImpl) ResetDataStore(dbName string) error {
 	store.DB.Close()
-	os.Remove(DBNameSideChain)
+
+	os.Remove(dbName)
 
 	var err error
-	store.DB, err = initSideChainDB()
+	store.DB, err = initSideChainDBByName(dbName)
 	if err != nil {
 		return err
 	}
@@ -353,38 +522,33 @@ func (store *DataStoreSideChainImpl) catchSystemSignals() {
 	})
 }
 
-func (store *DataStoreSideChainImpl) CurrentSideHeight(genesisBlockAddress string, height uint32) uint32 {
+func (store *DataStoreSideChainImpl) SideChainName() string {
+	return store.sideChainName
+}
+
+func (store *DataStoreSideChainImpl) GenesisBlockAddress() string {
+	return store.genesisBlockAddress
+}
+
+func (store *DataStoreSideChainImpl) CurrentSideHeight(height uint32) uint32 {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	row := store.QueryRow("SELECT Height FROM SideHeightInfo WHERE GenesisBlockAddress=?", genesisBlockAddress)
+	row := store.QueryRow("SELECT Value FROM SideHeightInfo WHERE Name=?", "Height")
 	var storedHeight uint32
 	row.Scan(&storedHeight)
-
 	if height > storedHeight {
 		// Received reset height code
 		if height == ResetHeightCode {
 			height = 0
 		}
 
-		sideChainExistRow := store.QueryRow("SELECT EXISTS(SELECT true FROM SideHeightInfo WHERE GenesisBlockAddress=?)", genesisBlockAddress)
-		var exist bool
-		sideChainExistRow.Scan(&exist)
-
-		if !exist {
-			stmt, err := store.Prepare("INSERT INTO SideHeightInfo(GenesisBlockAddress, Height) values(?,?)")
-			if err != nil {
-				return uint32(0)
-			}
-			stmt.Exec(genesisBlockAddress, uint32(0))
-		}
-
 		// Insert current height
-		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Height=? WHERE GenesisBlockAddress=?")
+		stmt, err := store.Prepare("UPDATE SideHeightInfo SET Value=? WHERE Name=?")
 		if err != nil {
 			return uint32(0)
 		}
-		_, err = stmt.Exec(height, genesisBlockAddress)
+		_, err = stmt.Exec(height, "Height")
 		if err != nil {
 			return uint32(0)
 		}
@@ -404,7 +568,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 	defer tx.Commit()
 
 	// Prepare sql statement
-	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	stmt, err := tx.Prepare("INSERT INTO SideChainTxs(TransactionHash, TransactionData, BlockHeight) values(?,?,?)")
 	if err != nil {
 		return err
 	}
@@ -412,7 +576,7 @@ func (store *DataStoreSideChainImpl) AddSideChainTxs(txs []*base.SideChainTransa
 
 	// Do insert
 	for _, tx := range txs {
-		_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
+		_, err = stmt.Exec(tx.TransactionHash, tx.Transaction, tx.BlockHeight)
 		if err != nil {
 			log.Error("[AddSideChainTxs] err")
 			continue
@@ -427,14 +591,14 @@ func (store *DataStoreSideChainImpl) AddSideChainTx(tx *base.SideChainTransactio
 	defer store.mux.Unlock()
 
 	// Prepare sql statement
-	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, GenesisBlockAddress, TransactionData, BlockHeight) values(?,?,?,?)")
+	stmt, err := store.Prepare("INSERT INTO SideChainTxs(TransactionHash, TransactionData, BlockHeight) values(?,?,?)")
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	// Do insert
-	_, err = stmt.Exec(tx.TransactionHash, tx.GenesisBlockAddress, tx.Transaction, tx.BlockHeight)
+	_, err = stmt.Exec(tx.TransactionHash, tx.Transaction, tx.BlockHeight)
 	if err != nil {
 		return err
 	}
@@ -445,7 +609,7 @@ func (store *DataStoreSideChainImpl) HasSideChainTx(transactionHash string) (boo
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT GenesisBlockAddress FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
+	rows, err := store.Query(`SELECT Id FROM SideChainTxs WHERE TransactionHash=?`, transactionHash)
 	if err != nil {
 		return false, err
 	}
@@ -499,11 +663,11 @@ func (store *DataStoreSideChainImpl) GetAllSideChainTxHashes() ([]string, error)
 	return txHashes, nil
 }
 
-func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights(genesisBlockAddress string) ([]string, []uint32, error) {
+func (store *DataStoreSideChainImpl) GetAllSideChainTxHashesAndHeights() ([]string, []uint32, error) {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs WHERE GenesisBlockAddress=?`, genesisBlockAddress)
+	rows, err := store.Query(`SELECT SideChainTxs.TransactionHash, SideChainTxs.BlockHeight FROM SideChainTxs`)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -566,34 +730,150 @@ func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashes(transactionHashes
 	return txs, nil
 }
 
-func (store *DataStoreSideChainImpl) GetSideChainTxsFromHashesAndGenesisAddress(transactionHashes []string, genesisBlockAddress string) ([]*base.WithdrawTx, error) {
+func (store *DataStoreSideChainImpl) AddNFTDestroyTx(tx *base.NFTDestroyTransaction) error {
 	store.mux.Lock()
 	defer store.mux.Unlock()
 
-	var txs []*base.WithdrawTx
-	for _, txHash := range transactionHashes {
-		rows, err := store.Query(`SELECT SideChainTxs.TransactionData FROM SideChainTxs WHERE TransactionHash=? AND GenesisBlockAddress=?`, txHash, genesisBlockAddress)
+	// Prepare sql statement
+	stmt, err := store.Prepare("INSERT INTO NFTDestroyTxs(NFTID, TransactionData, BlockHeight) values(?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Do insert
+	_, err = stmt.Exec(tx.ID, tx.Transaction, tx.BlockHeight)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) HasNFTDestroyTx(NFTID string) (bool, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT NFTID FROM NFTDestroyTxs WHERE NFTID=?`, NFTID)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	return rows.Next(), nil
+}
+
+func (store *DataStoreSideChainImpl) RemoveNFTDestroyTxs(NFTIDS []string) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	stmt, err := tx.Prepare("DELETE FROM NFTDestroyTxs WHERE NFTID=?")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, nftID := range NFTIDS {
+		stmt.Exec(nftID)
+	}
+
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) AddNFTDestroyTxs(txs []*base.NFTDestroyTransaction) error {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	tx, err := store.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Commit()
+
+	// Prepare sql statement
+	stmt, err := tx.Prepare("INSERT INTO NFTDestroyTxs(NFTID, TransactionData, BlockHeight) values(?,?,?)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	// Do insert
+	for _, tx := range txs {
+		_, err = stmt.Exec(tx.ID, tx.Transaction, tx.BlockHeight)
+		if err != nil {
+			log.Error("[AddNFTDestroyTxs] err")
+			continue
+		}
+	}
+	return nil
+}
+
+func (store *DataStoreSideChainImpl) GetAllNFTDestroyID() ([]string, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	rows, err := store.Query(`SELECT NFTDestroyTxs.NFTID FROM NFTDestroyTxs`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var txHashes []string
+	for rows.Next() {
+		var txHash string
+		err = rows.Scan(&txHash)
+		if err != nil {
+			return nil, err
+		}
+		txHashes = append(txHashes, txHash)
+	}
+	return txHashes, nil
+}
+
+func (store *DataStoreSideChainImpl) GetNFTDestroyTxsFromIDs(nftIDs []string) ([]*base.NFTDestroyFromSideChainTx, error) {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	var txs []*base.NFTDestroyFromSideChainTx
+	var buf bytes.Buffer
+	buf.WriteString("SELECT NFTDestroyTxs.TransactionData FROM NFTDestroyTxs WHERE NFTID IN (")
+	hashesLen := len(nftIDs)
+	for index, nftID := range nftIDs {
+		buf.WriteString("'")
+		buf.WriteString(nftID)
+		buf.WriteString("'")
+		if index == hashesLen-1 {
+			buf.WriteString(")")
+		} else {
+			buf.WriteString(",")
+		}
+	}
+	buf.WriteString(" GROUP BY NFTID")
+
+	rows, err := store.Query(buf.String())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var transactionBytes []byte
+		err = rows.Scan(&transactionBytes)
 		if err != nil {
 			return nil, err
 		}
 
-		for rows.Next() {
-			var transactionBytes []byte
-			err = rows.Scan(&transactionBytes)
-			if err != nil {
-				rows.Close()
-				return nil, err
-			}
+		tx := new(base.NFTDestroyFromSideChainTx)
+		reader := bytes.NewReader(transactionBytes)
+		tx.Deserialize(reader)
+		txs = append(txs, tx)
 
-			tx := new(base.WithdrawTx)
-			reader := bytes.NewReader(transactionBytes)
-			tx.Deserialize(reader)
-
-			txs = append(txs, tx)
-		}
-		rows.Close()
 	}
-
 	return txs, nil
 }
 
@@ -707,9 +987,9 @@ func (store *DataStoreSideChainImpl) GetReturnDepositTx(txid string) ([]byte, er
 	return transactionBytes, nil
 }
 
-func (store *DataStoreMainChainImpl) ResetDataStore() error {
+func (store *DataStoreMainChainImpl) ResetDataStore(dbName string) error {
 	store.DB.Close()
-	os.Remove(DBNameMainChain)
+	os.Remove(dbName)
 
 	var err error
 	store.DB, err = initMainChainDB()
@@ -752,7 +1032,26 @@ func (store *DataStoreMainChainImpl) CurrentHeight(height uint32) uint32 {
 		}
 		return height
 	}
+
+	store.mainChainHeight = storedHeight
 	return storedHeight
+}
+
+func (store *DataStoreMainChainImpl) BestHeight(id peer.PID) uint64 {
+	store.mux.Lock()
+	defer store.mux.Unlock()
+
+	if store.mainChainHeight != 0 {
+		return uint64(store.mainChainHeight)
+	}
+
+	row := store.QueryRow("SELECT Value FROM Info WHERE Name=?", "Height")
+	var storedHeight uint32
+	row.Scan(&storedHeight)
+
+	store.mainChainHeight = storedHeight
+
+	return uint64(storedHeight)
 }
 
 func (store *DataStoreMainChainImpl) AddMainChainTx(tx *base.MainChainTransaction) error {
@@ -930,16 +1229,19 @@ func (store *DataStoreMainChainImpl) GetAllMainChainTxs() ([]*base.MainChainTran
 			return nil, err
 		}
 
-		var tx types.Transaction
-		reader := bytes.NewReader(transactionBytes)
-		tx.Deserialize(reader)
+		r := bytes.NewReader(transactionBytes)
+		tx, err := elatx.GetTransactionByBytes(r)
+		if err != nil {
+			return nil, err
+		}
+		tx.Deserialize(r)
 
 		var mp bloom.MerkleProof
-		reader = bytes.NewReader(merkleProofBytes)
+		reader := bytes.NewReader(merkleProofBytes)
 		mp.Deserialize(reader)
 
 		txs = append(txs, &base.MainChainTransaction{txHash,
-			genesisAddress, &tx, &mp})
+			genesisAddress, tx, &mp})
 	}
 	return txs, nil
 }
@@ -967,15 +1269,18 @@ func (store *DataStoreMainChainImpl) GetMainChainTxsFromHashes(transactionHashes
 				return nil, err
 			}
 
-			var tx types.Transaction
-			reader := bytes.NewReader(transactionBytes)
-			tx.Deserialize(reader)
+			r := bytes.NewReader(transactionBytes)
+			tx, err := elatx.GetTransactionByBytes(r)
+			if err != nil {
+				return nil, err
+			}
+			tx.Deserialize(r)
 
 			var mp bloom.MerkleProof
-			reader = bytes.NewReader(merkleProofBytes)
+			reader := bytes.NewReader(merkleProofBytes)
 			mp.Deserialize(reader)
 
-			spvTxs = append(spvTxs, &base.SpvTransaction{MainChainTransaction: &tx, Proof: &mp})
+			spvTxs = append(spvTxs, &base.SpvTransaction{MainChainTransaction: tx, Proof: &mp})
 		}
 		rows.Close()
 	}
@@ -1008,9 +1313,9 @@ func PathExists(path string) (bool, error) {
 	return false, err
 }
 
-func (store *DataStoreRegisteredSideChainStoreImpl) ResetDataStore() error {
+func (store *DataStoreRegisteredSideChainStoreImpl) ResetDataStore(dbName string) error {
 	store.DB.Close()
-	os.Remove(DBNameMainChain)
+	os.Remove(dbName)
 
 	var err error
 	store.DB, err = initMainChainDB()

@@ -1,5 +1,7 @@
 package config
 
+import "math"
+
 var (
 	regnet = ConfigFile{
 		ConfigFile: Configuration{
@@ -74,6 +76,9 @@ var (
 			ReturnDepositTransactionFee:     100,
 			ProcessInvalidWithdrawHeight:    730000,
 			ReturnCrossChainCoinStartHeight: 730000,
+			SchnorrStartHeight:              875544 + 720*5,
+			DPoSV2StartHeight:               875544 + 720*2,
+			NFTStartHeight:                  100, // todo fix me
 		},
 	}
 
@@ -150,6 +155,9 @@ var (
 			ReturnDepositTransactionFee:     100,
 			ProcessInvalidWithdrawHeight:    807000,
 			ReturnCrossChainCoinStartHeight: 807000,
+			SchnorrStartHeight:              965800 + 720*10,
+			DPoSV2StartHeight:               965800 + 720*3,
+			NFTStartHeight:                  100, // todo fix me
 		},
 	}
 
@@ -223,11 +231,14 @@ var (
 			},
 			CRClaimDPOSNodeStartHeight:      751400,
 			NewP2PProtocolVersionHeight:     751400,
-			DPOSNodeCrossChainHeight:        2000000, // todo fix me
+			DPOSNodeCrossChainHeight:        math.MaxUint32,
 			NewCrossChainTransactionHeight:  1032840,
 			ReturnDepositTransactionFee:     100,
 			ProcessInvalidWithdrawHeight:    1032840,
 			ReturnCrossChainCoinStartHeight: 1032840,
+			SchnorrStartHeight:              math.MaxUint32,
+			DPoSV2StartHeight:               1405000,
+			NFTStartHeight:                  1405000,
 		},
 	}
 )

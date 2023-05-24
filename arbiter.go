@@ -17,8 +17,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/password"
 	"github.com/elastos/Elastos.ELA.Arbiter/sideauxpow"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
+
 	"github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/account"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
+	"github.com/elastos/Elastos.ELA/core/types/functions"
 	"github.com/elastos/Elastos.ELA/dpos/p2p/peer"
 	"github.com/elastos/Elastos.ELA/utils/elalog"
 )
@@ -62,6 +65,12 @@ func (r *versionFlag) Set(s string) error {
 
 func initialize() {
 	config.Initialize()
+
+	// Initialize functions
+	functions.GetTransactionByTxType = elatx.GetTransaction
+	functions.GetTransactionByBytes = elatx.GetTransactionByBytes
+	functions.CreateTransaction = elatx.CreateTransaction
+	functions.GetTransactionParameters = elatx.GetTransactionparameters
 
 	spvMaxPerLogFileSize := defaultSpvMaxPerLogFileSize
 	spvMaxLogsFolderSize := defaultSpvMaxLogsFolderSize

@@ -29,6 +29,7 @@ func InitMockConfig() {
 		"    }," +
 		"    \"SideNodeList\": [" +
 		"      {" +
+		"        \"Name\": \"DID\"," +
 		"        \"Rpc\": {" +
 		"          \"IpAddress\": \"localhost\"," +
 		"          \"HttpJsonPort\": 20038" +
@@ -37,6 +38,7 @@ func InitMockConfig() {
 		"        \"GenesisBlock\": \"7c1a76281736d40599d6ae347d1bad924ab02b06c6cf9acd84f519dfdeb78d16\"" +
 		"      }," +
 		"      {" +
+		"        \"Name\": \"EID\"," +
 		"        \"Rpc\": {" +
 		"          \"IpAddress\": \"localhost\"," +
 		"          \"HttpJsonPort\": 30038" +
@@ -70,6 +72,5 @@ func InitMockConfig() {
 			return
 		}
 		node.GenesisBlockAddress = address
-		node.GenesisBlock = reversedGenesisStr
 	}
 }

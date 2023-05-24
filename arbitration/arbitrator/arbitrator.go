@@ -3,11 +3,13 @@ package arbitrator
 import (
 	"bytes"
 	"encoding/hex"
+	"math/big"
 	"path/filepath"
 	"sync"
 	"time"
 
 	. "github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
+	crypto2 "github.com/elastos/Elastos.ELA.Arbiter/arbitration/crypto"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
@@ -16,7 +18,7 @@ import (
 	. "github.com/elastos/Elastos.ELA.SPV/interface"
 	"github.com/elastos/Elastos.ELA/account"
 	"github.com/elastos/Elastos.ELA/common"
-	"github.com/elastos/Elastos.ELA/core/types"
+	it "github.com/elastos/Elastos.ELA/core/types/interfaces"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 	"github.com/elastos/Elastos.ELA/crypto"
 )
@@ -48,15 +50,30 @@ type Arbitrator interface {
 	SendSmallCrossDepositTransactions(spvTxs []*SmallCrossTransaction, genesisAddress string)
 
 	//withdraw
-	CreateWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
-		mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction
+	CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
+	CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
+	CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx, sideChain SideChain,
+		mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
+
+	CreateNFTDestroyTransaction(nftTxs []*NFTDestroyFromSideChainTx,
+		sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction
 
 	//failed deposit
 	CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
-		sideChain SideChain, mcFunc MainChainFunc) *types.Transaction
+		sideChain SideChain, mcFunc MainChainFunc) it.Transaction
 
-	BroadcastWithdrawProposal(txn *types.Transaction)
-	SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error)
+	BroadcastWithdrawProposal(txn it.Transaction)
+
+	SendWithdrawTransaction(txn it.Transaction) (rpc.Response, error)
+
+	// schnorr withdraw
+	BroadcastSchnorrWithdrawProposal2(txn it.Transaction)
+	BroadcastSchnorrWithdrawProposal3(nonceHash common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int)
+	// schnorr crypto
+	GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error)
+	GetSchnorrS(e *big.Int) *big.Int
 
 	BroadcastSidechainIllegalData(data *payload.SidechainIllegalData)
 
@@ -90,8 +107,12 @@ func (ar *ArbitratorImpl) OnDutyArbitratorChanged(onDuty bool) {
 
 	if onDuty {
 		log.Info("[OnDutyArbitratorChanged] I am on duty of main")
+		var currentHeight = store.DbCache.MainChainStore.CurrentHeight(
+			store.QueryHeightCode)
+		ar.mainChainImpl.Reset()
 		ar.ProcessDepositTransactions()
-		ar.processWithdrawTransactions()
+		ar.processWithdrawTransactions(currentHeight)
+		ar.processNFTDestroyTransactions(currentHeight)
 		ar.processReturnDepositTransactions()
 		ar.ProcessSideChainPowTransaction()
 	} else {
@@ -105,9 +126,15 @@ func (ar *ArbitratorImpl) ProcessDepositTransactions() {
 	}
 }
 
-func (ar *ArbitratorImpl) processWithdrawTransactions() {
+func (ar *ArbitratorImpl) processWithdrawTransactions(currentHeight uint32) {
 	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
-		go sc.SendCachedWithdrawTxs()
+		go sc.SendCachedWithdrawTxs(currentHeight)
+	}
+}
+
+func (ar *ArbitratorImpl) processNFTDestroyTransactions(currentHeight uint32) {
+	for _, sc := range ar.sideChainManagerImpl.GetAllChains() {
+		go sc.SendCachedNFTDestroyTxs(currentHeight)
 	}
 }
 
@@ -136,6 +163,18 @@ func (ar *ArbitratorImpl) Sign(content []byte) ([]byte, error) {
 	return mainAccount.Sign(content)
 }
 
+func (ar *ArbitratorImpl) GetSchnorrR() (k0 *big.Int, rx *big.Int, ry *big.Int, px *big.Int, py *big.Int, err error) {
+	mainAccount := ar.client.GetMainAccount()
+	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
+	return crypto2.GetR(privKey)
+}
+
+func (ar *ArbitratorImpl) GetSchnorrS(e *big.Int) *big.Int {
+	mainAccount := ar.client.GetMainAccount()
+	privKey := new(big.Int).SetBytes(mainAccount.PrivateKey)
+	return crypto2.GetEMulPrivateKey(privKey, e)
+}
+
 func (ar *ArbitratorImpl) IsOnDutyOfMain() bool {
 	ar.mainOnDutyMux.Lock()
 	defer ar.mainOnDutyMux.Unlock()
@@ -147,7 +186,7 @@ func (ar *ArbitratorImpl) GetArbitratorGroup() ArbitratorGroup {
 }
 
 func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDepositTx,
-	sideChain SideChain, mcFunc MainChainFunc) *types.Transaction {
+	sideChain SideChain, mcFunc MainChainFunc) it.Transaction {
 	ftx, err := ar.mainChainImpl.CreateFailedDepositTransaction(
 		sideChain, withdrawTxs, mcFunc)
 	if err != nil {
@@ -165,34 +204,75 @@ func (ar *ArbitratorImpl) CreateFailedDepositTransaction(withdrawTxs []*FailedDe
 	return ftx
 }
 
-func (ar *ArbitratorImpl) CreateWithdrawTransaction(withdrawTxs []*WithdrawTx,
-	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) *types.Transaction {
+func (ar *ArbitratorImpl) CreateWithdrawTransactionV0(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
 
-	var withdrawTransaction *types.Transaction
-	if mainChainHeight >= config.Parameters.NewCrossChainTransactionHeight {
-		var err error
-		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV1(
-			sideChain, withdrawTxs, mcFunc)
-		if err != nil {
-			log.Warn(err.Error())
-			return nil
-		}
-	} else {
-		var err error
-		withdrawTransaction, err = ar.mainChainImpl.CreateWithdrawTransactionV0(
-			sideChain, withdrawTxs, mcFunc)
-		if err != nil {
-			log.Warn(err.Error())
-			return nil
-		}
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransactionV0(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
 	}
 
 	if withdrawTransaction == nil {
-		log.Warn("Created an empty withdraw transaction.")
+		log.Warn("Created an empty withdraw transaction v0.")
 		return nil
 	}
 
 	return withdrawTransaction
+}
+
+func (ar *ArbitratorImpl) CreateWithdrawTransactionV1(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
+
+	withdrawTransaction, err := ar.mainChainImpl.CreateWithdrawTransactionV1(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+
+	if withdrawTransaction == nil {
+		log.Warn("Created an empty withdraw transaction v1.")
+		return nil
+	}
+
+	return withdrawTransaction
+}
+
+func (ar *ArbitratorImpl) CreateSchnorrWithdrawTransaction(withdrawTxs []*WithdrawTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
+
+	withdrawTransaction, err := ar.mainChainImpl.CreateSchnorrWithdrawTransaction(
+		sideChain, withdrawTxs, mcFunc)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+
+	if withdrawTransaction == nil {
+		log.Warn("Created an empty Schnorr withdraw transaction.")
+		return nil
+	}
+	return withdrawTransaction
+}
+
+func (ar *ArbitratorImpl) CreateNFTDestroyTransaction(nftTxs []*NFTDestroyFromSideChainTx,
+	sideChain SideChain, mcFunc MainChainFunc, mainChainHeight uint32) it.Transaction {
+
+	nftDestroyTXs, err := ar.mainChainImpl.CreateNFTDestroyFromSideChainTx(
+		sideChain, nftTxs, mcFunc, mainChainHeight)
+	if err != nil {
+		log.Warn(err.Error())
+		return nil
+	}
+
+	if nftDestroyTXs == nil {
+		log.Warn("Created an empty NFT Destroy Transaction")
+		return nil
+	}
+
+	return nftDestroyTXs
 }
 
 type DepositTxInfo struct {
@@ -207,7 +287,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 	var succeedGenesisAddresses []string
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok {
-		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		log.Error("[SendDepositTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
 		return
 	}
 	for _, tx := range spvTxs {
@@ -260,7 +340,7 @@ func (ar *ArbitratorImpl) SendDepositTransactions(spvTxs []*SpvTransaction, gene
 func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCrossTransaction, genesisAddress string) {
 	sideChain, ok := ArbitratorGroupSingleton.GetCurrentArbitrator().GetSideChainManager().GetChain(genesisAddress)
 	if !ok {
-		log.Error("[SyncMainChainCachedTxs] Get side chain from genesis address failed, genesis address:", genesisAddress)
+		log.Error("[SendSmallCrossDepositTransactions] Get side chain from genesis address failed, genesis address:", genesisAddress)
 		return
 	}
 	for _, tx := range knownTx {
@@ -279,7 +359,22 @@ func (ar *ArbitratorImpl) SendSmallCrossDepositTransactions(knownTx []*SmallCros
 	}
 }
 
-func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn *types.Transaction) {
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal2(txn it.Transaction) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal2(txn)
+	if err != nil {
+		log.Warn(err.Error())
+	}
+}
+
+func (ar *ArbitratorImpl) BroadcastSchnorrWithdrawProposal3(
+	nonceHash common.Uint256, txn it.Transaction, pks [][]byte, e *big.Int) {
+	err := ar.mainChainImpl.BroadcastSchnorrWithdrawProposal3(nonceHash, txn, pks, e)
+	if err != nil {
+		log.Warn(err.Error())
+	}
+}
+
+func (ar *ArbitratorImpl) BroadcastWithdrawProposal(txn it.Transaction) {
 	err := ar.mainChainImpl.BroadcastWithdrawProposal(txn)
 	if err != nil {
 		log.Warn(err.Error())
@@ -292,7 +387,7 @@ func (ar *ArbitratorImpl) BroadcastSidechainIllegalData(data *payload.SidechainI
 	}
 }
 
-func (ar *ArbitratorImpl) SendWithdrawTransaction(txn *types.Transaction) (rpc.Response, error) {
+func (ar *ArbitratorImpl) SendWithdrawTransaction(txn it.Transaction) (rpc.Response, error) {
 	content, err := ar.convertToTransactionContent(txn)
 	if err != nil {
 		return rpc.Response{}, err
@@ -383,7 +478,7 @@ func (ar *ArbitratorImpl) StartSpvModule() error {
 	return nil
 }
 
-func (ar *ArbitratorImpl) convertToTransactionContent(txn *types.Transaction) (string, error) {
+func (ar *ArbitratorImpl) convertToTransactionContent(txn it.Transaction) (string, error) {
 	buf := new(bytes.Buffer)
 	err := txn.Serialize(buf)
 	if err != nil {

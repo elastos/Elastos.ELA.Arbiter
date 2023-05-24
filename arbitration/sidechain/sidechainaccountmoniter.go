@@ -12,11 +12,11 @@ import (
 	"github.com/elastos/Elastos.ELA.Arbiter/log"
 	"github.com/elastos/Elastos.ELA.Arbiter/rpc"
 	"github.com/elastos/Elastos.ELA.Arbiter/store"
-	"github.com/elastos/Elastos.ELA/core/types"
 	"github.com/elastos/Elastos.ELA/core/types/outputpayload"
 
 	"github.com/elastos/Elastos.ELA/common"
 	"github.com/elastos/Elastos.ELA/core/contract"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
@@ -70,6 +70,19 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(withdrawTxs []*base.
 	return item.OnUTXOChanged(withdrawTxs, blockHeight)
 }
 
+func (monitor *SideChainAccountMonitorImpl) fireNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, genesisBlockAddress string, blockHeight uint32) error {
+	if monitor.accountListenerMap == nil {
+		return nil
+	}
+
+	item, ok := monitor.accountListenerMap[genesisBlockAddress]
+	if !ok {
+		return errors.New("fired unknown listener")
+	}
+
+	return item.OnNFTChanged(nftDestroyTxs, blockHeight)
+}
+
 func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *payload.SidechainIllegalData) error {
 	if monitor.accountListenerMap == nil {
 		return nil
@@ -84,6 +97,12 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 }
 
 func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain, effectiveHeight uint32) {
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(sideNode.GenesisBlockAddress)
+	if dbStore == nil {
+		log.Error("can't find db store by genesis block address:", sideNode.GenesisBlockAddress)
+		return
+	}
+
 	for {
 		time.Sleep(time.Millisecond * config.Parameters.SideChainMonitorScanInterval)
 		if effectiveHeight != 0 {
@@ -166,7 +185,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 				currentHeight++
 				count++
 				if count%sideChainHeightInterval == 0 {
-					currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+					currentHeight = dbStore.CurrentSideHeight(currentHeight)
 					log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 				}
 
@@ -204,15 +223,15 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							log.Errorf(err.Error())
 							continue
 						}
-						referTxid := originTx.Inputs[0].Previous.TxID
-						referIndex := originTx.Inputs[0].Previous.Index
+						referTxid := originTx.Inputs()[0].Previous.TxID
+						referIndex := originTx.Inputs()[0].Previous.Index
 						referReversedTx := common.BytesToHexString(common.BytesReverse(referTxid.Bytes()))
 						referTxn, err := rpc.GetTransaction(referReversedTx, config.Parameters.MainNode.Rpc)
 						if err != nil {
 							log.Errorf(err.Error())
 							continue
 						}
-						address, err := referTxn.Outputs[referIndex].ProgramHash.ToAddress()
+						address, err := referTxn.Outputs()[referIndex].ProgramHash.ToAddress()
 						if err != nil {
 							log.Error("program hash to address error", err.Error())
 							continue
@@ -225,9 +244,9 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 						originHash := originTx.Hash()
 						var depositAmount common.Fixed64
 						var crossChainAmount common.Fixed64
-						switch originTx.PayloadVersion {
+						switch originTx.PayloadVersion() {
 						case payload.TransferCrossChainVersion:
-							p, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							p, ok := originTx.Payload().(*payload.TransferCrossChainAsset)
 							if !ok {
 								log.Error("Invalid payload type need TransferCrossChainAsset")
 								continue
@@ -236,21 +255,21 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							for i, cca := range p.CrossChainAmounts {
 								idx := p.OutputIndexes[i]
 								// output to current side chain
-								if !crossChainHash.IsEqual(originTx.Outputs[idx].ProgramHash) {
+								if !crossChainHash.IsEqual(originTx.Outputs()[idx].ProgramHash) {
 									continue
 								}
-								amount := originTx.Outputs[idx].Value
+								amount := originTx.Outputs()[idx].Value
 								depositAmount += amount
 								crossChainAmount += cca
 							}
 						case payload.TransferCrossChainVersionV1:
-							_, ok := originTx.Payload.(*payload.TransferCrossChainAsset)
+							_, ok := originTx.Payload().(*payload.TransferCrossChainAsset)
 							if !ok {
 								log.Error("Invalid payload type need TransferCrossChainAsset")
 								continue
 							}
-							for _, o := range originTx.Outputs {
-								if o.Type != types.OTCrossChain {
+							for _, o := range originTx.Outputs() {
+								if o.Type != elacommon.OTCrossChain {
 									continue
 								}
 								// output to current side chain
@@ -280,7 +299,7 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 							continue
 						}
 						// add to return deposit table
-						err = store.DbCache.SideChainStore.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
+						err = dbStore.AddReturnDepositTx(tx, sideNode.GenesisBlockAddress, buf.Bytes())
 						if err != nil {
 							log.Warn("[MoniterFailedDepositTransfer] AddReturnDepositTx error")
 							continue
@@ -303,9 +322,22 @@ func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideN
 					//}
 					log.Info("End Monitor Failed Deposit Transfer")
 				}
+				if currentHeight >= 6 && sideNode.SupportNFT {
+					nftDestroyTXs, err := rpc.GetNFTDestroyTransactionByHeight(currentHeight+1-6, sideNode.Rpc)
+					if err != nil {
+						log.Error("get destroyed transaction at height:", currentHeight+1-6, "failed\n"+
+							"rpc:", sideNode.Rpc.IpAddress, ":", sideNode.Rpc.HttpJsonPort, "\n"+
+							"error:", err)
+						break
+					}
+					if len(nftDestroyTXs) > 0 {
+						monitor.processNFTDestroyTxs(nftDestroyTXs, sideNode.GenesisBlockAddress, currentHeight+1-6)
+					}
+
+				}
 			}
 			// Update wallet height
-			currentHeight = store.DbCache.SideChainStore.CurrentSideHeight(sideNode.GenesisBlockAddress, currentHeight)
+			currentHeight = dbStore.CurrentSideHeight(currentHeight)
 			log.Info(" [SyncSideChain] Side chain [", sideNode.GenesisBlockAddress, "] height: ", currentHeight)
 
 			if arbitrator.ArbitratorGroupSingleton.GetCurrentArbitrator().IsOnDutyOfMain() {
@@ -328,7 +360,12 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 		return 0, 0, false
 	}
 
-	currentHeight := store.DbCache.SideChainStore.CurrentSideHeight(genesisBlockAddress, store.QueryHeightCode)
+	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisBlockAddress)
+	if dbStore == nil {
+		log.Error("can't find db store by genesis block address:", genesisBlockAddress)
+		return 0, 0, false
+	}
+	currentHeight := dbStore.CurrentSideHeight(store.QueryHeightCode)
 
 	if currentHeight >= chainHeight {
 		return chainHeight, currentHeight, false
@@ -400,7 +437,12 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		}
 
 		reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
-		if ok, err := store.DbCache.SideChainStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
+		dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
+		if dbStore == nil {
+			log.Error("can't find db store by genesis block address:", genesisAddress)
+			continue
+		}
+		if ok, err := dbStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
 			withdrawTxs = append(withdrawTxs, withdrawTx)
 		}
 	}
@@ -408,6 +450,60 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		err := monitor.fireUTXOChanged(withdrawTxs, genesisAddress, blockHeight)
 		if err != nil {
 			log.Error("[fireUTXOChanged] err:", err.Error())
+		}
+	}
+}
+
+func (monitor *SideChainAccountMonitorImpl) processNFTDestroyTxs(transactions []*base.NFTDestroyFromSideChainInfo,
+	genesisAddress string, blockHeight uint32) {
+	var nftDestroyTxs []*base.NFTDestroyFromSideChainTx
+	for _, txn := range transactions {
+		txnBytes, err := common.HexStringToBytes(txn.TokenID)
+		if err != nil {
+			log.Warn("HexStringToBytes  error ", txn.TokenID)
+			continue
+		}
+		nftID, err := common.Uint256FromBytes(txnBytes)
+		if err != nil {
+			log.Warn("Uint256FromBytes error  TokenID", txn.TokenID)
+			continue
+		}
+		programHash, err := common.Uint168FromAddress(txn.OwnerStakeAddress)
+		if err != nil {
+			log.Warn("invalid  OwnerStakeAddress:", txn.OwnerStakeAddress)
+			continue
+		}
+		_, err = programHash.ToAddress()
+		if err != nil {
+			log.Warn("invalid OwnerStakeAddress programHash :", txn.OwnerStakeAddress)
+			continue
+		}
+		if contract.PrefixType(programHash[0]) != contract.PrefixDPoSV2 {
+			log.Warn("invalid OwnerStakeAddress:", txn.OwnerStakeAddress)
+			continue
+		}
+
+		nftDestroyTx := &base.NFTDestroyFromSideChainTx{
+			ID:                *nftID,
+			OwnerStakeAddress: *programHash,
+		}
+
+		dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
+		if dbStore == nil {
+			log.Error("can't find db store by genesis block address:", genesisAddress)
+			continue
+		}
+		if ok, err := dbStore.HasNFTDestroyTx(nftID.String()); err != nil || !ok {
+			log.Error("can't find db store by genesis block address:", genesisAddress)
+
+			nftDestroyTxs = append(nftDestroyTxs, nftDestroyTx)
+		}
+	}
+
+	if len(nftDestroyTxs) != 0 {
+		err := monitor.fireNFTChanged(nftDestroyTxs, genesisAddress, blockHeight)
+		if err != nil {
+			log.Error("[fireNFTChanged] err:", err.Error())
 		}
 	}
 }

@@ -3,13 +3,16 @@ package store
 import (
 	"bytes"
 	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/elastos/Elastos.ELA.Arbiter/arbitration/base"
 	"github.com/elastos/Elastos.ELA.Arbiter/config"
 
+	"github.com/elastos/Elastos.ELA/core/contract/program"
 	"github.com/elastos/Elastos.ELA.SPV/bloom"
-	"github.com/elastos/Elastos.ELA/core/types"
+	elacommon "github.com/elastos/Elastos.ELA/core/types/common"
+	elatx "github.com/elastos/Elastos.ELA/core/transaction"
 	"github.com/elastos/Elastos.ELA/core/types/payload"
 )
 
@@ -28,10 +31,9 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Open database error.")
 	}
 
-	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
 
-	ok, err := datastore.HasSideChainTx(txHash)
+	ok, err := datastore[0].HasSideChainTx(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -39,23 +41,35 @@ func TestDataStoreImpl_AddSideChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{Payload: new(payload.WithdrawFromSideChain)}
+
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
+
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
-	if err := datastore.AddSideChainTx(&base.SideChainTransaction{txHash,
-		genesisBlockAddress, buf.Bytes(), 10}); err != nil {
+	if err := datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash, buf.Bytes(), 10}); err != nil {
 		t.Error("Add side chain transaction error.")
 	}
 
-	ok, err = datastore.HasSideChainTx(txHash)
+	ok, err = datastore[0].HasSideChainTx(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
 	if !ok {
 		t.Error("Should have specified transaction.")
 	}
-
-	datastore.ResetDataStore()
+	DBNameSideChain := filepath.Join(DBDocumentNAME,
+		config.Parameters.SideNodeList[0].Name+"_sideChainCache.db")
+	datastore[0].ResetDataStore(DBNameSideChain)
 }
 
 func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
@@ -64,28 +78,25 @@ func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
 		t.Error("Open database error.")
 	}
 
-	genesisBlockAddress1 := "testAddress1"
-	genesisBlockAddress2 := "testAddress2"
-	genesisBlockAddress3 := "testAddress3"
 	txHash1 := "testHash1"
 	txHash2 := "testHash2"
 	txHash3 := "testHash3"
 
-	ok, err := datastore.HasSideChainTx(txHash1)
+	ok, err := datastore[0].HasSideChainTx(txHash1)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
 	if ok {
 		t.Error("Should not have specified transaction.")
 	}
-	ok, err = datastore.HasSideChainTx(txHash2)
+	ok, err = datastore[0].HasSideChainTx(txHash2)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
 	if ok {
 		t.Error("Should not have specified transaction.")
 	}
-	ok, err = datastore.HasSideChainTx(txHash3)
+	ok, err = datastore[0].HasSideChainTx(txHash3)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -93,34 +104,44 @@ func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
-	err = datastore.AddSideChainTxs(
+	err = datastore[0].AddSideChainTxs(
 		[]*base.SideChainTransaction{
-			&base.SideChainTransaction{txHash1, genesisBlockAddress1, buf.Bytes(), 10},
-			&base.SideChainTransaction{txHash2, genesisBlockAddress2, buf.Bytes(), 10},
-			&base.SideChainTransaction{txHash3, genesisBlockAddress3, buf.Bytes(), 10},
+			&base.SideChainTransaction{txHash1, buf.Bytes(), 10},
+			&base.SideChainTransaction{txHash2, buf.Bytes(), 10},
+			&base.SideChainTransaction{txHash3, buf.Bytes(), 10},
 		})
 	if err != nil {
 		t.Error("Add side chain transaction error.")
 	}
 
-	ok, err = datastore.HasSideChainTx(txHash1)
+	ok, err = datastore[0].HasSideChainTx(txHash1)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
 	if !ok {
 		t.Error("Should have specified transaction.")
 	}
-	ok, err = datastore.HasSideChainTx(txHash2)
+	ok, err = datastore[0].HasSideChainTx(txHash2)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
 	if !ok {
 		t.Error("Should have specified transaction.")
 	}
-	ok, err = datastore.HasSideChainTx(txHash3)
+	ok, err = datastore[0].HasSideChainTx(txHash3)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -128,7 +149,9 @@ func TestDataStoreImpl_AddSideChainTxs(t *testing.T) {
 		t.Error("Should have specified transaction.")
 	}
 
-	datastore.ResetDataStore()
+	DBNameSideChain := filepath.Join(DBDocumentNAME,
+		config.Parameters.SideNodeList[0].Name+"_sideChainCache.db")
+	datastore[0].ResetDataStore(DBNameSideChain)
 }
 
 func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
@@ -137,33 +160,51 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 		t.Error("Open database error.")
 	}
 
-	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
 
-	genesisBlockAddress2 := "testAddress2"
 	txHash2 := "testHash2"
-	tx2 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx2 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
 
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress2, buf2.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash, buf.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash2, buf2.Bytes(), 10})
 
-	if ok, err := datastore.HasSideChainTx(txHash); !ok || err != nil {
+	if ok, err := datastore[0].HasSideChainTx(txHash); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
-	if ok, err := datastore.HasSideChainTx(txHash2); !ok || err != nil {
+	if ok, err := datastore[0].HasSideChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
 
 	var removedHashes []string
 	removedHashes = append(removedHashes, txHash)
-	datastore.RemoveSideChainTxs(removedHashes)
+	datastore[0].RemoveSideChainTxs(removedHashes)
 
-	ok, err := datastore.HasSideChainTx(txHash)
+	ok, err := datastore[0].HasSideChainTx(txHash)
 	if err != nil {
 		t.Error("Get side chain transaction error.")
 	}
@@ -171,11 +212,12 @@ func TestDataStoreImpl_RemoveSideChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	if ok, err := datastore.HasSideChainTx(txHash2); !ok || err != nil {
+	if ok, err := datastore[0].HasSideChainTx(txHash2); !ok || err != nil {
 		t.Error("Should have specified transaction.")
 	}
-
-	datastore.ResetDataStore()
+	DBNameSideChain := filepath.Join(DBDocumentNAME,
+		config.Parameters.SideNodeList[0].Name+"_sideChainCache.db")
+	datastore[0].ResetDataStore(DBNameSideChain)
 }
 
 func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
@@ -184,22 +226,30 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 		t.Error("Open database error.")
 	}
 
-	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
 	txHash2 := "testHash2"
 
-	genesisBlockAddress2 := "testAddress2"
 	txHash3 := "testHash3"
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf := new(bytes.Buffer)
 	tx.Serialize(buf)
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf.Bytes(), 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress, buf.Bytes(), 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, buf.Bytes(), 11})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, buf.Bytes(), 11})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash, buf.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash2, buf.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash3, buf.Bytes(), 11})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash3, buf.Bytes(), 11})
 
-	txHashes, err := datastore.GetAllSideChainTxHashes()
+	txHashes, err := datastore[0].GetAllSideChainTxHashes()
 	if err != nil {
 		t.Error("Get all side chain transactions error.")
 	}
@@ -207,25 +257,9 @@ func TestDataStoreImpl_GetAllSideChainTxHashes(t *testing.T) {
 		t.Error("Get all side chain transactions error.")
 	}
 
-	txHashes, heights, err := datastore.GetAllSideChainTxHashesAndHeights(genesisBlockAddress)
-	if err != nil {
-		t.Error("Get all side chain transactions error.")
-	}
-	if len(txHashes) != 2 || len(heights) != 2 {
-		t.Error("Get all side chain transactions error.")
-	}
-	for _, hash := range txHashes {
-		if hash != txHash && hash != txHash2 {
-			t.Error("Get all side chain transactions error.")
-		}
-	}
-	for _, height := range heights {
-		if height != 10 {
-			t.Error("Get all side chain transactions error.")
-		}
-	}
-
-	datastore.ResetDataStore()
+	DBNameSideChain := filepath.Join(DBDocumentNAME,
+		config.Parameters.SideNodeList[0].Name+"_sideChainCache.db")
+	datastore[0].ResetDataStore(DBNameSideChain)
 }
 
 func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
@@ -234,37 +268,65 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 		t.Error("Open database error.")
 	}
 
-	genesisBlockAddress := "testAddress"
 	txHash := "testHash"
 	txHash2 := "testHash2"
 
-	genesisBlockAddress2 := "testAddress2"
 	txHash3 := "testHash3"
 
-	tx1 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx1 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf1 := new(bytes.Buffer)
 	tx1.Serialize(buf1)
-	tx2 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx2  := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf2 := new(bytes.Buffer)
 	tx2.Serialize(buf2)
-	tx3 := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx3 := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	buf3 := new(bytes.Buffer)
 	tx3.Serialize(buf3)
 
-	tx1.LockTime = 1
-	tx2.LockTime = 2
-	tx3.LockTime = 3
+	tx1.SetLockTime( 1)
+	tx2.SetLockTime( 2)
+	tx3.SetLockTime( 3)
 
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash, genesisBlockAddress, buf1.Bytes(), 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash2, genesisBlockAddress, buf2.Bytes(), 10})
-	datastore.AddSideChainTx(&base.SideChainTransaction{txHash3, genesisBlockAddress2, buf3.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash, buf1.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash2, buf2.Bytes(), 10})
+	datastore[0].AddSideChainTx(&base.SideChainTransaction{txHash3, buf3.Bytes(), 10})
 
 	var txHashes []string
 	txHashes = append(txHashes, txHash)
 	txHashes = append(txHashes, txHash2)
 	txHashes = append(txHashes, txHash3)
 
-	txs, err := datastore.GetSideChainTxsFromHashes(txHashes)
+	txs, err := datastore[0].GetSideChainTxsFromHashes(txHashes)
 	if err != nil {
 		t.Error("Get all side chain transactions error.")
 	}
@@ -272,7 +334,9 @@ func TestDataStoreImpl_GetSideChainTxsFromHashes(t *testing.T) {
 		t.Error("Get all side chain transactions error.")
 	}
 
-	datastore.ResetDataStore()
+	DBNameSideChain := filepath.Join(DBDocumentNAME,
+		config.Parameters.SideNodeList[0].Name+"_sideChainCache.db")
+	datastore[0].ResetDataStore(DBNameSideChain)
 }
 
 func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
@@ -292,7 +356,17 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	mp := new(bloom.MerkleProof)
 	if err := datastore.AddMainChainTx(&base.MainChainTransaction{txHash, genesisAddress, tx, mp}); err != nil {
 		t.Error("Add main chain transaction error.")
@@ -306,7 +380,7 @@ func TestDataStoreImpl_AddMainChainTx(t *testing.T) {
 		t.Error("Should have specified transaction.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(DBNameMainChain)
 }
 
 func TestDataStoreImpl_AddMainChainTxs(t *testing.T) {
@@ -344,7 +418,17 @@ func TestDataStoreImpl_AddMainChainTxs(t *testing.T) {
 		t.Error("Should not have specified transaction.")
 	}
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	mp := new(bloom.MerkleProof)
 	results, err := datastore.AddMainChainTxs(
 		[]*base.MainChainTransaction{
@@ -383,7 +467,7 @@ func TestDataStoreImpl_AddMainChainTxs(t *testing.T) {
 		t.Error("Should have specified transaction.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(DBNameMainChain)
 }
 
 func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
@@ -397,7 +481,17 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 	txHash3 := "testHash3"
 	genesisAddress := "genesis"
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		payload.WithdrawFromSideChainVersionV1,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 	mp := new(bloom.MerkleProof)
 
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash1, genesisAddress, tx, mp})
@@ -445,7 +539,7 @@ func TestDataStoreImpl_RemoveMainChainTxs(t *testing.T) {
 		t.Error("Remove main chain tx error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(DBNameMainChain)
 }
 
 func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
@@ -459,7 +553,17 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 	txHash3 := "testHash3"
 	genesisAddress := "genesis"
 
-	tx := &types.Transaction{TxType: types.WithdrawFromSideChain, Payload: new(payload.WithdrawFromSideChain)}
+	tx := elatx.CreateTransaction(
+		elacommon.TxVersion09,
+		elacommon.WithdrawFromSideChain,
+		0,
+		new(payload.WithdrawFromSideChain),
+		[]*elacommon.Attribute{},
+		[]*elacommon.Input{},
+		[]*elacommon.Output{},
+		0,
+		[]*program.Program{},
+	)
 
 	mp := new(bloom.MerkleProof)
 	datastore.AddMainChainTx(&base.MainChainTransaction{txHash1, genesisAddress, tx, mp})
@@ -498,5 +602,5 @@ func TestDataStoreImpl_GetAllMainChainTxHashes(t *testing.T) {
 		t.Error("Get main chain txs from hashes error.")
 	}
 
-	datastore.ResetDataStore()
+	datastore.ResetDataStore(DBNameMainChain)
 }
