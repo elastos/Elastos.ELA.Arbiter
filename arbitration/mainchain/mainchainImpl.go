@@ -313,7 +313,7 @@ func (mc *MainChainImpl) CreateSchnorrWithdrawTransaction(
 	), nil
 }
 
-//NFTDestroyFromSideChainTx
+// NFTDestroyFromSideChainTx
 func (mc *MainChainImpl) CreateNFTDestroyFromSideChainTx(
 	sideChain arbitrator.SideChain, nftDestroyTxs []*base.NFTDestroyFromSideChainTx,
 	mcFunc arbitrator.MainChainFunc, mainChainHeight uint32) (it.Transaction, error) {

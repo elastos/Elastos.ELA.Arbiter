@@ -494,7 +494,7 @@ func (monitor *SideChainAccountMonitorImpl) processNFTDestroyTxs(transactions []
 			continue
 		}
 		if ok, err := dbStore.HasNFTDestroyTx(nftID.String()); err != nil || !ok {
-			log.Error("can't find db store by genesis block address:", genesisAddress)
+			log.Info("can't find db store by genesis block address:", genesisAddress)
 
 			nftDestroyTxs = append(nftDestroyTxs, nftDestroyTx)
 		}

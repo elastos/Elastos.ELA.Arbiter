@@ -347,7 +347,7 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 		return
 	}
 	needDestoryNFTIDs, err := dbStore.GetAllNFTDestroyID()
-	log.Infof(" [SendCachedNFTDestroyTxs] needDestoryNFTIDs ", needDestoryNFTIDs)
+	log.Info(" [SendCachedNFTDestroyTxs] needDestoryNFTIDs ", needDestoryNFTIDs)
 
 	if err != nil {
 		log.Errorf(" [SendCachedNFTDestroyTxs] %s", err.Error())
@@ -376,8 +376,16 @@ func (sc *SideChainImpl) SendCachedNFTDestroyTxs(currentHeight uint32) {
 	if len(canDestroyNFTIDs) != 0 {
 		err := sc.CreateAndBroadcastNFTDestroyProposal(canDestroyNFTIDs)
 		if err != nil {
-			log.Error("[SendCachedNFTDestroyTxs] CreateAndBroadcastWithdrawProposal failed" + err.Error())
+			log.Error("[SendCachedNFTDestroyTxs] CreateAndBroadcastNFTDestroyProposal failed" + err.Error())
 		}
+	}
+
+	if len(needDestoryNFTIDs) != 0 {
+		err = dbStore.RemoveNFTDestroyTxs(needDestoryNFTIDs)
+		if err != nil {
+			log.Error("RemoveNFTDestroyTxs from db needDestoryNFTIDs err ", needDestoryNFTIDs)
+		}
+		log.Info("RemoveNFTDestroyTxs from db ok ", needDestoryNFTIDs)
 	}
 }
 
@@ -535,6 +543,7 @@ func (sc *SideChainImpl) CreateAndBroadcastNFTDestroyProposal(nftIDs []string) e
 	}
 
 	if len(unsolvedTransactions) == 0 {
+		log.Info("[CreateAndBroadcastNFTDestroyProposal] len(unsolvedTransactions) == 0 ")
 		return nil
 	}
 
@@ -565,6 +574,7 @@ func (sc *SideChainImpl) CreateAndBroadcastNFTDestroyProposal(nftIDs []string) e
 	}
 
 	currentArbitrator.BroadcastWithdrawProposal(wTx)
+	log.Info("[CreateAndBroadcastNFTDestroyProposal] end")
 
 	return nil
 }
