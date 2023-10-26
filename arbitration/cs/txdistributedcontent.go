@@ -327,7 +327,8 @@ func checkWithdrawFromSidechainPayload(txn it.Transaction,
 
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(payloadWithdraw.GenesisBlockAddress)
 	if dbStore == nil {
-		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", payloadWithdraw.GenesisBlockAddress))
+		return errors.New(fmt.Sprintf("checkWithdrawFromSidechainPayload dbStore == nil can't find db store by "+
+			"genesis block address:%s", payloadWithdraw.GenesisBlockAddress))
 	}
 	sideChainTxs, err := dbStore.GetSideChainTxsFromHashes(transactionHashes)
 	if err != nil || len(sideChainTxs) != len(payloadWithdraw.SideChainTransactionHashes) {
@@ -510,7 +511,7 @@ func checkReturnDepositTxPayloadV0(txn it.Transaction, clientFunc DistributedNod
 	return checkReturnDepositTxPayload(txn, clientFunc)
 }
 
-//NFTDestroyFromSideChain
+// NFTDestroyFromSideChain
 func checkNFTDestroyFromSideChainTxPayload(txn it.Transaction, clientFunc DistributedNodeClientFunc,
 	nftDestroyPayload *payload.NFTDestroyFromSideChain) error {
 	if txn.PayloadVersion() != payload.NFTDestroyFromSideChainVersion {
@@ -650,7 +651,7 @@ func checkWithdrawFromSideChainPayload(txn it.Transaction,
 	var txs []*base.WithdrawTx
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
 	if dbStore == nil {
-		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", genesisAddress))
+		return errors.New(fmt.Sprintf("checkWithdrawFromSideChainPayload can't find db store by genesis block address:%s", genesisAddress))
 	}
 	sideChainTxs, err := dbStore.GetSideChainTxsFromHashes(transactionHashes)
 	if err != nil || len(sideChainTxs) != len(transactionHashes) {

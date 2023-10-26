@@ -71,15 +71,15 @@ func (monitor *SideChainAccountMonitorImpl) fireUTXOChanged(withdrawTxs []*base.
 }
 
 func (monitor *SideChainAccountMonitorImpl) fireNFTChanged(nftDestroyTxs []*base.NFTDestroyFromSideChainTx, genesisBlockAddress string, blockHeight uint32) error {
+
 	if monitor.accountListenerMap == nil {
+		log.Info("fireNFTChanged : accountListenerMap == nil")
 		return nil
 	}
-
 	item, ok := monitor.accountListenerMap[genesisBlockAddress]
 	if !ok {
 		return errors.New("fired unknown listener")
 	}
-
 	return item.OnNFTChanged(nftDestroyTxs, blockHeight)
 }
 
@@ -99,7 +99,7 @@ func (monitor *SideChainAccountMonitorImpl) fireIllegalEvidenceFound(evidence *p
 func (monitor *SideChainAccountMonitorImpl) SyncChainData(sideNode *config.SideNodeConfig, curr arbitrator.SideChain, effectiveHeight uint32) {
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(sideNode.GenesisBlockAddress)
 	if dbStore == nil {
-		log.Error("can't find db store by genesis block address:", sideNode.GenesisBlockAddress)
+		log.Error("SyncChainData can't find db store by genesis block address:", sideNode.GenesisBlockAddress)
 		return
 	}
 
@@ -362,7 +362,7 @@ func (monitor *SideChainAccountMonitorImpl) needSyncBlocks(genesisBlockAddress s
 
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisBlockAddress)
 	if dbStore == nil {
-		log.Error("can't find db store by genesis block address:", genesisBlockAddress)
+		log.Error("needSyncBlocks can't find db store by genesis block address:", genesisBlockAddress)
 		return 0, 0, false
 	}
 	currentHeight := dbStore.CurrentSideHeight(store.QueryHeightCode)
@@ -439,7 +439,7 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 		reversedTxnHash := common.BytesToHexString(reversedTxnBytes)
 		dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
 		if dbStore == nil {
-			log.Error("can't find db store by genesis block address:", genesisAddress)
+			log.Error("processTransactions can't find db store by genesis block address:", genesisAddress)
 			continue
 		}
 		if ok, err := dbStore.HasSideChainTx(reversedTxnHash); err != nil || !ok {
@@ -490,15 +490,16 @@ func (monitor *SideChainAccountMonitorImpl) processNFTDestroyTxs(transactions []
 
 		dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
 		if dbStore == nil {
-			log.Error("can't find db store by genesis block address:", genesisAddress)
+			log.Error("processNFTDestroyTxs can't find db store by genesis block address:", genesisAddress)
 			continue
 		}
 		if ok, err := dbStore.HasNFTDestroyTx(nftID.String()); err != nil || !ok {
-			log.Info("can't find db store by genesis block address:", genesisAddress)
+			log.Info("can't find nftID : ", nftID.String())
 
 			nftDestroyTxs = append(nftDestroyTxs, nftDestroyTx)
 		}
 	}
+	log.Info("nftDestroyTxs : ", len(nftDestroyTxs))
 
 	if len(nftDestroyTxs) != 0 {
 		err := monitor.fireNFTChanged(nftDestroyTxs, genesisAddress, blockHeight)
