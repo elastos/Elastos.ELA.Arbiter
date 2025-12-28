@@ -77,6 +77,10 @@
       "WhiteIPList":[
         "127.0.0.1"
       ]
-    }
+    },
+    "FrozenAddresses": [
+      "Ef9kN3KvTLeGKLKwVCv9BsmJRp8gLx1p2s",
+      "EbMowFp6TsoE9sLjvn3zTjVchExPj1SCrt"
+    ]
   }
 }

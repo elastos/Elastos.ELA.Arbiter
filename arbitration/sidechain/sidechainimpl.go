@@ -456,6 +456,11 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 		return nil
 	}
 
+	frozenAddressMap := make(map[string]bool)
+	for _, frozenAddress := range config.Parameters.FrozenAddresses {
+		frozenAddressMap[frozenAddress] = true
+	}
+
 	targetTransactions := make([]*base.WithdrawTx, 0)
 	for _, tx := range unsolvedTransactions {
 		ignore := false
@@ -467,6 +472,10 @@ func (sc *SideChainImpl) CreateAndBroadcastWithdrawProposal(txnHashes []string) 
 			}
 			_, err := common.Uint168FromAddress(w.TargetAddress)
 			if err != nil {
+				ignore = true
+				break
+			}
+			if _, ok := frozenAddressMap[w.TargetAddress]; ok {
 				ignore = true
 				break
 			}

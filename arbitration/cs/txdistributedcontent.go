@@ -325,6 +325,10 @@ func checkWithdrawFromSidechainPayload(txn it.Transaction,
 	// by the rpc interface of the side chain.
 	var txs []*base.WithdrawTx
 
+	frozenAddressMap := make(map[string]bool)
+	for _, frozenAddress := range config.Parameters.FrozenAddresses {
+		frozenAddressMap[frozenAddress] = true
+	}
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(payloadWithdraw.GenesisBlockAddress)
 	if dbStore == nil {
 		return errors.New(fmt.Sprintf("can't find db store by genesis block address:%s", payloadWithdraw.GenesisBlockAddress))
@@ -352,6 +356,9 @@ func checkWithdrawFromSidechainPayload(txn it.Transaction,
 				opAmount, err := common.StringToFixed64(cs.OutputAmount)
 				if err != nil {
 					return errors.New("[checkWithdrawTransaction] invalid output amount in tx")
+				}
+				if _, ok := frozenAddressMap[cs.CrossChainAddress]; ok {
+					return errors.New("[checkWithdrawTransaction] invalid cross chain address in tx: frozen address, " + cs.CrossChainAddress)
 				}
 				withdrawAssets = append(withdrawAssets, &base.WithdrawAsset{
 					TargetAddress:    cs.CrossChainAddress,
@@ -647,6 +654,7 @@ func checkWithdrawFromSideChainPayload(txn it.Transaction,
 	genesisAddress := sideChain.GetKey()
 	// check if withdraw transactions exist in db, if not found then will check
 	// by the rpc interface of the side chain.
+
 	var txs []*base.WithdrawTx
 	dbStore := store.DbCache.GetDataStoreGenesisBlocAddress(genesisAddress)
 	if dbStore == nil {
@@ -724,8 +732,16 @@ func checkWithdrawFromSideChainPayload(txn it.Transaction,
 	var oriOutputAmount common.Fixed64
 	var totalCrossChainAmount int
 	crossChainOutputsMap := make(map[string]common.Fixed64)
+			
+	frozenAddressMap := make(map[string]bool)
+	for _, frozenAddress := range config.Parameters.FrozenAddresses {
+		frozenAddressMap[frozenAddress] = true
+	}
 	for _, tx := range txs {
 		for _, w := range tx.WithdrawInfo.WithdrawAssets {
+			if _, ok := frozenAddressMap[w.TargetAddress]; ok {
+				return errors.New("[checkWithdrawTransaction] invalid cross chain address in tx: frozen address, " + w.TargetAddress)
+			}
 			if *w.CrossChainAmount < 0 || *w.Amount <= 0 ||
 				*w.Amount-*w.CrossChainAmount <= 0 ||
 				*w.CrossChainAmount >= *w.Amount {

@@ -389,6 +389,11 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 			continue
 		}
 
+		frozenAddressMap := make(map[string]bool)
+		for _, frozenAddress := range config.Parameters.FrozenAddresses {
+			frozenAddressMap[frozenAddress] = true
+		}
+
 		var withdrawAssets []*base.WithdrawAsset
 		for _, withdraw := range txn.CrossChainAssets {
 			opAmount, err := common.StringToFixed64(withdraw.OutputAmount)
@@ -404,6 +409,10 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 			programHash, err := common.Uint168FromAddress(withdraw.CrossChainAddress)
 			if err != nil {
 				log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
+				continue
+			}
+			if _, ok := frozenAddressMap[withdraw.CrossChainAddress]; ok {
+				log.Warn("invalid withdraw cross chain address in frozen address list:", withdraw.CrossChainAddress)
 				continue
 			}
 			addr, err := programHash.ToAddress()

@@ -86,6 +86,7 @@ type Configuration struct {
 	NFTStartHeight                  uint32           `json:"NFTStartHeight"`
 	DPoSV2StartHeight               uint32           `json:"DPoSV2StartHeight"`
 	ShowPeersIp                     bool             `json:"ShowPeersIp"`
+	FrozenAddresses                 []string         `json:"FrozenAddresses"`
 }
 
 type RpcConfig struct {

@@ -79,6 +79,7 @@ var (
 			SchnorrStartHeight:              875544 + 720*5,
 			DPoSV2StartHeight:               875544 + 720*2,
 			NFTStartHeight:                  100, // todo fix me
+			FrozenAddresses:                 []string{},
 		},
 	}
 
@@ -158,6 +159,7 @@ var (
 			SchnorrStartHeight:              965800 + 720*10,
 			DPoSV2StartHeight:               965800 + 720*3,
 			NFTStartHeight:                  100, // todo fix me
+			FrozenAddresses:                 []string{},
 		},
 	}
 
@@ -239,6 +241,10 @@ var (
 			SchnorrStartHeight:              math.MaxUint32,
 			DPoSV2StartHeight:               1405000,
 			NFTStartHeight:                  1405000,
+			FrozenAddresses:                 []string{
+				"Ef9kN3KvTLeGKLKwVCv9BsmJRp8gLx1p2s",
+				"EbMowFp6TsoE9sLjvn3zTjVchExPj1SCrt",
+			},
 		},
 	}
 )
