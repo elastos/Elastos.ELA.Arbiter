@@ -420,11 +420,11 @@ func (monitor *SideChainAccountMonitorImpl) processTransactions(transactions []*
 				log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
 				continue
 			}
-			if contract.PrefixType(programHash[0]) != contract.PrefixStandard &&
-				contract.PrefixType(programHash[0]) != contract.PrefixMultiSig {
-				log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
-				continue
-			}
+			// if contract.PrefixType(programHash[0]) != contract.PrefixStandard &&
+			// 	contract.PrefixType(programHash[0]) != contract.PrefixMultiSig {
+			// 	log.Warn("invalid withdraw cross chain address:", withdraw.CrossChainAddress)
+			// 	continue
+			// }
 
 			withdrawAssets = append(withdrawAssets, &base.WithdrawAsset{
 				TargetAddress:    withdraw.CrossChainAddress,
